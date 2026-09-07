@@ -27,13 +27,11 @@ import { User } from 'next-auth';
 import { NavigationMenuDemo } from './navegation-menu';
 import { BoxListDialog } from '../box-list-dialog';
 import { useNotifications } from '@/hooks/use-notification';
-import { TicketTableDialog } from '@/app/(protected)/(user)/tickets/tickets-days-or-weeks/ticket-table-dialog';
-import { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
 import { cn } from '@/lib/utils';
+import { InstallAppMenuItem } from './install-app-menu-item';
 
 export function NavUser({
   userNav,
-  ticketRegistrationsDayOrWeek,
 }: {
   userNav: {
     name: string;
@@ -41,12 +39,10 @@ export function NavUser({
     avatar: string;
     role: User['role'];
   };
-  ticketRegistrationsDayOrWeek: TicketRegistrationForDay[];
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [openBoxDialog, setOpenBoxDialog] = useState(false);
   const { hasNewNoteAlert, clearNoteAlert } = useNotifications();
-  const [openTicketDialog, setOpenTicketDialog] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
@@ -156,17 +152,6 @@ export function NavUser({
               Planilla de caja
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setOpenTicketDialog(true);
-              }}
-              className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]"
-            >
-              <TicketIcon className="size-3.5 text-muted-foreground" />
-              Ver registros de tickets
-            </DropdownMenuItem>
-
             <Link href="/notes">
               <DropdownMenuItem
                 className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]"
@@ -179,6 +164,8 @@ export function NavUser({
                 )}
               </DropdownMenuItem>
             </Link>
+
+            <InstallAppMenuItem />
           </DropdownMenuGroup>
 
           <DropdownMenuSeparator className="bg-border/40 -mx-1.5 my-1" />
@@ -186,7 +173,7 @@ export function NavUser({
           <Link
             href={
               userNav.role === 'ADMIN'
-                ? '/admin/users'
+                ? '/admin/dashboard'
                 : '/admin/other-payments'
             }
           >
@@ -210,11 +197,6 @@ export function NavUser({
       </DropdownMenu>
 
       <BoxListDialog open={openBoxDialog} setOpen={setOpenBoxDialog} />
-      <TicketTableDialog
-        ticketRegistrationForDay={ticketRegistrationsDayOrWeek}
-        open={openTicketDialog}
-        setOpen={setOpenTicketDialog}
-      />
     </>
   );
 }

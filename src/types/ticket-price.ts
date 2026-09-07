@@ -15,4 +15,5 @@ export type ticketPrice = {
     ticketDayType: TicketDayType | null;
     vehicleType: VehicleType | null;
     ticketTimeType: TicketTimeType | null;
+    intervalMinutes: number | null;
 }

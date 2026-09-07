@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, startTransition } from 'react';
+import React, { useState, useRef, useEffect, startTransition } from 'react';
 import { startScanner } from '@/services/scanner.service';
 import { toast } from 'sonner';
 import { getCustomerById } from '@/services/customers.service';
@@ -13,10 +13,31 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ReceiptSchemaType } from '@/schemas/receipt.schema';
 import { Receipt } from '@/types/receipt.type';
-import { Camera, Hash, Keyboard, Loader2, ScanLine, X } from 'lucide-react';
+import { Hash, Keyboard, QrCode, ScanLine, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function ScannerButton({ isDialogOpen }: { isDialogOpen: boolean }) {
+export default function ScannerButton({
+  isDialogOpen,
+  scannerRef,
+  scannerStyle,
+  manualRef,
+  manualStyle,
+  onScanningChange,
+  onTicketRegistered,
+  hideControls,
+}: {
+  isDialogOpen: boolean;
+  scannerRef?: (el: HTMLElement | null) => void;
+  scannerStyle?: React.CSSProperties;
+  manualRef?: (el: HTMLElement | null) => void;
+  manualStyle?: React.CSSProperties;
+  onScanningChange?: (isScanning: boolean) => void;
+  onTicketRegistered?: () => void;
+  // El lector USB sigue escuchando en segundo plano (el input oculto + el listener de teclado
+  // no dependen de este render) pero no se dibuja el pill de estado ni el toggle de ingreso
+  // manual — ese ingreso manual ahora vive en el diálogo unificado de "Registrar entrada".
+  hideControls?: boolean;
+}) {
   const [isScanning, setIsScanning] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -28,6 +49,10 @@ export default function ScannerButton({ isDialogOpen }: { isDialogOpen: boolean 
   const [receiptId, setReceiptId] = useState<string | null>(null);
   const [manualInputVisible, setManualInputVisible] = useState(false);
   const [manualBarCode, setManualBarCode] = useState('');
+
+  useEffect(() => {
+    onScanningChange?.(isScanning);
+  }, [isScanning, onScanningChange]);
 
   useEffect(() => {
     const handleKeyDown = () => {
@@ -78,7 +103,10 @@ export default function ScannerButton({ isDialogOpen }: { isDialogOpen: boolean 
               }
             } else {
               toast.success('🎫 Ticket detectado', { duration: 3000 });
-              setTimeout(() => window.location.reload(), 1000);
+              if (data.warning) {
+                toast.warning(data.warning, { duration: 8000 });
+              }
+              onTicketRegistered?.();
             }
           }
           setIsScanning(false);
@@ -116,41 +144,75 @@ export default function ScannerButton({ isDialogOpen }: { isDialogOpen: boolean 
     }
   };
 
+  if (hideControls) {
+    return (
+      <>
+        <input
+          ref={inputRef}
+          type="text"
+          autoFocus
+          onBlur={() => setIsScanning(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleSubmit(e.currentTarget.value);
+              e.currentTarget.value = "";
+            }
+          }}
+          className="absolute h-0 w-0 opacity-0 pointer-events-none"
+          aria-hidden
+        />
+        <OpenScannerDialog
+          open={dialogOpen}
+          onConfirm={handleConfirm}
+          onClose={() => setDialogOpen(false)}
+          customer={customer}
+          receipt={receipt}
+          customerType={customer?.customerType}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center gap-5">
-      {/* Status indicator */}
-      <div
-        className={cn(
-          'flex items-center gap-3 rounded-full border px-4 py-2 transition-colors',
-          isScanning
-            ? 'border-gm-orange/40 bg-gm-orange/15 text-[#FF8458]'
-            : manualInputVisible
-            ? 'border-gm-yellow/40 bg-gm-yellow/15 text-gm-yellow'
-            : 'border-border bg-gm-surface-2 text-muted-foreground',
-        )}
-      >
-        {isScanning ? (
-          <>
-            <Loader2 className="size-4 animate-spin" />
-            <span className="gm-display text-[12px] font-bold tracking-[0.06em]">
-              Escaneando…
-            </span>
-          </>
-        ) : manualInputVisible ? (
-          <>
-            <Keyboard className="size-4" />
-            <span className="gm-display text-[12px] font-bold tracking-[0.06em]">
-              Ingreso manual activo
-            </span>
-          </>
-        ) : (
-          <>
-            <Camera className="size-4" />
-            <span className="gm-display text-[12px] font-bold tracking-[0.06em]">
-              Lector listo — apuntá el código
-            </span>
-          </>
-        )}
+      <div className="flex flex-wrap items-center justify-center gap-3.5">
+        {/* Scanner status — reflects the real USB-scanner listener, not a clickable trigger */}
+        <div
+          ref={scannerRef}
+          style={{ ...scannerStyle, transform: isScanning ? 'scale(.98)' : 'scale(1)' }}
+          role="status"
+          className={cn(
+            'relative inline-flex items-center gap-2.5 h-[52px] px-5 rounded-2xl text-sm font-semibold uppercase tracking-[0.02em] transition-all duration-300 select-none',
+            isScanning
+              ? 'bg-gm-surface-2 text-muted-foreground'
+              : 'bg-gradient-to-br from-gm-yellow to-gm-yellow-deep text-gm-ink shadow-[0_8px_22px_-8px_hsl(var(--gm-yellow)/0.55)]',
+          )}
+        >
+          <span
+            className="grid place-items-center"
+            style={isScanning ? { animation: 'gm-blink 0.8s steps(2, jump-none) infinite' } : undefined}
+          >
+            <QrCode className="size-5" strokeWidth={1.8} />
+          </span>
+          {isScanning ? 'Escaneando…' : 'Listo para escanear'}
+        </div>
+
+        {/* Manual entry toggle */}
+        <button
+          ref={manualRef}
+          style={manualStyle}
+          onClick={() => setManualInputVisible((p) => !p)}
+          className={cn(
+            'inline-flex items-center gap-2.5 h-[52px] px-5 rounded-2xl border text-[13px] font-medium transition-all duration-300',
+            manualInputVisible
+              ? 'border-border bg-card/50 text-foreground'
+              : 'border-dashed border-gm-line-strong text-muted-foreground hover:text-foreground hover:border-foreground/30',
+          )}
+        >
+          {manualInputVisible ? <X className="size-4" /> : <Keyboard className="size-4" />}
+          {manualInputVisible ? 'Cancelar ingreso manual' : 'Ingresar código manualmente'}
+        </button>
       </div>
 
       {/* Hidden input that captures scan input */}
@@ -171,33 +233,6 @@ export default function ScannerButton({ isDialogOpen }: { isDialogOpen: boolean 
           aria-hidden
         />
       )}
-
-      {/* Manual entry toggle */}
-      <button
-        onClick={() => setManualInputVisible((p) => !p)}
-        className={cn(
-          'group relative inline-flex items-center gap-3 rounded-2xl border px-5 py-3 text-sm font-semibold backdrop-blur-xl transition-all duration-300',
-          manualInputVisible
-            ? 'border-border/60 bg-gm-surface-2/80 text-muted-foreground hover:bg-gm-surface-3'
-            : 'border-border/50 bg-card/30 text-foreground hover:border-gm-orange/40 hover:bg-gm-orange/10 hover:shadow-[0_0_30px_-8px_hsl(var(--gm-orange)/0.3)]',
-        )}
-      >
-        {manualInputVisible ? (
-          <>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/40 bg-white/5">
-              <X className="size-4" />
-            </span>
-            Cancelar ingreso manual
-          </>
-        ) : (
-          <>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-gm-orange/30 bg-gm-orange/15 text-gm-orange transition-colors group-hover:bg-gm-orange/25">
-              <Keyboard className="size-4" />
-            </span>
-            Ingresar código manualmente
-          </>
-        )}
-      </button>
 
       {/* Manual entry form */}
       {manualInputVisible && (

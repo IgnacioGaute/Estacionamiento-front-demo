@@ -80,8 +80,7 @@ export function CreateUserDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <UserPlus className="size-4" />
+        <Button size="sm" data-tour="users-create">
           Nuevo usuario
         </Button>
       </DialogTrigger>
@@ -106,7 +105,7 @@ export function CreateUserDialog() {
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4"
           >
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="firstName"
@@ -180,7 +179,7 @@ export function CreateUserDialog() {
               )}
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="password"

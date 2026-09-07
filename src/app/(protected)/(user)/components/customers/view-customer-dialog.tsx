@@ -22,17 +22,6 @@ import {
 import { Eye, Phone, User } from 'lucide-react';
 import { Customer } from '@/types/cutomer.type';
 
-const PARKING_TYPE_LABEL: Record<string, string> = {
-  EXPENSES_1:             'Expensas 1',
-  EXPENSES_2:             'Expensas 2',
-  EXPENSES_ZOM_1:         'Expensas salón 1',
-  EXPENSES_ZOM_2:         'Expensas salón 2',
-  EXPENSES_ZOM_3:         'Expensas salón 3',
-  EXPENSES_RICARDO_AZNAR: 'Expensas Ricardo Aznar',
-  EXPENSES_ALDO_FONTELA:  'Expensas Aldo Fontela',
-  EXPENSES_NIDIA_FONTELA: 'Expensas Nidia Fontela',
-};
-
 const ars = (n: number | undefined | null) =>
   n != null
     ? new Intl.NumberFormat('es-AR', {
@@ -42,7 +31,7 @@ const ars = (n: number | undefined | null) =>
 
 export function ViewCustomerDialog({ customer }: { customer: Customer }) {
   const [open, setOpen] = useState(false);
-  const vehicles = customer.vehicles ?? [];
+  const vehicles = customer.parkingOwners ?? [];
   const hasPendingReceipts = customer.receipts?.some(
     (r) => r.status === 'PENDING',
   );
@@ -138,8 +127,7 @@ export function ViewCustomerDialog({ customer }: { customer: Customer }) {
                       <TableCell>
                         {v.parkingType ? (
                           <Badge variant="default">
-                            {PARKING_TYPE_LABEL[v.parkingType?.parkingType] ||
-                              v.parkingType?.parkingType}
+                            {v.parkingType?.name}
                           </Badge>
                         ) : (
                           <Badge variant="orange">Alquiler</Badge>

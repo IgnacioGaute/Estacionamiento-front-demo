@@ -26,9 +26,7 @@ import { DeleteUserSchemaType, deleteUserSchema } from '@/schemas/user.schema';
 import { toast } from 'sonner';
 import { User } from '@/types/user.type';
 import { deleteUserAction } from '@/actions/users/delete-user.action';
-import { ParkingType } from '@/types/parking-type';
-import { deleteParkingTypeSchema, DeleteParkingTypeSchemaType } from '@/schemas/parking-type.schema';
-import { deleteParkingTypeAction } from '@/actions/parking-type/delete-parking-type.action';
+import { deleteOwnerParkingTypeSchema, DeleteOwnerParkingTypeSchemaType } from '@/schemas/owner-parking-type.schema';
 import { OtherPayment } from '@/types/other-payment.type';
 import { deleteExpenseAction } from '@/actions/other-payment/delete-other-payment.action';
 
@@ -38,14 +36,14 @@ export function DeleteExpenseDialog({ expense }: { expense: OtherPayment }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const form = useForm<DeleteParkingTypeSchemaType>({
-    resolver: zodResolver(deleteParkingTypeSchema),
+  const form = useForm<DeleteOwnerParkingTypeSchemaType>({
+    resolver: zodResolver(deleteOwnerParkingTypeSchema),
     defaultValues: {
       confirmation: '',
     },
   });
 
-  const onSubmit = (values: DeleteParkingTypeSchemaType) => {
+  const onSubmit = (values: DeleteOwnerParkingTypeSchemaType) => {
 
     startTransition(() => {
       deleteExpenseAction(expense.id).then((data) => {

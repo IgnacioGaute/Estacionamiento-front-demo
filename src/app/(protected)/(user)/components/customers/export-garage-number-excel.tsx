@@ -26,7 +26,7 @@ export const ExportGarageNumberExcel = ({ customers }: Props) => {
 
     customers.forEach((customer) => {
       if (customer.customerType === 'OWNER') {
-        customer.vehicles.forEach((vehicle) => {
+        customer.parkingOwners.forEach((vehicle) => {
           exportData.push({
             Garage: vehicle.garageNumber,
             Apellido: customer.lastName,
@@ -34,12 +34,12 @@ export const ExportGarageNumberExcel = ({ customers }: Props) => {
           });
         });
       } else if (customer.customerType === 'RENTER') {
-        customer.vehicleRenters.forEach((vehicleRenter) => {
+        customer.parkingRenters.forEach((vehicleRenter) => {
           exportData.push({
             Garage: vehicleRenter.garageNumber,
             Apellido: customer.lastName,
             Nombre: customer.firstName,
-            Dueño: vehicleRenter.vehicle ?`${vehicleRenter.vehicle.customer.firstName} ${vehicleRenter.vehicle.customer.lastName}`: 'Garage Mitre', // Esta es la columna extra
+            Dueño: vehicleRenter.parkingOwner ?`${vehicleRenter.parkingOwner.customer.firstName} ${vehicleRenter.parkingOwner.customer.lastName}`: 'Garage Mitre', // Esta es la columna extra
           });
         });
       }

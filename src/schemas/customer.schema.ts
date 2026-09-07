@@ -1,6 +1,7 @@
 import { CUSTOMER_TYPE } from '@/types/cutomer.type';
-import { string, z } from 'zod';
-import { vehicleRenterSchema, vehicleSchema } from './vehicle.schema';
+import { z } from 'zod';
+import { parkingOwnerSchema } from './parking-owner.schema';
+import { parkingRenterSchema } from './parking-renter.schema';
 
 export const customerSchema = z.object({
   firstName: z.string().max(50, 'Máximo 50 caracteres'),
@@ -17,9 +18,9 @@ export const customerSchema = z.object({
     amount: z.number().min(0, "El monto debe ser mayor o igual a 0")
   })
 ).optional(),
-  vehicles: z.array(vehicleSchema).optional(),
-  vehicleRenters: z.array(vehicleRenterSchema).optional(),
-  credit: z.number().min(0).default(0),  
+  parkingOwners: z.array(parkingOwnerSchema).optional(),
+  parkingRenters: z.array(parkingRenterSchema).optional(),
+  credit: z.number().min(0).default(0),
 });
 
 
@@ -42,8 +43,8 @@ export const updateCustomerSchema = z.object({
     amount: z.number().min(0, "El monto debe ser mayor o igual a 0")
   })
 ),
-  vehicles: z.array(vehicleSchema).optional(),
-  vehicleRenters: z.array(vehicleRenterSchema).optional(),
+  parkingOwners: z.array(parkingOwnerSchema).optional(),
+  parkingRenters: z.array(parkingRenterSchema).optional(),
   credit: z.number().min(0).default(0),
   });
   export type UpdateCustomerSchemaType = z.infer<typeof updateCustomerSchema>;

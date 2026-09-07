@@ -13,7 +13,7 @@ export default async function NotePage() {
   return (
     <div className="container mx-auto px-4 py-6 sm:p-8 max-w-7xl">
       <PageHeader
-        breadcrumb={['Garage Mitre', 'Operación', 'Avisos']}
+        breadcrumb={['Estacionamiento', 'Operación', 'Avisos']}
         title="Avisos"
         description={
           count > 0

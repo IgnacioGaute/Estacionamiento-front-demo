@@ -21,6 +21,10 @@ export const useNotificationsInterest = () => {
   });
 
   useEffect(() => {
+    localStorage.setItem('notifications-interest', JSON.stringify(notifications));
+  }, [notifications]);
+
+  useEffect(() => {
     // Solo ejecutar el código en el cliente
     if (typeof window !== 'undefined') {
       socket.on('connect', () => {
@@ -31,11 +35,7 @@ export const useNotificationsInterest = () => {
         console.log('Notificación recibida:', data);
         // Solo agregar la notificación si es de tipo 'INSUFFICIENT_FUNDS'
         if (data.type === 'INTEREST_PROCESSED') {
-          setNotifications((prev) => {
-            const updatedNotifications = [...prev, data];
-            localStorage.setItem('notifications-interest', JSON.stringify(updatedNotifications));
-            return updatedNotifications;
-          });
+          setNotifications((prev) => [...prev, data]);
         }
       });
 
@@ -57,11 +57,7 @@ export const useNotificationsInterest = () => {
   };
 
   const removeNotification = (id: string) => {
-    setNotifications((prev) => {
-      const filteredNotifications = prev.filter((notification) => notification.id !== id);
-      localStorage.setItem('notifications-interest', JSON.stringify(filteredNotifications));
-      return filteredNotifications;
-    });
+    setNotifications((prev) => prev.filter((notification) => notification.id !== id));
   };
 
   return { notifications, clearNotifications, removeNotification };

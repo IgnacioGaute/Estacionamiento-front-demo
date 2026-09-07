@@ -25,7 +25,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Plus, StickyNote } from 'lucide-react';
+import { Loader2, StickyNote } from 'lucide-react';
 
 import { noteSchema, NoteSchemaType } from '@/schemas/note.schema';
 import { createNoteAction } from '@/actions/notes/create-note.action';
@@ -63,8 +63,7 @@ export function CreateNoteDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" />
+        <Button size="sm">
           Nuevo aviso
         </Button>
       </DialogTrigger>

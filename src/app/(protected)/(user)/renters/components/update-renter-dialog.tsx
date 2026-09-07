@@ -12,16 +12,19 @@ import {
   UpdateCustomerSchemaType,
 } from '@/schemas/customer.schema';
 import { Customer } from '@/types/cutomer.type';
-import { Vehicle } from '@/types/vehicle.type';
+import { ParkingOwner } from '@/types/parking-owner.type';
+import { RenterParkingType } from '@/types/renter-parking-type';
 import { CustomerStepperShell } from '@/components/customer-stepper-shell';
 import { RenterPhase2 } from '@/components/renter-phase-2';
 
 export function UpdateRenterDialog({
   customer,
   customersRenters,
+  renterParkingTypes,
 }: {
   customer: Customer;
-  customersRenters: Vehicle[];
+  customersRenters: ParkingOwner[];
+  renterParkingTypes: RenterParkingType[];
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -38,10 +41,10 @@ export function UpdateRenterDialog({
       hasDebt: customer.hasDebt || false,
       monthsDebt: customer.monthsDebt || [],
       credit: customer.credit || 0,
-      vehicleRenters:
-        (customer.vehicleRenters as any)?.map((vr: any) => ({
+      parkingRenters:
+        customer.parkingRenters?.map((vr) => ({
           id: vr.id ?? '',
-          owner: vr.ownerVehicleId ?? vr.owner ?? '',
+          owner: vr.owner ?? '',
           garageNumber: vr.garageNumber ?? '',
           amount: vr.amount ?? 0,
         })) ?? [],
@@ -50,12 +53,12 @@ export function UpdateRenterDialog({
 
   const { fields, replace } = useFieldArray({
     control: form.control,
-    name: 'vehicleRenters' as any,
+    name: 'parkingRenters',
   });
 
   const handleNext = (values: Partial<UpdateCustomerSchemaType>) => {
     const n = values.numberOfVehicles ?? 0;
-    const current = (form.getValues('vehicleRenters' as any) as any[]) ?? [];
+    const current = form.getValues('parkingRenters') ?? [];
     if (current.length < n) {
       replace([
         ...current,
@@ -109,6 +112,7 @@ export function UpdateRenterDialog({
         <RenterPhase2
           form={form}
           customersRenters={customersRenters}
+          renterParkingTypes={renterParkingTypes}
           fields={fields}
           isPending={isPending}
         />

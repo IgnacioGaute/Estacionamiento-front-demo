@@ -1,4 +1,0 @@
-[    2811ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@15.1.11_react-dom@19.0.0_react@19.0.0__react@19.0.0/node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:24650
-[    4910ms] [LOG] 🔌 Conectado al WebSocket @ webpack-internal:///(app-pages-browser)/./src/hooks/use-notification.ts:41
-[    6090ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3030/box-lists/date/2026-06-24:0
-[    6090ms] [WARNING] No se encontró BoxList para la fecha: 2026-06-24 @ webpack-internal:///(app-pages-browser)/./src/services/box-lists.service.ts:14

@@ -56,7 +56,6 @@ export default function LoginPage() {
         </div>
 
         <div className="text-[11px] tracking-[0.04em] text-muted-foreground">
-          AV. MITRE 1453 · MENDOZA · ARG
         </div>
       </aside>
 

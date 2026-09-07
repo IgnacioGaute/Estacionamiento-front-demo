@@ -1,6 +1,6 @@
 import { PaymentStatusType, Receipt } from "./receipt.type";
-import { VehicleRenter } from "./vehicle-renter";
-import { Vehicle } from "./vehicle.type";
+import { ParkingRenter } from "./parking-renter.type";
+import { ParkingOwner } from "./parking-owner.type";
 
 
 export const CUSTOMER_TYPE = ['OWNER', 'RENTER', 'PRIVATE'] as const;
@@ -11,13 +11,13 @@ export type CustomerType = (typeof CUSTOMER_TYPE)[number];
 export type Customer = {
     id: string;
     firstName: string;
-    lastName: string;  
+    lastName: string;
     phone: string;
     comments: string;
     customerNumber: number;
     numberOfVehicles: number;
-    startDate: string | null; 
-    previusStartDate: string | null;  
+    startDate: string | null;
+    previusStartDate: string | null;
     customerType: CustomerType;
     hasDebt: boolean;
     monthsDebt?: {
@@ -30,6 +30,6 @@ export type Customer = {
     createdAt: Date;
     updatedAt: Date;
     receipts: Receipt[];
-    vehicles: Vehicle[];
-    vehicleRenters: VehicleRenter[];
+    parkingOwners: ParkingOwner[];
+    parkingRenters: ParkingRenter[];
 }

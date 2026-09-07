@@ -183,7 +183,7 @@ export function UpdateUserDailog({ user }: { user: User }) {
             Editar Usuario
           </Button>
     </DialogTrigger>
-    <DialogContent className="max-h-[80vh] sm:max-h-[90vh] overflow-y-auto w-full max-w-md sm:max-w-lg">
+    <DialogContent className="max-w-md sm:max-w-lg">
       <DialogHeader>
         <DialogTitle>Actualizar Perfil</DialogTitle>
       </DialogHeader>

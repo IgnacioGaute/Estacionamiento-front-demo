@@ -38,7 +38,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
 
   return (
     <SidebarGroup>
-      <SidebarMenu>
+      <SidebarMenu className="gap-1.5">
         {items.map((item) => {
           const isActive = mounted && pathname === item.url;
           const hasActiveChild =
@@ -52,14 +52,14 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   tooltip={item.title}
                   isActive={isActive}
                   className={cn(
-                    'group relative my-px flex h-9 w-full items-center rounded-md px-2.5 text-[13px] font-medium tracking-tight transition-all duration-150',
+                    'group relative flex h-11 w-full items-center rounded-md px-3 text-[13.5px] font-medium tracking-tight transition-all duration-150',
                     'text-muted-foreground hover:bg-gm-surface-2 hover:text-foreground',
                     'data-[active=true]:bg-gm-yellow data-[active=true]:text-gm-ink data-[active=true]:font-semibold data-[active=true]:shadow-[inset_0_-2px_0_rgba(0,0,0,0.15)]',
                   )}
                 >
-                  <Link href={item.url} className="flex w-full items-center gap-x-2.5">
+                  <Link href={item.url} className="flex w-full items-center gap-x-3">
                     {item.icon && (
-                      <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:size-4">
+                      <span className="flex size-[18px] shrink-0 items-center justify-center [&>svg]:size-[18px]">
                         {React.isValidElement(item.icon) ? item.icon : typeof item.icon === 'function' ? (item.icon as () => React.JSX.Element)() : null}
                       </span>
                     )}
@@ -85,13 +85,13 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     tooltip={item.title}
                     isActive={hasActiveChild}
                     className={cn(
-                      'group relative my-px flex h-9 w-full items-center rounded-md px-2.5 text-[13px] font-medium tracking-tight transition-all duration-150',
+                      'group relative flex h-11 w-full items-center rounded-md px-3 text-[13.5px] font-medium tracking-tight transition-all duration-150',
                       'text-muted-foreground hover:bg-gm-surface-2 hover:text-foreground',
                       'data-[active=true]:bg-gm-surface-2 data-[active=true]:text-foreground',
                     )}
                   >
                     {item.icon && (
-                      <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:size-4">
+                      <span className="flex size-[18px] shrink-0 items-center justify-center [&>svg]:size-[18px]">
                         {React.isValidElement(item.icon) ? item.icon : typeof item.icon === 'function' ? (item.icon as () => React.JSX.Element)() : null}
                       </span>
                     )}
@@ -109,7 +109,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                           asChild
                           isActive={mounted && pathname === subItem.url}
                           className={cn(
-                            'group flex w-full items-center rounded-md py-1.5 pl-9 pr-3 text-[12px] font-medium transition-colors',
+                            'group flex w-full items-center rounded-md py-2 pl-9 pr-3 text-[12.5px] font-medium transition-colors',
                             'text-muted-foreground hover:bg-gm-surface-2 hover:text-foreground',
                             'data-[active=true]:bg-gm-yellow data-[active=true]:text-gm-ink',
                           )}

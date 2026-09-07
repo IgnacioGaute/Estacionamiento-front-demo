@@ -12,7 +12,7 @@ interface Props {
 
 type ExportRow = {
   'Código de barras': string;
-  'Precio ($)': string;
+  'Tipo de vehículo': string;
 };
 
 export const ExportTicketsExcel = ({ tickets }: Props) => {
@@ -25,7 +25,7 @@ export const ExportTicketsExcel = ({ tickets }: Props) => {
     // Transformar cada ticket en fila simple
     const rows: ExportRow[] = tickets.map((ticket) => ({
       'Código de barras': ticket.codeBar,
-      'Precio ($)': ticket.price.toString(),
+      'Tipo de vehículo': ticket.vehicleType,
     }));
 
     // 🧭 Ordenar por código de barras (opcional)
@@ -38,7 +38,7 @@ export const ExportTicketsExcel = ({ tickets }: Props) => {
     // Configurar ancho de columnas
     const columnWidths = [
       { wch: 25 }, // Código de barras
-      { wch: 15 }, // Precio
+      { wch: 18 }, // Tipo de vehículo
     ];
     worksheet['!cols'] = columnWidths;
 

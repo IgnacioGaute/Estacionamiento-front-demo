@@ -4,10 +4,16 @@ import { Button } from '@/components/ui/button';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { toast } from 'sonner';
-import { ParkingType } from '@/types/parking-type';
+
+interface ParkingTypeLike {
+  id: string;
+  name: string;
+  amount: number;
+}
 
 interface Props {
-  parkings: ParkingType[];
+  parkings: ParkingTypeLike[];
+  fileName?: string;
 }
 
 type ExportRow = {
@@ -16,7 +22,7 @@ type ExportRow = {
   'Monto ($)': string;
 };
 
-export const ExportParkingExcel = ({ parkings }: Props) => {
+export const ExportParkingExcel = ({ parkings, fileName = 'parking' }: Props) => {
   const handleExport = () => {
     if (!parkings || parkings.length === 0) {
       toast.error('No hay datos de parking para exportar.');
@@ -25,7 +31,7 @@ export const ExportParkingExcel = ({ parkings }: Props) => {
 
     const rows: ExportRow[] = parkings.map((parking) => ({
       ID: parking.id,
-      'Tipo de Parking': parking.parkingType,
+      'Tipo de Parking': parking.name,
       'Monto ($)': parking.amount.toString(),
     }));
 
@@ -48,7 +54,7 @@ export const ExportParkingExcel = ({ parkings }: Props) => {
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
     const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
 
-    saveAs(blob, `parking.xlsx`);
+    saveAs(blob, `${fileName}.xlsx`);
     toast.success('Archivo de parking exportado correctamente ✅');
   };
 

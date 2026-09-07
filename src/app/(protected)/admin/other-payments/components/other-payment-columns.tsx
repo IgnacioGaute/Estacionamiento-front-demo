@@ -8,7 +8,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ParkingType } from '@/types/parking-type';
 import { User } from '@/types/user.type';
 import { ColumnDef } from '@tanstack/react-table';
 import { BadgeCheckIcon, BadgeXIcon, MoreHorizontal } from 'lucide-react';
@@ -47,6 +46,17 @@ export const expenseColumns: ColumnDef<OtherPayment>[] = [
       return <div className="min-w-[100px] text-sm">{displayType}</div>;
     },
   },  
+  {
+    accessorKey: 'paymentMethod',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Forma de pago" />
+    ),
+    cell: ({ row }) => {
+      const method = row.getValue('paymentMethod');
+      const displayMethod = method === 'TRANSFER' ? 'Transferencia' : 'Efectivo';
+      return <div className="min-w-[100px] text-sm">{displayMethod}</div>;
+    },
+  },
   {
     id: 'actions',
     cell: ({ row }) => {

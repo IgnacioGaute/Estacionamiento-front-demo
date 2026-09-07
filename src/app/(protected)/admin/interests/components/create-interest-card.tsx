@@ -56,7 +56,7 @@ export default function CardInterest({ className, interests }: { className?: str
     };
 
     return (
-        <Card className={`w-3/5 h-full flex flex-col ${className} mx-auto my-auto flex justify-center`}>
+        <Card className={`w-full sm:w-3/5 h-full flex flex-col ${className} mx-auto my-auto flex justify-center`}>
             <CardHeader>
                 <CardTitle>Gestionar intereses de los inquilinos y propietarios</CardTitle>
                 <CardDescription>El número de intereses que escribas se suma cada 10 días. El interes se aplica a los clientes que se excedan de los 10 dias despues del dia 1 de cada mes.</CardDescription>
@@ -68,7 +68,7 @@ export default function CardInterest({ className, interests }: { className?: str
                             control={form.control}
                             name="interestOwner"
                             render={({ field }) => (
-                                <FormItem>
+                                <FormItem data-tour="interests-owner">
                                     <FormLabel className="flex items-center gap-2">
                                         Intereses Propietarios 
                                         <span className="text-green-600 flex items-center gap-1">
@@ -87,7 +87,7 @@ export default function CardInterest({ className, interests }: { className?: str
                             control={form.control}
                             name="interestRenter"
                             render={({ field }) => (
-                                <FormItem>
+                                <FormItem data-tour="interests-renter">
                                     <FormLabel className="flex items-center gap-2">
                                         Intereses Inquilinos 
                                         <span className="text-green-600 flex items-center gap-1">
@@ -103,7 +103,7 @@ export default function CardInterest({ className, interests }: { className?: str
                             )}
                         />
                         <div className="flex-grow"></div> 
-                        <Button className="w-full mt-auto" type="submit" disabled={isPending}>
+                        <Button className="w-full mt-auto" type="submit" disabled={isPending} data-tour="interests-save">
                             Guardar cambios
                         </Button>
                     </form>

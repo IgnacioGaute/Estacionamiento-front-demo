@@ -36,7 +36,6 @@ export function CreateTicketDialog() {
     defaultValues: {
       codeBar: '',
       vehicleType: 'AUTO',
-      ticketDayType: 'DAY'
     },
   });
 
@@ -63,12 +62,12 @@ export function CreateTicketDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="lg" onClick={() => setOpen(true)}>
+        <Button size="sm" data-tour="tickets-create" onClick={() => setOpen(true)}>
           Crear Ticket
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-h-[80vh] sm:max-h-[90vh] overflow-y-auto w-full max-w-md sm:max-w-lg">
+      <DialogContent className="max-w-md sm:max-w-lg">
         <DialogHeader className="items-center">
           <DialogTitle>Crear Ticket</DialogTitle>
         </DialogHeader>
@@ -105,32 +104,6 @@ export function CreateTicketDialog() {
                       <SelectContent>
                         <SelectItem value="AUTO">Auto</SelectItem>
                         <SelectItem value="CAMIONETA">Camioneta</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-                        <FormField
-              control={form.control}
-              name="ticketDayType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo de Horario</FormLabel>
-                  <FormControl>
-                    <Select
-                      disabled={isPending}
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DAY">Dia</SelectItem>
-                        <SelectItem value="NIGHT">Noche</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormControl>

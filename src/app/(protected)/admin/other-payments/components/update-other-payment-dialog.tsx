@@ -31,9 +31,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ParkingType } from '@/types/parking-type';
-import { updateParkingTypeSchema, UpdateParkingTypeSchemaType } from '@/schemas/parking-type.schema';
-import { updateParkingTypeAction } from '@/actions/parking-type/update-parking-type.action';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { OtherPayment } from '@/types/other-payment.type';
 import { updateOtherPaymentSchema, updateOtherPaymentSchemaType } from '@/schemas/other-payment.schema';
@@ -50,7 +47,9 @@ export function UpdateExpenseDailog({ expense }: { expense: OtherPayment }) {
     resolver: zodResolver(updateOtherPaymentSchema),
     defaultValues: {
       description: expense.description,
-      price: expense.price
+      price: expense.price,
+      type: expense.type,
+      paymentMethod: expense.paymentMethod,
     },
   });
 
@@ -82,12 +81,62 @@ export function UpdateExpenseDailog({ expense }: { expense: OtherPayment }) {
           </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-h-[80vh] sm:max-h-[90vh] overflow-y-auto w-full max-w-md sm:max-w-lg">
+      <DialogContent className="max-w-md sm:max-w-lg">
         <DialogHeader className="items-center">
           <DialogTitle>Editar Gasto</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo</FormLabel>
+                  <FormControl>
+                    <Select
+                      disabled={isPending}
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="EGRESOS">Egreso</SelectItem>
+                        <SelectItem value="INGRESOS">Ingreso</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="paymentMethod"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Forma de pago</FormLabel>
+                  <FormControl>
+                    <Select
+                      disabled={isPending}
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona una forma de pago" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CASH">Efectivo</SelectItem>
+                        <SelectItem value="TRANSFER">Transferencia</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
                         <FormField
                             control={form.control}
                             name="description"

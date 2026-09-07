@@ -46,9 +46,5 @@ export const PaymentSummaryCell = ({ customer }: { customer: Customer }) => {
 
   if (customer.deletedAt !== null) return null;
 
-  return (
-    <PaymentSummaryTable customer={customer} autoOpen={autoOpen}>
-      <span className="text-muted-foreground hover:text-foreground hover:underline cursor-pointer text-[12.5px] transition-colors">Ver Resumen</span>
-    </PaymentSummaryTable>
-  );
+  return <PaymentSummaryTable customer={customer} autoOpen={autoOpen} />;
 };

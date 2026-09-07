@@ -27,13 +27,13 @@ import {
   UpdateCustomerSchemaType,
 } from '@/schemas/customer.schema';
 import { Customer } from '@/types/cutomer.type';
-import { PARKING_TYPE } from '@/types/vehicle.type';
+import { OwnerParkingType } from '@/types/owner-parking-type';
 import {
   CustomerStepperShell,
   YesNo,
 } from '@/components/customer-stepper-shell';
 
-export function UpdateOwnerDialog({ customer }: { customer: Customer }) {
+export function UpdateOwnerDialog({ customer, ownerParkingTypes }: { customer: Customer; ownerParkingTypes: OwnerParkingType[] }) {
   const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
@@ -49,11 +49,11 @@ export function UpdateOwnerDialog({ customer }: { customer: Customer }) {
       hasDebt: customer.hasDebt || false,
       monthsDebt: customer.monthsDebt || [],
       credit: customer.credit || 0,
-      vehicles:
-        customer.vehicles?.map((v) => ({
+      parkingOwners:
+        customer.parkingOwners?.map((v) => ({
           id: v.id ?? '',
           garageNumber: v.garageNumber ?? '',
-          parking: v.parkingType?.parkingType ?? PARKING_TYPE[0],
+          ownerParkingTypeId: v.parkingType?.id ?? '',
           rent: v.rent,
           amountRenter: v.amountRenter || 0,
         })) ?? [],
@@ -62,19 +62,19 @@ export function UpdateOwnerDialog({ customer }: { customer: Customer }) {
 
   const { fields, replace } = useFieldArray({
     control: form.control,
-    name: 'vehicles',
+    name: 'parkingOwners',
   });
 
   const handleNext = (values: Partial<UpdateCustomerSchemaType>) => {
     const n = values.numberOfVehicles ?? 0;
-    const current = form.getValues('vehicles') ?? [];
+    const current = form.getValues('parkingOwners') ?? [];
     if (current.length < n) {
       replace([
         ...current,
         ...Array.from({ length: n - current.length }, () => ({
           rent: false,
           garageNumber: '',
-          parking: PARKING_TYPE[1],
+          ownerParkingTypeId: '',
           amountRenter: 0,
         })),
       ]);
@@ -133,7 +133,7 @@ export function UpdateOwnerDialog({ customer }: { customer: Customer }) {
           </div>
 
           {fields.map((field, index) => {
-            const isRent = form.watch(`vehicles.${index}.rent`) === true;
+            const isRent = form.watch(`parkingOwners.${index}.rent`) === true;
             return (
               <article
                 key={field.id}
@@ -160,7 +160,7 @@ export function UpdateOwnerDialog({ customer }: { customer: Customer }) {
                   <div className="grid grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
-                      name={`vehicles.${index}.garageNumber`}
+                      name={`parkingOwners.${index}.garageNumber`}
                       render={({ field }) => (
                         <FormItem className="space-y-1.5">
                           <FormLabel>N° de cochera</FormLabel>
@@ -179,7 +179,7 @@ export function UpdateOwnerDialog({ customer }: { customer: Customer }) {
 
                     <FormField
                       control={form.control}
-                      name={`vehicles.${index}.parking`}
+                      name={`parkingOwners.${index}.ownerParkingTypeId`}
                       render={({ field }) => (
                         <FormItem className="space-y-1.5">
                           <FormLabel>Tipo de expensas</FormLabel>
@@ -193,14 +193,17 @@ export function UpdateOwnerDialog({ customer }: { customer: Customer }) {
                                 <SelectValue placeholder="Seleccionar..." />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="EXPENSES_1">Expensas 1</SelectItem>
-                                <SelectItem value="EXPENSES_2">Expensas 2</SelectItem>
-                                <SelectItem value="EXPENSES_ZOM_1">Expensas salón 1</SelectItem>
-                                <SelectItem value="EXPENSES_ZOM_2">Expensas salón 2</SelectItem>
-                                <SelectItem value="EXPENSES_ZOM_3">Expensas salón 3</SelectItem>
-                                <SelectItem value="EXPENSES_RICARDO_AZNAR">Expensas Ricardo Aznar</SelectItem>
-                                <SelectItem value="EXPENSES_ALDO_FONTELA">Expensas Aldo Fontela</SelectItem>
-                                <SelectItem value="EXPENSES_NIDIA_FONTELA">Expensas Nidia Fontela</SelectItem>
+                                {ownerParkingTypes.length === 0 ? (
+                                  <div className="px-2 py-1.5 text-[12px] text-muted-foreground">
+                                    No hay tipos creados. Cargalos en Administrar.
+                                  </div>
+                                ) : (
+                                  ownerParkingTypes.map((type) => (
+                                    <SelectItem key={type.id} value={type.id}>
+                                      {type.name}
+                                    </SelectItem>
+                                  ))
+                                )}
                               </SelectContent>
                             </Select>
                           </FormControl>
@@ -212,7 +215,7 @@ export function UpdateOwnerDialog({ customer }: { customer: Customer }) {
 
                   <FormField
                     control={form.control}
-                    name={`vehicles.${index}.rent`}
+                    name={`parkingOwners.${index}.rent`}
                     render={({ field }) => (
                       <FormItem className="space-y-1.5">
                         <FormLabel>¿Usa esta cochera para alquilar?</FormLabel>
@@ -240,7 +243,7 @@ export function UpdateOwnerDialog({ customer }: { customer: Customer }) {
                   {isRent && (
                     <FormField
                       control={form.control}
-                      name={`vehicles.${index}.amountRenter`}
+                      name={`parkingOwners.${index}.amountRenter`}
                       render={({ field }) => (
                         <FormItem className="space-y-1.5">
                           <FormLabel>Monto de alquiler mensual</FormLabel>

@@ -324,7 +324,7 @@
   70%, 100% { transform: translateX(150px); opacity: 1; }
 }
 
-.gm-loader__logo { display: flex; align-items: baseline; gap: 14px; }
+.gm-loader__logo { display: flex; align-items: baseline; gap: 0; }
 
 .gm-loader__status {
   display: flex; align-items: center; gap: 9px;
@@ -352,5 +352,139 @@
   .gm-car, .gm-loader__dot { animation: none; }
   .gm-barrier__arm { transform: rotate(-78deg); }
   .gm-car { transform: translateX(150px); opacity: 1; }
+}
+
+/* =========================================================
+   Ver Resumen button (.gm-rc)
+   ========================================================= */
+.gm-rc {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 34px; padding: 0 13px;
+  border: 1px solid hsl(var(--gm-line-strong));
+  border-radius: 6px; cursor: pointer;
+  background: hsl(var(--gm-surface-2));
+  color: hsl(var(--foreground));
+  font-size: 13px; font-weight: 600; letter-spacing: .01em; white-space: nowrap;
+  text-decoration: none;
+  transition: background 140ms, border-color 140ms, color 140ms;
+}
+.gm-rc::before {
+  content: ""; position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(245,197,24,.25) 48%, transparent 66%);
+  transform: translateX(-120%);
+  transition: transform 620ms cubic-bezier(.5,0,.2,1);
+  pointer-events: none;
+}
+.gm-rc:hover {
+  background: hsl(var(--gm-surface-3));
+  border-color: hsl(var(--gm-yellow));
+  color: #FFE27A;
+}
+.gm-rc:hover::before { transform: translateX(120%); }
+.gm-rc.open {
+  background: hsl(var(--gm-yellow));
+  color: hsl(30 78% 7%);
+  border-color: hsl(var(--gm-yellow));
+}
+.gm-rc__lbl { position: relative; z-index: 1; }
+.gm-rc__ico {
+  position: relative; z-index: 1;
+  display: grid; place-items: center;
+  width: 15px; height: 15px; flex-shrink: 0;
+  color: hsl(var(--gm-yellow));
+}
+.gm-rc.open .gm-rc__ico { color: hsl(30 78% 7%); }
+.gm-rc__ico .l { transform-origin: left center; }
+.gm-rc__ico .l1 { animation: gm-rc-line 2.6s ease-in-out infinite; }
+.gm-rc__ico .l2 { animation: gm-rc-line 2.6s ease-in-out .25s infinite; }
+.gm-rc__ico .l3 { animation: gm-rc-line 2.6s ease-in-out .5s infinite; }
+@keyframes gm-rc-line {
+  0%,100% { opacity: .4; transform: scaleX(.55); }
+  45%,60%  { opacity: 1;  transform: scaleX(1); }
+}
+/* ===== Inline expand detail (.gm-rc-detail) ===== */
+.gm-rc-detail {
+  padding: 18px 16px;
+  background:
+    linear-gradient(90deg, rgba(245,197,24,.05), transparent 40%),
+    hsl(var(--background));
+  border-left: 3px solid hsl(var(--gm-yellow));
+  display: grid;
+  grid-template-columns: 2fr 2fr 2fr auto;
+  gap: 0;
+  align-items: center;
+  animation: gm-rc-open 320ms cubic-bezier(.2,.7,.3,1) both;
+}
+.gm-rc-detail > * {
+  padding: 0 16px;
+}
+.gm-rc-detail > *:first-child {
+  padding-left: 8px;
+}
+.gm-rc-detail > *:last-child {
+  padding-right: 8px;
+}
+@keyframes gm-rc-open {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes gm-rc-stat {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes gm-tour-progress {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+@keyframes gm-tour-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px hsl(46 92% 53% / 0.3), 0 0 0 1px hsl(46 92% 53% / 0.9); }
+  50%       { box-shadow: 0 0 0 8px hsl(46 92% 53% / 0.12), 0 0 0 1px hsl(46 92% 53% / 0.9); }
+}
+
+@keyframes gm-scanline {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateY(2100%); opacity: 0; }
+}
+
+@keyframes gm-ticket-rise {
+  from { opacity: 0; transform: translateY(16px) scale(.99); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes gm-bgsweep {
+  0%   { background-position: -160% 0; }
+  100% { background-position: 160% 0; }
+}
+@keyframes gm-barglow {
+  0%, 100% { border-color: hsl(var(--gm-line)); }
+  50%       { border-color: hsl(var(--gm-yellow) / 0.7); }
+}
+@keyframes gm-chippulse {
+  0%, 100% { box-shadow: 0 0 0 3px hsl(46 92% 53% / .45), 0 0 14px 2px hsl(46 92% 53% / .5); }
+  50%       { box-shadow: 0 0 0 6px hsl(46 92% 53% / .18), 0 0 20px 4px hsl(46 92% 53% / .7); }
+}
+@keyframes gm-chip-overdue {
+  0%, 100% { box-shadow: 0 0 0 3px hsl(10 78% 56% / .5), 0 0 14px 2px hsl(10 78% 56% / .55); }
+  50%       { box-shadow: 0 0 0 6px hsl(10 78% 56% / .2), 0 0 22px 5px hsl(10 78% 56% / .8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gm-rc::before,
+  .gm-rc__ico .l1,
+  .gm-rc__ico .l2,
+  .gm-rc__ico .l3,
+  .gm-rc-detail { animation: none !important; transform: none !important; opacity: 1 !important; }
+}
+
+/* Radix bloquea el scroll de <body> (data-scroll-locked) cuando un dialog está abierto, pero no
+   toca <html> — y esta app no tiene un contenedor interno con su propio scroll para el contenido
+   de página (usa el scroll nativo del documento). En mobile, al abrir el teclado el viewport se
+   achica y <html> queda con más contenido del que entra, así que se vuelve scrolleable por su
+   cuenta esquivando el bloqueo de Radix: aparece un segundo scroll y el dialog (position:fixed,
+   anclado al viewport) parece flotar/desplazarse. Espejamos el bloqueo en <html> mientras dure. */
+html:has(body[data-scroll-locked]) {
+  overflow: hidden;
 }
 

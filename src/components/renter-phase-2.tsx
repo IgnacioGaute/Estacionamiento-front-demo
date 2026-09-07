@@ -17,23 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Vehicle } from '@/types/vehicle.type';
+import { ParkingOwner } from '@/types/parking-owner.type';
+import { RenterParkingType } from '@/types/renter-parking-type';
 import { Car, Info } from 'lucide-react';
 
-const MANUAL_OWNERS = [
-  { id: 'JOSE_RICARDO_AZNAR',        label: 'José Ricardo Aznar' },
-  { id: 'CARLOS_ALBERTO_AZNAR',      label: 'Carlos Alberto Aznar' },
-  { id: 'NIDIA_ROSA_MARIA_FONTELA',  label: 'Nidia Rosa María Fontela' },
-  { id: 'ALDO_RAUL_FONTELA',         label: 'Aldo Raúl Fontela' },
-] as const;
-
-const MANUAL_IDS = MANUAL_OWNERS.map((o) => o.id) as readonly string[];
-
 interface RenterPhase2Props {
-  /** RHF form instance — must contain a `vehicleRenters` array. */
+  /** RHF form instance — must contain a `parkingRenters` array. */
   form: UseFormReturn<any>;
   /** Cocheras existentes que se pueden alquilar. */
-  customersRenters: Vehicle[];
+  customersRenters: ParkingOwner[];
+  /** Tipos dinámicos que hacen de "dueño sin cochera real" (Aznar / Fontela, etc.). */
+  renterParkingTypes: RenterParkingType[];
   fields: { id: string }[];
   isPending?: boolean;
 }
@@ -41,15 +35,18 @@ interface RenterPhase2Props {
 /**
  * Phase-2 content for the renter / private wizards.
  * Lets the operator either link to an existing owner's cochera (auto-fills price)
- * or enter a manual owner + garage number + amount for the special non-customer owners.
+ * or pick a dynamic "dueño sin cochera" type (amount auto-derived from the type).
  */
 export function RenterPhase2({
   form,
   customersRenters,
+  renterParkingTypes,
   fields,
   isPending,
 }: RenterPhase2Props) {
-  const getAvailableVehicles = (selectedIds: string[]): Vehicle[] => {
+  const manualTypeNames = renterParkingTypes.map((t) => t.name);
+
+  const getAvailableVehicles = (selectedIds: string[]): ParkingOwner[] => {
     return customersRenters.filter((v) => !selectedIds.includes(v.id));
   };
 
@@ -63,18 +60,18 @@ export function RenterPhase2({
             {fields.length === 1 ? 'cochera a alquilar' : 'cocheras a alquilar'}
           </div>
           <div className="text-muted-foreground">
-            Vinculá una cochera de un propietario existente — o asigná un dueño
-            manual para casos especiales (Aznar / Fontela).
+            Vinculá una cochera de un propietario existente — o asigná un tipo
+            de dueño sin cochera real (Aznar / Fontela / etc, gestionables en Administrar).
           </div>
         </div>
       </div>
 
       {fields.map((field, index) => {
         const selectedVehicleId = form.watch(
-          `vehicleRenters.${index}.owner`,
+          `parkingRenters.${index}.owner`,
         ) as string | undefined;
 
-        const selectedIds = (form.watch('vehicleRenters') ?? [])
+        const selectedIds = (form.watch('parkingRenters') ?? [])
           .map((v: any, i: number) => (i !== index ? v?.owner : null))
           .filter(Boolean) as string[];
 
@@ -82,7 +79,7 @@ export function RenterPhase2({
         const selectedVehicle = customersRenters.find(
           (v) => v.id === selectedVehicleId,
         );
-        const isManualOwner = MANUAL_IDS.includes(selectedVehicleId ?? '');
+        const isManualOwner = manualTypeNames.includes(selectedVehicleId ?? '');
 
         return (
           <article
@@ -103,7 +100,7 @@ export function RenterPhase2({
             <div className="p-4 space-y-3">
               <FormField
                 control={form.control}
-                name={`vehicleRenters.${index}.owner`}
+                name={`parkingRenters.${index}.owner`}
                 render={({ field }) => (
                   <FormItem className="space-y-1.5">
                     <FormLabel>¿De qué propietario alquila?</FormLabel>
@@ -117,9 +114,9 @@ export function RenterPhase2({
                           <SelectValue placeholder="Seleccionar propietario..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {MANUAL_OWNERS.map((o) => (
-                            <SelectItem key={o.id} value={o.id}>
-                              {o.label}
+                          {renterParkingTypes.map((t) => (
+                            <SelectItem key={t.id} value={t.name}>
+                              {t.name}
                             </SelectItem>
                           ))}
                           {availableVehicles.length > 0 && (
@@ -139,52 +136,26 @@ export function RenterPhase2({
                 )}
               />
 
-              {/* — Manual owner — capture cochera + monto */}
+              {/* — Dueño-tipo — solo captura cochera; el monto sale del tipo elegido */}
               {isManualOwner ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name={`vehicleRenters.${index}.garageNumber`}
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel>N° de cochera</FormLabel>
-                        <FormControl>
-                          <Input
-                            disabled={isPending}
-                            placeholder="B-12"
-                            className="gm-mono tracking-[0.05em] uppercase"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`vehicleRenters.${index}.amount`}
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel>Monto del alquiler</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm gm-mono">
-                              $
-                            </span>
-                            <Input
-                              type="number"
-                              disabled={isPending}
-                              placeholder="38000"
-                              className="pl-7 gm-mono gm-tnum"
-                              {...field}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name={`parkingRenters.${index}.garageNumber`}
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel>N° de cochera</FormLabel>
+                      <FormControl>
+                        <Input
+                          disabled={isPending}
+                          placeholder="B-12"
+                          className="gm-mono tracking-[0.05em] uppercase"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               ) : selectedVehicle ? (
                 <Card className="border-gm-yellow/30 bg-gm-yellow/5 p-3">
                   <div className="flex items-start gap-3">

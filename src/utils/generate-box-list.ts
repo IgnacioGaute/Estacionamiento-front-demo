@@ -134,7 +134,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
 
     const combinedOwnersSorted = sortByLastName(combinedOwners, (rp: any) => {
       const receipt = rp?.receipt
-      const vehicleCustomer = receipt?.customer?.vehicleRenters?.[0]?.vehicle?.customer
+      const vehicleCustomer = receipt?.customer?.parkingRenters?.[0]?.parkingOwner?.customer
       return vehicleCustomer ?? receipt?.customer
     })
 
@@ -145,64 +145,52 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     // ==============================
     //  Configuración PDF
     // ==============================
+    const PAGE_WIDTH = 595.28
+    const PAGE_HEIGHT = 841.89
+
     const pdfDoc = await PDFDocument.create()
-    let page = pdfDoc.addPage([595.28, 841.89])
+    let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT])
     const { height } = page.getSize()
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+    const fontItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique)
     const fontSize = 10
 
     let yPosition = height - 50
 
-    // Ajuste de márgenes y columnas
-    const tableLeft = 60
-    const tableRight = 550
-
     // ==============================
-    // ✅ COLUMNAS (igual espacio en las últimas 4)
+    // ✅ PALETA Y GRILLA (diseño "Listado de Caja")
     // ==============================
-    const colFechaX = 30
+    const inkColor = rgb(0.129, 0.110, 0.078)
+    const brownColor = rgb(0.353, 0.263, 0.149)
+    const mutedColor = rgb(0.541, 0.478, 0.373)
+    const mutedText2 = rgb(0.361, 0.322, 0.255)
+    const borderLight = rgb(0.847, 0.816, 0.753)
+    const borderLighter = rgb(0.937, 0.914, 0.875)
+    const dashColor = rgb(0.659, 0.604, 0.502)
+    const negativeColor = rgb(0.478, 0.294, 0.239)
+    const badgeBg = rgb(0.941, 0.933, 0.918)
+    const totalsCardBg = rgb(0.957, 0.941, 0.902)
 
-    // Separadores de columnas principales
-    const lineAfterDateX = 85
+    // Márgenes y columnas
+    const marginLeft = 50
+    const marginRight = 545
+    const contentWidth = marginRight - marginLeft
 
-    // ✅ más ancha la descripción
-    const lineAfterDescX = 330
-
-    // ✅ GRID: 4 columnas iguales desde lineAfterDescX hasta un borde derecho con margen
-    const gridRightEdge = 585 // ✅ deja margen para que "Totales" no se corte
-    const gridLeftEdge = lineAfterDescX
-    const gridWidth = gridRightEdge - gridLeftEdge
-    const colW = gridWidth / 4
-
-    // Líneas verticales entre las 4 columnas
-    const lineAfterEntradasX = gridLeftEdge + colW * 1
-    const lineAfterSalidasX = gridLeftEdge + colW * 2
-    const lineAfterSubtotalesX = gridLeftEdge + colW * 3
-
-    // Texto descripción (alineado con header)
+    const colFechaX = marginLeft
+    const lineAfterDateX = marginLeft + 72
     const colDescTextX = lineAfterDateX + 10
 
-    // Padding interno para números a la derecha
-    const padR = 8
+    const salidasRightX = marginRight
+    const salidasLeftX = salidasRightX - 85
+    const entradasRightX = salidasLeftX - 12
+    const entradasLeftX = entradasRightX - 85
+    const descRightEdge = entradasLeftX - 10
 
-    // Right edge por columna (para alinear derecha)
-    const entradasRightX = lineAfterEntradasX - padR
-    const salidasRightX = lineAfterSalidasX - padR
-    const subtotalesRightX = lineAfterSubtotalesX - padR
-    const totalesRightX = gridRightEdge - padR
-
-    // Headers centrados en cada columna (se ven parejos)
-    const headerCenterX = (left: number, right: number) => left + (right - left) / 2
-    const entradasHeaderCenter = headerCenterX(gridLeftEdge, lineAfterEntradasX)
-    const salidasHeaderCenter = headerCenterX(lineAfterEntradasX, lineAfterSalidasX)
-    const subtotalesHeaderCenter = headerCenterX(lineAfterSalidasX, lineAfterSubtotalesX)
-    const totalesHeaderCenter = headerCenterX(lineAfterSubtotalesX, gridRightEdge)
-
-    const drawCenteredHeader = (text: string, centerX: number, y: number) => {
-      const w = fontBold.widthOfTextAtSize(text, fontSize)
-      page.drawText(text, { x: centerX - w / 2, y, size: fontSize, font: fontBold })
-    }
+    // Columnas del Resumen (Sección | Entradas | Salidas | Neto)
+    const resumenNetoRightX = marginRight
+    const resumenSalidasRightX = marginRight - 100
+    const resumenEntradasRightX = marginRight - 200
 
     const numberFmt = new Intl.NumberFormat("es-AR", {
       useGrouping: true,
@@ -216,8 +204,6 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       const withDots = s.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
       return n < 0 ? `-${withDots}` : withDots
     }
-
-
 
     const formatDate = (fecha: Date) => {
       const day = String(fecha.getDate()).padStart(2, "0")
@@ -238,9 +224,16 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     }
 
     // ✅ draw text right-aligned
-    const drawRightText = (text: string, rightX: number, y: number, f = font, size = fontSize) => {
+    const drawRightText = (
+      text: string,
+      rightX: number,
+      y: number,
+      f = font,
+      size = fontSize,
+      color = inkColor,
+    ) => {
       const w = f.widthOfTextAtSize(text, size)
-      page.drawText(text, { x: rightX - w, y, size, font: f })
+      page.drawText(text, { x: rightX - w, y, size, font: f, color })
     }
 
     const today = formatDate(new Date())
@@ -262,187 +255,147 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       }
     }
 
-    const ensureSpace = (neededHeight = 70) => {
-      if (yPosition < neededHeight) {
-        page = pdfDoc.addPage([595.28, 841.89])
-        const { height: newHeight } = page.getSize()
-        yPosition = newHeight - 80
-
-        isFirstPage = false
-
-        page.drawText("Garage Mitre", {
-          x: 50,
-          y: yPosition + 40,
-          size: fontSize + 2,
-          font: fontBold,
-        })
-
-        page.drawText("Planilla de Caja (continuación)", {
-          x: 250,
-          y: yPosition + 40,
-          size: fontSize + 2,
-          font: fontBold,
-        })
-
-        const currentPage = pdfDoc.getPageCount()
-        page.drawText(`Página ${currentPage}`, {
-          x: 500,
-          y: yPosition + 40,
-          size: fontSize - 1,
-          font,
-        })
-
-        yPosition -= 20
-
-        page.drawRectangle({
-          x: 0,
-          y: yPosition - 28,
-          width: 595.28,
-          height: 26,
-          color: rgb(0.80, 0.80, 0.80),
-        })
-
-        const headerY = yPosition - 19
-        page.drawText("Fecha", { x: colFechaX, y: headerY, size: fontSize, font: fontBold })
-        page.drawText("Descripción", { x: colDescTextX, y: headerY, size: fontSize, font: fontBold })
-
-        drawCenteredHeader("Entradas", entradasHeaderCenter, headerY)
-        drawCenteredHeader("Salidas", salidasHeaderCenter, headerY)
-        drawCenteredHeader("Subtotales", subtotalesHeaderCenter, headerY)
-        drawCenteredHeader("Totales", totalesHeaderCenter, headerY)
-
-        yPosition -= 40
-      }
+    // ==============================
+    //  Helpers de dibujo (solo diseño)
+    // ==============================
+    const drawFooter = (p: typeof page, pageNum: number) => {
+      const footerY = 38
+      p.drawLine({
+        start: { x: marginLeft, y: footerY + 14 },
+        end: { x: marginRight, y: footerY + 14 },
+        thickness: 0.75,
+        color: borderLight,
+      })
+      const footerText = "Documento generado automáticamente"
+      const w = font.widthOfTextAtSize(footerText, 8)
+      p.drawText(footerText, {
+        x: (PAGE_WIDTH - w) / 2,
+        y: footerY,
+        size: 8,
+        font,
+        color: dashColor,
+      })
+      const pageLabel = `Página ${pageNum}`
+      const pw = font.widthOfTextAtSize(pageLabel, 8)
+      p.drawText(pageLabel, { x: marginRight - pw, y: footerY, size: 8, font, color: dashColor })
     }
 
-    const drawVerticalLines = (y: number) => {
-      const columnPositions = [
-        lineAfterDateX,
-        lineAfterDescX,
-        lineAfterEntradasX,
-        lineAfterSalidasX,
-        lineAfterSubtotalesX,
-      ]
-      columnPositions.forEach((x) => {
-        page.drawLine({
-          start: { x, y: y + 22 },
-          end: { x, y: y - 22 },
-          thickness: 0.5,
-          color: rgb(0.80, 0.80, 0.80),
-        })
+    const drawBadge = (text: string, x: number, y: number) => {
+      const badgeFontSize = 7.5
+      const paddingX = 4
+      const w = fontBold.widthOfTextAtSize(text, badgeFontSize)
+      const boxW = w + paddingX * 2
+      const boxH = 11
+      page.drawRectangle({ x, y: y - 2, width: boxW, height: boxH, color: badgeBg })
+      page.drawText(text, { x: x + paddingX, y: y + 1, size: badgeFontSize, font: fontBold, color: brownColor })
+      return boxW
+    }
+
+    const drawDashedEmptyBox = (topY: number, boxHeight = 22) => {
+      const bottomY = topY - boxHeight
+      const dash = [3, 2]
+      page.drawLine({ start: { x: marginLeft, y: topY }, end: { x: marginRight, y: topY }, thickness: 0.75, color: borderLight, dashArray: dash })
+      page.drawLine({ start: { x: marginLeft, y: bottomY }, end: { x: marginRight, y: bottomY }, thickness: 0.75, color: borderLight, dashArray: dash })
+      page.drawLine({ start: { x: marginLeft, y: topY }, end: { x: marginLeft, y: bottomY }, thickness: 0.75, color: borderLight, dashArray: dash })
+      page.drawLine({ start: { x: marginRight, y: topY }, end: { x: marginRight, y: bottomY }, thickness: 0.75, color: borderLight, dashArray: dash })
+
+      const text = "No se registraron datos"
+      const w = fontItalic.widthOfTextAtSize(text, 9)
+      page.drawText(text, {
+        x: (marginLeft + marginRight) / 2 - w / 2,
+        y: (topY + bottomY) / 2 - 3,
+        size: 9,
+        font: fontItalic,
+        color: dashColor,
       })
     }
 
-    // ==============================
-    //  Encabezado superior
-    // ==============================
-    page.drawText("Garage Mitre", {
-      x: 50,
-      y: yPosition - 5,
-      size: fontSize + 2,
-      font: fontBold,
-    })
-    page.drawText("Planilla de Caja", {
-      x: 250,
-      y: yPosition - 5,
-      size: fontSize + 4,
-      font: fontBold,
-    })
-    page.drawText(`N° ${boxNumber}`, {
-      x: 410,
-      y: yPosition - 5,
-      size: fontSize + 4,
-      font: fontBold,
-    })
-
-    yPosition -= 28
-
-    page.drawText(`Usuario: ${userName}`, {
-      x: 50,
-      y: yPosition - 5,
-      size: fontSize,
-      font,
-    })
-
-    page.drawText(`Impresión: ${today}`, {
-      x: 400,
-      y: yPosition - 5,
-      size: fontSize,
-      font,
-    })
-    yPosition -= 28
-
-    page.drawText(`Apertura: ${formatDateA(date)}`, {
-      x: 400,
-      y: yPosition - 5,
-      size: fontSize,
-      font,
-    })
-
-    yPosition -= 35
-
-    // ==============================
-    //  Encabezado de tabla
-    // ==============================
     const drawTableHeader = () => {
-      page.drawRectangle({
-        x: 0,
-        y: yPosition - 28,
-        width: 595.28,
-        height: 26,
-        color: rgb(0.80, 0.80, 0.80),
-      })
-
-      const headerY = yPosition - 19
-      page.drawText("Fecha", { x: colFechaX, y: headerY, size: fontSize, font: fontBold })
-      page.drawText("Descripción", { x: colDescTextX, y: headerY, size: fontSize, font: fontBold })
-
-      drawCenteredHeader("Entradas", entradasHeaderCenter, headerY)
-      drawCenteredHeader("Salidas", salidasHeaderCenter, headerY)
-      drawCenteredHeader("Subtotales", subtotalesHeaderCenter, headerY)
-      drawCenteredHeader("Totales", totalesHeaderCenter, headerY)
-
-      yPosition -= 40
-    }
-
-    drawTableHeader()
-
-    // ==============================
-    //  Helpers de diseño de secciones
-    // ==============================
-    const drawSectionHeaderRow = (title: string) => {
-      ensureSpace(80)
-      page.drawRectangle({
-        x: 0,
-        y: yPosition - 16,
-        width: 595.28,
-        height: 18,
-        color: rgb(0.80, 0.80, 0.80),
-      })
-
-      const upperTitle = title.toUpperCase()
-      const textWidth = fontBold.widthOfTextAtSize(upperTitle, fontSize)
-      const rectWidth = tableRight - tableLeft + 40
-      const rectCenter = tableLeft + rectWidth / 2
-      const textX = rectCenter - textWidth / 2
-
-      page.drawText(upperTitle, {
-        x: textX,
-        y: yPosition - 8,
-        size: fontSize,
-        font: fontBold,
-      })
-      yPosition -= 22
+      const headerY = yPosition
+      page.drawText("FECHA", { x: colFechaX, y: headerY, size: 8, font: fontBold, color: mutedColor })
+      page.drawText("DESCRIPCIÓN", { x: colDescTextX, y: headerY, size: 8, font: fontBold, color: mutedColor })
+      drawRightText("ENTRADAS", entradasRightX, headerY, fontBold, 8, mutedColor)
+      drawRightText("SALIDAS", salidasRightX, headerY, fontBold, 8, mutedColor)
+      yPosition -= 6
+      page.drawLine({ start: { x: marginLeft, y: yPosition }, end: { x: marginRight, y: yPosition }, thickness: 0.75, color: borderLight })
+      yPosition -= 16
     }
 
     const drawRowSeparator = () => {
       page.drawLine({
-        start: { x: tableLeft, y: yPosition + 6 },
-        end: { x: tableRight + 40, y: yPosition + 6 },
-        thickness: 0.3,
-        color: rgb(0.8, 0.8, 0.8),
+        start: { x: marginLeft, y: yPosition + 6 },
+        end: { x: marginRight, y: yPosition + 6 },
+        thickness: 0.5,
+        color: borderLighter,
       })
-      yPosition -= 3
+      yPosition -= 6
+    }
+
+    const ensureSpace = (neededHeight = 70) => {
+      if (yPosition < neededHeight) {
+        drawFooter(page, pdfDoc.getPageCount())
+
+        page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT])
+        yPosition = PAGE_HEIGHT - 50
+
+        isFirstPage = false
+
+        page.drawText("LISTADO DE CAJA", { x: marginLeft, y: yPosition, size: 9, font: fontBold, color: brownColor })
+        drawRightText(`N° ${boxNumber} · continuación`, marginRight, yPosition, fontBold, 9, mutedColor)
+        yPosition -= 8
+        page.drawLine({ start: { x: marginLeft, y: yPosition }, end: { x: marginRight, y: yPosition }, thickness: 0.75, color: borderLight })
+        yPosition -= 26
+
+        drawTableHeader()
+      }
+    }
+
+    // ==============================
+    //  Encabezado superior (diseño)
+    // ==============================
+    page.drawText("LISTADO DE CAJA", { x: marginLeft, y: yPosition, size: 9, font: fontBold, color: brownColor })
+    drawRightText(`N° ${boxNumber}`, marginRight, yPosition, fontBold, 9, mutedColor)
+    yPosition -= 8
+    page.drawLine({ start: { x: marginLeft, y: yPosition }, end: { x: marginRight, y: yPosition }, thickness: 0.75, color: borderLight })
+    yPosition -= 32
+
+    page.drawText("Listado de Caja", { x: marginLeft, y: yPosition, size: 22, font: fontBold, color: inkColor })
+
+    const pillText = `N° ${boxNumber}`
+    const pillTextW = fontBold.widthOfTextAtSize(pillText, 12)
+    const pillPadX = 10
+    const pillW = pillTextW + pillPadX * 2
+    const pillH = 20
+    page.drawRectangle({ x: marginRight - pillW, y: yPosition - 5, width: pillW, height: pillH, color: badgeBg })
+    page.drawText(pillText, { x: marginRight - pillW + pillPadX, y: yPosition, size: 12, font: fontBold, color: brownColor })
+
+    yPosition -= 34
+
+    const metaY = yPosition
+    page.drawText("Usuario:", { x: marginLeft, y: metaY, size: 9.5, font: fontBold, color: inkColor })
+    page.drawText(userName, { x: marginLeft + 48, y: metaY, size: 9.5, font, color: mutedText2 })
+
+    page.drawText("Apertura:", { x: marginLeft + 230, y: metaY, size: 9.5, font: fontBold, color: inkColor })
+    page.drawText(formatDateA(date), { x: marginLeft + 282, y: metaY, size: 9.5, font, color: mutedText2 })
+
+    page.drawText("Impresión:", { x: marginLeft + 370, y: metaY, size: 9.5, font: fontBold, color: inkColor })
+    page.drawText(today, { x: marginLeft + 430, y: metaY, size: 9.5, font, color: mutedText2 })
+
+    yPosition -= 12
+    page.drawLine({ start: { x: marginLeft, y: yPosition }, end: { x: marginRight, y: yPosition }, thickness: 1.5, color: inkColor })
+    yPosition -= 26
+
+    // ==============================
+    //  Helpers de secciones
+    // ==============================
+    const drawSectionHeaderRow = (title: string) => {
+      ensureSpace(100)
+      yPosition -= 8
+      const upperTitle = title.toUpperCase()
+      page.drawText(upperTitle, { x: marginLeft, y: yPosition, size: 10.5, font: fontBold, color: brownColor })
+      yPosition -= 6
+      page.drawLine({ start: { x: marginLeft, y: yPosition }, end: { x: marginRight, y: yPosition }, thickness: 1.5, color: brownColor })
+      yPosition -= 14
     }
 
     const drawSubtotalRow = (sectionKey: string, sectionLabel: string, totalEntrada: number, totalSalida: number) => {
@@ -451,137 +404,155 @@ export default async function generateBoxList(boxList: BoxList, userName: string
 
       upsertSubtotal(sectionKey, sectionLabel, totalEntrada, totalSalida)
 
-      page.drawRectangle({
-        x: 0,
-        y: yPosition - 28,
-        width: 595.28,
-        height: 26,
-        color: rgb(0.80, 0.80, 0.80),
-      })
+      yPosition -= 2
+      page.drawLine({ start: { x: marginLeft, y: yPosition + 12 }, end: { x: marginRight, y: yPosition + 12 }, thickness: 1, color: inkColor })
 
-      const textY = yPosition - 18
-      page.drawText("Subtotal", { x: colFechaX, y: textY, size: fontSize, font: fontBold })
+      const rowY = yPosition
+      const netoText = `Neto  ${formatNumber(neto)}`
+      const salidasText = `Salidas  ${totalSalida ? `- ${formatNumber(totalSalida)}` : "0"}`
+      const entradasText = `Entradas  ${formatNumber(totalEntrada)}`
 
-      drawRightText(formatNumber(totalEntrada), entradasRightX, textY, fontBold, fontSize)
-      drawRightText(totalSalida ? `- ${formatNumber(totalSalida)}` : "0", salidasRightX, textY, fontBold, fontSize)
-      drawRightText(formatNumber(neto), subtotalesRightX, textY, fontBold, fontSize)
+      drawRightText(netoText, marginRight, rowY, fontBold, 10, brownColor)
+      const netoW = fontBold.widthOfTextAtSize(netoText, 10)
+      drawRightText(salidasText, marginRight - netoW - 28, rowY, fontBold, 10, inkColor)
+      const salidasW = fontBold.widthOfTextAtSize(salidasText, 10)
+      drawRightText(entradasText, marginRight - netoW - salidasW - 56, rowY, fontBold, 10, inkColor)
 
       yPosition -= 28
     }
 
     const drawTotalsESNRow = (entradas: number, salidas: number, neto: number) => {
-      ensureSpace(110)
+      ensureSpace(100)
+      yPosition -= 6
 
-      page.drawRectangle({
-        x: 0,
-        y: yPosition - 58,
-        width: 595.28,
-        height: 50,
-        color: rgb(0.80, 0.80, 0.80),
+      const cardGap = 8
+      const cardWidth = (contentWidth - cardGap * 2) / 3
+      const cardHeight = 56
+      const cardTop = yPosition
+      const cardBottomY = cardTop - cardHeight
+
+      const cards: { label: string; value: string; bg: ReturnType<typeof rgb>; labelColor: ReturnType<typeof rgb>; valueColor: ReturnType<typeof rgb>; big: boolean }[] = [
+        {
+          label: "TOTAL ENTRADAS",
+          value: `$ ${formatNumber(entradas)}`,
+          bg: totalsCardBg,
+          labelColor: mutedColor,
+          valueColor: inkColor,
+          big: false,
+        },
+        {
+          label: "TOTAL SALIDAS",
+          value: salidas ? `- $ ${formatNumber(salidas)}` : "$ 0",
+          bg: totalsCardBg,
+          labelColor: mutedColor,
+          valueColor: inkColor,
+          big: false,
+        },
+        {
+          label: "NETO",
+          value: `$ ${formatNumber(neto)}`,
+          bg: brownColor,
+          labelColor: rgb(0.886, 0.847, 0.769),
+          valueColor: rgb(1, 1, 1),
+          big: true,
+        },
+      ]
+
+      cards.forEach((c, i) => {
+        const x = marginLeft + i * (cardWidth + cardGap)
+        page.drawRectangle({ x, y: cardBottomY, width: cardWidth, height: cardHeight, color: c.bg })
+        page.drawText(c.label, { x: x + 14, y: cardTop - 20, size: 8, font: fontBold, color: c.labelColor })
+        page.drawText(c.value, { x: x + 14, y: cardTop - 40, size: c.big ? 15 : 13, font: fontBold, color: c.valueColor })
       })
 
-      const y1 = yPosition - 20
-      const y2 = yPosition - 34
-      const y3 = yPosition - 48
-
-      page.drawText("Total Entradas", { x: 40, y: y1, size: fontSize + 0.5, font: fontBold })
-      drawRightText(formatNumber(entradas), totalesRightX, y1, fontBold, fontSize + 0.5)
-
-      page.drawText("Total Salidas", { x: 40, y: y2, size: fontSize + 0.5, font: fontBold })
-      drawRightText(salidas ? `- ${formatNumber(salidas)}` : "0", totalesRightX, y2, fontBold, fontSize + 0.5)
-
-      page.drawText("Neto", { x: 40, y: y3, size: fontSize + 0.7, font: fontBold })
-      drawRightText(formatNumber(neto), totalesRightX, y3, fontBold, fontSize + 0.7)
-
-      yPosition -= 64
+      yPosition = cardBottomY - 20
     }
 
     const drawSubtotalsSummary = () => {
       ensureSpace(220)
+      yPosition -= 6
 
-      page.drawRectangle({
-        x: 0,
-        y: yPosition - 20,
-        width: 595.28,
-        height: 18,
-        color: rgb(0.80, 0.80, 0.80),
-      })
+      page.drawText("RESUMEN", { x: marginLeft, y: yPosition, size: 10.5, font: fontBold, color: brownColor })
+      yPosition -= 6
+      page.drawLine({ start: { x: marginLeft, y: yPosition }, end: { x: marginRight, y: yPosition }, thickness: 1.5, color: brownColor })
+      yPosition -= 18
 
-      page.drawText("RESUMEN", {
-        x: 40,
-        y: yPosition - 14,
-        size: fontSize,
-        font: fontBold,
-      })
-
-      yPosition -= 30
-
-      page.drawText("Sección", { x: 40, y: yPosition, size: fontSize - 0.5, font: fontBold })
-      page.drawText("Entradas", { x: gridLeftEdge + 5, y: yPosition, size: fontSize - 0.5, font: fontBold })
-      page.drawText("Salidas", { x: lineAfterEntradasX + 5, y: yPosition, size: fontSize - 0.5, font: fontBold })
-      page.drawText("Neto", { x: lineAfterSalidasX + 5, y: yPosition, size: fontSize - 0.5, font: fontBold })
-
-      yPosition -= 14
+      const headerY = yPosition
+      page.drawText("SECCIÓN", { x: marginLeft, y: headerY, size: 8, font: fontBold, color: mutedColor })
+      drawRightText("ENTRADAS", resumenEntradasRightX, headerY, fontBold, 8, mutedColor)
+      drawRightText("SALIDAS", resumenSalidasRightX, headerY, fontBold, 8, mutedColor)
+      drawRightText("NETO", resumenNetoRightX, headerY, fontBold, 8, mutedColor)
+      yPosition -= 6
+      page.drawLine({ start: { x: marginLeft, y: yPosition }, end: { x: marginRight, y: yPosition }, thickness: 0.75, color: borderLight })
+      yPosition -= 16
 
       subtotals.forEach((s) => {
         ensureSpace(40)
+        const rowY = yPosition
+        page.drawText(s.label, { x: marginLeft, y: rowY, size: 9.5, font, color: inkColor })
+        drawRightText(formatNumber(s.entradas), resumenEntradasRightX, rowY, font, 9.5)
+        drawRightText(s.salidas ? `- ${formatNumber(s.salidas)}` : "0", resumenSalidasRightX, rowY, font, 9.5)
+        drawRightText(formatNumber(s.neto), resumenNetoRightX, rowY, fontBold, 9.5, brownColor)
 
-        page.drawText(s.label, { x: 40, y: yPosition, size: fontSize - 0.5, font })
-
-        drawRightText(formatNumber(s.entradas), entradasRightX, yPosition, font, fontSize - 0.5)
-        drawRightText(s.salidas ? `- ${formatNumber(s.salidas)}` : "0", salidasRightX, yPosition, font, fontSize - 0.5)
-        drawRightText(formatNumber(s.neto), subtotalesRightX, yPosition, font, fontSize - 0.5)
-
-        yPosition -= 16
+        yPosition -= 8
+        page.drawLine({ start: { x: marginLeft, y: yPosition }, end: { x: marginRight, y: yPosition }, thickness: 0.5, color: borderLighter })
+        yPosition -= 14
       })
 
-      page.drawLine({
-        start: { x: 40, y: yPosition + 6 },
-        end: { x: 555, y: yPosition + 6 },
-        thickness: 0.6,
-        color: rgb(0.65, 0.65, 0.65),
-      })
-
-      yPosition -= 12
+      yPosition -= 6
     }
 
     // ==============================
     //  Secciones de datos
     // ==============================
 
-    const addDataSection = (sectionKey: string, title: string, items: any[], dataExtractor: (item: any) => string[]) => {
-      yPosition -= 6
+    const addDataSection = (
+      sectionKey: string,
+      title: string,
+      items: any[],
+      // 5 valores: desc, price, fecha, badge de tipo de pago? (EF/TR/MIX), subtítulo? (patente/ticket + horario)
+      dataExtractor: (item: any) => [string, string, string, string?, string?],
+    ) => {
+      yPosition -= 14
       drawSectionHeaderRow(title)
       const filteredItems = items.filter((i: any) => i.paid === undefined || i.paid)
       const total = filteredItems.reduce((sum, i: any) => sum + i.price, 0)
 
       if (items.length > 0) {
+        drawTableHeader()
         items.forEach((item: any) => {
-          ensureSpace(45)
-          const [desc, priceStr, dateNow] = dataExtractor(item)
+          const [desc, priceStr, dateNow, paymentBadge, subtitle] = dataExtractor(item)
           const price = Number(priceStr)
+          const hasSubtitle = Boolean(subtitle)
+          const rowHeight = hasSubtitle ? 30 : 18
+          ensureSpace(rowHeight + 20)
 
-          const maxDescWidth = lineAfterDescX - colDescTextX - 10
-          const truncatedDesc = truncateText(desc, maxDescWidth, font, fontSize)
+          const nameSize = 9.5
+          const maxDescWidth = descRightEdge - colDescTextX
+          const truncatedDesc = truncateText(desc, maxDescWidth, font, nameSize)
 
-          page.drawText(dateNow, { x: colFechaX, y: yPosition - 6, size: fontSize, font })
-          page.drawText(truncatedDesc, { x: colDescTextX, y: yPosition - 6, size: fontSize, font })
+          const rowY = yPosition
+          page.drawText(dateNow, { x: colFechaX, y: rowY, size: 9, font, color: mutedText2 })
+          page.drawText(truncatedDesc, { x: colDescTextX, y: rowY, size: nameSize, font, color: inkColor })
 
-          drawRightText(formatNumber(price), entradasRightX, yPosition - 6, font, fontSize)
+          if (paymentBadge) {
+            const nameW = font.widthOfTextAtSize(truncatedDesc, nameSize)
+            drawBadge(paymentBadge, colDescTextX + nameW + 6, rowY - 1)
+          }
 
-          yPosition -= 24
+          if (hasSubtitle) {
+            page.drawText(subtitle as string, { x: colDescTextX, y: rowY - 12, size: 8, font, color: mutedColor })
+          }
+
+          drawRightText(formatNumber(price), entradasRightX, rowY, font, 9.5)
+          drawRightText("—", salidasRightX, rowY, font, 9.5, dashColor)
+
+          yPosition -= rowHeight
           drawRowSeparator()
         })
-        drawVerticalLines(yPosition)
       } else {
-        page.drawText("No se registraron datos", {
-          x: colDescTextX,
-          y: yPosition - 6,
-          size: fontSize,
-          font,
-        })
-        yPosition -= 28
-        drawRowSeparator()
+        drawDashedEmptyBox(yPosition, 22)
+        yPosition -= 34
       }
 
       drawSubtotalRow(sectionKey, title, total, 0)
@@ -601,16 +572,18 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       // 7 totalPriceSalida? (para la regla TERCEROS+TR)
       dataExtractor: (item: any) => [string, number, string, string, string?, number?, number?],
     ) => {
-      yPosition -= 5
+      yPosition -= 12
       drawSectionHeaderRow(title)
 
       let totalEntradas = 0
       let totalSalidas = 0
 
-      if (items.length > 0) {
-        items.forEach((item) => {
-          ensureSpace(40)
+      const isExpensa = title.toLowerCase() === "expensas"
+      const isTercero = title.toLowerCase() === "terceros"
 
+      if (items.length > 0) {
+        drawTableHeader()
+        items.forEach((item) => {
           // ✅ desestructurar los 7
           const [
             desc,
@@ -623,32 +596,30 @@ export default async function generateBoxList(boxList: BoxList, userName: string
           ] = dataExtractor(item)
 
           const price = Number(priceStr ?? 0)
-
-          page.drawText(dateNow, {
-            x: colFechaX,
-            y: yPosition - 5,
-            size: fontSize,
-            font,
-          })
-
           const displayType = paymentType === "MIX" ? "AT" : paymentType
+          const hasSubtitle = Boolean(vehicleOwner)
+          const rowHeight = hasSubtitle ? 30 : 18
 
-          let descText = desc
-          if (displayType) descText += ` (${displayType})`
-          if (vehicleOwner) descText += ` (${vehicleOwner})`
+          ensureSpace(rowHeight + 20)
 
-          const maxDescWidth = lineAfterDescX - colDescTextX - 10
-          const truncatedDesc = truncateText(descText, maxDescWidth, font, fontSize)
+          const rowY = yPosition
+          page.drawText(dateNow, { x: colFechaX, y: rowY, size: 9, font, color: mutedText2 })
 
-          page.drawText(truncatedDesc, {
-            x: colDescTextX,
-            y: yPosition - 5,
-            size: fontSize,
-            font,
-          })
+          const nameSize = 9.5
+          const maxDescWidth = descRightEdge - colDescTextX
+          const truncatedDesc = truncateText(desc, maxDescWidth, font, nameSize)
+          page.drawText(truncatedDesc, { x: colDescTextX, y: rowY, size: nameSize, font, color: inkColor })
 
-          const isExpensa = title.toLowerCase() === "expensas"
-          const isTercero = title.toLowerCase() === "terceros"
+          if (displayType) {
+            const nameW = font.widthOfTextAtSize(truncatedDesc, nameSize)
+            drawBadge(displayType, colDescTextX + nameW + 6, rowY - 1)
+          }
+
+          if (hasSubtitle) {
+            const subtitleText = isTercero ? `por cuenta de ${vehicleOwner}` : (vehicleOwner as string)
+            const subtitleFont = isTercero ? fontItalic : font
+            page.drawText(subtitleText, { x: colDescTextX, y: rowY - 12, size: 8, font: subtitleFont, color: mutedColor })
+          }
 
           const treatAsCash =
             paymentType === "EF" ||
@@ -659,53 +630,49 @@ export default async function generateBoxList(boxList: BoxList, userName: string
           // ✅ Caja: entradas
           if (treatAsCash) {
             totalEntradas += price
-            drawRightText(formatNumber(price), entradasRightX, yPosition - 5, font, fontSize)
-
-            drawVerticalLines(yPosition)
-            yPosition -= 22
-            drawRowSeparator()
-            return
-          }
-
-          // ✅ Entrada normal (siempre)
-          totalEntradas += price
-          drawRightText(formatNumber(price), entradasRightX, yPosition - 5, font, fontSize)
-
-          // ======================================================
-          // 🔥 REGLA: TERCEROS + TR => salida = totalPriceSalida (7mo valor)
-          // ======================================================
-          if (isTercero && paymentType === "TR") {
-            const salida = Number(totalPriceSalida ?? 0)
-            totalSalidas += salida
-            drawRightText(`- ${formatNumber(salida)}`, salidasRightX, yPosition - 5, font, fontSize)
-          }
-          // ✅ Si TERCEROS y NO es TR, dejo tu regla (salida = price)
-          else if (isTercero) {
-            totalSalidas += price
-            drawRightText(`- ${formatNumber(price)}`, salidasRightX, yPosition - 5, font, fontSize)
-          }
-          // ✅ resto secciones
-          else if (paymentType === "TR") {
-            totalSalidas += price
-            drawRightText(`- ${formatNumber(price)}`, salidasRightX, yPosition - 5, font, fontSize)
+            drawRightText(formatNumber(price), entradasRightX, rowY, font, 9.5)
+            drawRightText("—", salidasRightX, rowY, font, 9.5, dashColor)
           } else {
-            totalSalidas += price
-            drawRightText(`- ${formatNumber(price)}`, salidasRightX, yPosition - 5, font, fontSize)
+            // ✅ Entrada normal (siempre)
+            totalEntradas += price
+            drawRightText(formatNumber(price), entradasRightX, rowY, font, 9.5)
+
+            // ======================================================
+            // REGLA: TERCEROS + TR => la entrada es la diferencia
+            // (numberInBox, lo que efectivamente quedó en caja tras
+            // compensar la deuda del propietario) y la salida es el
+            // TOTAL transferido (totalPriceSalida = receiptPayment.price).
+            // El saldo de la fila queda negativo a propósito: la parte
+            // usada para compensar reaparece como una entrada aparte en
+            // EXPENSAS (pago tipo TP/"AT") en la cuenta del propietario,
+            // y ahí es donde se compensa a nivel del total global.
+            // ======================================================
+            if (isTercero && paymentType === "TR") {
+              const salida = Number(totalPriceSalida ?? 0)
+              totalSalidas += salida
+              drawRightText(`- ${formatNumber(salida)}`, salidasRightX, rowY, font, 9.5, negativeColor)
+            }
+            // ✅ Si TERCEROS y NO es TR, dejo tu regla (salida = price)
+            else if (isTercero) {
+              totalSalidas += price
+              drawRightText(`- ${formatNumber(price)}`, salidasRightX, rowY, font, 9.5, negativeColor)
+            }
+            // ✅ resto secciones
+            else if (paymentType === "TR") {
+              totalSalidas += price
+              drawRightText(`- ${formatNumber(price)}`, salidasRightX, rowY, font, 9.5, negativeColor)
+            } else {
+              totalSalidas += price
+              drawRightText(`- ${formatNumber(price)}`, salidasRightX, rowY, font, 9.5, negativeColor)
+            }
           }
 
-          drawVerticalLines(yPosition)
-          yPosition -= 22
+          yPosition -= rowHeight
           drawRowSeparator()
         })
       } else {
-        page.drawText("No se registraron datos", {
-          x: colDescTextX,
-          y: yPosition - 5,
-          size: fontSize,
-          font,
-        })
-        yPosition -= 24
-        drawRowSeparator()
+        drawDashedEmptyBox(yPosition, 22)
+        yPosition -= 34
       }
 
       drawSubtotalRow(sectionKey, title, totalEntradas, totalSalidas)
@@ -716,54 +683,61 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       sectionKey: string,
       title: string,
       items: OtherPayment[],
-      dataExtractor: (item: any) => string[],
+      // 5 valores: desc, price, fecha, type (EGRESOS/INGRESOS), paymentMethod? (CASH/TRANSFER)
+      dataExtractor: (item: any) => [string, string, string, string, string?],
     ) => {
-      yPosition -= 6
+      yPosition -= 14
       drawSectionHeaderRow(title)
 
       let entradas = 0
       let salidas = 0
 
       if (items.length > 0) {
+        drawTableHeader()
         items.forEach((item) => {
           ensureSpace(40)
 
-          const [desc, priceStr, dateNow, type] = dataExtractor(item)
+          const [desc, priceStr, dateNow, type, paymentMethod] = dataExtractor(item)
           const price = Number(priceStr)
 
-          page.drawText(dateNow, {
-            x: colFechaX,
-            y: yPosition - 5,
-            size: fontSize,
-            font,
-          })
-
-          const maxDescWidth = lineAfterDescX - colDescTextX - 10
+          const maxDescWidth = descRightEdge - colDescTextX
           const truncatedDesc = truncateText(desc, maxDescWidth, font, fontSize)
 
-          page.drawText(truncatedDesc, { x: colDescTextX, y: yPosition, size: fontSize, font })
+          const rowY = yPosition
+          page.drawText(dateNow, { x: colFechaX, y: rowY, size: 9, font, color: mutedText2 })
+          page.drawText(truncatedDesc, { x: colDescTextX, y: rowY, size: 9.5, font, color: inkColor })
 
-          if (type === "EGRESOS") {
-            drawRightText(`- ${formatNumber(price)}`, salidasRightX, yPosition - 5, font, fontSize)
+          const methodBadge = paymentMethod === "TRANSFER" ? "TR" : "EF"
+          const nameW = font.widthOfTextAtSize(truncatedDesc, 9.5)
+          drawBadge(methodBadge, colDescTextX + nameW + 6, rowY - 1)
+
+          // ======================================================
+          // REGLA: VARIOS + TR => mismo criterio que en recibos: la
+          // transferencia no afecta la caja física, así que se muestra
+          // en entradas y salidas por igual (neto 0), sin importar si
+          // el movimiento es un ingreso o un egreso.
+          // ======================================================
+          if (paymentMethod === "TRANSFER") {
+            drawRightText(formatNumber(price), entradasRightX, rowY, font, 9.5)
+            drawRightText(`- ${formatNumber(price)}`, salidasRightX, rowY, font, 9.5, negativeColor)
+            entradas += price
+            salidas += price
+          } else if (type === "EGRESOS") {
+            drawRightText(`- ${formatNumber(price)}`, salidasRightX, rowY, font, 9.5, negativeColor)
+            drawRightText("—", entradasRightX, rowY, font, 9.5, dashColor)
             salidas += price
           } else {
-            drawRightText(formatNumber(price), entradasRightX, yPosition - 5, font, fontSize)
+            drawRightText(formatNumber(price), entradasRightX, rowY, font, 9.5)
+            drawRightText("—", salidasRightX, rowY, font, 9.5, dashColor)
             entradas += price
           }
 
-          drawVerticalLines(yPosition)
-          yPosition -= 22
+          yPosition -= 18
           drawRowSeparator()
         })
       } else {
-        page.drawText("No se registraron datos", {
-          x: colDescTextX,
-          y: yPosition - 5,
-          size: fontSize,
-          font,
-        })
-        yPosition -= 24
-        drawRowSeparator()
+        drawDashedEmptyBox(yPosition, 22)
+        yPosition -= 34
       }
 
       drawSubtotalRow(sectionKey, title, entradas, salidas)
@@ -783,19 +757,61 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     //  Secciones según tu lógica
     // ==============================
 
-    addDataSection("tickets_hora", "ticket x hora", tickets, (ticket: TicketRegistration) => [
-      `${ticket.description} (${ticket.codeBarTicket || "—"})`,
-      ticket.price.toString(),
-      ticket.dateNow ? formatDateA(ticket.dateNow) : "—",
-      "",
-    ])
+    // "1h 25min" / "40min" — duración entre entrada y salida de un ticket por hora.
+    const formatElapsedHM = (minutes: number): string => {
+      const h = Math.floor(minutes / 60)
+      const m = minutes % 60
+      return h > 0 ? `${h}h ${m}min` : `${m}min`
+    }
 
-    addDataSection("tickets_dia", "Ticket x día/semana", ticketDays, (ticket: TicketRegistrationForDay) => [
-      ticket.description,
-      ticket.price.toString(),
-      ticket.dateNow ? formatDateA(ticket.dateNow) : "—",
-      "",
-    ])
+    const ticketElapsedLabel = (t: TicketRegistration): string | undefined => {
+      if (!t.entryDay || !t.entryTime || !t.departureDay || !t.departureTime) return undefined
+      const start = new Date(`${t.entryDay}T${t.entryTime}`)
+      const end = new Date(`${t.departureDay}T${t.departureTime}`)
+      const diffMin = Math.round((end.getTime() - start.getTime()) / 60000)
+      if (!Number.isFinite(diffMin) || diffMin < 0) return undefined
+      return `${t.entryTime.slice(0, 5)} - ${t.departureTime.slice(0, 5)} (${formatElapsedHM(diffMin)})`
+    }
+
+    // El pago de un ticket puede quedar repartido en varios movimientos (anticipo + saldo) —
+    // si todos coinciden se muestra un único medio, si no, "MIX".
+    const ticketPaymentBadge = (t: TicketRegistration): string | undefined => {
+      const movimientos = t.movimientos ?? []
+      if (movimientos.length === 0) return undefined
+      const metodos = new Set(movimientos.map((m) => m.metodo))
+      if (metodos.size > 1) return "MIX"
+      return metodos.has("TRANSFER") ? "TR" : "EF"
+    }
+
+    addDataSection("tickets_hora", "ticket x hora", tickets, (ticket: TicketRegistration) => {
+      const identifier = ticket.licensePlateOriginal || ticket.codeBarTicket || "—"
+      const identifierLabel = ticket.licensePlateOriginal ? "Patente" : "Ticket"
+      const subtitleParts = [`${identifierLabel}: ${identifier}`, ticketElapsedLabel(ticket)].filter(Boolean)
+
+      return [
+        ticket.description,
+        ticket.price.toString(),
+        ticket.dateNow ? formatDateA(ticket.dateNow) : "—",
+        ticketPaymentBadge(ticket),
+        subtitleParts.join("   ·   "),
+      ]
+    })
+
+    addDataSection("tickets_dia", "Ticket x día/semana", ticketDays, (ticket: TicketRegistrationForDay) => {
+      const subtitleParts = [
+        ticket.vehiclePlateCustomer ? `Patente: ${ticket.vehiclePlateCustomer}` : undefined,
+        ticket.days ? `${ticket.days} día${ticket.days > 1 ? "s" : ""}` : undefined,
+        ticket.weeks ? `${ticket.weeks} semana${ticket.weeks > 1 ? "s" : ""}` : undefined,
+      ].filter(Boolean)
+
+      return [
+        ticket.description,
+        ticket.price.toString(),
+        ticket.dateNow ? formatDateA(ticket.dateNow) : "—",
+        undefined,
+        subtitleParts.join("   ·   "),
+      ]
+    })
 
     addDataSectionReceipt("alquiler", "alquiler", combinedRentersSorted, (receiptPayment) => {
       const receipt = receiptPayment.receipt
@@ -828,7 +844,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       const receipt = receiptPayment.receipt
       const total = receiptPayment.numberInBox
 
-      const vehicleCustomer = receipt.customer?.vehicleRenters?.[0]?.vehicle?.customer
+      const vehicleCustomer = receipt.customer?.parkingRenters?.[0]?.parkingOwner?.customer
       const ownerName = vehicleCustomer
         ? `${vehicleCustomer.lastName} ${vehicleCustomer.firstName}`
         : `${receipt.customer.lastName} ${receipt.customer.firstName}`
@@ -854,11 +870,52 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     addDataSectionReceipt("terceros", "terceros", combinedPrivatesSorted, (receiptPayment) => {
       const receipt = receiptPayment.receipt
 
-      const totalInBox = Number(receiptPayment.numberInBox ?? 0)       // lo que mostrás en caja
-      const totalPriceSalida = Number(receiptPayment.price ?? 0)       // salida real si TR
+      // ==========================================================
+      // TERCEROS + TRANSFERENCIA
+      //
+      // Ejemplo:
+      // Alejandra paga $50.000
+      // Andrés (propietario) tiene $30.000
+      //
+      // Entrada real a caja:
+      // $50.000 - $30.000 = $20.000
+      //
+      // Salida:
+      // $50.000
+      //
+      // Neto:
+      // $20.000 - $50.000 = -$30.000
+      // ==========================================================
 
-      const vehicleCustomer = receipt.customer.vehicleRenters?.[0]?.vehicle?.customer
-      const vehicleOwner = vehicleCustomer ? `${vehicleCustomer.lastName}` : ""
+      const totalPriceSalida = Number(receiptPayment.price ?? 0)
+
+      const vehicleCustomer =
+        receipt.customer?.parkingRenters?.[0]?.parkingOwner?.customer
+
+      const vehicleOwner = vehicleCustomer
+        ? `${vehicleCustomer.lastName}`
+        : ""
+
+      // Buscar cuánto corresponde al propietario
+      let ownerAmount = 0
+
+      if (vehicleCustomer?.id) {
+        ownerAmount = combinedOwners
+          .filter((ownerPayment) => {
+            const ownerCustomer = ownerPayment?.receipt?.customer
+
+            return ownerCustomer?.id === vehicleCustomer.id
+          })
+          .reduce((sum, ownerPayment) => {
+            return sum + Number(ownerPayment.numberInBox ?? 0)
+          }, 0)
+      }
+
+      // Si es transferencia, la entrada es solamente la diferencia
+      const totalInBox =
+        receiptPayment.paymentType === "TRANSFER"
+          ? Math.max(0, totalPriceSalida - ownerAmount)
+          : Number(receiptPayment.numberInBox ?? 0)
 
       const paymentType =
         receiptPayment.paymentType === "TRANSFER"
@@ -876,16 +933,15 @@ export default async function generateBoxList(boxList: BoxList, userName: string
                     : "Desconocido"
 
       return [
-        `${receipt.customer.lastName} ${receipt.customer.firstName}`, // 1 desc
-        totalInBox,                                                   // 2 entradas
-        formatDateA(receipt.dateNow),                                 // 3 fecha
-        paymentType,                                                  // 4 tipo
-        vehicleOwner,                                                 // 5 owner?
-        totalInBox,                                                   // 6 numberInBox (extra)
-        totalPriceSalida,                                             // 7 salida para TR
+        `${receipt.customer.lastName} ${receipt.customer.firstName}`,
+        totalInBox,
+        formatDateA(receipt.dateNow),
+        paymentType,
+        vehicleOwner,
+        totalInBox,
+        totalPriceSalida,
       ]
     })
-
 
     // ==============================
     //  Totales globales (NO toco la lógica)
@@ -924,11 +980,12 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     const totalSalidas = totalEgresos
     const total = totalEntradas - totalSalidas
 
-    addDataSectionExpense("varios", "varios", otherPaymentsRegistration, (payment) => [
+    addDataSectionExpense("varios", "varios", otherPaymentsRegistration, (payment: any) => [
       payment.description,
       payment.price.toString(),
       formatDateA(payment.dateNow),
       payment.type,
+      payment.paymentMethod,
     ])
 
     // ==============================
@@ -947,6 +1004,9 @@ export default async function generateBoxList(boxList: BoxList, userName: string
 
     drawSubtotalsSummary()
     drawTotalsESNRow(totalsFromSubtotals.entradas, totalsFromSubtotals.salidas, netoFromSubtotals)
+
+    // Pie de página en la última hoja
+    drawFooter(page, pdfDoc.getPageCount())
 
     // ==============================
     //  Guardar, abrir e imprimir

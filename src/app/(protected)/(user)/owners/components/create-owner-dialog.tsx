@@ -24,7 +24,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { toast } from 'sonner';
 import { createCustomerAction } from '@/actions/customers/create-customer.action';
 import { customerSchema, CustomerSchemaType } from '@/schemas/customer.schema';
-import { PARKING_TYPE } from '@/types/parking-type';
+import { OwnerParkingType } from '@/types/owner-parking-type';
 import {
   Select,
   SelectContent,
@@ -51,7 +51,7 @@ import {
 } from 'lucide-react';
 
 /** Two-phase create-owner wizard, redesigned around the Garage Mitre visual system. */
-export function CreateOwnerDialog() {
+export function CreateOwnerDialog({ ownerParkingTypes }: { ownerParkingTypes: OwnerParkingType[] }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [phase, setPhase] = useState<'customer' | 'vehicles'>('customer');
@@ -67,14 +67,14 @@ export function CreateOwnerDialog() {
       hasDebt: false,
       monthsDebt: [],
       comments: '',
-      vehicles: [],
+      parkingOwners: [],
       credit: 0,
     },
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: 'vehicles',
+    name: 'parkingOwners',
   });
 
   // ——— Month options (last 12 months, excluding current; older than 1 year disabled)
@@ -119,14 +119,14 @@ export function CreateOwnerDialog() {
   // ——— Phase transitions
   const handleCustomerSubmit = (values: CustomerSchemaType) => {
     const n = values.numberOfVehicles;
-    const current = form.getValues('vehicles') || [];
+    const current = form.getValues('parkingOwners') || [];
 
     if (current.length < n) {
       append(
         Array.from({ length: n - current.length }, () => ({
           garageNumber: '',
           rent: false,
-          parking: PARKING_TYPE[1],
+          ownerParkingTypeId: '',
         })),
       );
     } else if (current.length > n) {
@@ -175,8 +175,7 @@ export function CreateOwnerDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="lg">
-          <UserPlus className="size-4" />
+        <Button size="sm">
           Nuevo propietario
         </Button>
       </DialogTrigger>
@@ -567,6 +566,7 @@ export function CreateOwnerDialog() {
                       index={index}
                       form={form}
                       isPending={isPending}
+                      ownerParkingTypes={ownerParkingTypes}
                     />
                   ))}
                 </>
@@ -741,12 +741,14 @@ function VehicleCard({
   index,
   form,
   isPending,
+  ownerParkingTypes,
 }: {
   index: number;
   form: ReturnType<typeof useForm<CustomerSchemaType>>;
   isPending: boolean;
+  ownerParkingTypes: OwnerParkingType[];
 }) {
-  const isRent = form.watch(`vehicles.${index}.rent`) === true;
+  const isRent = form.watch(`parkingOwners.${index}.rent`) === true;
 
   return (
     <article className="rounded-md border border-border bg-gm-surface-2 overflow-hidden">
@@ -771,7 +773,7 @@ function VehicleCard({
         <div className="grid grid-cols-2 gap-3">
           <FormField
             control={form.control}
-            name={`vehicles.${index}.garageNumber`}
+            name={`parkingOwners.${index}.garageNumber`}
             render={({ field }) => (
               <FormItem className="space-y-1.5">
                 <FormLabel>N° de cochera</FormLabel>
@@ -790,7 +792,7 @@ function VehicleCard({
 
           <FormField
             control={form.control}
-            name={`vehicles.${index}.parking`}
+            name={`parkingOwners.${index}.ownerParkingTypeId`}
             render={({ field }) => (
               <FormItem className="space-y-1.5">
                 <FormLabel>Tipo de expensas</FormLabel>
@@ -804,14 +806,17 @@ function VehicleCard({
                       <SelectValue placeholder="Seleccionar..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="EXPENSES_1">Expensas 1</SelectItem>
-                      <SelectItem value="EXPENSES_2">Expensas 2</SelectItem>
-                      <SelectItem value="EXPENSES_ZOM_1">Expensas salón 1</SelectItem>
-                      <SelectItem value="EXPENSES_ZOM_2">Expensas salón 2</SelectItem>
-                      <SelectItem value="EXPENSES_ZOM_3">Expensas salón 3</SelectItem>
-                      <SelectItem value="EXPENSES_RICARDO_AZNAR">Expensas Ricardo Aznar</SelectItem>
-                      <SelectItem value="EXPENSES_ALDO_FONTELA">Expensas Aldo Fontela</SelectItem>
-                      <SelectItem value="EXPENSES_NIDIA_FONTELA">Expensas Nidia Fontela</SelectItem>
+                      {ownerParkingTypes.length === 0 ? (
+                        <div className="px-2 py-1.5 text-[12px] text-muted-foreground">
+                          No hay tipos creados. Cargalos en Administrar.
+                        </div>
+                      ) : (
+                        ownerParkingTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </FormControl>
@@ -823,7 +828,7 @@ function VehicleCard({
 
         <FormField
           control={form.control}
-          name={`vehicles.${index}.rent`}
+          name={`parkingOwners.${index}.rent`}
           render={({ field }) => (
             <FormItem className="space-y-1.5">
               <FormLabel>¿Usa esta cochera para alquilar?</FormLabel>
@@ -851,7 +856,7 @@ function VehicleCard({
         {isRent && (
           <FormField
             control={form.control}
-            name={`vehicles.${index}.amountRenter`}
+            name={`parkingOwners.${index}.amountRenter`}
             render={({ field }) => (
               <FormItem className="space-y-1.5">
                 <FormLabel>Monto de alquiler mensual</FormLabel>

@@ -93,6 +93,7 @@ export function CustomerActionsBar({
       <div className="flex items-center gap-3">
         {/* Generar recibos — acción principal */}
         <Button
+          data-tour="customer-generate-receipts"
           size="sm"
           className="h-8 gap-1.5 rounded-md text-[12px] font-semibold"
           onClick={() => setOpenDialog(true)}
@@ -105,7 +106,7 @@ export function CustomerActionsBar({
         <div className="hidden sm:block h-5 w-px bg-border" />
 
         {/* Exportaciones Excel */}
-        <div className="flex items-center gap-1">
+        <div data-tour="customer-excel" className="flex items-center gap-1">
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground mr-1">
             Excel
           </span>

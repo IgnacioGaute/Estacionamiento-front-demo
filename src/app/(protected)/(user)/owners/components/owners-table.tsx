@@ -4,18 +4,20 @@ import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { ColumnDef } from '@tanstack/react-table';
 
-import { ParkingType } from '@/types/parking-type';
+import { OwnerParkingType } from '@/types/owner-parking-type';
 import { Customer } from '@/types/cutomer.type';
 import { DataTableShell } from '@/components/data-table-shell';
 import { CreateOwnerDialog } from './create-owner-dialog';
+import { CustomerInlineDetail } from '../../components/receipts/customer-inline-detail';
+import { CustomerPageTour } from '../../components/customer-page-tour';
 
 interface OwnersTableProps {
-  columns: (parkingTypes: ParkingType[]) => ColumnDef<Customer>[];
+  columns: (ownerParkingTypes: OwnerParkingType[]) => ColumnDef<Customer>[];
   data: Customer[];
-  parkingTypes: ParkingType[];
+  ownerParkingTypes: OwnerParkingType[];
 }
 
-export function OwnersTable({ columns, data, parkingTypes }: OwnersTableProps) {
+export function OwnersTable({ columns, data, ownerParkingTypes }: OwnersTableProps) {
   const searchParams = useSearchParams();
   const lastNameQuery = searchParams.get('lastName') || '';
   const session = useSession();
@@ -24,12 +26,22 @@ export function OwnersTable({ columns, data, parkingTypes }: OwnersTableProps) {
   return (
     <DataTableShell
       data={data}
-      columns={columns(parkingTypes)}
+      columns={columns(ownerParkingTypes)}
       filterColumn="lastName"
       filterPlaceholder="Filtrar por apellido..."
       initialFilter={lastNameQuery}
       initialSort={[{ id: 'lastName', desc: false }]}
-      toolbarRight={isAdmin ? <CreateOwnerDialog /> : null}
+      toolbarRight={
+        <div className="flex items-center gap-2">
+          <CustomerPageTour entityLabel="propietario" />
+          {isAdmin && (
+            <div data-tour="customer-create">
+              <CreateOwnerDialog ownerParkingTypes={ownerParkingTypes} />
+            </div>
+          )}
+        </div>
+      }
+      renderSubComponent={(row) => <CustomerInlineDetail customer={row.original} />}
     />
   );
 }

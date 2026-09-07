@@ -22,9 +22,9 @@ export function LoadingScreen() {
 
         {/* Logo */}
         <div className="gm-loader__logo">
-          <span className="gm-display text-4xl font-bold text-foreground">GARAGE</span>
-          <span className="gm-display text-[34px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-gm-yellow to-gm-orange">
-            MITRE
+          <span className="gm-display text-4xl font-bold text-foreground">ESTACI</span>
+          <span className="gm-display text-[34px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-gm-yellow to-gm-orange whitespace-nowrap">
+            ONAMIENTO
           </span>
         </div>
 
@@ -35,7 +35,7 @@ export function LoadingScreen() {
         </div>
       </div>
 
-      <div className="gm-loader__foot">AV. MITRE 1453 · MENDOZA</div>
+      <div className="gm-loader__foot"></div>
     </div>
   );
 }

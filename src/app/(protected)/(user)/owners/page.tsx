@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-import { getCustomers, getParkingTypes, findAllPendingReceipts } from '@/services/customers.service';
+import { getCustomers, getOwnerParkingTypes, findAllPendingReceipts } from '@/services/customers.service';
 import { OwnersTable } from './components/owners-table';
 import { OwnerColumns } from './components/owner-columns';
 import { CUSTOMER_TYPE } from '@/types/cutomer.type';
@@ -10,7 +10,7 @@ import { CustomerActionsBar } from '../components/customers/drop-menu-actions';
 
 export default async function OwnerPage() {
   const customers = await getCustomers(CUSTOMER_TYPE[0]);
-  const parkingTypes = await getParkingTypes();
+  const ownerParkingTypes = await getOwnerParkingTypes();
   const receiptsData = await findAllPendingReceipts(CUSTOMER_TYPE[0]);
   const receipts = Array.isArray(receiptsData) ? receiptsData : [];
   const count = customers?.length ?? 0;
@@ -18,7 +18,7 @@ export default async function OwnerPage() {
   return (
     <div className="container mx-auto px-4 py-6 sm:p-8 max-w-7xl">
       <PageHeader
-        breadcrumb={['Garage Mitre', 'Operación', 'Propietarios']}
+        breadcrumb={['Estacionamiento', 'Operación', 'Propietarios']}
         title="Propietarios"
         description={
           count > 0
@@ -38,7 +38,7 @@ export default async function OwnerPage() {
         <OwnersTable
           columns={OwnerColumns}
           data={customers || []}
-          parkingTypes={parkingTypes?.data || []}
+          ownerParkingTypes={ownerParkingTypes?.data || []}
         />
       </div>
     </div>

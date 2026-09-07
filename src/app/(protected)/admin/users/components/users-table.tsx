@@ -20,6 +20,8 @@ export function UsersTable({ columns, data }: UsersTableProps) {
       pageSize={20}
       toolbarRight={<CreateUserDialog />}
       emptyMessage="No hay usuarios cargados."
+      filterTour="users-filter"
+      tableTour="users-table"
     />
   );
 }

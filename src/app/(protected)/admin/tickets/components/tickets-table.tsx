@@ -70,10 +70,12 @@ export function TicketsTable<TData, TValue>({
           }
           className="w-full sm:max-w-sm rounded-xl bg-secondary border-white"
         />
-        <CreateTicketDialog />
-        <DataTableViewOptions table={table} />
+        <div className="flex items-center gap-2">
+          <CreateTicketDialog />
+          <DataTableViewOptions table={table} />
+        </div>
       </div>
-      <ScrollArea className="rounded-xl border bg-background">
+      <ScrollArea className="rounded-xl border bg-background" data-tour="tickets-table">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

@@ -13,8 +13,9 @@ export const startScanner = async (values: { barCode: string }) => {
     });
 
     if (!response.ok) {
-      console.error("Respuesta no OK:", response);
-      return { error: `Error en la solicitud: ${response.statusText}` };
+      const errorBody = await response.json().catch(() => null);
+      console.error("Respuesta no OK:", errorBody ?? response);
+      return { error: errorBody?.message || `Error en la solicitud: ${response.statusText}` };
     }
 
     const data = await response.json();
@@ -41,8 +42,9 @@ export const receiptScanner = async (values: ReceiptSchemaType, ) => {
     });
 
     if (!response.ok) {
-      console.error("Respuesta no OK:", response);
-      return { error: `Error en la solicitud: ${response.statusText}` };
+      const errorBody = await response.json().catch(() => null);
+      console.error("Respuesta no OK:", errorBody ?? response);
+      return { error: errorBody?.message || `Error en la solicitud: ${response.statusText}` };
     }
 
     const data = await response.json();

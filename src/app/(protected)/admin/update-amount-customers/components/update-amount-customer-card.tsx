@@ -18,8 +18,9 @@ import { Button } from "@/components/ui/button";
 import { amountCustomerSchema, AmountCustomerSchemaType } from "@/schemas/amount-customer.schema";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from "@/components/ui/switch";
+import { RenterParkingType } from "@/types/renter-parking-type";
 
-export default function UpdateAmountCustomerCard({ className }: { className?: string }) {
+export default function UpdateAmountCustomerCard({ className, renterParkingTypes }: { className?: string; renterParkingTypes: RenterParkingType[] }) {
     const [error, setError] = useState<string | undefined>('');
     const [success, setSuccess] = useState<string | undefined>('');
     const [isPending, startTransition] = useTransition();
@@ -61,7 +62,7 @@ export default function UpdateAmountCustomerCard({ className }: { className?: st
     };
 
     return (
-        <Card className={`w-3/5 h-full flex flex-col ${className} mx-auto my-auto justify-center`}>
+        <Card className={`w-full sm:w-3/5 h-full flex flex-col ${className} mx-auto my-auto justify-center`}>
             <CardHeader>
                 <CardTitle>Actualizar Monto Inquilinos</CardTitle>
                 <CardDescription>Elegir tipo de propietario y si el monto va a ser negativo o positivo</CardDescription>
@@ -74,7 +75,7 @@ export default function UpdateAmountCustomerCard({ className }: { className?: st
                                 control={form.control}
                                 name="ownerTypeOfRenter"
                                 render={({ field }) => (
-                                    <FormItem>
+                                    <FormItem data-tour="amount-owner-type">
                                         <FormLabel>Tipo de Propietario</FormLabel>
                                         <FormControl>
                                             <Select
@@ -86,10 +87,9 @@ export default function UpdateAmountCustomerCard({ className }: { className?: st
                                                     <SelectValue placeholder="Selecciona un propietario" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                <SelectItem value="JOSE_RICARDO_AZNAR">José Ricardo Aznar</SelectItem>
-                                                <SelectItem value="CARLOS_ALBERTO_AZNAR">Carlos Alberto Aznar</SelectItem>
-                                                <SelectItem value="NIDIA_ROSA_MARIA_FONTELA">Nidia Rosa Maria Fontela</SelectItem>
-                                                <SelectItem value="ALDO_RAUL_FONTELA">Aldo Raúl Fontela</SelectItem>
+                                                {renterParkingTypes.map((type) => (
+                                                    <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
+                                                ))}
                                                 </SelectContent>
                                             </Select>
                                         </FormControl>
@@ -98,7 +98,7 @@ export default function UpdateAmountCustomerCard({ className }: { className?: st
                                 )}
                             />
 
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between" data-tour="amount-negative">
                             <FormLabel>Convertir en negativo</FormLabel>
                             <div className={`p-1 rounded-full ${isNegative ? 'bg-red-700' : 'bg-black'} transition-colors`}>
                                 <Switch
@@ -114,7 +114,7 @@ export default function UpdateAmountCustomerCard({ className }: { className?: st
                             control={form.control}
                             name="amount"
                             render={({ field }) => (
-                                <FormItem>
+                                <FormItem data-tour="amount-value">
                                     <FormLabel>Ingrese el monto</FormLabel>
                                     <FormControl>
                                         <Input disabled={isPending} {...field} type="number" />
@@ -126,7 +126,7 @@ export default function UpdateAmountCustomerCard({ className }: { className?: st
 
                         <div className="flex-grow"></div>
 
-                        <Button className="w-full mt-auto" type="submit" disabled={isPending}>
+                        <Button className="w-full mt-auto" type="submit" disabled={isPending} data-tour="amount-save">
                             Guardar cambios
                         </Button>
                     </form>

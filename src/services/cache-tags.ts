@@ -7,10 +7,14 @@ export type ServiceName =
   | 'users'
   | 'interests'
   | 'notes'
-  | 'parkingTypes'
+  | 'ownerParkingTypes'
+  | 'renterParkingTypes'
   | 'ticketsPrice'
+  | 'priceBrackets'
   | 'registrationForDays'
-  | 'expenses';
+  | 'expenses'
+  | 'dashboard'
+  | 'ticketSchedule';
 
 // Define the cache tags structure
 export const CACHE_TAGS = {
@@ -19,6 +23,9 @@ export const CACHE_TAGS = {
   },
   ticketsPrice: {
     all: 'ticketsPrice',
+  },
+  priceBrackets: {
+    all: 'priceBrackets',
   },
   registrationForDays: {
     all: 'registrationForDays',
@@ -46,11 +53,20 @@ export const CACHE_TAGS = {
   notes: {
     all: 'notes',
   },
-  parkingTypes: {
-    all: 'parkingTypes',
+  ownerParkingTypes: {
+    all: 'ownerParkingTypes',
+  },
+  renterParkingTypes: {
+    all: 'renterParkingTypes',
   },
   expenses: {
     all: 'expenses',
+  },
+  dashboard: {
+    all: 'dashboard',
+  },
+  ticketSchedule: {
+    all: 'ticketSchedule',
   },
 } as const;
 

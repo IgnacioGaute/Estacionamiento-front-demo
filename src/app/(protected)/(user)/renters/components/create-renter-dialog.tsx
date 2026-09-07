@@ -5,17 +5,16 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { UserPlus } from 'lucide-react';
 import { createCustomerAction } from '@/actions/customers/create-customer.action';
 import { customerSchema, CustomerSchemaType } from '@/schemas/customer.schema';
-import { Vehicle } from '@/types/vehicle.type';
+import { RenterParkingType } from '@/types/renter-parking-type';
 import { CustomerStepperShell } from '@/components/customer-stepper-shell';
 import { RenterPhase2 } from '@/components/renter-phase-2';
 
 export function CreateRenterDialog({
-  customersRenters,
+  renterParkingTypes,
 }: {
-  customersRenters: Vehicle[];
+  renterParkingTypes: RenterParkingType[];
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -32,19 +31,19 @@ export function CreateRenterDialog({
       customerType: 'RENTER',
       hasDebt: false,
       monthsDebt: [],
-      vehicleRenters: [],
+      parkingRenters: [],
       credit: 0,
     },
   });
 
   const { fields, replace } = useFieldArray({
     control: form.control,
-    name: 'vehicleRenters',
+    name: 'parkingRenters',
   });
 
   const handleNext = (values: CustomerSchemaType) => {
     const n = values.numberOfVehicles;
-    const current = form.getValues('vehicleRenters') ?? [];
+    const current = form.getValues('parkingRenters') ?? [];
     if (current.length < n) {
       replace([
         ...current,
@@ -79,8 +78,7 @@ export function CreateRenterDialog({
       open={open}
       setOpen={setOpen}
       trigger={
-        <Button size="lg">
-          <UserPlus className="size-4" />
+        <Button size="sm">
           Nuevo inquilino
         </Button>
       }
@@ -96,7 +94,10 @@ export function CreateRenterDialog({
       vehiclesPhase={
         <RenterPhase2
           form={form}
-          customersRenters={customersRenters}
+          // Al crear un inquilino nuevo solo se ofrecen los tipos dinámicos
+          // (Aznar/Fontela/etc.) — no cocheras reales de propietarios.
+          customersRenters={[]}
+          renterParkingTypes={renterParkingTypes}
           fields={fields}
           isPending={isPending}
         />

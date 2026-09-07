@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-import { getCustomers, getCustomerVehicleRenter, findAllPendingReceipts } from '@/services/customers.service';
+import { getCustomers, getOwnersAvailableForRent, getRenterParkingTypes, findAllPendingReceipts } from '@/services/customers.service';
 import { privateColumns } from './components/private-columns';
 import { PrivatesTable } from './components/privates-table';
 import { CUSTOMER_TYPE } from '@/types/cutomer.type';
@@ -10,7 +10,8 @@ import { CustomerActionsBar } from '../components/customers/drop-menu-actions';
 
 export default async function PrivatePage() {
   const customers = await getCustomers(CUSTOMER_TYPE[2]);
-  const customersThirds = await getCustomerVehicleRenter();
+  const customersThirds = await getOwnersAvailableForRent();
+  const renterParkingTypesData = await getRenterParkingTypes();
   const receiptsData = await findAllPendingReceipts(CUSTOMER_TYPE[2]);
   const receipts = Array.isArray(receiptsData) ? receiptsData : [];
   const count = customers?.length ?? 0;
@@ -18,7 +19,7 @@ export default async function PrivatePage() {
   return (
     <div className="container mx-auto px-4 py-6 sm:p-8 max-w-7xl">
       <PageHeader
-        breadcrumb={['Garage Mitre', 'Operación', 'Terceros']}
+        breadcrumb={['Estacionamiento', 'Operación', 'Terceros']}
         title="Inquilinos de terceros"
         description={
           count > 0
@@ -39,6 +40,7 @@ export default async function PrivatePage() {
           columns={privateColumns}
           data={customers || []}
           customersRenters={customersThirds || []}
+          renterParkingTypes={renterParkingTypesData?.data || []}
         />
       </div>
     </div>

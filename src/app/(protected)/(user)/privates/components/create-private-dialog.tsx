@@ -5,17 +5,16 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { UserPlus } from 'lucide-react';
 import { createCustomerAction } from '@/actions/customers/create-customer.action';
 import { customerSchema, CustomerSchemaType } from '@/schemas/customer.schema';
-import { Vehicle } from '@/types/vehicle.type';
+import { ParkingOwner } from '@/types/parking-owner.type';
 import { CustomerStepperShell } from '@/components/customer-stepper-shell';
 import { RenterPhase2 } from '@/components/renter-phase-2';
 
 export function CreatePrivateDialog({
   customersRenters,
 }: {
-  customersRenters: Vehicle[];
+  customersRenters: ParkingOwner[];
 }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -32,19 +31,19 @@ export function CreatePrivateDialog({
       customerType: 'PRIVATE',
       hasDebt: false,
       monthsDebt: [],
-      vehicleRenters: [],
+      parkingRenters: [],
       credit: 0,
     },
   });
 
   const { fields, replace } = useFieldArray({
     control: form.control,
-    name: 'vehicleRenters',
+    name: 'parkingRenters',
   });
 
   const handleNext = (values: CustomerSchemaType) => {
     const n = values.numberOfVehicles;
-    const current = form.getValues('vehicleRenters') ?? [];
+    const current = form.getValues('parkingRenters') ?? [];
     if (current.length < n) {
       replace([
         ...current,
@@ -79,8 +78,7 @@ export function CreatePrivateDialog({
       open={open}
       setOpen={setOpen}
       trigger={
-        <Button size="lg">
-          <UserPlus className="size-4" />
+        <Button size="sm">
           Nuevo inquilino de terceros
         </Button>
       }
@@ -97,6 +95,9 @@ export function CreatePrivateDialog({
         <RenterPhase2
           form={form}
           customersRenters={customersRenters}
+          // Terceros solo alquila cocheras reales de un propietario existente
+          // — los tipos dinámicos (Aznar/Fontela/etc.) son para /renters.
+          renterParkingTypes={[]}
           fields={fields}
           isPending={isPending}
         />

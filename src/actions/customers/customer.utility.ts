@@ -10,6 +10,7 @@ export interface CustomerError {
   
     switch (errorCode) {
       case 'PARKING_TYPE_NOT_FOUND':
+      case 'RENTER_PARKING_TYPE_NOT_FOUND':
         errorMessage =
           'El tipo de estacionamiento no existe, necesita ser creado en Administrar para ser utilizado.';
         break;

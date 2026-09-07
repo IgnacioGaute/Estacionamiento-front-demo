@@ -10,10 +10,12 @@ import { getAuthHeaders } from "@/lib/auth";
 import { AmountCustomerSchemaType } from "@/schemas/amount-customer.schema";
 import { AmountCustomer } from "@/types/amount-customer.type";
 import { ReceiptSchemaType } from "@/schemas/receipt.schema";
-import { ParkingType } from "@/types/parking-type";
-import { ParkingTypeSchemaType, UpdateParkingTypeSchemaType } from "@/schemas/parking-type.schema";
+import { OwnerParkingType } from "@/types/owner-parking-type";
+import { RenterParkingType } from "@/types/renter-parking-type";
+import { OwnerParkingTypeSchemaType, UpdateOwnerParkingTypeSchemaType } from "@/schemas/owner-parking-type.schema";
+import { RenterParkingTypeSchemaType, UpdateRenterParkingTypeSchemaType } from "@/schemas/renter-parking-type.schema";
 import { Receipt } from "@/types/receipt.type";
-import { Vehicle } from "@/types/vehicle.type";
+import { ParkingOwner } from "@/types/parking-owner.type";
 
 
 
@@ -420,7 +422,7 @@ export const createCustomer = async (
     customer: Partial<AmountCustomerSchemaType>, authToken?: string
   ) => {
     try {
-      const response = await fetch(`${BASE_URL}/customers/update/updateAmount`, {
+      const response = await fetch(`${BASE_URL}/parking/renters/amount`, {
         method: 'PATCH',
         headers: await getAuthHeaders(authToken),
         body: JSON.stringify(customer),
@@ -439,18 +441,18 @@ export const createCustomer = async (
     }
   };
 
-  export const getParkingTypes = async (authToken?: string) => {
+  export const getOwnerParkingTypes = async (authToken?: string) => {
     try {
-      const response = await fetch(`${BASE_URL}/customers/parking/parkingTypes`, {
+      const response = await fetch(`${BASE_URL}/parking/owner-types`, {
         headers: await getAuthHeaders(authToken),
         next: {
-          tags: [getCacheTag('parkingTypes', 'all')],
+          tags: [getCacheTag('ownerParkingTypes', 'all')],
         },
       });
       const data = await response.json();
-  
+
       if (response.ok) {
-        return data as PaginatedResponse<ParkingType>;
+        return data as PaginatedResponse<OwnerParkingType>;
       } else {
         console.error(data);
         return null;
@@ -461,21 +463,21 @@ export const createCustomer = async (
     }
   };
 
-export const createParkingType = async (
-    values: ParkingTypeSchemaType, authToken?: string
+export const createOwnerParkingType = async (
+    values: OwnerParkingTypeSchemaType, authToken?: string
   ) => {
     try {
-      const response = await fetch(`${BASE_URL}/customers/parking/parkingTypes`, {
+      const response = await fetch(`${BASE_URL}/parking/owner-types`, {
         method: 'POST',
         headers: await getAuthHeaders(authToken),
         body: JSON.stringify(values),
       });
-  
+
       const data = await response.json();
-  
+
       if (response.ok) {
-        revalidateTag(getCacheTag('parkingTypes', 'all'));
-        return data as ParkingType;
+        revalidateTag(getCacheTag('ownerParkingTypes', 'all'));
+        return data as OwnerParkingType;
       } else {
         console.error(data);
         return {
@@ -486,26 +488,26 @@ export const createParkingType = async (
         };
       }
     } catch (error) {
-      console.error('Error en create parkingTypes:', error);
+      console.error('Error en create ownerParkingTypes:', error);
       return null;
     }
   };
 
-  export const updateParkingType = async (
+  export const updateOwnerParkingType = async (
     id: string,
-    values: Partial<UpdateParkingTypeSchemaType>, authToken?: string
+    values: Partial<UpdateOwnerParkingTypeSchemaType>, authToken?: string
   ) => {
     try {
-      const response = await fetch(`${BASE_URL}/customers/parking/parkingTypes/${id}`, {
+      const response = await fetch(`${BASE_URL}/parking/owner-types/${id}`, {
         method: 'PATCH',
         headers: await getAuthHeaders(authToken),
         body: JSON.stringify(values),
       });
       const data = await response.json();
-  
+
       if (response.ok) {
-        revalidateTag(getCacheTag('parkingTypes', 'all'));
-        return data as ParkingType;
+        revalidateTag(getCacheTag('ownerParkingTypes', 'all'));
+        return data as OwnerParkingType;
       } else {
         console.error(data);
         return null;
@@ -515,17 +517,17 @@ export const createParkingType = async (
       return null;
     }
   };
-  
-  export const deleteParkingType = async (id: string, authToken?: string) => {
+
+  export const deleteOwnerParkingType = async (id: string, authToken?: string) => {
     try {
-      const response = await fetch(`${BASE_URL}/customers/parking/parkingTypes/${id}`, {
+      const response = await fetch(`${BASE_URL}/parking/owner-types/${id}`, {
         headers: await getAuthHeaders(authToken),
         method: 'DELETE',
       });
       const data = await response.json();
-  
+
       if (response.ok) {
-        revalidateTag(getCacheTag('parkingTypes', 'all'));
+        revalidateTag(getCacheTag('ownerParkingTypes', 'all'));
         return data;
       } else {
         console.error(data);
@@ -537,18 +539,116 @@ export const createParkingType = async (
     }
   };
 
-  export const getCustomerVehicleRenter= async (authToken?: string) => {
+  export const getRenterParkingTypes = async (authToken?: string) => {
     try {
-      const response = await fetch(`${BASE_URL}/customers/vehicleRenter`, {
+      const response = await fetch(`${BASE_URL}/parking/renter-types`, {
+        headers: await getAuthHeaders(authToken),
+        next: {
+          tags: [getCacheTag('renterParkingTypes', 'all')],
+        },
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        return data as PaginatedResponse<RenterParkingType>;
+      } else {
+        console.error(data);
+        return null;
+      }
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  };
+
+export const createRenterParkingType = async (
+    values: RenterParkingTypeSchemaType, authToken?: string
+  ) => {
+    try {
+      const response = await fetch(`${BASE_URL}/parking/renter-types`, {
+        method: 'POST',
+        headers: await getAuthHeaders(authToken),
+        body: JSON.stringify(values),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        revalidateTag(getCacheTag('renterParkingTypes', 'all'));
+        return data as RenterParkingType;
+      } else {
+        console.error(data);
+        return {
+          error: {
+            code: data.code || 'UNKNOWN_ERROR',
+            message: data.message || 'Error desconocido'
+          },
+        };
+      }
+    } catch (error) {
+      console.error('Error en create renterParkingTypes:', error);
+      return null;
+    }
+  };
+
+  export const updateRenterParkingType = async (
+    id: string,
+    values: Partial<UpdateRenterParkingTypeSchemaType>, authToken?: string
+  ) => {
+    try {
+      const response = await fetch(`${BASE_URL}/parking/renter-types/${id}`, {
+        method: 'PATCH',
+        headers: await getAuthHeaders(authToken),
+        body: JSON.stringify(values),
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        revalidateTag(getCacheTag('renterParkingTypes', 'all'));
+        return data as RenterParkingType;
+      } else {
+        console.error(data);
+        return null;
+      }
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  };
+
+  export const deleteRenterParkingType = async (id: string, authToken?: string) => {
+    try {
+      const response = await fetch(`${BASE_URL}/parking/renter-types/${id}`, {
+        headers: await getAuthHeaders(authToken),
+        method: 'DELETE',
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        revalidateTag(getCacheTag('renterParkingTypes', 'all'));
+        return data;
+      } else {
+        console.error(data);
+        return null;
+      }
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  };
+
+  export const getOwnersAvailableForRent = async (authToken?: string) => {
+    try {
+      const response = await fetch(`${BASE_URL}/parking/owners/for-rent`, {
         headers: await getAuthHeaders(authToken),
         next: {
           tags: [getCacheTag('customers', 'all')],
         },
       });
       const data = await response.json();
-  
+
       if (response.ok) {
-        return data as Vehicle[]
+        return data as ParkingOwner[]
       } else {
         console.error(data);
         return null;

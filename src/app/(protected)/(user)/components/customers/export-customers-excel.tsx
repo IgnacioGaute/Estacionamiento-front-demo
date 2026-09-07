@@ -74,14 +74,6 @@ const handleExport = () => {
     toast.error('No hay recibos para el mes seleccionado.');
     return;
   }
-  const receiptTypeNames: Record<string, string> = {
-  JOSE_RICARDO_AZNAR: 'Ricardo Aznar',
-  CARLOS_ALBERTO_AZNAR: 'Carlos Aznar',
-  NIDIA_ROSA_MARIA_FONTELA: 'Nidia Fontela',
-  ALDO_RAUL_FONTELA: 'Aldo Fontela',
-};
-
-
   // Agrupar por cliente
   const customerMap = new Map<string, ExportRow>();
 
@@ -94,23 +86,14 @@ for (const receipt of filteredReceipts) {
 
     // Primero verificar el tipo de customer para manejar correctamente los PRIVATE
     if (receipt.customer.customerType === 'PRIVATE') {
-      // Para customers PRIVATE, buscar el owner real a través de vehicleRenters
-      const vehicleRenter = receipt.customer.vehicleRenters?.[0];
+      // Para customers PRIVATE, buscar el owner real a través de parkingRenters
+      const vehicleRenter = receipt.customer.parkingRenters?.[0];
       if (vehicleRenter) {
-        // Si el owner es un string con nombres específicos
-        const manualOwners = [
-          'JOSE_RICARDO_AZNAR',
-          'CARLOS_ALBERTO_AZNAR', 
-          'NIDIA_ROSA_MARIA_FONTELA',
-          'ALDO_RAUL_FONTELA'
-        ];
-        
-        if (manualOwners.includes(vehicleRenter.owner)) {
-          ownerLabel = receiptTypeNames[vehicleRenter.owner] ?? vehicleRenter.owner;
-        } else if (vehicleRenter.vehicle?.customer) {
+        if (vehicleRenter.parkingOwner?.customer) {
           // Si el owner es un customer real
-          ownerLabel = `${vehicleRenter.vehicle.customer.firstName} ${vehicleRenter.vehicle.customer.lastName}`;
+          ownerLabel = `${vehicleRenter.parkingOwner.customer.firstName} ${vehicleRenter.parkingOwner.customer.lastName}`;
         } else {
+          // Dueño-tipo dinámico (Aznar/Fontela/etc.) — `owner` ya es el nombre legible.
           ownerLabel = vehicleRenter.owner;
         }
       } else {
@@ -119,12 +102,12 @@ for (const receipt of filteredReceipts) {
     } else if (receipt.receiptTypeKey === 'OWNER') {
       ownerLabel = 'Garage Mitre';
     } else if (receipt.receiptTypeKey === 'GARAGE_MITRE') {
-      const vehicleCustomer = receipt.customer.vehicleRenters?.[0]?.vehicle?.customer;
+      const vehicleCustomer = receipt.customer.parkingRenters?.[0]?.parkingOwner?.customer;
       ownerLabel = vehicleCustomer
         ? `${vehicleCustomer.firstName} ${vehicleCustomer.lastName}`
         : 'Garage Mitre';
     } else {
-      ownerLabel = receiptTypeNames[receipt.receiptTypeKey] ?? receipt.receiptTypeKey;
+      ownerLabel = receipt.receiptTypeKey;
     }
 
     customerMap.set(fullNameKey, {

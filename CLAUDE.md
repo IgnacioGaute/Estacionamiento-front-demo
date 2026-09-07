@@ -31,6 +31,8 @@ src/app/
       notes/
       components/       # shared across user routes (receipt dialogs, scanner, exports)
     admin/              # ADMIN role only (enforced in middleware + RoleGate)
+      dashboard/        # analytics: revenue heatmap, hourly activity, income/expenses, gauges (recharts)
+      frecuentes/       # frequent-customer lookup (min visit count)
       tickets/          # ticket catalog + pricing (hours / days or weeks)
       parking-type/
       users/
@@ -62,9 +64,18 @@ Three customer types: `OWNER`, `RENTER`, `PRIVATE` (from `CUSTOMER_TYPE` constan
 
 ### Ticket system
 
-Two distinct flows:
-- **Hourly tickets** (`TicketRegistration`) — scanned via barcode on the `/tickets` page. The `ScannerButton` component listens globally for keyboard input (from a USB barcode scanner) and calls `startScanner` → dispatches a `"scan-success"` DOM event on success.
+Three ways to open a hourly ticket registration:
+- **Barcode scan** (`TicketRegistration`) — the `ScannerButton` component listens globally for keyboard input (from a USB barcode scanner) and calls `startScanner` → dispatches a `"scan-success"` DOM event on success.
+- **Plate recognition** — `recognizePlateFromImage` (`src/services/plate-recognition.service.ts`) posts a photo as `multipart/form-data` to `/plate-recognition/scan`; it builds headers manually instead of `getAuthHeaders` because that helper forces `Content-Type: application/json`, which breaks the multipart boundary. Result feeds `create-registration-by-plate.action.ts`.
 - **Day/week tickets** (`TicketRegistrationForDay`) — manually registered, managed in `/tickets/tickets-days-or-weeks/`.
+
+Registrations also flow through **turnos** (shifts): a user opens a turno (`openTurno`) before working and closes it (`closeTurno`) with a cash summary at the end; `getMyOpenTurno` guards flows that require an active shift. See `src/services/turnos.service.ts` and `src/actions/turnos/`.
+
+### Real-time updates
+
+Two hooks connect directly to the backend via `socket.io-client`, bypassing the service/action layers entirely:
+- `useTicketRealtime` (`src/hooks/use-ticket-realtime.ts`) — listens for `new-registration`, connects to `NEXT_PUBLIC_API_URL`.
+- `useNotifications` (`src/hooks/use-notification.ts`) — listens for `notification` events (e.g. new notes) and persists them to `localStorage`. Its socket URL is hardcoded to the production backend rather than `NEXT_PUBLIC_API_URL`, so it does not follow local/staging env overrides.
 
 ### Cache tags
 
@@ -78,13 +89,22 @@ Two distinct flows:
 
 - All data tables use TanStack Table wrapped in the pattern: `*-columns.tsx` (column definitions) + `*-table.tsx` (DataTable client component).
 - Dialogs follow: `create-*-dialog.tsx`, `update-*-dialog.tsx`, `delete-*-dialog.tsx`, `soft-delete-*-dialog.tsx`, `restored-*-dialog.tsx`.
+- Multi-step forms (e.g. customer creation) use `src/components/customer-stepper-shell.tsx`, a generic wizard shell driven by `react-hook-form`.
+- Page-level onboarding uses `src/components/page-tour.tsx`: a page defines a `TOUR_STEPS` array (selector, title, desc) targeting elements tagged `data-tour="..."`, then renders `<PageTour steps={TOUR_STEPS} />` in its header actions. See `admin/dashboard/page.tsx` for a full example.
+- Charts (dashboard analytics) are built with `recharts` via `src/components/ui/chart.tsx`.
 - Toast notifications use `sonner` (`import { toast } from 'sonner'`).
 - All dates/times use `dayjs` with `America/Argentina/Buenos_Aires` timezone.
+
+### Email
+
+`src/lib/email/` sends transactional email via Resend (`sendPasswordResetEmail`), used by the password-reset auth flow. Templates live in `src/lib/email/templates`.
 
 ### Environment variables
 
 | Variable | Used in |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | All service fetch calls (base URL of the backend API) |
+| `NEXT_PUBLIC_API_URL` | All service fetch calls and `useTicketRealtime`'s socket (base URL of the backend API) |
 | `NEXTAUTH_SECRET` | JWT signing in `src/auth.ts` |
 | `API_SECRET_TOKEN` | Server-to-server calls that bypass user auth (passed as `authToken` param) |
+| `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS` | Password-reset email via Resend (`src/lib/email/`) |
+| `NEXT_PUBLIC_HOST_URL` | Base URL embedded in password-reset email links |

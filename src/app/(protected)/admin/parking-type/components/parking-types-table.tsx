@@ -1,5 +1,6 @@
 'use client';
 
+import { ReactNode, useState } from 'react';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -21,20 +22,24 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
-import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { CreateParkingTypeDialog } from './create-parking-type-dialog';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  filterColumnId: string;
+  filterPlaceholder: string;
+  createTrigger?: ReactNode;
 }
 
 export function ParkingTypeTable<TData, TValue>({
   columns,
   data,
+  filterColumnId,
+  filterPlaceholder,
+  createTrigger,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -63,18 +68,19 @@ export function ParkingTypeTable<TData, TValue>({
     <div className="flex flex-col space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <Input
-          placeholder="Filtrar por tipos..."
-          value={(table.getColumn('parkingType')?.getFilterValue() as string) ?? ''}
+          data-tour="parking-type-filter"
+          placeholder={filterPlaceholder}
+          value={(table.getColumn(filterColumnId)?.getFilterValue() as string) ?? ''}
           onChange={(event) =>
-            table.getColumn('parkingType')?.setFilterValue(event.target.value)
+            table.getColumn(filterColumnId)?.setFilterValue(event.target.value)
           }
           className="w-full sm:max-w-sm rounded-xl bg-secondary border-white"
         />
 
         <DataTableViewOptions table={table} />
-        <CreateParkingTypeDialog />
+        {createTrigger}
       </div>
-      <ScrollArea className="rounded-xl border bg-background">
+      <ScrollArea className="rounded-xl border bg-background" data-tour="parking-type-table">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

@@ -3,8 +3,9 @@
 import {
   ArrowLeft,
   Banknote,
-  DollarSign,
+  LayoutDashboard,
   ParkingCircle,
+  Repeat,
   Shield,
   Ticket,
   User,
@@ -19,6 +20,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { NavMain } from './nav-main';
+import { SidebarWatermark } from './sidebar-watermark';
 import { useSession } from 'next-auth/react';
 
 export function AdminNavbarSidebar({
@@ -29,10 +31,11 @@ export function AdminNavbarSidebar({
   const isAdmin = role === 'ADMIN';
 
   const allNavItems = [
+    { title: 'Dashboard',               url: '/admin/dashboard',              icon: <LayoutDashboard /> },
     { title: 'Usuarios',                url: '/admin/users',                  icon: <User /> },
     { title: 'Tickets / Precios',       url: '/admin/tickets',                icon: <Ticket /> },
+    { title: 'Frecuentes',              url: '/admin/frecuentes',             icon: <Repeat /> },
     { title: 'Tipo de Estacionamiento', url: '/admin/parking-type',           icon: <ParkingCircle /> },
-    { title: 'Actualizar Montos',       url: '/admin/update-amount-customers', icon: <DollarSign /> },
     { title: 'Varios',                  url: '/admin/other-payments',         icon: <Banknote /> },
     { title: 'Volver',                  url: '/tickets',                       icon: <ArrowLeft /> },
   ];
@@ -56,8 +59,9 @@ export function AdminNavbarSidebar({
         Administración
       </div>
 
-      <SidebarContent className="bg-gm-surface px-1 py-1">
+      <SidebarContent className="relative overflow-hidden bg-gm-surface px-1 py-1">
         <NavMain items={navItems} />
+        <SidebarWatermark />
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border bg-gm-surface p-2 group-data-[collapsible=icon]:p-1.5">

@@ -10,7 +10,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Receipt } from '@/types/receipt.type';
 import { ReceiptPayment, PaymentHistoryOnAccount } from '@/types/receipt.type';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ArrowDownRight, ArrowUpRight, Banknote } from 'lucide-react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -26,6 +26,8 @@ interface ReceiptMovementsDrawerProps {
     payments?: ReceiptPayment[];
     paymentHistoryOnAccount?: PaymentHistoryOnAccount[];
   };
+  triggerClassName?: string;
+  triggerLabel?: ReactNode;
 }
 
 const ars = (n: number | undefined | null) =>
@@ -65,7 +67,7 @@ function formatDate(dateStr?: string | null) {
   return d.isValid() ? d.format('DD/MM/YYYY') : '—';
 }
 
-export function ReceiptMovementsDrawer({ receipt }: ReceiptMovementsDrawerProps) {
+export function ReceiptMovementsDrawer({ receipt, triggerClassName, triggerLabel }: ReceiptMovementsDrawerProps) {
   const [open, setOpen] = useState(false);
 
   const hasMovements =
@@ -85,8 +87,8 @@ export function ReceiptMovementsDrawer({ receipt }: ReceiptMovementsDrawerProps)
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <span className="text-muted-foreground hover:text-foreground hover:underline cursor-pointer text-[12.5px] transition-colors">
-          Ver movimientos
+        <span className={triggerClassName ?? "text-muted-foreground hover:text-foreground hover:underline cursor-pointer text-[12.5px] transition-colors"}>
+          {triggerLabel ?? 'Ver movimientos'}
         </span>
       </DrawerTrigger>
 

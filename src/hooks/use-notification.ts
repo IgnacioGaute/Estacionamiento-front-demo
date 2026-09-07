@@ -29,6 +29,10 @@ export const useNotifications = () => {
   });
 
   useEffect(() => {
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       socket.on('connect', () => {
         console.log('🔌 Conectado al WebSocket');
@@ -37,11 +41,7 @@ export const useNotifications = () => {
       socket.on('notification', (data) => {
         console.log('Notificación recibida:', data);
         if (data.type === 'NEW_NOTE') {
-          setNotifications((prev) => {
-            const updated = [...prev, data];
-            localStorage.setItem('notifications', JSON.stringify(updated));
-            return updated;
-          });
+          setNotifications((prev) => [...prev, data]);
           setHasNewNoteAlert(true);
           localStorage.setItem('hasNewNoteAlert', 'true');
         }

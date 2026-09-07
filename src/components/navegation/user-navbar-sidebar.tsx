@@ -15,6 +15,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { NavMain } from './nav-main';
+import { SidebarWatermark } from './sidebar-watermark';
 
 export const userNavItems = [
   { title: 'Registrar Gastos', url: '/admin/other-payments', icon: <Banknote /> },
@@ -40,8 +41,9 @@ export function UserNavbarSidebar({
         Operación
       </div>
 
-      <SidebarContent className="bg-gm-surface px-1 py-1">
+      <SidebarContent className="relative overflow-hidden bg-gm-surface px-1 py-1">
         <NavMain items={userNavItems} />
+        <SidebarWatermark />
       </SidebarContent>
 
       <SidebarFooter className="border-t border-border bg-gm-surface p-2 group-data-[collapsible=icon]:p-1.5">

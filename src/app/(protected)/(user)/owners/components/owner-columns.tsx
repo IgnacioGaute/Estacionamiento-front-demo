@@ -18,14 +18,14 @@ import {
 import { cn } from '@/lib/utils';
 
 import { Customer } from '@/types/cutomer.type';
-import { ParkingType } from '@/types/parking-type';
+import { OwnerParkingType } from '@/types/owner-parking-type';
 
 import { UpdateOwnerDialog } from './update-owner-dialog';
 import { DeleteOwnerDialog } from './delete-owner-dialog';
 import { SoftDeleteOwnerDialog } from './soft-delete-owner-dialog';
 import { RestoredOwnerDialog } from './restored-owner-dialog';
 import { ViewCustomerDialog } from '../../components/customers/view-customer-dialog';
-import { PaymentSummaryCell } from '../../components/receipts/automatic-open-summary';
+import { ExpandSummaryButton } from '../../components/receipts/expand-summary-button';
 
 const customSort: SortingFn<Customer> = (rowA, rowB, columnId) => {
   if (rowA.original.deletedAt && !rowB.original.deletedAt) return 1;
@@ -39,7 +39,7 @@ const dimmedIfDeleted = (deleted: boolean | Date | null | undefined) =>
   deleted ? 'text-muted-foreground line-through opacity-60' : '';
 
 export const OwnerColumns = (
-  parkingTypes: ParkingType[],
+  ownerParkingTypes: OwnerParkingType[],
 ): ColumnDef<Customer>[] => [
   {
     accessorKey: 'lastName',
@@ -97,21 +97,33 @@ export const OwnerColumns = (
     sortingFn: customSort,
   },
   {
-    id: 'paymentSummary',
+    id: 'expand',
+    header: () => (
+      <div className="w-full text-right text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        Resumen
+      </div>
+    ),
     cell: ({ row }) => {
-      const customer = row.original;
-      const searchParams =
-        typeof window !== 'undefined'
-          ? new URLSearchParams(window.location.search)
-          : null;
-      const lastName = searchParams?.get('lastName') || '';
-      const showSummary = searchParams?.get('showSummary') || '';
-      const key = `${customer.id}-${lastName}-${showSummary}`;
-      return <PaymentSummaryCell key={key} customer={customer} />;
+      if (row.original.deletedAt) return null;
+      return (
+        <div className="flex justify-end">
+          <span data-tour="customer-expand" className="inline-flex">
+            <ExpandSummaryButton
+              isOpen={row.getIsExpanded()}
+              onToggle={() => row.toggleExpanded()}
+            />
+          </span>
+        </div>
+      );
     },
   },
   {
     id: 'actions',
+    header: () => (
+      <div className="w-full text-right text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        Acciones
+      </div>
+    ),
     cell: ({ row }) => {
       const customer = row.original;
       const [openDropdown, setOpenDropdown] = useState(false);
@@ -119,39 +131,41 @@ export const OwnerColumns = (
       const isAdmin = session.data?.user.role === 'ADMIN';
 
       return (
-        <DropdownMenu open={openDropdown} onOpenChange={setOpenDropdown}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-8">
-              <span className="sr-only">Abrir acciones</span>
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="w-56 border border-border bg-gm-surface p-1 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.7)]"
-          >
-            <DropdownMenuLabel className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-              Acciones
-            </DropdownMenuLabel>
-            <ViewCustomerDialog customer={customer} />
-            {isAdmin && (
-              <>
-                <DropdownMenuSeparator className="bg-border" />
-                {customer.deletedAt === null ? (
-                  <>
-                    <UpdateOwnerDialog customer={customer} />
-                    <SoftDeleteOwnerDialog customer={customer} />
-                  </>
-                ) : (
-                  <>
-                    <DeleteOwnerDialog customer={customer} />
-                    <RestoredOwnerDialog customer={customer} />
-                  </>
-                )}
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex justify-end">
+          <DropdownMenu open={openDropdown} onOpenChange={setOpenDropdown}>
+            <DropdownMenuTrigger asChild>
+              <Button data-tour="customer-actions" variant="ghost" size="icon" className="size-8">
+                <span className="sr-only">Abrir acciones</span>
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-56 border border-border bg-gm-surface p-1 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.7)]"
+            >
+              <DropdownMenuLabel className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                Acciones
+              </DropdownMenuLabel>
+              <ViewCustomerDialog customer={customer} />
+              {isAdmin && (
+                <>
+                  <DropdownMenuSeparator className="bg-border" />
+                  {customer.deletedAt === null ? (
+                    <>
+                      <UpdateOwnerDialog customer={customer} ownerParkingTypes={ownerParkingTypes} />
+                      <SoftDeleteOwnerDialog customer={customer} />
+                    </>
+                  ) : (
+                    <>
+                      <DeleteOwnerDialog customer={customer} />
+                      <RestoredOwnerDialog customer={customer} />
+                    </>
+                  )}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       );
     },
   },

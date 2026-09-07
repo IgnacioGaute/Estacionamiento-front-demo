@@ -7,6 +7,7 @@ export const ticketPriceSchema = z.object({
     ticketDayType: z.enum(TICKET_DAY_TYPE).optional(),
     vehicleType: z.enum(VEHICLE_TYPE).optional(),
     ticketTimeType: z.enum(TICKET_TIME_TYPE).optional(),
+    intervalMinutes: z.coerce.number().int().min(1, 'Debe ser mayor a 0').optional(),
 });
 export type TicketPriceSchemaType = z.infer<typeof ticketPriceSchema>;
 
@@ -17,6 +18,7 @@ export const updateTicketPriceSchema = z.object({
     ticketDayType: z.enum(TICKET_DAY_TYPE).optional(),
     vehicleType: z.enum(VEHICLE_TYPE).optional(),
     ticketTimeType: z.enum(TICKET_TIME_TYPE).optional(),
+    intervalMinutes: z.coerce.number().int().min(1, 'Debe ser mayor a 0').optional(),
   });
   export type UpdateTicketPriceSchemaType = z.infer<typeof updateTicketPriceSchema>;
 

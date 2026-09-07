@@ -3,11 +3,14 @@
 import {
   ColumnDef,
   ColumnFiltersState,
+  ExpandedState,
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  Row,
   SortingState,
   Table as TanstackTable,
   useReactTable,
@@ -38,6 +41,11 @@ interface DataTableShellProps<TData, TValue> {
   pageSize?: number;
   emptyMessage?: string;
   className?: string;
+  /** Contenido a mostrar en una fila extra debajo de la fila expandida. */
+  renderSubComponent?: (row: Row<TData>) => ReactNode;
+  /** data-tour opcionales, para que un PageTour pueda apuntar al filtro/tabla. */
+  filterTour?: string;
+  tableTour?: string;
 }
 
 export function DataTableShell<TData, TValue>({
@@ -51,6 +59,9 @@ export function DataTableShell<TData, TValue>({
   pageSize = 10,
   emptyMessage = 'No hay resultados para mostrar.',
   className,
+  renderSubComponent,
+  filterTour,
+  tableTour,
 }: DataTableShellProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
@@ -58,6 +69,7 @@ export function DataTableShell<TData, TValue>({
       ? [{ id: filterColumn, value: initialFilter }]
       : [],
   );
+  const [expanded, setExpanded] = useState<ExpandedState>({});
 
   const table = useReactTable({
     data,
@@ -68,7 +80,10 @@ export function DataTableShell<TData, TValue>({
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
-    state: { columnFilters, sorting },
+    onExpandedChange: setExpanded,
+    getExpandedRowModel: getExpandedRowModel(),
+    getRowCanExpand: () => !!renderSubComponent,
+    state: { columnFilters, sorting, expanded },
     initialState: { pagination: { pageSize }, sorting: initialSort },
     autoResetPageIndex: false,
   });
@@ -78,7 +93,7 @@ export function DataTableShell<TData, TValue>({
       {/* TOOLBAR */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {filterColumn && (
-          <div className="relative w-full sm:max-w-xs">
+          <div className="relative w-full sm:max-w-xs" data-tour={filterTour}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <Input
               placeholder={filterPlaceholder}
@@ -102,7 +117,7 @@ export function DataTableShell<TData, TValue>({
       </div>
 
       {/* TABLE */}
-      <div className="overflow-hidden rounded-lg border border-border">
+      <div className="overflow-hidden rounded-lg border border-border" data-tour={tableTour}>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -124,19 +139,28 @@ export function DataTableShell<TData, TValue>({
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && 'selected'}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="whitespace-nowrap">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+                  <>
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && 'selected'}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="whitespace-nowrap">
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {row.getIsExpanded() && renderSubComponent && (
+                      <TableRow key={`${row.id}-expanded`} className="hover:bg-transparent">
+                        <TableCell colSpan={row.getVisibleCells().length} className="p-0">
+                          {renderSubComponent(row)}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
                 ))
               ) : (
                 <TableRow>

@@ -22,14 +22,6 @@ import {
 import { Eye, Phone, User } from 'lucide-react';
 import { Customer } from '@/types/cutomer.type';
 
-const RECEIPT_TYPE_LABEL: Record<string, string> = {
-  JOSE_RICARDO_AZNAR:       'José Ricardo Aznar',
-  CARLOS_ALBERTO_AZNAR:     'Carlos Alberto Aznar',
-  NIDIA_ROSA_MARIA_FONTELA: 'Nidia Rosa María Fontela',
-  ALDO_RAUL_FONTELA:        'Aldo Raúl Fontela',
-  GARAGE_MITRE:             'Garage Mitre',
-};
-
 const ars = (n: number | undefined | null) =>
   n != null
     ? new Intl.NumberFormat('es-AR', {
@@ -44,7 +36,7 @@ export function ViewCustomerRenterDialog({ customer }: { customer: Customer }) {
     (r: any) => r.status === 'PENDING',
   );
   const hasDebt = !!pendingReceipt || customer.hasDebt;
-  const vehicles = customer.vehicleRenters ?? [];
+  const vehicles = customer.parkingRenters ?? [];
   const initials =
     `${customer.firstName?.[0] ?? ''}${customer.lastName?.[0] ?? ''}`.toUpperCase() ||
     'GM';
@@ -120,14 +112,11 @@ export function ViewCustomerRenterDialog({ customer }: { customer: Customer }) {
                         <span className="gm-spot-tag">{vr.garageNumber}</span>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {vr.vehicle
-                          ? `${vr.vehicle.customer?.firstName ?? 'Sin nombre'} ${
-                              vr.vehicle.customer?.lastName ?? ''
-                            } (${vr.vehicle.garageNumber})`
-                          : pendingReceipt?.receiptTypeKey
-                          ? RECEIPT_TYPE_LABEL[pendingReceipt.receiptTypeKey] ??
-                            pendingReceipt.receiptTypeKey
-                          : '—'}
+                        {vr.parkingOwner
+                          ? `${vr.parkingOwner.customer?.firstName ?? 'Sin nombre'} ${
+                              vr.parkingOwner.customer?.lastName ?? ''
+                            } (${vr.parkingOwner.garageNumber})`
+                          : vr.owner || '—'}
                       </TableCell>
                       <TableCell className="gm-mono gm-tnum font-semibold">
                         {ars(vr.amount)}
