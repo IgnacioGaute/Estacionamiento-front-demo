@@ -1,5 +1,9 @@
 'use client';
+import { useTenant } from '@/components/tenant-provider';
 
+import { VehicleTypePicker } from '@/components/vehicle-type-options';
+
+import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import {
   Dialog,
@@ -13,7 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { AlertTriangle, Barcode, CarFront, CheckCircle2, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { entryByPlateSchema, EntryByPlateSchemaType } from '@/schemas/entry-by-plate.schema';
@@ -54,6 +58,8 @@ export function EntryByPlateDialog({
   triggerRef?: (el: HTMLElement | null) => void;
   triggerStyle?: React.CSSProperties;
 }) {
+  const { playaId } = useTenant();
+  const session = useSession();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [duplicateError, setDuplicateError] = useState<DuplicateError | null>(null);
@@ -108,7 +114,7 @@ export function EntryByPlateDialog({
   const submitTicket = async () => {
     if (!ticketCode.trim()) return;
     setTicketPending(true);
-    const data = await startScanner({ barCode: ticketCode.trim() });
+    const data = await startScanner({ barCode: ticketCode.trim() }, session.data?.token, playaId);
     setTicketPending(false);
     if (!data || 'error' in data) {
       toast.error((data as { error?: string })?.error ?? 'Error desconocido');
@@ -116,6 +122,12 @@ export function EntryByPlateDialog({
     }
     if (data.type === 'RECEIPT') {
       toast.error('Ese código corresponde a un recibo, no a un ticket. Usá el escáner para procesarlo.');
+      return;
+    }
+    if (data.requiresClose && data.registrationId) {
+      setOpen(false);
+      resetAll();
+      onGoToRegistration?.(data.registrationId);
       return;
     }
     // Un ticket alterna entrada/salida según si ya tenía un registro abierto — no siempre es
@@ -179,13 +191,13 @@ export function EntryByPlateDialog({
           ref={triggerRef}
           style={triggerStyle}
           onClick={() => setOpen(true)}
-          className="group relative w-full sm:flex-[1.6] sm:w-auto sm:min-w-[340px] inline-flex h-[72px] sm:h-[84px] items-center gap-4 rounded-[24px] border-none px-6 sm:px-7 text-left bg-gradient-to-br from-gm-yellow to-gm-yellow-deep text-gm-ink shadow-[0_10px_30px_-10px_hsl(var(--gm-yellow)/0.5)] transition-all duration-300 hover:shadow-[0_16px_40px_-10px_hsl(var(--gm-yellow)/0.45)] hover:-translate-y-px"
+          className="group flex min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl bg-gm-yellow px-4 py-4 text-left text-gm-ink transition-colors hover:bg-gm-yellow-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gm-ink/10">
             <CarFront className="size-6" />
           </span>
           <span className="flex flex-col gap-0.5">
-            <span className="gm-display text-[17px] font-bold tracking-[0.02em]">Registrar entrada</span>
+            <span className="text-base font-semibold">Registrar entrada</span>
             <span className="text-[12px] font-medium normal-case tracking-normal text-gm-ink/70">
               {ticketEntryEnabled ? 'Por patente o por ticket' : 'Por patente'}
             </span>
@@ -193,7 +205,7 @@ export function EntryByPlateDialog({
         </button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-md sm:max-w-lg">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl sm:max-w-lg">
         <DialogHeader className="items-center">
           <DialogTitle>Registrar entrada</DialogTitle>
         </DialogHeader>
@@ -304,7 +316,7 @@ export function EntryByPlateDialog({
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <label htmlFor="frequent-entry-search" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Clientes frecuentes
                 </label>
 
@@ -328,7 +340,8 @@ export function EntryByPlateDialog({
                           setSelectedFrequent(null);
                           setFrequentQuery('');
                         }}
-                        className="grid size-7 shrink-0 place-items-center rounded-[10px] border border-border text-muted-foreground transition-colors hover:bg-gm-surface-3 hover:text-foreground"
+                        aria-label="Cambiar vehículo frecuente"
+                        className="grid size-9 shrink-0 place-items-center rounded-[10px] border border-border text-muted-foreground transition-colors hover:bg-gm-surface-3 hover:text-foreground"
                       >
                         <X className="size-3.5" />
                       </button>
@@ -343,14 +356,17 @@ export function EntryByPlateDialog({
                     </div>
                   </div>
                 ) : (
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <div>
+                    <div className="relative">
+                    <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
+                      id="frequent-entry-search"
                       placeholder="Buscar por patente o apellido..."
                       value={frequentQuery}
                       onChange={(e) => setFrequentQuery(e.target.value)}
-                      className="h-11 pl-10"
+                      className="h-11 pl-10 pr-3 text-base"
                     />
+                    </div>
                     {frequentQuery.trim() && (
                       <div className="mt-2 max-h-[180px] overflow-y-auto rounded-2xl border border-gm-line-strong bg-gm-surface-2">
                         {filteredFrequent.length === 0 ? (
@@ -366,10 +382,10 @@ export function EntryByPlateDialog({
                                 setSelectedFrequent(c);
                                 setFrequentQuery('');
                               }}
-                              className="flex w-full items-center justify-between gap-2.5 border-b border-gm-line-strong px-3.5 py-2.5 text-left last:border-b-0 hover:bg-gm-surface-3"
+                              className="flex min-h-16 w-full flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-gm-line-strong px-3.5 py-3 text-left last:border-b-0 hover:bg-gm-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow"
                             >
-                              <div className="flex min-w-0 flex-col">
-                                <span className="gm-mono text-[13.5px] font-bold">{c.licensePlateOriginal}</span>
+                              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                <span className="gm-mono truncate text-sm font-bold leading-5">{c.licensePlateOriginal}</span>
                                 <span className="truncate text-[11.5px] text-muted-foreground">
                                   {c.lastNameCustomer ?? 'Sin apellido'}
                                 </span>
@@ -441,48 +457,7 @@ export function EntryByPlateDialog({
                       <FormItem>
                         <FormLabel>Tipo de Vehículo</FormLabel>
                         <FormControl>
-                          <div className="grid grid-cols-2 gap-2.5">
-                            <button
-                              type="button"
-                              disabled={isPending}
-                              onClick={() => field.onChange('AUTO')}
-                              className={cn(
-                                'gm-display flex h-11 items-center justify-center rounded-xl border text-[12px] font-semibold transition-colors',
-                                field.value === 'AUTO'
-                                  ? 'border-gm-yellow bg-gm-yellow/15 text-gm-yellow'
-                                  : 'border-gm-line-strong bg-gm-surface-2 text-foreground',
-                              )}
-                            >
-                              Auto
-                            </button>
-                            <button
-                              type="button"
-                              disabled={isPending}
-                              onClick={() => field.onChange('CAMIONETA')}
-                              className={cn(
-                                'gm-display flex h-11 items-center justify-center rounded-xl border text-[12px] font-semibold transition-colors',
-                                field.value === 'CAMIONETA'
-                                  ? 'border-gm-yellow bg-gm-yellow/15 text-gm-yellow'
-                                  : 'border-gm-line-strong bg-gm-surface-2 text-foreground',
-                              )}
-                            >
-                              Camioneta
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="casilleroNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Casillero (opcional)</FormLabel>
-                        <FormControl>
-                          <Input disabled={isPending} placeholder="Escriba número de casillero" {...field} />
+                          <VehicleTypePicker value={field.value} onChange={field.onChange} disabled={isPending} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

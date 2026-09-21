@@ -3,6 +3,7 @@ import { AppNavbar } from "@/components/navegation/app-navbar";
 import { UserNavbarSidebar } from "@/components/navegation/user-navbar-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
+import "./mobile.css";
 
 
 export default async function AdminLayout({
@@ -16,10 +17,10 @@ export default async function AdminLayout({
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppNavbar adminSidebar={<AdminNavbarSidebar/>} userSidebar={<UserNavbarSidebar/>}>
-      <div className="flex flex-col flex-1 h-full">
+      <div className="admin-mobile flex min-w-0 flex-col flex-1 h-full">
           {/* Cada página admin ya trae su propio "container mx-auto px-4 ..." — sin padding acá
               para no duplicarlo (en mobile sumaba ~80px de aire perdido a cada lado). */}
-          <main className="flex-1">{children}</main>
+          <main className="min-w-0 flex-1">{children}</main>
         </div>
       </AppNavbar>
     </SidebarProvider>

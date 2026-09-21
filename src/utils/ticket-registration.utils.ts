@@ -46,7 +46,7 @@ export function upsertRegistration(
     return list;
   }
   const next = [...list];
-  next[index] = incoming;
+  next[index] = { ...existing, ...incoming };
   return next;
 }
 
@@ -85,7 +85,7 @@ export function minutesSinceEntry(registration: TicketRegistration, nowMs: numbe
 // Un registro es de origen "código de barras" si tiene `ticket` poblado (entrada abierta) o
 // `codeBarTicket` (ya cerrada) — ninguno de los dos se setea jamás en un registro por patente.
 export function isBarcodeOrigin(r: TicketRegistration): boolean {
-  return !!r.ticket || !!r.codeBarTicket;
+  return r.entryMode === 'BARCODE' || !!r.ticket || !!r.codeBarTicket;
 }
 
 export function formatElapsed(minutes: number): string {

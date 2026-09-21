@@ -28,7 +28,7 @@ export async function resetPasswordAction(values: ResetPasswordSchemaType) {
 
     if (!existingUser) {
       return {
-        error: 'No se encontró un usuario con ese email',
+        success: 'Si la cuenta existe, recibirás un email con las instrucciones.',
       };
     }
 
@@ -49,7 +49,7 @@ export async function resetPasswordAction(values: ResetPasswordSchemaType) {
     });
 
     return {
-      success: 'Email de recuperación enviado. Revisa tu bandeja de entrada.',
+      success: 'Si la cuenta existe, recibirás un email con las instrucciones.',
     };
   } catch (error) {
     console.error('Error al resetear la contraseña:', error);

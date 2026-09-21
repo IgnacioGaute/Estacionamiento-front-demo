@@ -21,14 +21,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { otherPaymentSchema, OtherPaymentSchemaType } from '@/schemas/other-payment.schema';
 import { createOtherPaymentAction } from '@/actions/other-payment/create-other-payment.action';
 import { PAYMENT_METHOD, PAYMENT_TYPE } from '@/types/other-payment.type';
 
-export function CreateOtherPaymentDialog() {
+export function CreateOtherPaymentDialog({ open: controlledOpen, onOpenChange }: { open?: boolean; onOpenChange?: (open: boolean) => void } = {}) {
   const [isPending, startTransition] = useTransition();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
 
   const form = useForm<OtherPaymentSchemaType>({
     resolver: zodResolver(otherPaymentSchema),
@@ -41,13 +43,13 @@ export function CreateOtherPaymentDialog() {
   });
 
   const onSubmit = (values: OtherPaymentSchemaType) => {
-    startTransition(() => {
-      createOtherPaymentAction(values)
+    startTransition(async () => {
+      await createOtherPaymentAction(values)
         .then((data) => {
           if (data.error) {
             toast.error(data.error);
           } else {
-            toast.success('Gasto Registrado exitosamente');
+            toast.success('Movimiento registrado exitosamente');
             form.reset({
               type: PAYMENT_TYPE[0],
               paymentMethod: PAYMENT_METHOD[0],
@@ -66,11 +68,11 @@ export function CreateOtherPaymentDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      {controlledOpen === undefined && <DialogTrigger asChild>
         <Button size="sm" data-tour="varios-create" onClick={() => setOpen(true)}>
           Crear
         </Button>
-      </DialogTrigger>
+      </DialogTrigger>}
 
       <DialogContent className="max-w-md sm:max-w-lg">
         <DialogHeader className="items-center">
@@ -88,7 +90,7 @@ export function CreateOtherPaymentDialog() {
                     <Select
                       disabled={isPending}
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona un tipo" />
@@ -113,7 +115,7 @@ export function CreateOtherPaymentDialog() {
                     <Select
                       disabled={isPending}
                       onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      value={field.value}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona una forma de pago" />

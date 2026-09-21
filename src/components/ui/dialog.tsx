@@ -6,6 +6,7 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useVisualViewportCenter } from "@/hooks/use-visual-viewport-center"
+import { usePathname } from "next/navigation"
 
 const Dialog = DialogPrimitive.Root
 const DialogTrigger = DialogPrimitive.Trigger
@@ -35,6 +36,7 @@ const DialogContent = React.forwardRef<
   // mantiene el diálogo centrado contra lo que realmente se ve en pantalla, en vez de quedar
   // corrido/con contenido tapado cada vez que alguien hace zoom o el teclado cambia el viewport.
   const center = useVisualViewportCenter(true)
+  const admin = usePathname()?.startsWith("/admin")
 
   return (
     <DialogPortal>
@@ -50,6 +52,7 @@ const DialogContent = React.forwardRef<
           "data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
           className
         )}
+        data-admin-dialog={admin ? "" : undefined}
         style={
           center
             ? { left: center.left, top: center.top, transform: "translate(-50%, -50%)", ...style }
@@ -60,7 +63,7 @@ const DialogContent = React.forwardRef<
       {/* Caution-tape strip at top of every dialog */}
       <div className="gm-stripes h-[6px] w-full" aria-hidden />
 
-      <div className="grid gap-4 p-6 overflow-y-auto">{children}</div>
+      <div data-dialog-body className="grid min-h-0 min-w-0 gap-4 p-6 overflow-y-auto">{children}</div>
 
       <DialogPrimitive.Close
         className="absolute right-3 top-[18px] inline-flex h-8 w-8 items-center justify-center rounded-xl border border-border text-muted-foreground opacity-80 ring-offset-background transition-all duration-200 hover:rotate-90 hover:scale-100 hover:bg-gm-surface-3 hover:text-foreground hover:opacity-100 active:scale-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"

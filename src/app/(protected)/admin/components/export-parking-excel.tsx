@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 
 interface ParkingTypeLike {
   id: string;

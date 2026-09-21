@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { FileText, Printer } from 'lucide-react';
 import { es } from 'date-fns/locale';
+import { CompactPagination } from '@/components/compact-pagination';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -33,18 +34,32 @@ const ars = (n: number) =>
     style: 'currency', currency: 'ARS', maximumFractionDigits: 0,
   }).format(n);
 
+const hora = (iso: string) =>
+  dayjs(iso).tz('America/Argentina/Buenos_Aires').format('HH:mm');
+
 export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [boxData, setBoxData] = useState<BoxList | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [turnPage, setTurnPage] = useState(0);
+  const turns = boxData?.turnosDelDia ?? [];
+  const currentTurnPage = Math.min(turnPage, Math.max(0, Math.ceil(turns.length / 3) - 1));
+  const requestId = useRef(0);
   const { data: session } = useSession();
 
   const fetchData = async (date: Date) => {
+    const id = ++requestId.current;
+    setLoading(true);
+    setTurnPage(0);
+    setBoxData(null);
+    setError(null);
     try {
       const formattedDay = dayjs(date)
         .tz('America/Argentina/Buenos_Aires')
         .format('YYYY-MM-DD');
       const response = await findBoxByDate(formattedDay, session?.token);
+      if (id !== requestId.current) return;
       if (!response || !response.data) {
         setError('No hay datos disponibles para la fecha seleccionada.');
         setBoxData(null);
@@ -53,14 +68,19 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
         setBoxData(response.data);
       }
     } catch (err) {
+      if (id !== requestId.current) return;
       console.error(err);
       setError('Ocurrió un error al obtener los datos.');
       setBoxData(null);
+    } finally {
+      if (id === requestId.current) setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(selectedDate); }, [selectedDate]);
-  useEffect(() => { if (open) fetchData(selectedDate); }, [open]);
+  useEffect(() => {
+    if (open) fetchData(selectedDate);
+    return () => { requestId.current++; };
+  }, [open, selectedDate, session?.token]);
 
 
   const handlePrintPdf = async () => {
@@ -82,16 +102,16 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md max-h-[90dvh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <span className="grid size-9 place-items-center rounded-md border border-gm-yellow/40 bg-gm-yellow/15 text-gm-yellow">
               <FileText className="size-4" />
             </span>
             <div>
-              <DialogTitle>Planilla de caja</DialogTitle>
+              <DialogTitle>Planilla diaria de caja</DialogTitle>
               <DialogDescription className="mt-0.5">
-                Elegí el día para ver y exportar la planilla.
+                Consultá los movimientos de una fecha. Imprimir esta planilla no cierra ningún turno.
               </DialogDescription>
             </div>
           </div>
@@ -139,14 +159,46 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
           {boxData && (
             <div className="rounded-md border border-border bg-gm-surface-2 p-3">
               <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                Total recaudado
+                Efectivo neto del día
               </div>
               <div className="gm-display gm-tnum mt-1 text-[24px] font-bold text-gm-yellow leading-none">
                 {ars(boxData.totalPrice)}
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">Entradas menos salidas de efectivo de este día. No incluye el fondo inicial ni los retiros al cerrar: no es el dinero disponible en el cajón.</p>
             </div>
           )}
 
+          {boxData && boxData.turnosDelDia && boxData.turnosDelDia.length > 0 && (
+            <div className="rounded-md border border-border bg-gm-surface-2 p-3 space-y-2">
+              <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                Efectivo del día por turno
+              </div>
+              {turns.slice(currentTurnPage * 3, (currentTurnPage + 1) * 3).map((t) => (
+                <div key={t.turnoId ?? 'sin-turno'} className="flex items-start justify-between gap-3 border-t border-border/60 pt-2 first:border-0 first:pt-0">
+                  <div className="min-w-0">
+                    <div className="truncate text-[12.5px] font-semibold text-foreground">
+                      {t.turno
+                        ? `${t.turno.nombre} · ${t.turno.usuarioApertura ? `${t.turno.usuarioApertura.firstName} ${t.turno.usuarioApertura.lastName}` : 'Operador no disponible'}`
+                        : 'Sin turno asignado'}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {hora(t.desde)} – {hora(t.hasta)} · {t.movimientos} {t.movimientos === 1 ? 'movimiento' : 'movimientos'}
+                      {t.abarcaOtrosDias && ' · abarca otras fechas'}
+                    </div>
+                  </div>
+                  <div className="gm-mono gm-tnum shrink-0 text-[13px] font-semibold text-foreground">
+                    {ars(t.efectivoDelDia)}
+                  </div>
+                </div>
+              ))}
+              <CompactPagination page={currentTurnPage} total={turns.length} pageSize={3} onChange={setTurnPage} />
+              <p className="border-t border-border/60 pt-2 text-[11px] leading-snug text-muted-foreground">
+                Un día puede incluir varios turnos, y un turno puede abarcar varios días. El administrador consulta los cierres en Historial de turnos.
+              </p>
+            </div>
+          )}
+
+          {loading && <p role="status" className="text-sm text-muted-foreground">Cargando movimientos del día…</p>}
           {error && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-[#F08775]">
               {error}
@@ -155,8 +207,8 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
-          <Button onClick={handlePrintPdf} disabled={!boxData}>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cerrar</Button>
+          <Button onClick={handlePrintPdf} disabled={!boxData || loading}>
             <Printer className="size-4" />
             Imprimir planilla
           </Button>

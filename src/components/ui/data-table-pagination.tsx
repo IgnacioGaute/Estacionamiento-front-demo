@@ -30,7 +30,12 @@ export function DataTablePagination<TData>({
           onValueChange={(value) => table.setPageSize(Number(value))}
         >
           <SelectTrigger className="h-7 w-[58px] rounded-md border-border bg-gm-surface-2 text-[12px] gm-mono">
-            <SelectValue placeholder={table.getState().pagination.pageSize} />
+            {/* El valor va como hijo, no como placeholder. Con <SelectValue> sin hijos, Radix
+                portea el texto del ítem elegido hacia el trigger, y cuando la tabla se desmonta
+                (cambiar de pestaña, navegar) React intenta remover ese nodo de un padre que ya
+                no existe: «removeChild: The node to be removed is not a child of this node».
+                Pasarle hijos activa valueNodeHasChildren y Radix no crea el portal. */}
+            <SelectValue>{table.getState().pagination.pageSize}</SelectValue>
           </SelectTrigger>
           <SelectContent side="top" className="min-w-[58px]">
             {[5, 10, 20, 30, 50].map((pageSize) => (

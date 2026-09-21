@@ -1,85 +1,16 @@
 'use server';
+import { newPasswordSchema, NewPasswordSchemaType } from '@/schemas/auth/new-password.schema';
 
-import {
-  newPasswordSchema,
-  NewPasswordSchemaType,
-} from '@/schemas/auth/new-password.schema';
-import {
-  deletePasswordResetToken,
-  getPasswordResetTokenByToken,
-} from '@/services/auth.service';
-import { getUserByEmail, updateUser } from '@/services/users.service';
-
-export async function newPasswordAction(
-  values: NewPasswordSchemaType,
-  token: string | null,
-) {
+export async function newPasswordAction(values: NewPasswordSchemaType, token: string | null) {
+  const parsed = newPasswordSchema.safeParse(values);
+  if (!parsed.success || !token) return { error: 'Revisá la contraseña y el enlace de recuperación.' };
   try {
-    if (!token) {
-      return {
-        error: 'Token no válido',
-      };
-    }
-
-    const validatedForm = newPasswordSchema.safeParse(values);
-
-    if (!validatedForm.success) {
-      console.log(validatedForm.error);
-      return {
-        error: 'Contraseña no válida',
-      };
-    }
-
-    const { password } = validatedForm.data;
-
-    const existingToken = await getPasswordResetTokenByToken(
-      token,
-      process.env.API_SECRET_TOKEN!,
-    );
-
-    if (!existingToken) {
-      return {
-        error: 'Token no encontrado!',
-      };
-    }
-
-    const hasExpired = new Date(existingToken.expiresAt) < new Date();
-
-    if (hasExpired) {
-      return {
-        error: 'Token expirado!',
-      };
-    }
-
-    const existingUser = await getUserByEmail(
-      existingToken.email,
-      process.env.API_SECRET_TOKEN!,
-    );
-
-    if (!existingUser) {
-      return {
-        error: 'Usuario no encontrado!',
-      };
-    }
-
-    await updateUser(
-      existingUser.id,
-      {
-        password,
-      },
-      process.env.API_SECRET_TOKEN!,
-    );
-
-    await deletePasswordResetToken(
-      existingToken.id,
-      process.env.API_SECRET_TOKEN!,
-    );
-
-    return {
-      success: 'Contraseña actualizada!',
-    };
-  } catch (error) {
-    console.error('Error al actualizar la contraseña:', error);
-    throw error;
-  }
+    const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/auth/reset-password', {
+      method: 'POST', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + process.env.API_SECRET_TOKEN },
+      body: JSON.stringify({ token, password: parsed.data.password }),
+    });
+    if (!response.ok) return { error: 'El enlace no es válido o venció. Pedí uno nuevo.' };
+    return { success: 'Contraseña actualizada. Volvé a iniciar sesión.' };
+  } catch { return { error: 'No se pudo conectar. Intentá nuevamente.' }; }
 }

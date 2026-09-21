@@ -1,72 +1,14 @@
 'use server';
+import { auth } from '@/auth';
+import { registerSchema, RegisterSchemaType } from '@/schemas/auth/register.schema';
+import { createUser } from '@/services/users.service';
 
-import {
-  registerSchema,
-  RegisterSchemaType,
-} from '@/schemas/auth/register.schema';
-import { generateVerificationToken } from '@/services/auth.service';
-import { createUser, getUserByEmail } from '@/services/users.service';
-
-export async function registerAction({
-  values,
-  isVerified,
-}: {
-  values: RegisterSchemaType;
-  isVerified: boolean;
-}) {
-  try {
-    const validatedFields = registerSchema.safeParse(values);
-
-    if (!validatedFields.success) {
-      console.log(validatedFields.error);
-      return { error: 'Invalid fields' };
-    }
-
-    const { email, firstName, lastName, password, username } =
-      validatedFields.data;
-
-    const existingUser = await getUserByEmail(
-      email,
-      process.env.API_SECRET_TOKEN!,
-    );
-
-    if (existingUser) {
-      return { error: 'El email ya está en uso' };
-    }
-
-    const userData = {
-      firstName,
-      lastName,
-      username,
-      email,
-      password,
-      role: 'USER' as const,
-    };
-
-    const user = await createUser(userData, process.env.API_SECRET_TOKEN!);
-
-    if (!user) {
-      return { error: 'Error al crear usuario' };
-    }
-
-    if (isVerified) {
-      return { success: 'Usuario creado' };
-    }
-
-    const verificationToken = await generateVerificationToken(
-      email,
-      process.env.API_SECRET_TOKEN!,
-    );
-
-    if (!verificationToken) {
-      return { error: 'No se pudo enviar el email de confirmación' };
-    }
-
-    return {
-      success: 'Email de confirmación enviado. Revisa tu bandeja de entrada.',
-    };
-  } catch (error) {
-    console.error(error);
-    return { error: 'Error al registrar usuario' };
-  }
+export async function registerAction({ values }: { values: RegisterSchemaType; isVerified: boolean }) {
+  const session = await auth();
+  if (session?.user.role !== 'ADMIN') return { error: 'La cuenta debe crearla el administrador de tu empresa.' };
+  const parsed = registerSchema.safeParse(values);
+  if (!parsed.success || !parsed.data.password) return { error: 'Revisá los datos y la contraseña.' };
+  const { confirmPassword, ...data } = parsed.data;
+  const user = await createUser({ ...data, role: 'USER' });
+  return user ? { success: 'Usuario creado en tu empresa.' } : { error: 'No se pudo crear el usuario.' };
 }

@@ -461,6 +461,16 @@
   0%, 100% { border-color: hsl(var(--gm-line)); }
   50%       { border-color: hsl(var(--gm-yellow) / 0.7); }
 }
+@keyframes gm-page-flip-next {
+  from { opacity: 0; transform: rotateY(-100deg); }
+  60%  { opacity: 1; }
+  to   { opacity: 1; transform: rotateY(0deg); }
+}
+@keyframes gm-page-flip-prev {
+  from { opacity: 0; transform: rotateY(100deg); }
+  60%  { opacity: 1; }
+  to   { opacity: 1; transform: rotateY(0deg); }
+}
 @keyframes gm-chippulse {
   0%, 100% { box-shadow: 0 0 0 3px hsl(46 92% 53% / .45), 0 0 14px 2px hsl(46 92% 53% / .5); }
   50%       { box-shadow: 0 0 0 6px hsl(46 92% 53% / .18), 0 0 20px 4px hsl(46 92% 53% / .7); }
@@ -488,3 +498,184 @@ html:has(body[data-scroll-locked]) {
   overflow: hidden;
 }
 
+
+/* =========================================================
+   AVISOS (toast) — tarjeta con mecha de tiempo
+   Sonner queda "unstyled": pone la mecánica (pila, temporizador, arrastre) y todo el
+   aspecto vive acá. Medidas y curvas son las del componente original, no aproximadas.
+   La duración de la mecha la inyecta cada aviso como --st-dur (ver src/lib/toast.ts).
+   ========================================================= */
+
+[data-sonner-toaster].toaster {
+  /* Sonner impone su propia pila de fuentes; usamos la de la app. */
+  font-family: inherit;
+}
+
+[data-sonner-toast].st-toast {
+  --st-bg: #27272a;
+  --st-ink: #f5f5f5;
+  --st-fuse: #f5a524;
+  --st-fuse-h: 2px;
+  --st-dur: 4000ms;
+  --st-ease: cubic-bezier(0.23, 1, 0.32, 1);
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: var(--width, 356px);
+  padding: 16px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--st-bg);
+  color: var(--st-ink);
+  /* Sin borde y con sombra suave: la tarjeta se apoya, no se recorta. */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 4px 12px rgba(0, 0, 0, .1);
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: grab;
+  user-select: none;
+  /* Entra subiendo desde abajo en 400ms; la opacidad llega antes (400 × .6). */
+  transition: transform 400ms var(--st-ease), opacity 240ms ease,
+              height 400ms var(--st-ease), box-shadow 200ms;
+}
+
+[data-sonner-toast].st-toast:active { cursor: grabbing; }
+
+/* Al salir el recorrido es más corto que al entrar (400 × .7, opacidad 400 × .5). */
+[data-sonner-toast].st-toast[data-removed='true'] {
+  transition: transform 280ms var(--st-ease), opacity 200ms ease,
+              height 400ms var(--st-ease);
+}
+
+.st-toast [data-icon] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  color: var(--st-fuse);
+}
+.st-toast [data-icon] > svg { width: 18px; height: 18px; margin: 0; }
+
+.st-toast [data-content] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.st-toast [data-title] { font-weight: 500; line-height: 1.5; }
+.st-toast [data-description] {
+  color: color-mix(in srgb, var(--st-ink) 66%, transparent);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.st-toast [data-button] {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  /* Colores invertidos respecto de la tarjeta: es lo único que pide atención. */
+  background: var(--st-ink);
+  color: var(--st-bg);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: transform 160ms var(--st-ease), background-color 160ms ease, opacity 160ms ease;
+}
+.st-toast [data-button]:hover { opacity: .88; }
+.st-toast [data-button]:active { transform: scale(.97); }
+.st-toast [data-cancel] {
+  background: color-mix(in srgb, var(--st-ink) 14%, transparent);
+  color: var(--st-ink);
+}
+
+/* La cruz va en la fila, no flotando en la esquina como la trae sonner. */
+.st-toast [data-close-button] {
+  position: relative;
+  inset: auto;
+  transform: none;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 160ms var(--st-ease), background-color 160ms ease;
+}
+/* 24px es chico para el dedo: 8px invisibles alrededor lo llevan a 40. */
+.st-toast [data-close-button]::before { content: ''; position: absolute; inset: -8px; }
+.st-toast [data-close-button]:hover { background: color-mix(in srgb, var(--st-ink) 10%, transparent); }
+.st-toast [data-close-button]:active { transform: scale(.97); }
+.st-toast [data-close-button] svg { width: 14px; height: 14px; }
+
+/* La mecha. No es una barra maciza: se apaga en las dos puntas, por eso parece arder.
+   Se consume con scaleX desde la izquierda, que corre en la GPU, en vez de achicar el ancho. */
+.st-toast [data-content]::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--st-fuse-h);
+  background: linear-gradient(90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--st-fuse) 18%, transparent) 9%,
+    color-mix(in srgb, var(--st-fuse) 50%, transparent) 18%,
+    color-mix(in srgb, var(--st-fuse) 84%, transparent) 28%,
+    var(--st-fuse) 38%, var(--st-fuse) 62%,
+    color-mix(in srgb, var(--st-fuse) 84%, transparent) 72%,
+    color-mix(in srgb, var(--st-fuse) 50%, transparent) 82%,
+    color-mix(in srgb, var(--st-fuse) 18%, transparent) 91%,
+    transparent 100%);
+  transform-origin: left center;
+  pointer-events: none;
+  animation: st-arder var(--st-dur) linear forwards;
+}
+@keyframes st-arder {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+/* Sonner frena el temporizador mientras el mouse está encima; la mecha lo acompaña. */
+[data-sonner-toaster]:hover .st-toast [data-content]::after { animation-play-state: paused; }
+/* Un aviso de carga no tiene vencimiento: no hay mecha que consumir. */
+.st-toast[data-type='loading'] [data-content]::after { display: none; }
+
+/* Lo único que cambia entre tipos es el color de la mecha y del icono. */
+.st-toast[data-type='success'] { --st-fuse: #5FBF6A; }
+.st-toast[data-type='error']   { --st-fuse: #E8734B; }
+.st-toast[data-type='warning'] { --st-fuse: #F5A524; }
+
+/* Si la pila queda colapsada, los de atrás se ven como tarjetas vacías (sonner hace lo
+   mismo, pero esa regla suya se va junto con el resto al usar unstyled). */
+[data-sonner-toast].st-toast[data-expanded='false'][data-front='false'] > * { opacity: 0; }
+
+@media (max-width: 600px) {
+  /* Sonner ya lleva el margen a 16px; el aviso toma el ancho que queda. */
+  [data-sonner-toaster] [data-sonner-toast].st-toast {
+    width: calc(100% - var(--mobile-offset-left, 16px) * 2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toast].st-toast { transition: opacity 200ms ease; }
+  .st-toast [data-content]::after { animation: none; }
+  .st-toast [data-button]:active,
+  .st-toast [data-close-button]:active { transform: none; }
+}

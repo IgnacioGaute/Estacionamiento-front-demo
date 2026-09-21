@@ -21,7 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { createCustomerAction } from '@/actions/customers/create-customer.action';
 import { customerSchema, CustomerSchemaType } from '@/schemas/customer.schema';
 import { OwnerParkingType } from '@/types/owner-parking-type';

@@ -3,12 +3,14 @@
 import {
   ArrowLeft,
   Banknote,
+  Building2,
   LayoutDashboard,
   ParkingCircle,
   Repeat,
   Shield,
   Ticket,
   User,
+  Wallet,
 } from 'lucide-react';
 
 import {
@@ -28,19 +30,30 @@ export function AdminNavbarSidebar({
 }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
   const role = session?.user?.role?.toUpperCase() ?? 'USER';
-  const isAdmin = role === 'ADMIN';
+  const isSuperAdmin = role === 'SUPER_ADMIN';
+  const isAdmin = role === 'ADMIN' || isSuperAdmin;
+
+  // El super admin administra la plataforma, no opera un estacionamiento: ve únicamente
+  // Empresas. El acceso a los datos de cada playa existe en el backend, pero por ahora no se
+  // muestra acá para no mezclar los dos trabajos.
+  const superAdminNavItems = [
+    { title: 'Empresas', url: '/admin/empresas', icon: <Building2 /> },
+  ];
 
   const allNavItems = [
     { title: 'Dashboard',               url: '/admin/dashboard',              icon: <LayoutDashboard /> },
     { title: 'Usuarios',                url: '/admin/users',                  icon: <User /> },
     { title: 'Tickets / Precios',       url: '/admin/tickets',                icon: <Ticket /> },
     { title: 'Frecuentes',              url: '/admin/frecuentes',             icon: <Repeat /> },
-    { title: 'Tipo de Estacionamiento', url: '/admin/parking-type',           icon: <ParkingCircle /> },
+    // { title: 'Tipo de Estacionamiento', url: '/admin/parking-type',           icon: <ParkingCircle /> },
+    // Ojo con el orden: los no-admin reciben allNavItems.slice(-2), así que sólo pueden quedar
+    // «Varios» y «Volver» al final. Caja y turnos muestra el arqueo de cada operador.
+    { title: 'Historial de turnos',     url: '/admin/caja',                   icon: <Wallet /> },
     { title: 'Varios',                  url: '/admin/other-payments',         icon: <Banknote /> },
     { title: 'Volver',                  url: '/tickets',                       icon: <ArrowLeft /> },
   ];
 
-  const navItems = isAdmin ? allNavItems : allNavItems.slice(-2);
+  const navItems = isSuperAdmin ? superAdminNavItems : isAdmin ? allNavItems : allNavItems.slice(-1);
 
   return (
     <Sidebar
@@ -51,7 +64,7 @@ export function AdminNavbarSidebar({
       {/* Stripe that continues from the topbar */}
       <div className="gm-stripes h-[3px] w-full shrink-0" aria-hidden />
 
-      <SidebarHeader className="h-16 border-b border-border bg-gm-surface flex items-center justify-center px-2">
+      <SidebarHeader className="h-[75px] shrink-0 border-b border-border bg-gm-surface flex items-center justify-center px-2">
         <SidebarTrigger className="h-8 w-8 rounded-md hover:bg-gm-surface-2 hover:text-foreground" />
       </SidebarHeader>
 
@@ -70,7 +83,7 @@ export function AdminNavbarSidebar({
             Modo
           </div>
           <div className="gm-display mt-0.5 text-[12px] font-bold text-gm-yellow">
-            Administrador
+            {isSuperAdmin ? 'Super administrador' : 'Administrador'}
           </div>
         </div>
         <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center py-0.5">

@@ -1,20 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { JellyRadio } from "@/components/ui/jelly-radio";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TicketRegistration } from "@/types/ticket-registration.type";
 import { Ticket } from "@/types/ticket.type";
 import { TicketPriceBracket } from "@/types/ticket-price-bracket.type";
-import { CloseSummary } from "@/services/tickets.service";
+import { TicketRegistrationForDay } from "@/types/ticket-registration-for-day.type";
+import { CloseSummary, TicketSchedule } from "@/services/tickets.service";
 import { getCloseSummaryAction } from "@/actions/tickets/get-close-summary.action";
 import ScannerButton from "../../components/scanner-button";
+import { DayRegistrationsPanel } from "./day-registrations-panel";
+import { CreateTicketRegistrationDialog } from "../tickets-days-or-weeks/create-ticket-registration-for-day-dialog";
+import { ActiveDayTicketDialog } from "./active-day-ticket-dialog";
+import { PriceBracketMapDialog } from "./price-bracket-map-dialog";
 import { AdvancePaymentDialog } from "./advance-payment-dialog";
 import { ActiveTicketsList } from "./active-tickets-list";
 import { EntryByPlateDialog } from "./entry-by-plate-dialog";
@@ -42,12 +49,14 @@ import {
   Banknote,
   ArrowLeft,
   Search,
+  Settings,
 } from "lucide-react";
 
 const OVERDUE_CHECK_INTERVAL_MS = 20_000;
+const money = (value: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(value);
 
 // Desactivado a pedido — se dejó el componente sin borrar para reactivarlo después.
-const TURNO_BAR_ENABLED = false;
+const TURNO_BAR_ENABLED = true;
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -71,15 +80,57 @@ const TOUR_STEPS = [
   },
 ];
 
+// Fecha estimada de vencimiento: fecha de alta + la duración comprada. Cada tipo usa SOLO los
+// campos que le corresponden — mezclar semanas/días de un tipo que no los usa da una fecha mal.
+function dayRegistrationDueDate(r: TicketRegistrationForDay): Date | null {
+  if (!r.dateNow) return null;
+  const dueDate = new Date(r.dateNow);
+  if (r.ticketTimeType === "MES" || r.ticketTimeType === "MES_Y_DIA") {
+    dueDate.setMonth(dueDate.getMonth() + (r.months ?? 0));
+    if (r.ticketTimeType === "MES_Y_DIA") {
+      dueDate.setDate(dueDate.getDate() + (r.days ?? 0));
+    }
+  } else {
+    const totalDays =
+      r.ticketTimeType === "SEMANA"
+        ? (r.weeks ?? 0) * 7
+        : r.ticketTimeType === "SEMANA_Y_DIA"
+          ? (r.weeks ?? 0) * 7 + (r.days ?? 0)
+          : r.days ?? 0; // DIA
+    dueDate.setDate(dueDate.getDate() + totalDays);
+  }
+  return dueDate;
+}
+
+// Un abono por día/semana/mes sigue "en el playón" mientras no se haya registrado su salida —
+// pasar la fecha comprada NO lo saca de la lista ni cambia lo que se cobra (este flujo no tiene
+// ninguna conexión con la escalera de tarifas por hora): solo queda marcado como vencido.
+function isDayRegistrationActive(r: TicketRegistrationForDay) {
+  return !r.retired;
+}
+
+function isDayRegistrationOverdue(r: TicketRegistrationForDay) {
+  if (r.retired) return false;
+  const dueDate = dayRegistrationDueDate(r);
+  if (!dueDate) return false;
+  return dueDate.getTime() < new Date().setHours(0, 0, 0, 0);
+}
+
 export default function CardTicket({
   initialRegistrations,
   ticketCatalog,
   priceBrackets,
+  registrationsForDay,
+  schedule,
+  isAdmin,
   barcodeTicketsEnabled,
 }: {
   initialRegistrations: TicketRegistration[];
   ticketCatalog: Ticket[];
   priceBrackets: TicketPriceBracket[];
+  registrationsForDay: TicketRegistrationForDay[];
+  schedule: TicketSchedule | null;
+  isAdmin: boolean;
   barcodeTicketsEnabled: boolean;
 }) {
   const [registrations, setRegistrations] =
@@ -105,11 +156,37 @@ export default function CardTicket({
   // Solo se usa por debajo de `sm` — de `sm` para arriba las dos columnas se ven juntas como
   // siempre y esto queda sin efecto.
   const [mobileTab, setMobileTab] = useState<"ingreso" | "activos">("ingreso");
-  const isDialogOpen = advanceTarget !== null || closePanelOpen;
+  const [openDayRegistrationId, setOpenDayRegistrationId] = useState<string | null>(null);
+  const [sidebarTab, setSidebarTab] = useState<"hourly" | "daily">("hourly");
+  const [flipDirection, setFlipDirection] = useState<"next" | "prev">("next");
+  // El diálogo de alta por día/semana/mes también tiene que silenciar el lector USB mientras
+  // está abierto — si no, tipear la patente dispara el escáner.
+  const [dayDialogOpen, setDayDialogOpen] = useState(false);
+  const isDialogOpen = advanceTarget !== null || closePanelOpen || dayDialogOpen;
+
+  const selectSidebarTab = (tab: "hourly" | "daily") => {
+    if (tab === sidebarTab) return;
+    setFlipDirection(tab === "daily" ? "next" : "prev");
+    setSidebarTab(tab);
+  };
+
+  const activeDayRegistrations = registrationsForDay.filter(isDayRegistrationActive);
+  const overdueDayRegistrations = activeDayRegistrations.filter(isDayRegistrationOverdue);
+  const openDayRegistration =
+    registrationsForDay.find((r) => r.id === openDayRegistrationId) ?? null;
   const prevLatestIdRef = useRef<string | null>(null);
   const selectedDetailRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
-  const tour = useTour(TOUR_STEPS);
+  // En celular cada sección vive en una pestaña: el tour tiene que abrir la que
+  // corresponde antes de cada paso, si no el foco cae sobre algo oculto.
+  const tourSteps = useMemo(
+    () => TOUR_STEPS.map((step) => ({
+      ...step,
+      onEnter: () => setMobileTab(step.key === "occupancy" ? "activos" : "ingreso"),
+    })),
+    [],
+  );
+  const tour = useTour(tourSteps);
 
   // router.refresh() re-renders the server-fetched props in place — sync
   // them into state so the update actually shows up (state initializers only
@@ -252,579 +329,89 @@ export default function CardTicket({
     (a, b) => parseInt(a.codeBar, 10) - parseInt(b.codeBar, 10)
   );
   const activeTickets = sortedCatalog.filter((t) => isTicketActive(t, registrations));
+  // El número del tab "Por hora" cuenta estadías abiertas (patente + código de barras), que es
+  // lo que lista ActiveTicketsList — no los casilleros del catálogo.
+  const activeHourlyCount = visibleRegistrations.filter(
+    (r) => !r.departureTime && !r.departureDay,
+  ).length;
 
   return (
     <>
-      {/* Tour help button */}
-      <div className="flex justify-end mb-2 max-w-[1180px] mx-auto">
-        {tour.node}
-      </div>
-
-      {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="max-w-[1180px] mx-auto mb-8 [@media(max-height:850px)]:mb-4">
-        <nav className="flex items-center gap-1.5 gm-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted-foreground mb-2 [@media(max-height:850px)]:mb-1">
-          <span>Estacionamiento</span>
-          <span className="opacity-50">/</span>
-          <span>Operación</span>
-          <span className="opacity-50">/</span>
-          <span className="text-foreground">Ingreso</span>
-        </nav>
-        <div className="flex items-end justify-between gap-4 flex-wrap border-b border-border pb-5 [@media(max-height:850px)]:pb-2.5">
-          <div>
-            <h1 className="gm-display text-[26px] md:text-[30px] font-bold tracking-[0.01em] text-foreground [@media(max-height:850px)]:text-[20px]">
-              Ingreso de vehículos
-            </h1>
-            <p className="mt-1.5 text-[13.5px] text-muted-foreground max-w-[520px] [@media(max-height:850px)]:hidden">
-              Identificá cada auto por patente o por ticket. Buscá y cerrá cualquiera desde el panel de la derecha.
-            </p>
+      <header className="mx-auto mb-5 max-w-[1180px] space-y-4 sm:mb-7">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="mb-1 text-xs font-medium text-muted-foreground">Estacionamiento · {todayStr}</p>
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Tickets y patentes</h1>
+            <p className="mt-2 text-sm text-muted-foreground">Registrá una entrada o cobrá una salida.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 gm-mono text-[11px] text-muted-foreground">
-              <span
-                className="h-[7px] w-[7px] rounded-full bg-[hsl(120_35%_55%)]"
-                style={{ animation: "gm-blink 1.4s steps(2, jump-none) infinite" }}
-              />
-              Turno activo · {todayStr}
-            </div>
-            {TURNO_BAR_ENABLED && <TurnoBar />}
-          </div>
+          <div className="shrink-0">{tour.node}</div>
         </div>
-      </div>
-
-      {/* Selector de pestaña — solo en mobile, arriba de las dos columnas. De `sm` para
-          arriba queda oculto y las dos columnas se muestran juntas como siempre. */}
-      <div className="max-w-[1180px] mx-auto sm:hidden mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-border bg-card/40 p-1.5">
-        <button
-          type="button"
-          onClick={() => setMobileTab("ingreso")}
-          className={cn(
-            "gm-display h-11 rounded-xl text-[12.5px] font-semibold transition-colors",
-            mobileTab === "ingreso" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground",
-          )}
-        >
-          Ingreso
-        </button>
-        <button
-          type="button"
-          onClick={() => setMobileTab("activos")}
-          className={cn(
-            "gm-display h-11 rounded-xl text-[12.5px] font-semibold transition-colors",
-            mobileTab === "activos" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground",
-          )}
-        >
-          Activos
-        </button>
-      </div>
-
-      <div className="max-w-[1180px] mx-auto flex gap-7 [@media(max-height:850px)]:gap-4 flex-wrap items-start">
-        {/* ── Main column ──────────────────────────────────────── */}
-        <div className={cn("flex-1 min-w-0 sm:min-w-[320px]", mobileTab !== "ingreso" && "hidden sm:block")}>
-          {/* El lector USB sigue escuchando en segundo plano — sin UI visible, el ingreso
-              manual de ticket ahora vive dentro del diálogo "Registrar entrada" de abajo. */}
-          {barcodeTicketsEnabled && (
-            <ScannerButton
-              hideControls
-              isDialogOpen={isDialogOpen}
-              onScanningChange={setIsScanning}
-              onTicketRegistered={() => router.refresh()}
-            />
-          )}
-
-          <div className="mb-6 [@media(max-height:850px)]:mb-3 flex flex-col sm:flex-row flex-wrap gap-3.5">
-            <EntryByPlateDialog
-              ticketEntryEnabled={barcodeTicketsEnabled}
-              onGoToRegistration={(id) => {
-                setClosePanelTargetId(id);
-                setClosePanelOpen(true);
-              }}
-              onTicketRegistered={() => router.refresh()}
-              triggerRef={(el) => tour.refFor("entrada")(el)}
-              triggerStyle={tour.isActive("entrada") ? { ...tourTransition, ...tourHighlight } : tourTransition}
-            />
-            {/* En mobile este botón vive en la pestaña "Activos" (junto al buscador tiene más
-                sentido ahí) — de `sm` para arriba no hay pestañas y queda acá como siempre. */}
-            <button
-              onClick={() => {
-                setClosePanelTargetId(null);
-                setClosePanelOpen(true);
-              }}
-              className="hidden sm:inline-flex sm:w-auto sm:min-w-[260px] h-[84px] items-center gap-3 rounded-[24px] border border-gm-line-strong bg-card/40 px-6 text-left backdrop-blur-xl transition-all duration-300 hover:border-gm-orange/50 hover:bg-gm-orange/10"
-            >
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-gm-line-strong text-muted-foreground">
-                <Search className="size-[18px]" />
-              </span>
-              <span className="flex flex-col gap-0.5">
-                <span className="gm-display text-[14px] font-semibold text-foreground">Buscar y cerrar ticket</span>
-                <span className="text-[11.5px] font-normal normal-case text-muted-foreground">Patente o código</span>
-              </span>
-            </button>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-secondary text-gm-yellow"><Car className="size-5" /></span>
+            <div><p className="text-sm font-medium">{activeHourlyCount + activeDayRegistrations.length} vehículos activos</p><p className="text-xs text-muted-foreground">En esta playa</p></div>
           </div>
+          {TURNO_BAR_ENABLED && <TurnoBar />}
+        </div>
+      </header>
+
+      <div className="mx-auto mb-4 grid max-w-[1180px] grid-cols-2 gap-1 rounded-2xl border border-border bg-card p-1 sm:hidden" aria-label="Secciones de tickets">
+        <button type="button" aria-pressed={mobileTab === "ingreso"} onClick={() => setMobileTab("ingreso")} className={cn("min-h-12 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileTab === "ingreso" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground")}>Entrada y salida</button>
+        <button type="button" aria-pressed={mobileTab === "activos"} onClick={() => setMobileTab("activos")} className={cn("min-h-12 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileTab === "activos" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground")}>Activos <span className="ml-1 rounded-md bg-foreground/10 px-1.5 py-0.5 text-xs">{activeHourlyCount + activeDayRegistrations.length}</span></button>
+      </div>
+
+      <div className="mx-auto flex max-w-[1180px] flex-wrap items-start gap-5 lg:gap-7">
+        <div className={cn("w-full min-w-0 flex-1 sm:min-w-[320px]", mobileTab !== "ingreso" && "hidden sm:block")}>
+          {barcodeTicketsEnabled && <ScannerButton hideControls isDialogOpen={isDialogOpen} onScanningChange={setIsScanning} onTicketRegistered={() => router.refresh()} />}
+
+          <section aria-label="Registrar entradas y salidas" className="mb-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <h2 className="mb-3 text-base font-semibold">¿Qué necesitás hacer?</h2>
+            <div className="grid gap-3 xl:grid-cols-2">
+              <EntryByPlateDialog ticketEntryEnabled={barcodeTicketsEnabled} onGoToRegistration={(id) => { setClosePanelTargetId(id); setClosePanelOpen(true); }} onTicketRegistered={() => router.refresh()} triggerRef={(el) => tour.refFor("entrada")(el)} triggerStyle={tour.isActive("entrada") ? { ...tourTransition, ...tourHighlight } : tourTransition} />
+              <button type="button" onClick={() => { setClosePanelTargetId(null); setClosePanelOpen(true); }} className="flex min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-gm-line-strong bg-secondary px-4 py-4 text-left transition-colors hover:border-gm-yellow/60 hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-background text-gm-yellow"><Banknote className="size-5" /></span>
+                <span className="min-w-0"><span className="block text-base font-semibold">Cobrar salida</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Buscá la patente o el ticket</span></span>
+              </button>
+            </div>
+            {barcodeTicketsEnabled && <p role="status" className="mt-3 flex items-center gap-2 text-xs leading-relaxed text-muted-foreground"><Barcode className={cn("size-4 shrink-0", isScanning && "text-gm-yellow")} />{isScanning ? "Leyendo ticket…" : "También podés usar el lector de tickets."}</p>}
+            <div className="mt-4 border-t border-border pt-4"><CreateTicketRegistrationDialog setIsDialogOpen={setDayDialogOpen} /></div>
+          </section>
 
           {!selectedTarget ? (
-          <div
-            key={latestRegistration?.id ?? "empty"}
-            ref={(el) => tour.refFor("ticket")(el)}
-            style={{
-              ...(tour.isActive("ticket") ? { ...tourTransition, ...tourHighlight } : tourTransition),
-              animation: "gm-ticket-rise 560ms cubic-bezier(.2,.7,.3,1) both",
-            }}
-          >
-            <div className="relative flex w-full flex-col sm:flex-row">
-              {/* ── Main stub ── */}
-              <div
-                className="relative flex-1 p-5 sm:p-9 [@media(max-height:850px)]:p-5 overflow-hidden rounded-3xl sm:rounded-r-none border border-border bg-card/50 backdrop-blur-xl"
-                style={isScanning ? { animation: "gm-barglow 950ms ease-in-out" } : undefined}
-              >
-                <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-gm-yellow/5 via-transparent to-gm-orange/5" />
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: "linear-gradient(100deg, transparent 40%, hsl(var(--gm-yellow) / 0.06) 50%, transparent 60%)",
-                    backgroundSize: "250% 100%",
-                    animation: "gm-bgsweep 5s ease-in-out infinite",
-                  }}
-                />
-                <div className="absolute -left-16 -top-16 h-40 w-40 rounded-full bg-gm-yellow blur-3xl opacity-[0.07]" />
-                <div className="absolute -bottom-16 right-10 h-40 w-40 rounded-full bg-gm-orange blur-3xl opacity-[0.07]" />
-
-                <div className="relative z-10 flex h-full flex-col justify-between gap-7 [@media(max-height:850px)]:gap-4">
-                  <div className="space-y-4 [@media(max-height:850px)]:space-y-2">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <Badge variant="yellow">
-                        <Car className="mr-1 h-3 w-3" />
-                        {isDayTicket ? "INGRESO REGISTRADO" : "SALIDA REGISTRADA"}
-                      </Badge>
-                      <span className="gm-mono text-xs text-muted-foreground">
-                        #GM-{latestRegistration?.id?.slice(-4).toUpperCase() ?? "0000"}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h2 className="gm-display text-4xl [@media(max-height:850px)]:text-2xl font-bold tracking-tight text-foreground">
-                        Estaci
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-gm-yellow to-gm-orange">
-                          onamiento
-                        </span>
-                      </h2>
-                      <p className="mt-2 [@media(max-height:850px)]:mt-1 text-[15px] text-muted-foreground [@media(max-height:850px)]:hidden">
-                        Registro de estacionamiento
-                      </p>
-                    </div>
+            <section ref={(el) => tour.refFor("ticket")(el)} style={tour.isActive("ticket") ? { ...tourTransition, ...tourHighlight } : tourTransition} className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5"><h2 className="text-sm font-semibold">Último movimiento</h2><Clock className="size-4 text-muted-foreground" /></div>
+              {latestRegistration ? (
+                <div className="space-y-4 p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">{isLatestPatenteOrigin ? "Patente / identificación" : "Ticket"}</p><p className="break-words text-3xl font-semibold tracking-tight">{latestRegistration.ticket?.codeBar || latestRegistration.codeBarTicket || latestRegistration.licensePlateOriginal || latestRegistration.lastNameCustomer || "Sin patente"}</p></div>
+                    <Badge variant={isDayTicket ? "green" : "yellow"}>{isDayTicket ? "Entrada registrada" : "Salida registrada"}</Badge>
                   </div>
-
-                  {latestRegistration ? (
-                    isDayTicket ? (
-                      <>
-                        <div className="grid grid-cols-2 gap-6 [@media(max-height:850px)]:gap-3">
-                          <div className="space-y-1">
-                            <div className="flex items-center text-muted-foreground text-sm">
-                              <CalendarDays className="mr-2 h-4 w-4" />
-                              ENTRADA
-                            </div>
-                            <p className="text-foreground font-medium gm-mono gm-tnum">
-                              {formatDate(latestRegistration.entryDay)}
-                            </p>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center text-muted-foreground text-sm">
-                              <Clock className="mr-2 h-4 w-4" />
-                              HORARIO
-                            </div>
-                            <p className="text-foreground font-medium gm-mono gm-tnum">
-                              {latestRegistration.entryTime}
-                            </p>
-                          </div>
-                        </div>
-
-                        {latestRegistration.description && (
-                          <div className="flex items-center gap-4 rounded-2xl border border-border bg-card/40 p-4 [@media(max-height:850px)]:p-2.5 backdrop-blur-md">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-gm-yellow/30 bg-gm-yellow/10">
-                              <Car className="h-5 w-5 text-gm-yellow" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-foreground">
-                                {latestRegistration.description}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {latestRegistration.ticket?.vehicleType === "AUTO"
-                                  ? "Automóvil"
-                                  : "Camioneta"}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {latestRegistration.expectedBracketLabel && (
-                          <p className="text-[11px] text-muted-foreground">
-                            Avisó que se queda: <span className="text-foreground font-medium">{latestRegistration.expectedBracketLabel}</span>
-                          </p>
-                        )}
-
-                        <div className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground border-t border-border pt-3.5 [@media(max-height:850px)]:pt-2 w-full">
-                          <span className="h-[7px] w-[7px] rounded-full shrink-0 bg-[hsl(200_60%_60%)] shadow-[0_0_8px_hsl(200_60%_60%/0.7)]" />
-                          <span className="font-semibold tracking-[0.03em] uppercase text-foreground">ENTRADA</span>
-                          registrada correctamente
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-2 gap-6 [@media(max-height:850px)]:gap-3">
-                          <div className="space-y-1">
-                            <div className="flex items-center text-muted-foreground text-sm">
-                              <CalendarDays className="mr-2 h-4 w-4" />
-                              SALIDA
-                            </div>
-                            <p className="text-foreground font-medium gm-mono gm-tnum">
-                              {formatDate(latestRegistration.departureDay)}
-                            </p>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center text-muted-foreground text-sm">
-                              <CircleDollarSign className="mr-2 h-4 w-4" />
-                              PRECIO
-                            </div>
-                            <p className="text-foreground font-medium gm-mono gm-tnum text-xl">
-                              ${latestRegistration.price}
-                            </p>
-                            {latestRegistration.priceBracketLabel && (
-                              <p className="text-[11px] text-muted-foreground">
-                                Tarifa: <span className="text-foreground font-medium">{latestRegistration.priceBracketLabel}</span>
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        {latestRegistration.exceededExpectedStay && (
-                          <div className="flex items-center gap-3 rounded-2xl border border-gm-orange/40 bg-gm-orange/10 p-3 text-[12px] text-foreground">
-                            <AlertTriangle className="h-4 w-4 shrink-0 text-gm-orange" />
-                            El cliente había avisado "{latestRegistration.expectedBracketLabel}" y se pasó de ese tiempo.
-                          </div>
-                        )}
-
-                        {latestRegistration.priceBracketFallbackUsed && (
-                          <div className="flex items-center gap-3 rounded-2xl border border-gm-orange/40 bg-gm-orange/10 p-3 text-[12px] text-foreground">
-                            <AlertTriangle className="h-4 w-4 shrink-0 text-gm-orange" />
-                            La estadía superó todas las franjas configuradas. Revisá Tarifas en Admin.
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-4 rounded-2xl border border-border bg-card/40 p-4 [@media(max-height:850px)]:p-2.5 backdrop-blur-md">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-gm-yellow/30 bg-gm-yellow/10">
-                            <Timer className="h-5 w-5 text-gm-yellow" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-4">
-                              <div>
-                                <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                                  Entrada
-                                </p>
-                                <p className="text-sm font-medium text-foreground gm-mono gm-tnum">
-                                  {latestRegistration.entryTime}
-                                </p>
-                              </div>
-                              <div className="h-px flex-1 bg-border" />
-                              <div>
-                                <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-                                  Salida
-                                </p>
-                                <p className="text-sm font-medium text-foreground gm-mono gm-tnum">
-                                  {latestRegistration.departureTime}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground border-t border-border pt-3.5 [@media(max-height:850px)]:pt-2 w-full">
-                          <span className="h-[7px] w-[7px] rounded-full shrink-0 bg-[hsl(120_35%_55%)] shadow-[0_0_8px_hsl(120_35%_55%/0.7)]" />
-                          <span className="font-semibold tracking-[0.03em] uppercase text-foreground">SALIDA</span>
-                          registrada correctamente
-                        </div>
-                      </>
-                    )
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 [@media(max-height:850px)]:py-3 text-center">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-card/40 mb-4">
-                        <QrCode className="h-7 w-7 text-muted-foreground" />
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        No hay registros disponibles.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Escaneá un código de barras para comenzar.
-                      </p>
-                    </div>
-                  )}
+                  <div className="grid grid-cols-2 gap-3 rounded-xl bg-secondary/60 p-3 text-sm">
+                    <div><p className="text-xs text-muted-foreground">{isDayTicket ? "Entrada" : "Salida"}</p><p className="mt-1 font-medium tabular-nums">{isDayTicket ? latestRegistration.entryTime : latestRegistration.departureTime}</p><p className="mt-0.5 text-xs text-muted-foreground">{formatDate(isDayTicket ? latestRegistration.entryDay : latestRegistration.departureDay)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">{isDayTicket ? "Vehículo" : "Importe registrado"}</p><p className="mt-1 break-words font-medium">{isDayTicket ? (latestRegistration.vehicleType || latestRegistration.ticket?.vehicleType || "Sin especificar").replaceAll("_", " ") : money(latestRegistration.price)}</p></div>
+                  </div>
+                  {latestRegistration.description && <p className="break-words text-sm text-muted-foreground">{latestRegistration.description}</p>}
+                  {latestRegistration.expectedBracketLabel && <p className="text-sm text-muted-foreground">Duración avisada: <span className="text-foreground">{latestRegistration.expectedBracketLabel}</span></p>}
+                  {latestRegistration.priceBracketLabel && !isDayTicket && <p className="text-sm text-muted-foreground">Tarifa aplicada: {latestRegistration.priceBracketLabel}</p>}
+                  {(latestRegistration.exceededExpectedStay || latestRegistration.priceBracketFallbackUsed) && <p className="rounded-xl border border-gm-orange/30 bg-gm-orange/10 p-3 text-sm">{latestRegistration.priceBracketFallbackUsed ? "La estadía superó los precios por duración configurados. Revisá la tarifa aplicada." : "El vehículo superó la duración avisada."}</p>}
+                  {isDayTicket && <Button variant="outline" className="min-h-11 w-full rounded-xl" onClick={() => loadPreview({ id: latestRegistration.id, kind: isLatestPatenteOrigin ? "PLATE" : "BARCODE", codeBar: latestRegistration.ticket?.codeBar || latestRegistration.codeBarTicket, vehicleType: latestRegistration.vehicleType || latestRegistration.ticket?.vehicleType })}>Ver vehículo y consultar importe</Button>}
                 </div>
-              </div>
-
-              {/* ── Barcode stub ── */}
-              <div
-                className="relative flex w-full sm:w-[240px] shrink-0 flex-col items-center justify-center gap-6 [@media(max-height:850px)]:gap-3 p-8 [@media(max-height:850px)]:p-4 rounded-3xl sm:rounded-l-none border border-border sm:border-l-0 bg-card/30 backdrop-blur-md"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(180deg, transparent 0 10px, hsl(var(--gm-line-strong) / 0.8) 10px 12px)",
-                  backgroundSize: "2px 100%",
-                  backgroundPosition: "left",
-                  backgroundRepeat: "no-repeat",
-                }}
-              >
-                {isLatestPatenteOrigin ? (
-                  <span className="grid size-12 place-items-center rounded-2xl border border-border bg-gm-surface-2 text-muted-foreground">
-                    <Car className="size-5" />
-                  </span>
-                ) : (
-                  <div className="relative w-full rounded-[14px] border border-border bg-gm-surface-2 p-4 shadow-lg overflow-hidden">
-                    <div
-                      className="h-16 [@media(max-height:850px)]:h-10 w-full rounded"
-                      style={{
-                        backgroundColor: "#f2ead9",
-                        backgroundImage:
-                          "repeating-linear-gradient(90deg, hsl(var(--gm-ink)) 0 3px, transparent 3px 5px, hsl(var(--gm-ink)) 5px 6px, transparent 6px 10px, hsl(var(--gm-ink)) 10px 14px, transparent 14px 17px, hsl(var(--gm-ink)) 17px 19px, transparent 19px 24px)",
-                      }}
-                    />
-                    {isScanning && (
-                      <div
-                        className="absolute left-4 right-4 top-4 h-[3px] rounded-full bg-gm-yellow"
-                        style={{
-                          boxShadow: "0 0 12px 2px hsl(var(--gm-yellow) / 0.9)",
-                          animation: "gm-scanline 950ms linear",
-                        }}
-                      />
-                    )}
-                  </div>
-                )}
-
-                <div className="space-y-1 text-center">
-                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                    {isLatestPatenteOrigin ? "Patente" : "Código"}
-                  </p>
-                  <p className="gm-mono text-xl font-bold text-foreground gm-tnum">
-                    {latestRegistration
-                      ? isDayTicket
-                        ? latestRegistration.ticket?.codeBar ?? latestRegistration.licensePlateOriginal ?? "—"
-                        : latestRegistration.codeBarTicket ?? latestRegistration.licensePlateOriginal ?? "—"
-                      : "—"}
-                  </p>
-                </div>
-
-                {latestRegistration && (
-                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <div
-                      className="h-2 w-2 rounded-full bg-[hsl(120_35%_55%)]"
-                      style={{ animation: "gm-blink 1.4s steps(2, jump-none) infinite" }}
-                    />
-                    <span>Registrado</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+              ) : <div className="px-5 py-8 text-center"><span className="mx-auto mb-3 grid size-12 place-items-center rounded-2xl bg-secondary"><Car className="size-6 text-muted-foreground" /></span><p className="font-medium">Todo listo para la primera entrada</p><p className="mt-2 text-sm text-muted-foreground">Tocá “Registrar entrada” para comenzar.</p></div>}
+            </section>
           ) : (
-            <div className="space-y-3" ref={selectedDetailRef}>
-              <button
-                type="button"
-                onClick={clearPreview}
-                className="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ArrowLeft className="size-3.5" />
-                Ver último registro
-              </button>
-
-              {previewLoading || !previewSummary ? (
-                <div className="flex items-center justify-center rounded-3xl border border-border bg-card/40 p-16 text-sm text-muted-foreground">
-                  Cargando…
-                </div>
-              ) : (
-                <div className="relative flex w-full flex-col sm:flex-row">
-                  {/* ── Main stub ── */}
-                  <div className="relative flex-1 p-5 sm:p-9 [@media(max-height:850px)]:p-5 overflow-hidden rounded-3xl sm:rounded-r-none border border-border bg-card/50 backdrop-blur-xl">
-                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-gm-yellow/5 via-transparent to-gm-orange/5" />
-                    <div className="absolute -left-16 -top-16 h-40 w-40 rounded-full bg-gm-yellow blur-3xl opacity-[0.07]" />
-                    <div className="absolute -bottom-16 right-10 h-40 w-40 rounded-full bg-gm-orange blur-3xl opacity-[0.07]" />
-
-                    <div className="relative z-10 flex h-full flex-col gap-6 [@media(max-height:850px)]:gap-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <Badge variant={isOverdue(previewSummary.registration, now) ? "red" : "green"}>
-                          {isOverdue(previewSummary.registration, now) ? "VENCIDO" : "EN HORARIO"}
-                        </Badge>
-                        <span className="gm-mono text-xs text-muted-foreground">
-                          #GM-{previewSummary.registration.id.slice(-4).toUpperCase()}
-                        </span>
-                      </div>
-
-                      <h2 className="gm-display text-4xl [@media(max-height:850px)]:text-2xl font-bold tracking-tight text-foreground">
-                        Estaci
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-gm-yellow to-gm-orange">
-                          onamiento
-                        </span>
-                      </h2>
-
-                      {isOverdue(previewSummary.registration, now) && (
-                        <div className="flex items-center gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-3 text-[12px] text-foreground">
-                          <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
-                          Se pasó de la duración avisada ({previewSummary.registration.expectedBracketLabel}).
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-2.5 sm:gap-4 [@media(max-height:850px)]:gap-2">
-                        <div className="space-y-1">
-                          <div className="flex items-center text-muted-foreground text-[11px]">
-                            <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
-                            ENTRADA
-                          </div>
-                          <p className="text-foreground font-medium gm-mono gm-tnum text-sm">
-                            {previewSummary.registration.entryTime}
-                          </p>
-                          <p className="text-muted-foreground gm-mono text-[11px]">
-                            {formatDate(previewSummary.registration.entryDay)}
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center text-muted-foreground text-[11px]">
-                            <Timer className="mr-1.5 h-3.5 w-3.5" />
-                            TRANSCURRIDO
-                          </div>
-                          <p
-                            className={cn(
-                              "font-medium gm-mono gm-tnum text-sm",
-                              isOverdue(previewSummary.registration, now) ? "text-destructive" : "text-foreground",
-                            )}
-                          >
-                            {formatElapsed(previewSummary.elapsedMinutes)}
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center text-muted-foreground text-[11px]">
-                            <Car className="mr-1.5 h-3.5 w-3.5" />
-                            TIPO
-                          </div>
-                          <p className="text-foreground font-medium gm-mono gm-tnum text-sm">
-                            {(selectedTarget?.vehicleType ?? previewSummary.registration.vehicleType) === "CAMIONETA"
-                              ? "Camioneta"
-                              : "Auto"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {previewSummary.registration.expectedBracketLabel && !isOverdue(previewSummary.registration, now) && (
-                        <p className="text-[11px] text-muted-foreground">
-                          Avisó que se queda:{" "}
-                          <span className="text-foreground font-medium">
-                            {previewSummary.registration.expectedBracketLabel}
-                          </span>
-                        </p>
-                      )}
-
-                      {previewSummary.previewBracket.usedFallback && (
-                        <div className="flex items-center gap-3 rounded-2xl border border-gm-orange/40 bg-gm-orange/10 p-3 text-[12px] text-foreground">
-                          <AlertTriangle className="h-4 w-4 shrink-0 text-gm-orange" />
-                          La estadía superó todas las franjas configuradas. Revisá Tarifas en Admin.
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card/40 p-4 backdrop-blur-md">
-                        <div>
-                          <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Monto a cobrar</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            Tarifa: <span className="text-foreground font-medium">{previewSummary.previewBracket.label}</span>
-                          </p>
-                          {previewSummary.totalCollectedSoFar > 0 && (
-                            <p className="text-[11px] text-muted-foreground">
-                              Ya cobrado (anticipo): ${previewSummary.totalCollectedSoFar}
-                            </p>
-                          )}
-                        </div>
-                        <p className="text-3xl font-bold text-foreground gm-mono gm-tnum whitespace-nowrap">
-                          ${previewSummary.saldoACobrar}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row flex-wrap gap-3">
-                        <Button
-                          type="button"
-                          className="w-full sm:flex-1 sm:min-w-[180px] h-12"
-                          onClick={() => {
-                            setClosePanelTargetId(previewSummary.registration.id);
-                            setClosePanelOpen(true);
-                          }}
-                        >
-                          <Banknote className="mr-2 h-4 w-4" />
-                          Cobrar salida
-                        </Button>
-                        {selectedTarget && (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className="w-full sm:flex-1 sm:min-w-[180px] h-12"
-                            onClick={() =>
-                              setAdvanceTarget({
-                                id: previewSummary.registration.id,
-                                codeBar: selectedTarget.codeBar ?? "",
-                                vehicleType: selectedTarget.vehicleType ?? previewSummary.registration.vehicleType ?? "",
-                                existing: previewSummary.registration,
-                              })
-                            }
-                          >
-                            Anticipo / avisar duración
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── Identifier stub ── */}
-                  <div
-                    className="relative flex w-full sm:w-[240px] shrink-0 flex-col items-center justify-center gap-3 sm:gap-6 p-4 sm:p-8 rounded-3xl sm:rounded-l-none border border-border sm:border-l-0 bg-card/30 backdrop-blur-md"
-                    style={{
-                      backgroundImage:
-                        "repeating-linear-gradient(180deg, transparent 0 10px, hsl(var(--gm-line-strong) / 0.8) 10px 12px)",
-                      backgroundSize: "2px 100%",
-                      backgroundPosition: "left",
-                      backgroundRepeat: "no-repeat",
-                    }}
-                  >
-                    {selectedTarget?.kind === "BARCODE" ? (
-                      <div className="relative w-full rounded-[14px] border border-border bg-gm-surface-2 p-4 shadow-lg overflow-hidden">
-                        <div
-                          className="h-16 w-full rounded"
-                          style={{
-                            backgroundColor: "#f2ead9",
-                            backgroundImage:
-                              "repeating-linear-gradient(90deg, hsl(var(--gm-ink)) 0 3px, transparent 3px 5px, hsl(var(--gm-ink)) 5px 6px, transparent 6px 10px, hsl(var(--gm-ink)) 10px 14px, transparent 14px 17px, hsl(var(--gm-ink)) 17px 19px, transparent 19px 24px)",
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <span className="grid size-12 place-items-center rounded-2xl border border-border bg-gm-surface-2 text-muted-foreground">
-                        <Car className="size-5" />
-                      </span>
-                    )}
-
-                    <div className="space-y-1 text-center">
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                        {selectedTarget?.kind === "BARCODE" ? "Código" : "Patente"}
-                      </p>
-                      <p className="gm-mono text-xl font-bold text-foreground gm-tnum">
-                        {selectedTarget?.kind === "BARCODE"
-                          ? selectedTarget.codeBar
-                          : previewSummary.registration.noPlate
-                          ? previewSummary.registration.lastNameCustomer ?? "Sin patente"
-                          : previewSummary.registration.licensePlateOriginal ?? "—"}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                      <div
-                        className="h-2 w-2 rounded-full bg-[hsl(120_35%_55%)]"
-                        style={{ animation: "gm-blink 1.4s steps(2, jump-none) infinite" }}
-                      />
-                      <span>Registrado</span>
-                    </div>
-                  </div>
+            <section ref={selectedDetailRef} className="scroll-mt-5 overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="border-b border-border px-4 py-2 sm:px-5"><button type="button" onClick={clearPreview} className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" />Volver al último movimiento</button></div>
+              {previewLoading || !previewSummary ? <p role="status" className="p-8 text-center text-sm text-muted-foreground">Consultando vehículo e importe…</p> : (
+                <div className="space-y-5 p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">{selectedTarget.kind === "BARCODE" ? "Ticket seleccionado" : "Vehículo seleccionado"}</p><h2 className="break-words text-3xl font-semibold tracking-tight">{selectedTarget.kind === "BARCODE" ? selectedTarget.codeBar : previewSummary.registration.licensePlateOriginal || previewSummary.registration.lastNameCustomer || "Sin patente"}</h2></div><Badge variant={isOverdue(previewSummary.registration, now) ? "red" : "green"}>{isOverdue(previewSummary.registration, now) ? "Tiempo avisado superado" : "En la playa"}</Badge></div>
+                  <div className="grid grid-cols-2 gap-4 border-y border-border py-4 text-sm"><div><p className="text-xs text-muted-foreground">Entrada</p><p className="mt-1 font-medium">{previewSummary.registration.entryTime}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(previewSummary.registration.entryDay)}</p></div><div><p className="text-xs text-muted-foreground">Tiempo estacionado</p><p className="mt-1 font-medium">{formatElapsed(previewSummary.elapsedMinutes)}</p></div><div className="col-span-2"><p className="text-xs text-muted-foreground">Tipo de vehículo</p><p className="mt-1 break-words">{(selectedTarget.vehicleType || previewSummary.registration.vehicleType || "Sin especificar").replaceAll("_", " ")}</p></div></div>
+                  {previewSummary.registration.expectedBracketLabel && <p className="text-sm text-muted-foreground">Duración avisada: {previewSummary.registration.expectedBracketLabel}</p>}
+                  {previewSummary.previewBracket.usedFallback && <p className="rounded-xl bg-gm-orange/10 p-3 text-sm">La estadía superó los precios por duración configurados. Revisá el importe antes de cobrar.</p>}
+                  <div className="rounded-xl border border-gm-yellow/20 bg-gm-yellow/5 p-4"><p className="text-sm text-muted-foreground">Importe a cobrar ahora</p><p className="mt-1 break-words text-4xl font-semibold tracking-tight text-gm-yellow">{money(previewSummary.saldoACobrar)}</p><p className="mt-2 text-xs leading-relaxed text-muted-foreground">{previewSummary.previewBracket.label}</p>{previewSummary.totalCollectedSoFar > 0 && <p className="mt-2 text-sm">Anticipo descontado: {money(previewSummary.totalCollectedSoFar)}</p>}</div>
+                  <div className="space-y-2"><Button className="min-h-12 w-full rounded-xl text-sm" onClick={() => { setClosePanelTargetId(previewSummary.registration.id); setClosePanelOpen(true); }}><Banknote className="mr-2 size-4" />Continuar con el cobro</Button><Button variant="outline" className="min-h-12 w-full whitespace-normal rounded-xl" onClick={() => setAdvanceTarget({ id: previewSummary.registration.id, codeBar: selectedTarget.codeBar ?? "", vehicleType: selectedTarget.vehicleType ?? previewSummary.registration.vehicleType ?? "", existing: previewSummary.registration })}>Registrar anticipo o avisar duración</Button></div>
                 </div>
               )}
-            </div>
+            </section>
           )}
         </div>
 
@@ -857,6 +444,50 @@ export default function CardTicket({
             </span>
           </button>
 
+          <div
+            className={cn(
+              "mb-3 flex items-center gap-4 border-b border-border pb-3",
+              isAdmin ? "justify-between" : "justify-end",
+            )}
+          >
+            {isAdmin && (
+              <Link
+                href="/admin/tickets"
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-gm-yellow"
+              >
+                <Settings className="size-3.5" />
+                Administrar tickets
+              </Link>
+            )}
+            <PriceBracketMapDialog brackets={priceBrackets} schedule={schedule} />
+          </div>
+
+          {/* El chip elegido se hincha y corre a su vecino: marca la sección sin necesitar el
+              subrayado que había que medir con refs. */}
+          <JellyRadio
+            aria-label="Vehículos activos"
+            size="lg"
+            value={sidebarTab}
+            onChange={(v) => selectSidebarTab(v as "hourly" | "daily")}
+            items={[
+              { value: "hourly", label: "Por hora", badge: activeHourlyCount },
+              { value: "daily", label: "Día/Sem/Mes", badge: activeDayRegistrations.length },
+            ]}
+          />
+
+          {/* Como pasar la hoja de un libro: la franja entrante gira sobre el borde por el que
+              "entró" (izquierda si se avanzó a Día/Sem/Mes, derecha si se volvió a Por hora). */}
+          <div className="mt-4" style={{ perspective: "1400px" }}>
+          <div
+            key={sidebarTab}
+            style={{
+              transformStyle: "preserve-3d",
+              transformOrigin: flipDirection === "next" ? "left center" : "right center",
+              animation: `${flipDirection === "next" ? "gm-page-flip-next" : "gm-page-flip-prev"} 480ms cubic-bezier(.25,.75,.35,1) both`,
+            }}
+          >
+          {sidebarTab === "hourly" ? (
+          <>
           <ActiveTicketsList
             ticketCatalog={barcodeTicketsEnabled ? sortedCatalog : []}
             registrations={visibleRegistrations}
@@ -866,16 +497,18 @@ export default function CardTicket({
             }
             onSelectPlate={(id) => loadPreview({ id, kind: "PLATE" })}
           />
-
           {barcodeTicketsEnabled && (
             <div className="border-t border-border pt-3.5 mb-4 [@media(max-height:850px)]:pt-2">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-[10.5px] uppercase tracking-[0.08em] font-bold text-muted-foreground">
                   Vehículos en el playón
                 </h3>
+                <div className="flex items-center gap-2">
+                  {isAdmin && <Link href="/admin/tickets?crear=ticket" className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow" aria-label="Crear tarjeta física">+ Crear</Link>}
                 <span className="gm-mono text-[10.5px] text-muted-foreground">
                   {activeTickets.length}/{sortedCatalog.length}
                 </span>
+                </div>
               </div>
               <p className="mb-2.5 text-[10px] text-muted-foreground">
                 Ocupación por ticket de código de barras.
@@ -931,7 +564,14 @@ export default function CardTicket({
                             : undefined
                         }
                         className={cn(
-                          "h-[30px] [@media(max-height:850px)]:h-[24px] rounded-[7px] grid place-items-center gm-mono text-[10px] font-bold border transition-shadow duration-300",
+                          // `min-w-0` es lo que impide que un código largo empuje su
+                          // celda: sin eso el botón crece hasta el ancho del texto,
+                          // se sale de la columna y rompe la grilla.
+                          "h-[30px] [@media(max-height:850px)]:h-[24px] min-w-0 px-1 rounded-[7px] grid place-items-center gm-mono font-bold border transition-shadow duration-300",
+                          // Los tickets suelen ser de 3 dígitos, pero el código de barras
+                          // lo carga el usuario y puede ser largo: se achica la letra en
+                          // vez de recortar, así el operador lo sigue leyendo entero.
+                          t.codeBar.length <= 5 ? "text-[10px]" : t.codeBar.length <= 8 ? "text-[8.5px]" : "text-[7px]",
                           overdue
                             ? "text-white bg-gradient-to-br from-destructive to-[hsl(10_78%_40%)] border-destructive/60 cursor-pointer"
                             : active
@@ -939,7 +579,10 @@ export default function CardTicket({
                             : "text-muted-foreground bg-gm-surface-2 border-border cursor-default",
                         )}
                       >
-                        {t.codeBar}
+                        {/* Red de contención: si ni con la letra chica entra, corta con
+                            puntos suspensivos en lugar de desbordar. El código completo
+                            sigue estando en el title del botón. */}
+                        <span className="w-full truncate text-center">{t.codeBar}</span>
                       </button>
                     );
                   })}
@@ -970,6 +613,17 @@ export default function CardTicket({
               </div>
             )}
           </div>
+          </>
+          ) : (
+            <DayRegistrationsPanel
+              active={activeDayRegistrations}
+              overdue={overdueDayRegistrations}
+              isOverdue={isDayRegistrationOverdue}
+              onSelect={setOpenDayRegistrationId}
+            />
+          )}
+          </div>
+          </div>
         </div>
       </div>
 
@@ -985,6 +639,12 @@ export default function CardTicket({
           clearPreview();
           router.refresh();
         }}
+      />
+
+      <ActiveDayTicketDialog
+        registration={openDayRegistration}
+        open={openDayRegistrationId !== null}
+        onOpenChange={(next) => { if (!next) setOpenDayRegistrationId(null); }}
       />
 
       <CloseTicketPanel

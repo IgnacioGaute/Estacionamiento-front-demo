@@ -10,15 +10,16 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useState } from 'react';
+import { JellyRadio } from '@/components/ui/jelly-radio';
 import {
   updateUserPassword,
   UpdateUserPasswordType,
   updateUserSchema,
   UpdateUserSchemaType,
 } from '@/schemas/user.schema';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import {
   Form,
   FormControl,
@@ -34,7 +35,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { updatePassword } from '@/actions/users/update-password.action';
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { getUserByUsername } from '@/services/users.service';
+import { getUserByUsername } from '@/actions/users/find-user.action';
 import { useCurrentUser } from '@/hooks/auth/use-current-user';
 import { updateUserAction } from '@/actions/users/update-user.action';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -43,6 +44,8 @@ import { User } from '@/types/user.type';
 export function UpdateUserDailog({ user }: { user: User }) {
   const session = useSession();
 
+  // Controlado para que el segmentado y el contenido compartan la misma sección activa.
+  const [tabPerfil, setTabPerfil] = useState('account');
   const [isLoading, setIsLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -82,7 +85,7 @@ export function UpdateUserDailog({ user }: { user: User }) {
   const checkUsername = async (username: string) => {
     setIsCheckingUsername(true);
     try {
-      const exists = await getUserByUsername(username, session.data?.token);
+      const exists = await getUserByUsername(username);
 
       if (exists && exists.username !== user.username) {
         setUsernameExists(true);
@@ -187,16 +190,16 @@ export function UpdateUserDailog({ user }: { user: User }) {
       <DialogHeader>
         <DialogTitle>Actualizar Perfil</DialogTitle>
       </DialogHeader>
-    <Tabs defaultValue="account">
-      <TabsList
-        className={cn(
-          'grid w-full',
-          'grid-cols-2' ,
-        )}
-      >
-        <TabsTrigger value="account">Cuenta</TabsTrigger>
-          <TabsTrigger value="password">Contraseña</TabsTrigger>
-      </TabsList>
+    <Tabs value={tabPerfil} onValueChange={setTabPerfil}>
+      <JellyRadio
+        aria-label="Secciones del perfil"
+        value={tabPerfil}
+        onChange={setTabPerfil}
+        items={[
+          { value: 'account', label: 'Cuenta' },
+          { value: 'password', label: 'Contraseña' },
+        ]}
+      />
 
       <TabsContent value="account">
         <Card className="h-fit flex flex-col">

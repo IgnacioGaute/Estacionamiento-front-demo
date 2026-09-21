@@ -5,7 +5,7 @@ export const ticketPriceSchema = z.object({
     price: z.coerce.number().optional(),
     ticketTimePrice: z.coerce.number().optional(),
     ticketDayType: z.enum(TICKET_DAY_TYPE).optional(),
-    vehicleType: z.enum(VEHICLE_TYPE).optional(),
+    vehicleType: z.string().regex(/^[A-Z][A-Z0-9_]{0,31}$/, 'Elegí un tipo de vehículo válido').optional(),
     ticketTimeType: z.enum(TICKET_TIME_TYPE).optional(),
     intervalMinutes: z.coerce.number().int().min(1, 'Debe ser mayor a 0').optional(),
 });
@@ -16,7 +16,7 @@ export const updateTicketPriceSchema = z.object({
     price: z.coerce.number().optional(),
     ticketTimePrice: z.coerce.number().optional(),
     ticketDayType: z.enum(TICKET_DAY_TYPE).optional(),
-    vehicleType: z.enum(VEHICLE_TYPE).optional(),
+    vehicleType: z.string().regex(/^[A-Z][A-Z0-9_]{0,31}$/, 'Elegí un tipo de vehículo válido').optional(),
     ticketTimeType: z.enum(TICKET_TIME_TYPE).optional(),
     intervalMinutes: z.coerce.number().int().min(1, 'Debe ser mayor a 0').optional(),
   });

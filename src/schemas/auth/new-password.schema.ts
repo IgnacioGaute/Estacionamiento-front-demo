@@ -2,12 +2,8 @@ import { z } from 'zod';
 
 export const newPasswordSchema = z
   .object({
-    password: z.string().min(6, {
-      message: 'La contrasena debe tener al menos 6 caracteres',
-    }),
-    confirmPassword: z.string().min(6, {
-      message: 'La contrasena debe tener al menos 6 caracteres',
-    }),
+    password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(72),
+    confirmPassword: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').max(72),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Las contrasenas no coinciden',

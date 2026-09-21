@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { sanitizePlateInput } from '@/utils/plate.utils';
 import { recognizePlateAction } from '@/actions/tickets/recognize-plate.action';

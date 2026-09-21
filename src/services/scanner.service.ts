@@ -1,14 +1,15 @@
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { ReceiptSchemaType } from "@/schemas/receipt.schema";
 import { ScannerReceipt } from "@/types/receipt.type";
 import { Scanner } from "@/types/ticket.type";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-export const startScanner = async (values: { barCode: string }) => {
+export const startScanner = async (values: { barCode: string }, token?: string, playaId?: string) => {
   try {
     const response = await fetch(`${BASE_URL}/scanner/start-scanner`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}`, ...(playaId ? { "X-Playa-Id": playaId } : {}) },
       body: JSON.stringify(values),
     });
 

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { VehicleTypeOptions } from '@/components/vehicle-type-options';
+
+import { useEffect, useState, useTransition } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { ticketSchema, TicketSchemaType } from '@/schemas/ticket.schema';
 import { createTicketAction } from '@/actions/tickets/create-ticket.action';
 
@@ -30,6 +32,13 @@ export function CreateTicketDialog() {
   const [success, setSuccess] = useState<string | undefined>('');
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('crear') !== 'ticket') return;
+    setOpen(true);
+    url.searchParams.delete('crear');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  }, []);
 
   const form = useForm<TicketSchemaType>({
     resolver: zodResolver(ticketSchema),
@@ -78,11 +87,12 @@ export function CreateTicketDialog() {
               name="codeBar"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Código de Barras</FormLabel>
+                  <FormLabel>Número del código de barras de la tarjeta</FormLabel>
                   <FormControl>
-                    <Input disabled={isPending} {...field} />
+                    <Input disabled={isPending} placeholder="Escaneá la tarjeta o escribí su número" {...field} />
                   </FormControl>
                   <FormMessage />
+                  <p className="text-xs text-muted-foreground">Usá el mismo número que aparece en la tarjeta física que le entregás al conductor. Crear la tarjeta no registra la entrada de un auto.</p>
                 </FormItem>
               )}
             />
@@ -102,8 +112,7 @@ export function CreateTicketDialog() {
                         <SelectValue placeholder="Selecciona un tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="AUTO">Auto</SelectItem>
-                        <SelectItem value="CAMIONETA">Camioneta</SelectItem>
+                        <VehicleTypeOptions />
                       </SelectContent>
                     </Select>
                   </FormControl>

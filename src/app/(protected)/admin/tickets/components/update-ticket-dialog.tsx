@@ -1,5 +1,7 @@
 'use client';
 
+import { VehicleTypeOptions } from '@/components/vehicle-type-options';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -18,7 +20,7 @@ import {
   updateUserSchema,
   UpdateUserSchemaType,
 } from '@/schemas/user.schema';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import {
   Form,
   FormControl,
@@ -34,7 +36,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { updatePassword } from '@/actions/users/update-password.action';
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { getUserByUsername } from '@/services/users.service';
 import { useCurrentUser } from '@/hooks/auth/use-current-user';
 import { updateUserAction } from '@/actions/users/update-user.action';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -122,8 +123,7 @@ export function UpdateTicketDialog({ ticket }: { ticket: Ticket }) {
                         <SelectValue placeholder="Selecciona un tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="AUTO">Auto</SelectItem>
-                        <SelectItem value="CAMIONETA">Camioneta</SelectItem>
+                        <VehicleTypeOptions />
                       </SelectContent>
                     </Select>
                   </FormControl>

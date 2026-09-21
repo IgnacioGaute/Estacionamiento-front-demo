@@ -10,7 +10,7 @@ import { CreateOwnerParkingTypeDialog } from './components/create-owner-parking-
 import { CreateRenterParkingTypeDialog } from './components/create-renter-parking-type-dialog';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ParkingTypeTabs } from './components/parking-type-tabs';
 import { ExportParkingExcel } from '../components/export-parking-excel';
 import { PageTour } from '@/components/page-tour';
 
@@ -78,13 +78,8 @@ export default async function ParkingTypePage() {
         }
       />
 
-      <Tabs defaultValue="owners" className="mt-6">
-        <TabsList data-tour="parking-type-tabs">
-          <TabsTrigger value="owners">Dueños</TabsTrigger>
-          <TabsTrigger value="renters">Inquilinos</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="owners" className="mt-4">
+      <ParkingTypeTabs
+        duenos={
           <ParkingTypeTable
             columns={ownerParkingTypeColumns}
             data={ownerParkingTypes?.data || []}
@@ -92,9 +87,8 @@ export default async function ParkingTypePage() {
             filterPlaceholder="Filtrar por nombre..."
             createTrigger={<CreateOwnerParkingTypeDialog />}
           />
-        </TabsContent>
-
-        <TabsContent value="renters" className="mt-4">
+        }
+        inquilinos={
           <ParkingTypeTable
             columns={renterParkingTypeColumns}
             data={renterParkingTypes?.data || []}
@@ -102,8 +96,8 @@ export default async function ParkingTypePage() {
             filterPlaceholder="Filtrar por nombre..."
             createTrigger={<CreateRenterParkingTypeDialog />}
           />
-        </TabsContent>
-      </Tabs>
+        }
+      />
     </div>
   );
 }

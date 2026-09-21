@@ -8,6 +8,7 @@ export type TicketPriceBracket = {
   uptoMinutes: number | null;
   price: number;
   recurringUnitMinutes: number | null;
+  recurringPriceMode?: 'FIXED' | 'DERIVED';
   createdAt: string;
   updatedAt: string;
 };

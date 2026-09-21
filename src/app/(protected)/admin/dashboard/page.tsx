@@ -133,12 +133,12 @@ export default async function DashboardPage({
         <div data-tour="dashboard-income-expenses">
           <IncomeExpensesLineChart data={otherPayments} />
         </div>
-        <div data-tour="dashboard-receipts">
+        {/* <div data-tour="dashboard-receipts">
           <ReceiptsGaugeChart data={receiptsForGauge} month={receiptsMonth} />
-        </div>
-        <div data-tour="dashboard-customers">
+        </div> */}
+        {/* <div data-tour="dashboard-customers">
           <CustomersByTypeChart data={customers} />
-        </div>
+        </div> */}
         <div data-tour="dashboard-payment-types">
           <PaymentTypesBulletChart data={receipts} />
         </div>

@@ -22,7 +22,7 @@ import { Customer, CustomerType } from '@/types/cutomer.type';
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Receipt } from '@/types/receipt.type';
 import { FileSpreadsheet } from 'lucide-react';

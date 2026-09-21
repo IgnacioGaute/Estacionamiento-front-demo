@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { OwnerParkingType } from '@/types/owner-parking-type';
 import { deleteOwnerParkingTypeSchema, DeleteOwnerParkingTypeSchemaType } from '@/schemas/owner-parking-type.schema';
 import { deleteOwnerParkingTypeAction } from '@/actions/owner-parking-type/delete-owner-parking-type.action';

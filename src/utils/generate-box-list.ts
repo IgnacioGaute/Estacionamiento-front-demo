@@ -1,4 +1,5 @@
 // src/utils/generate-box-list.ts
+import { ticketBoxRows } from "./ticket-box-rows"
 import type { BoxList } from "@/types/box-list.type"
 import type { OtherPayment } from "@/types/other-payment.type"
 import type { ReceiptPayment } from "@/types/receipt.type"
@@ -59,7 +60,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       paymentHistoryOnAccount,
     } = boxList
 
-    const tickets = Array.isArray(ticketRegistrations) ? ticketRegistrations : []
+    const tickets = ticketBoxRows(boxList)
     const ticketDays = Array.isArray(ticketRegistrationForDays) ? ticketRegistrationForDays : []
     const validReceipts = Array.isArray(receipts) ? receipts : []
     const otherPaymentsRegistration = Array.isArray(otherPayments) ? otherPayments : []
@@ -449,8 +450,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
           big: false,
         },
         {
-          label: "NETO",
-          value: `$ ${formatNumber(neto)}`,
+          label: "EFECTIVO DEL DÍA",
+          value: `$ ${formatNumber(totalPrice)}`,
           bg: brownColor,
           labelColor: rgb(0.886, 0.847, 0.769),
           valueColor: rgb(1, 1, 1),
@@ -516,7 +517,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       yPosition -= 14
       drawSectionHeaderRow(title)
       const filteredItems = items.filter((i: any) => i.paid === undefined || i.paid)
-      const total = filteredItems.reduce((sum, i: any) => sum + i.price, 0)
+      const entradas = filteredItems.reduce((sum, i: any) => sum + Math.max(0, i.price), 0)
+      const salidas = filteredItems.reduce((sum, i: any) => sum + Math.max(0, -i.price), 0)
 
       if (items.length > 0) {
         drawTableHeader()
@@ -544,8 +546,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
             page.drawText(subtitle as string, { x: colDescTextX, y: rowY - 12, size: 8, font, color: mutedColor })
           }
 
-          drawRightText(formatNumber(price), entradasRightX, rowY, font, 9.5)
-          drawRightText("—", salidasRightX, rowY, font, 9.5, dashColor)
+          drawRightText(price >= 0 ? formatNumber(price) : "—", entradasRightX, rowY, font, 9.5)
+          drawRightText(price < 0 ? formatNumber(-price) : "—", salidasRightX, rowY, font, 9.5, dashColor)
 
           yPosition -= rowHeight
           drawRowSeparator()
@@ -555,7 +557,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
         yPosition -= 34
       }
 
-      drawSubtotalRow(sectionKey, title, total, 0)
+      drawSubtotalRow(sectionKey, title, entradas, salidas)
     }
 
     const addDataSectionReceipt = (
@@ -776,8 +778,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     // El pago de un ticket puede quedar repartido en varios movimientos (anticipo + saldo) —
     // si todos coinciden se muestra un único medio, si no, "MIX".
     const ticketPaymentBadge = (t: TicketRegistration): string | undefined => {
-      const movimientos = t.movimientos ?? []
-      if (movimientos.length === 0) return undefined
+      const movimientos = (t.movimientos ?? []).filter((m) => m.tipo !== "CORTESIA")
+      if (movimientos.length === 0) return t.movimientos?.some((m) => m.tipo === "CORTESIA") ? "CORT" : undefined
       const metodos = new Set(movimientos.map((m) => m.metodo))
       if (metodos.size > 1) return "MIX"
       return metodos.has("TRANSFER") ? "TR" : "EF"
@@ -813,135 +815,135 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       ]
     })
 
-    addDataSectionReceipt("alquiler", "alquiler", combinedRentersSorted, (receiptPayment) => {
-      const receipt = receiptPayment.receipt
-      const total = receiptPayment.price
-      const owner = receiptTypeNames[receipt.receiptTypeKey] || receipt.receiptTypeKey
+    // addDataSectionReceipt("alquiler", "alquiler", combinedRentersSorted, (receiptPayment) => {
+    //   const receipt = receiptPayment.receipt
+    //   const total = receiptPayment.price
+    //   const owner = receiptTypeNames[receipt.receiptTypeKey] || receipt.receiptTypeKey
 
-      const paymentType =
-        receiptPayment.paymentType === "TRANSFER"
-          ? "TR"
-          : receiptPayment.paymentType === "CASH"
-            ? "EF"
-            : receiptPayment.paymentType === "CHECK"
-              ? "CH"
-              : receiptPayment.paymentType === "CREDIT"
-                ? "CR"
-                : receiptPayment.paymentType === "TP"
-                  ? "AT"
-                  : "Desconocido"
+    //   const paymentType =
+    //     receiptPayment.paymentType === "TRANSFER"
+    //       ? "TR"
+    //       : receiptPayment.paymentType === "CASH"
+    //         ? "EF"
+    //         : receiptPayment.paymentType === "CHECK"
+    //           ? "CH"
+    //           : receiptPayment.paymentType === "CREDIT"
+    //             ? "CR"
+    //             : receiptPayment.paymentType === "TP"
+    //               ? "AT"
+    //               : "Desconocido"
 
-      return [
-        `${receipt.customer.lastName} ${receipt.customer.firstName}`,
-        total,
-        formatDateA(receipt.dateNow),
-        paymentType,
-        owner,
-      ]
-    })
+    //   return [
+    //     `${receipt.customer.lastName} ${receipt.customer.firstName}`,
+    //     total,
+    //     formatDateA(receipt.dateNow),
+    //     paymentType,
+    //     owner,
+    //   ]
+    // })
 
-    addDataSectionReceipt("expensas", "expensas", combinedOwnersSorted, (receiptPayment) => {
-      const receipt = receiptPayment.receipt
-      const total = receiptPayment.numberInBox
+    // addDataSectionReceipt("expensas", "expensas", combinedOwnersSorted, (receiptPayment) => {
+    //   const receipt = receiptPayment.receipt
+    //   const total = receiptPayment.numberInBox
 
-      const vehicleCustomer = receipt.customer?.parkingRenters?.[0]?.parkingOwner?.customer
-      const ownerName = vehicleCustomer
-        ? `${vehicleCustomer.lastName} ${vehicleCustomer.firstName}`
-        : `${receipt.customer.lastName} ${receipt.customer.firstName}`
+    //   const vehicleCustomer = receipt.customer?.parkingRenters?.[0]?.parkingOwner?.customer
+    //   const ownerName = vehicleCustomer
+    //     ? `${vehicleCustomer.lastName} ${vehicleCustomer.firstName}`
+    //     : `${receipt.customer.lastName} ${receipt.customer.firstName}`
 
-      const paymentType =
-        receiptPayment.paymentType === "TRANSFER"
-          ? "TR"
-          : receiptPayment.paymentType === "CASH"
-            ? "EF"
-            : receiptPayment.paymentType === "CHECK"
-              ? "CH"
-              : receiptPayment.paymentType === "CREDIT"
-                ? "CR"
-                : receiptPayment.paymentType === "TP"
-                  ? "AT"
-                  : receiptPayment.paymentType === "MIX"
-                    ? "MIX"
-                    : "Desconocido"
+    //   const paymentType =
+    //     receiptPayment.paymentType === "TRANSFER"
+    //       ? "TR"
+    //       : receiptPayment.paymentType === "CASH"
+    //         ? "EF"
+    //         : receiptPayment.paymentType === "CHECK"
+    //           ? "CH"
+    //           : receiptPayment.paymentType === "CREDIT"
+    //             ? "CR"
+    //             : receiptPayment.paymentType === "TP"
+    //               ? "AT"
+    //               : receiptPayment.paymentType === "MIX"
+    //                 ? "MIX"
+    //                 : "Desconocido"
 
-      return [ownerName, total, formatDateA(receipt.dateNow), paymentType]
-    })
+    //   return [ownerName, total, formatDateA(receipt.dateNow), paymentType]
+    // })
 
-    addDataSectionReceipt("terceros", "terceros", combinedPrivatesSorted, (receiptPayment) => {
-      const receipt = receiptPayment.receipt
+    // addDataSectionReceipt("terceros", "terceros", combinedPrivatesSorted, (receiptPayment) => {
+    //   const receipt = receiptPayment.receipt
 
-      // ==========================================================
-      // TERCEROS + TRANSFERENCIA
-      //
-      // Ejemplo:
-      // Alejandra paga $50.000
-      // Andrés (propietario) tiene $30.000
-      //
-      // Entrada real a caja:
-      // $50.000 - $30.000 = $20.000
-      //
-      // Salida:
-      // $50.000
-      //
-      // Neto:
-      // $20.000 - $50.000 = -$30.000
-      // ==========================================================
+    //   // ==========================================================
+    //   // TERCEROS + TRANSFERENCIA
+    //   //
+    //   // Ejemplo:
+    //   // Alejandra paga $50.000
+    //   // Andrés (propietario) tiene $30.000
+    //   //
+    //   // Entrada real a caja:
+    //   // $50.000 - $30.000 = $20.000
+    //   //
+    //   // Salida:
+    //   // $50.000
+    //   //
+    //   // Neto:
+    //   // $20.000 - $50.000 = -$30.000
+    //   // ==========================================================
 
-      const totalPriceSalida = Number(receiptPayment.price ?? 0)
+    //   const totalPriceSalida = Number(receiptPayment.price ?? 0)
 
-      const vehicleCustomer =
-        receipt.customer?.parkingRenters?.[0]?.parkingOwner?.customer
+    //   const vehicleCustomer =
+    //     receipt.customer?.parkingRenters?.[0]?.parkingOwner?.customer
 
-      const vehicleOwner = vehicleCustomer
-        ? `${vehicleCustomer.lastName}`
-        : ""
+    //   const vehicleOwner = vehicleCustomer
+    //     ? `${vehicleCustomer.lastName}`
+    //     : ""
 
-      // Buscar cuánto corresponde al propietario
-      let ownerAmount = 0
+    //   // Buscar cuánto corresponde al propietario
+    //   let ownerAmount = 0
 
-      if (vehicleCustomer?.id) {
-        ownerAmount = combinedOwners
-          .filter((ownerPayment) => {
-            const ownerCustomer = ownerPayment?.receipt?.customer
+    //   if (vehicleCustomer?.id) {
+    //     ownerAmount = combinedOwners
+    //       .filter((ownerPayment) => {
+    //         const ownerCustomer = ownerPayment?.receipt?.customer
 
-            return ownerCustomer?.id === vehicleCustomer.id
-          })
-          .reduce((sum, ownerPayment) => {
-            return sum + Number(ownerPayment.numberInBox ?? 0)
-          }, 0)
-      }
+    //         return ownerCustomer?.id === vehicleCustomer.id
+    //       })
+    //       .reduce((sum, ownerPayment) => {
+    //         return sum + Number(ownerPayment.numberInBox ?? 0)
+    //       }, 0)
+    //   }
 
-      // Si es transferencia, la entrada es solamente la diferencia
-      const totalInBox =
-        receiptPayment.paymentType === "TRANSFER"
-          ? Math.max(0, totalPriceSalida - ownerAmount)
-          : Number(receiptPayment.numberInBox ?? 0)
+    //   // Si es transferencia, la entrada es solamente la diferencia
+    //   const totalInBox =
+    //     receiptPayment.paymentType === "TRANSFER"
+    //       ? Math.max(0, totalPriceSalida - ownerAmount)
+    //       : Number(receiptPayment.numberInBox ?? 0)
 
-      const paymentType =
-        receiptPayment.paymentType === "TRANSFER"
-          ? "TR"
-          : receiptPayment.paymentType === "CASH"
-            ? "EF"
-            : receiptPayment.paymentType === "CHECK"
-              ? "CH"
-              : receiptPayment.paymentType === "CREDIT"
-                ? "CR"
-                : receiptPayment.paymentType === "TP"
-                  ? "AT"
-                  : receiptPayment.paymentType === "MIX"
-                    ? "MIX"
-                    : "Desconocido"
+    //   const paymentType =
+    //     receiptPayment.paymentType === "TRANSFER"
+    //       ? "TR"
+    //       : receiptPayment.paymentType === "CASH"
+    //         ? "EF"
+    //         : receiptPayment.paymentType === "CHECK"
+    //           ? "CH"
+    //           : receiptPayment.paymentType === "CREDIT"
+    //             ? "CR"
+    //             : receiptPayment.paymentType === "TP"
+    //               ? "AT"
+    //               : receiptPayment.paymentType === "MIX"
+    //                 ? "MIX"
+    //                 : "Desconocido"
 
-      return [
-        `${receipt.customer.lastName} ${receipt.customer.firstName}`,
-        totalInBox,
-        formatDateA(receipt.dateNow),
-        paymentType,
-        vehicleOwner,
-        totalInBox,
-        totalPriceSalida,
-      ]
-    })
+    //   return [
+    //     `${receipt.customer.lastName} ${receipt.customer.firstName}`,
+    //     totalInBox,
+    //     formatDateA(receipt.dateNow),
+    //     paymentType,
+    //     vehicleOwner,
+    //     totalInBox,
+    //     totalPriceSalida,
+    //   ]
+    // })
 
     // ==============================
     //  Totales globales (NO toco la lógica)

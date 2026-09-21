@@ -101,7 +101,7 @@ export function ActivityRevenueChart({ data }: { data: RevenueSummaryResponse | 
               {hovered.total > 0 ? ars(hovered.total) : 'Sin caja'} el {dayjs(hovered.date).format('DD/MM')}
             </span>
           ) : (
-            <span className="text-[10px] font-mono text-muted-foreground">Pasá el mouse por los cuadros</span>
+            <span className="text-[10px] font-mono text-muted-foreground">Tocá un cuadro para ver el importe</span>
           )}
         </div>
       </div>

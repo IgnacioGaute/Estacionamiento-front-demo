@@ -1,3 +1,4 @@
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from "@/lib/auth";
 import { OtherPaymentSchemaType, updateOtherPaymentSchemaType } from "@/schemas/other-payment.schema";
 import { BoxList } from "@/types/box-list.type";

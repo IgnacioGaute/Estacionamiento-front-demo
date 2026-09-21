@@ -21,7 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Ticket } from '@/types/ticket.type';
 import { deleteTicketSchema, DeleteTicketSchemaType } from '@/schemas/ticket.schema';
 import { deleteTicketAction } from '@/actions/tickets/delete-ticket.action';

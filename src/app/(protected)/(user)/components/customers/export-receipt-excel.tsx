@@ -21,7 +21,7 @@ import { saveAs } from 'file-saver';
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Receipt } from '@/types/receipt.type';
 import { CustomerType } from '@/types/cutomer.type';

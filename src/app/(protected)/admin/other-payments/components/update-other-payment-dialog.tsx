@@ -18,7 +18,7 @@ import {
   updateUserSchema,
   UpdateUserSchemaType,
 } from '@/schemas/user.schema';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import {
   Form,
   FormControl,

@@ -2,7 +2,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
+import { toast } from '@/lib/toast'
 import { generateAllReceipts } from '@/utils/generate-all-receipts'
 import { Customer, CustomerType } from '@/types/cutomer.type'
 import { useSession } from 'next-auth/react'

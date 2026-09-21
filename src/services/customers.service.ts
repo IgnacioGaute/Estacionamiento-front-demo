@@ -1,3 +1,6 @@
+'use server';
+
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 
 import { revalidateTag } from "next/cache";
 import { getCacheTag } from "./cache-tags";
@@ -214,9 +217,7 @@ export const createCustomer = async (
         `${BASE_URL}/receipts/${receiptId}/customers/${customerId}`,
         {
           method: 'PATCH',
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: await getAuthHeaders(),
           body: JSON.stringify(values),
           signal: controller.signal,
         }
@@ -266,9 +267,7 @@ export const createCustomer = async (
     try {
       const response = await fetch(`${BASE_URL}/receipts/cancelReceipt/${receiptId}/customers/${customerId}`, {
         method: 'PATCH',
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: await getAuthHeaders(),
       });
       const data = await response.json();
   
@@ -296,9 +295,7 @@ export const createCustomer = async (
     try {
       const response = await fetch(`${BASE_URL}/receipts/generate-manual/${customer}`, {
         method: 'POST',
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({dateNow}),
       });
       const data = await response.json();
@@ -326,9 +323,7 @@ export const createCustomer = async (
   ) => {
     try {
       const response = await fetch(`${BASE_URL}/receipts/${customer}`, {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: await getAuthHeaders(),
       });
       const data = await response.json();
   
@@ -353,9 +348,7 @@ export const createCustomer = async (
   ) => {
     try {
       const response = await fetch(`${BASE_URL}/receipts`, {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: await getAuthHeaders(),
       });
       const data = await response.json();
   

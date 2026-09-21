@@ -5,6 +5,8 @@ import { ExpenseTable } from './components/other-payment-table';
 import { getExpenses } from '@/services/expenses.service';
 import { PageHeader } from '@/components/page-header';
 import { PageTour } from '@/components/page-tour';
+import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
 
 const TOUR_STEPS = [
   {
@@ -31,6 +33,8 @@ const TOUR_STEPS = [
 ];
 
 export default async function OtherPaymentPage() {
+  const session = await auth();
+  if (session?.user?.role?.toUpperCase() !== 'ADMIN') redirect('/tickets');
   const expenses = await getExpenses()
   return (
     <div className="container mx-auto px-4 py-6 sm:p-8 max-w-7xl">

@@ -52,7 +52,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { generateReceiptsWithoutRegistering } from '@/utils/generate-receipt-without-registering';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { cancelReceiptAction } from '@/actions/receipts/cancel-receipt.action';
 import { ReceiptSchemaType } from '@/schemas/receipt.schema';
 import { historialReceiptsAction } from '@/actions/receipts/create-receipt.action';

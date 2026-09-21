@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import JsBarcode from 'jsbarcode';
 import { generateReceiptsManual, getCustomers } from '@/services/customers.service';
 import { CustomerType } from '@/types/cutomer.type';

@@ -15,6 +15,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -30,6 +31,7 @@ interface NavItem {
 
 export function NavMain({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -57,7 +59,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                     'data-[active=true]:bg-gm-yellow data-[active=true]:text-gm-ink data-[active=true]:font-semibold data-[active=true]:shadow-[inset_0_-2px_0_rgba(0,0,0,0.15)]',
                   )}
                 >
-                  <Link href={item.url} className="flex w-full items-center gap-x-3">
+                  <Link href={item.url} onClick={() => { if (isMobile) setOpenMobile(false); }} className="flex w-full items-center gap-x-3">
                     {item.icon && (
                       <span className="flex size-[18px] shrink-0 items-center justify-center [&>svg]:size-[18px]">
                         {React.isValidElement(item.icon) ? item.icon : typeof item.icon === 'function' ? (item.icon as () => React.JSX.Element)() : null}
@@ -114,7 +116,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                             'data-[active=true]:bg-gm-yellow data-[active=true]:text-gm-ink',
                           )}
                         >
-                          <Link href={subItem.url}>
+                          <Link href={subItem.url} onClick={() => { if (isMobile) setOpenMobile(false); }}>
                             <span className="truncate">{subItem.title}</span>
                           </Link>
                         </SidebarMenuSubButton>

@@ -1,3 +1,4 @@
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from "@/lib/auth";
 import { getCacheTag } from "./cache-tags";
 import { PaginatedResponse } from "@/types/paginated-response.type";
@@ -9,9 +10,10 @@ import { revalidateTag } from "next/cache";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 
-export const getNotes = async (authToken?: string) => {
+export const getNotes = async (authToken?: string, page = 1, search = '') => {
     try {
-      const response = await fetch(`${BASE_URL}/notes`, {
+      const response = await fetch(`${BASE_URL}/notes?page=${page}&limit=6&search=${encodeURIComponent(search)}`, {
+        cache: 'no-store',
         headers: await getAuthHeaders(authToken),
         next: {
           tags: [getCacheTag('notes', 'all')],

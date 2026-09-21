@@ -1,8 +1,9 @@
 'use client';
+import { useTenant } from '@/components/tenant-provider';
 
 import React, { useState, useRef, useEffect, startTransition } from 'react';
 import { startScanner } from '@/services/scanner.service';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { getCustomerById } from '@/services/customers.service';
 import { historialReceiptsAction } from '@/actions/receipts/create-receipt.action';
 import { useSession } from 'next-auth/react';
@@ -15,6 +16,7 @@ import { ReceiptSchemaType } from '@/schemas/receipt.schema';
 import { Receipt } from '@/types/receipt.type';
 import { Hash, Keyboard, QrCode, ScanLine, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CloseTicketPanel } from '../tickets/components/close-ticket-panel';
 
 export default function ScannerButton({
   isDialogOpen,
@@ -38,8 +40,11 @@ export default function ScannerButton({
   // manual — ese ingreso manual ahora vive en el diálogo unificado de "Registrar entrada".
   hideControls?: boolean;
 }) {
+  const { playaId } = useTenant();
   const [isScanning, setIsScanning] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [closeId, setCloseId] = useState<string | null>(null);
+  const requestInFlight = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const session = useSession();
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -55,8 +60,12 @@ export default function ScannerButton({
   }, [isScanning, onScanningChange]);
 
   useEffect(() => {
-    const handleKeyDown = () => {
-      const dialogIsOpen = isDialogOpen || dialogOpen || manualInputVisible;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (event.ctrlKey || event.altKey || event.metaKey) return;
+      if (target !== inputRef.current && target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
+      const dialogIsOpen = isDialogOpen || dialogOpen || !!closeId || manualInputVisible;
       if (!dialogIsOpen && !isScanning) {
         setIsScanning(true);
         setTimeout(() => inputRef.current?.focus(), 100);
@@ -64,7 +73,7 @@ export default function ScannerButton({
     };
     const handleKeyUp = () => setIsScanning(false);
 
-    const dialogIsOpen = isDialogOpen || dialogOpen || manualInputVisible;
+    const dialogIsOpen = isDialogOpen || dialogOpen || !!closeId || manualInputVisible;
     if (!dialogIsOpen) {
       document.addEventListener('keydown', handleKeyDown);
       document.addEventListener('keyup', handleKeyUp);
@@ -73,12 +82,13 @@ export default function ScannerButton({
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [isDialogOpen, dialogOpen, manualInputVisible, isScanning]);
+  }, [isDialogOpen, dialogOpen, closeId, manualInputVisible, isScanning]);
 
   const handleSubmit = async (code: string) => {
-    if (!code) return;
+    if (!code || requestInFlight.current || closeId || isDialogOpen) return;
+    requestInFlight.current = true;
     startTransition(() => {
-      startScanner({ barCode: code })
+      startScanner({ barCode: code }, session.data?.token, playaId)
         .then(async (data) => {
           if (!data || 'error' in data) {
             toast.error(data?.error || 'Error desconocido');
@@ -101,8 +111,10 @@ export default function ScannerButton({
                 console.error('Error al obtener cliente:', err);
                 toast.error('Error al obtener los datos del cliente.');
               }
+            } else if (data.requiresClose && data.registrationId) {
+              setCloseId(data.registrationId);
             } else {
-              toast.success('🎫 Ticket detectado', { duration: 3000 });
+              toast.success('Entrada registrada', { duration: 3000 });
               if (data.warning) {
                 toast.warning(data.warning, { duration: 8000 });
               }
@@ -115,7 +127,7 @@ export default function ScannerButton({
           console.error(err);
           toast.error('Error en la solicitud.');
           setIsScanning(false);
-        });
+        }).finally(() => { requestInFlight.current = false; });
     });
   };
 
@@ -162,6 +174,7 @@ export default function ScannerButton({
           className="absolute h-0 w-0 opacity-0 pointer-events-none"
           aria-hidden
         />
+        <CloseTicketPanel open={!!closeId} initialRegistrationId={closeId} onOpenChange={(open) => { if (!open) setCloseId(null); }} onSuccess={onTicketRegistered} />
         <OpenScannerDialog
           open={dialogOpen}
           onConfirm={handleConfirm}
@@ -274,6 +287,7 @@ export default function ScannerButton({
         </div>
       )}
 
+      <CloseTicketPanel open={!!closeId} initialRegistrationId={closeId} onOpenChange={(open) => { if (!open) setCloseId(null); }} onSuccess={onTicketRegistered} />
       <OpenScannerDialog
         open={dialogOpen}
         onConfirm={handleConfirm}

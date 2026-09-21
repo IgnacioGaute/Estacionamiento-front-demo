@@ -8,6 +8,12 @@ export interface TourStep {
   key: string;
   title: string;
   desc: string;
+  /**
+   * Se ejecuta al entrar al paso, antes de medir el elemento. Sirve para dejar
+   * visible lo que el paso quiere mostrar: en celular las secciones viven en
+   * pestañas, y sin esto el foco se dibuja sobre un elemento oculto (0×0).
+   */
+  onEnter?: () => void;
 }
 
 interface Pos {
@@ -57,9 +63,16 @@ export function useTour(steps: TourStep[]): TourHandle {
   useEffect(() => {
     if (!open) return;
     let scrolled = false;
+
+    // Si el paso necesita cambiar de pestaña para que su sección exista, esto lo
+    // dispara antes de medir.
+    steps[idx]?.onEnter?.();
+
     const snap = () => {
       const el = elsRef.current[steps[idx]?.key];
-      if (!el) return;
+      // Puede no estar montado todavía (recién cambiamos de pestaña) o estar
+      // oculto: en los dos casos medirlo daría 0×0 y el foco quedaría flotando.
+      if (!el || el.getBoundingClientRect().width === 0) return false;
       if (!scrolled) {
         scrolled = true;
         const r0 = el.getBoundingClientRect();
@@ -68,11 +81,23 @@ export function useTour(steps: TourStep[]): TourHandle {
       }
       const r = el.getBoundingClientRect();
       setPos({ top: r.top, left: r.left, width: r.width, height: r.height });
+      return true;
     };
-    snap();
+
+    // El cambio de pestaña de onEnter monta la sección un render después, así que
+    // reintenta un rato antes de rendirse en vez de medir el vacío.
+    let intentos = 12;
+    let reloj: ReturnType<typeof setTimeout> | undefined;
+    const intentar = () => {
+      if (snap() || intentos-- <= 0) return;
+      reloj = setTimeout(intentar, 60);
+    };
+    intentar();
+
     window.addEventListener('resize', snap);
     window.addEventListener('scroll', snap, true);
     return () => {
+      if (reloj) clearTimeout(reloj);
       window.removeEventListener('resize', snap);
       window.removeEventListener('scroll', snap, true);
     };

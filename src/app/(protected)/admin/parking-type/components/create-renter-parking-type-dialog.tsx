@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { renterParkingTypeSchema, RenterParkingTypeSchemaType } from '@/schemas/renter-parking-type.schema';
 import { createRenterParkingTypeAction } from '@/actions/renter-parking-type/create-renter-parking-type.action';
 

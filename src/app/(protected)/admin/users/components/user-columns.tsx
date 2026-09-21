@@ -1,29 +1,30 @@
-'use client';
+"use client";
 
-import { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, User as UserIcon } from 'lucide-react';
+import { AssignPlayaDialog } from "./assign-playa-dialog";
+import { ColumnDef } from "@tanstack/react-table";
+import { MoreHorizontal, User as UserIcon } from "lucide-react";
 
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { DataTableColumnHeader } from '@/components/ui/data-table-column-header';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { DataTableColumnHeader } from "@/components/ui/data-table-column-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { User } from '@/types/user.type';
-import { UpdateUserDailog } from './update-user-dialog';
-import { DeleteUserDialog } from './delete-user-dialog';
+} from "@/components/ui/dropdown-menu";
+import { User } from "@/types/user.type";
+import { UpdateUserDailog } from "./update-user-dialog";
+import { DeleteUserDialog } from "./delete-user-dialog";
 
 function avatarPalette(seed: string) {
   const colors = [
-    'bg-gm-orange',
-    'bg-[hsl(120_35%_55%)]',
-    'bg-[hsl(200_60%_60%)]',
-    'bg-gm-yellow text-gm-ink',
-    'bg-[hsl(280_45%_65%)]',
+    "bg-gm-orange",
+    "bg-[hsl(120_35%_55%)]",
+    "bg-[hsl(200_60%_60%)]",
+    "bg-gm-yellow text-gm-ink",
+    "bg-[hsl(280_45%_65%)]",
   ];
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
@@ -32,14 +33,14 @@ function avatarPalette(seed: string) {
 
 export const userColumns: ColumnDef<User>[] = [
   {
-    accessorKey: 'username',
+    accessorKey: "username",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Usuario" />
     ),
     cell: ({ row }) => {
       const u = row.original;
       const initials =
-        `${u.firstName?.[0] ?? ''}${u.lastName?.[0] ?? ''}`.toUpperCase() ||
+        `${u.firstName?.[0] ?? ""}${u.lastName?.[0] ?? ""}`.toUpperCase() ||
         u.username.slice(0, 2).toUpperCase();
       return (
         <div className="flex items-center gap-2.5 min-w-[180px]">
@@ -63,25 +64,25 @@ export const userColumns: ColumnDef<User>[] = [
     },
   },
   {
-    accessorKey: 'email',
+    accessorKey: "email",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Email" />
     ),
     cell: ({ row }) => (
       <div className="gm-mono text-[12.5px] text-muted-foreground min-w-[200px]">
-        {row.getValue('email')}
+        {row.getValue("email")}
       </div>
     ),
   },
   {
-    id: 'role',
+    id: "role",
     accessorFn: (row) => (row as any).role,
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Rol" />
     ),
     cell: ({ row }) => {
-      const role = ((row.original as any).role ?? 'USER') as string;
-      return role === 'ADMIN' ? (
+      const role = ((row.original as any).role ?? "USER") as string;
+      return role === "ADMIN" ? (
         <Badge variant="yellow">Admin</Badge>
       ) : (
         <Badge variant="default">
@@ -91,7 +92,19 @@ export const userColumns: ColumnDef<User>[] = [
     },
   },
   {
-    id: 'actions',
+    id: "playa",
+    header: "Playa del operador",
+    cell: ({ row }) =>
+      row.original.role === "USER" ? (
+        <AssignPlayaDialog user={row.original} />
+      ) : (
+        <span className="text-xs text-muted-foreground">
+          Administra la empresa
+        </span>
+      ),
+  },
+  {
+    id: "actions",
     cell: ({ row }) => {
       const user = row.original;
       return (

@@ -1,73 +1,34 @@
 'use client';
+import { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import { useTenant } from '@/components/tenant-provider';
+import { useTenantEvent } from './use-tenant-event';
+import { unreadNotesAction } from '@/actions/notes/note-read.action';
 
-import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
-import { useRouter } from 'next/navigation';
-
-const socket = io('https://garage-mitre-backend-production.up.railway.app', {
-  transports: ['websocket'],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 2000
-});
-
-// useNotifications.ts
-export const useNotifications = () => {
-  const [notifications, setNotifications] = useState<any[]>(() => {
-    if (typeof window !== 'undefined') {
-      const storedNotifications = localStorage.getItem('notifications');
-      return storedNotifications ? JSON.parse(storedNotifications) : [];
-    }
-    return [];
-  });
-
-  const [hasNewNoteAlert, setHasNewNoteAlert] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('hasNewNoteAlert') === 'true';
-    }
-    return false;
-  });
-
+export function useNotifications() {
+  const [unreadIds, setUnreadIds] = useState<string[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const { playaId } = useTenant();
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
   useEffect(() => {
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-  }, [notifications]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      socket.on('connect', () => {
-        console.log('🔌 Conectado al WebSocket');
-      });
-
-      socket.on('notification', (data) => {
-        console.log('Notificación recibida:', data);
-        if (data.type === 'NEW_NOTE') {
-          setNotifications((prev) => [...prev, data]);
-          setHasNewNoteAlert(true);
-          localStorage.setItem('hasNewNoteAlert', 'true');
-        }
-      });
-
-      socket.on('disconnect', () => {
-        console.log('⚠️ Desconectado del WebSocket');
-      });
-
-      return () => {
-        socket.off('notification');
-        socket.off('connect');
-        socket.off('disconnect');
-      };
-    }
-  }, []);
-
-  const clearNotifications = () => {
-    setNotifications([]);
-    localStorage.removeItem('notifications');
-  };
-
-  const clearNoteAlert = () => {
-    setHasNewNoteAlert(false);
-    localStorage.setItem('hasNewNoteAlert', 'false');
-  };
-
-  return { notifications, hasNewNoteAlert, clearNotifications, clearNoteAlert };
-};
+    let active = true;
+    setUnreadIds([]);
+    setLoaded(false);
+    if (!playaId || !userId) return;
+    let request = 0;
+    const refresh = () => { const current = ++request; unreadNotesAction().then(ids => { if (active && current === request) { setUnreadIds(ids); setLoaded(true); } }).catch(() => {}); };
+    refresh();
+    const timer = window.setInterval(refresh, 30000);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('notes-read-changed', refresh);
+    window.addEventListener('notes-notification', refresh);
+    return () => { active = false; clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('notes-read-changed', refresh); window.removeEventListener('notes-notification', refresh); };
+  }, [playaId, userId]);
+  useTenantEvent('notification', data => {
+    if (data.type === 'NEW_NOTE' && data.authorId !== userId) window.dispatchEvent(new Event('notes-notification'));
+  });
+  // Navigation alone must never mark messages as read.
+  const clearNoteAlert = useCallback(() => {}, []);
+  return { unreadIds, loaded, notifications: unreadIds, hasNewNoteAlert: unreadIds.length > 0, clearNotifications: clearNoteAlert, clearNoteAlert };
+}

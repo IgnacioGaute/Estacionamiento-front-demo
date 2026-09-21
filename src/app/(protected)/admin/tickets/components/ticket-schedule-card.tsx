@@ -3,9 +3,10 @@
 import { useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { ticketScheduleSchema, TicketScheduleSchemaType } from '@/schemas/ticket-schedule.schema';
@@ -22,6 +23,7 @@ export function TicketScheduleCard({ schedule }: { schedule: TicketSchedule }) {
       dayEndHour: schedule.dayEndHour,
       graceMinutes: schedule.graceMinutes,
       barcodeTicketsEnabled: schedule.barcodeTicketsEnabled,
+      pricingDayTypeBasis: schedule.pricingDayTypeBasis ?? 'EXIT',
     },
   });
 
@@ -48,7 +50,7 @@ export function TicketScheduleCard({ schedule }: { schedule: TicketSchedule }) {
                 <div>
                   <FormLabel className="text-sm font-semibold">Tickets por código de barras</FormLabel>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Si lo apagás, en la pantalla de operación no se muestra nada de esto (escáner, grilla de tickets ni esos tickets en &quot;Activos ahora&quot;) — queda solo el flujo por patente.
+                    Activado: podés registrar entradas y salidas escaneando tickets físicos. Apagado: trabajás con patentes. Antes de apagarlo, registrá la salida de los tickets físicos que estén en uso.
                   </p>
                 </div>
                 <FormControl>
@@ -59,6 +61,17 @@ export function TicketScheduleCard({ schedule }: { schedule: TicketSchedule }) {
           )}
         />
 
+        <FormField control={form.control} name="pricingDayTypeBasis" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Horario de referencia</FormLabel>
+            <Select value={field.value} onValueChange={field.onChange} disabled={isPending || schedule.pricingOptions?.crossing.enabled}>
+              <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+              <SelectContent><SelectItem value="ENTRY">Hora de entrada</SelectItem><SelectItem value="EXIT">Hora de salida</SelectItem></SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{schedule.pricingOptions?.crossing.enabled ? 'Esta elección está reemplazada por la opción Cruces de horario en Cómo cobrar.' : 'Se usa este horario para elegir el precio de toda la estadía. Los cambios se aplican a las próximas entradas.'}</p>
+            <FormMessage />
+          </FormItem>
+        )} />
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             De esta hora a esta hora se cobra la tarifa &quot;Dia&quot;; el resto del tiempo se cobra &quot;Noche&quot;. La tolerancia es cuántos minutos de gracia se dan antes de saltar a cobrar la franja de precio siguiente.

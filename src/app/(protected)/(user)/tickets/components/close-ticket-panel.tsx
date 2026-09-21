@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { PricingBreakdown, formatPrice } from '@/components/pricing-breakdown';
+
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { AlertTriangle, Banknote, Barcode, Car, CreditCard, Search } from 'lucide-react';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
@@ -26,16 +28,22 @@ export function CloseTicketPanel({
   initialRegistrationId?: string | null;
 }) {
   const [isPending, startTransition] = useTransition();
+  const summaryRequest = useRef(0);
+  const searchRequest = useRef(0);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<TicketRegistration[]>([]);
   const [summary, setSummary] = useState<CloseSummary | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'TRANSFER' | null>(null);
   const [showCourtesy, setShowCourtesy] = useState(false);
   const [courtesyReason, setCourtesyReason] = useState('');
 
   const resetAll = () => {
+    summaryRequest.current++;
+    searchRequest.current++;
     setQuery('');
     setResults([]);
     setSummary(null);
+    setPaymentMethod(null);
     setShowCourtesy(false);
     setCourtesyReason('');
   };
@@ -45,6 +53,7 @@ export function CloseTicketPanel({
       resetAll();
       return;
     }
+    resetAll();
     if (initialRegistrationId) {
       loadSummary(initialRegistrationId);
     } else {
@@ -56,8 +65,10 @@ export function CloseTicketPanel({
   }, [open, initialRegistrationId]);
 
   const loadSummary = (id: string) => {
+    const request = ++summaryRequest.current;
     startTransition(async () => {
       const data = await getCloseSummaryAction(id);
+      if (request !== summaryRequest.current) return;
       if (!data) {
         toast.error('No se pudo cargar el ticket.');
         return;
@@ -68,13 +79,14 @@ export function CloseTicketPanel({
 
   const handleSearchChange = (value: string) => {
     setQuery(value);
+    const request = ++searchRequest.current;
     startTransition(async () => {
       const data = await searchActiveRegistrationsAction(value);
-      setResults(data);
+      if (request === searchRequest.current) setResults(data);
     });
   };
 
-  const handleClose = (closeType: 'PAYMENT' | 'NO_CHARGE' | 'COURTESY', metodo?: 'CASH' | 'TRANSFER') => {
+  const handleClose = (closeType: 'PAYMENT' | 'NO_CHARGE' | 'COURTESY', metodo?: 'CASH' | 'TRANSFER', refundMetodo?: 'CASH' | 'TRANSFER') => {
     if (!summary) return;
     if (closeType === 'COURTESY' && !courtesyReason.trim()) {
       toast.error('Ingresá el motivo de la cortesía.');
@@ -83,12 +95,18 @@ export function CloseTicketPanel({
     startTransition(async () => {
       const data = await closeRegistrationAction(summary.registration.id, {
         closeType,
+        expectedPrice: summary.previewBracket.price,
+        expectedCollected: summary.totalCollectedSoFar,
+        refundMetodo,
         metodo,
         motivo: closeType === 'COURTESY' ? courtesyReason : undefined,
       });
       if (!data || 'error' in data) {
         const errorMessage = typeof data?.error === 'string' ? data.error : data?.error?.message;
         toast.error(errorMessage ?? 'Error desconocido');
+        const refreshed = await getCloseSummaryAction(summary.registration.id);
+        if (refreshed) setSummary(refreshed);
+        setPaymentMethod(null);
       } else {
         toast.success('Ticket cerrado exitosamente');
         onOpenChange(false);
@@ -98,10 +116,10 @@ export function CloseTicketPanel({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) resetAll(); onOpenChange(o); }}>
-      <DialogContent className="max-w-md sm:max-w-lg">
+    <Dialog open={open} onOpenChange={(o) => { if (isPending) return; if (!o) resetAll(); onOpenChange(o); }}>
+      <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader className="items-center">
-          <DialogTitle>Buscar y cerrar ticket</DialogTitle>
+          <DialogTitle>Registrar salida y cobrar</DialogTitle>
         </DialogHeader>
 
         {!summary ? (
@@ -155,7 +173,7 @@ export function CloseTicketPanel({
               })}
               {results.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  {query.trim() ? 'Sin resultados.' : 'No hay vehículos activos.'}
+                  {isPending ? 'Buscando vehículos…' : query.trim() ? 'No encontramos ese vehículo. Revisá la patente o el número de ticket.' : 'No hay vehículos adentro.'}
                 </p>
               )}
             </div>
@@ -164,32 +182,31 @@ export function CloseTicketPanel({
           <div className="space-y-4">
             <div className="rounded-2xl border border-border bg-card/40 p-4 space-y-1.5">
               <p className="font-medium text-foreground">
-                {summary.registration.noPlate ? `Sin patente · ${summary.registration.lastNameCustomer ?? ''}` : summary.registration.licensePlateOriginal}
+                {isBarcodeOrigin(summary.registration) ? `Ticket ${summary.registration.ticket?.codeBar ?? summary.registration.codeBarTicket}` : summary.registration.noPlate ? `Sin patente · ${summary.registration.lastNameCustomer ?? ''}` : summary.registration.licensePlateOriginal}
                 {summary.registration.casilleroNumber ? ` · Casillero ${summary.registration.casilleroNumber}` : ''}
               </p>
               <p className="text-sm text-muted-foreground">
                 Entró {summary.registration.entryTime} · hace {formatElapsed(summary.elapsedMinutes)}
               </p>
-              <p className="text-sm text-muted-foreground">
-                Tarifa: <span className="text-foreground font-medium">{summary.previewBracket.label}</span> (${summary.previewBracket.price})
-              </p>
+              <p className="text-sm text-muted-foreground">Total de la estadía: <strong className="text-foreground">{formatPrice(summary.previewBracket.price)}</strong></p>
+              {summary.previewBracket.breakdown && <details className="pt-2"><summary className="cursor-pointer text-sm font-medium">¿Cómo se calculó este importe?</summary><div className="mt-3 space-y-2"><p className="text-xs text-muted-foreground">{summary.pricingDayTypeBasis === 'SPLIT' ? 'Cada parte de la estadía usa el precio de día o noche que le corresponde.' : `Se usa el precio de la hora de ${summary.pricingDayTypeBasis === 'ENTRY' ? 'entrada' : 'salida'}.`} {summary.tariffSnapshotUsed ? 'Se respetan los precios guardados cuando ingresó.' : 'Este ingreso es anterior al sistema de precios guardados: usa los precios actuales.'}</p><PricingBreakdown lines={summary.previewBracket.breakdown} total={summary.previewBracket.price} /></div></details>}
               {summary.totalCollectedSoFar > 0 && (
-                <p className="text-sm text-muted-foreground">Ya cobrado (anticipo): ${summary.totalCollectedSoFar}</p>
+                <p className="text-sm text-muted-foreground">Ya pagó por adelantado: {formatPrice(summary.totalCollectedSoFar)}</p>
               )}
               {summary.previewBracket.usedFallback && (
                 <div className="flex items-center gap-2 text-xs text-gm-orange">
-                  <AlertTriangle className="h-3.5 w-3.5" /> Superó todas las franjas configuradas.
+                  <AlertTriangle className="h-3.5 w-3.5" /> El tiempo supera los precios cargados. Revisá el importe antes de cobrar.
                 </div>
               )}
             </div>
 
             {summary.cambioARetornar > 0 && (
-              <p className="text-sm text-muted-foreground text-center">Vuelto a devolver: ${summary.cambioARetornar}</p>
+              <p className="text-sm text-muted-foreground text-center">Hay que devolverle: {formatPrice(summary.cambioARetornar)}</p>
             )}
 
             <div className="rounded-2xl border border-border bg-gm-surface-2 p-5 text-center">
-              <p className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">Saldo a cobrar</p>
-              <p className="text-4xl font-bold text-foreground gm-mono gm-tnum">${summary.saldoACobrar}</p>
+              <p className="text-sm font-medium text-muted-foreground">Falta cobrar ahora</p>
+              <p className="text-4xl font-bold text-foreground gm-mono gm-tnum">{formatPrice(summary.saldoACobrar)}</p>
             </div>
 
             {summary.saldoACobrar > 0 ? (
@@ -197,21 +214,28 @@ export function CloseTicketPanel({
                 <button
                   type="button"
                   disabled={isPending}
-                  onClick={() => handleClose('PAYMENT', 'CASH')}
-                  className="flex flex-col items-center justify-center gap-1.5 min-h-[76px] rounded-2xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 text-foreground disabled:opacity-50"
+                  onClick={() => setPaymentMethod('CASH')}
+                  aria-pressed={paymentMethod === 'CASH'}
+                  className="flex flex-col items-center justify-center gap-1.5 min-h-[76px] rounded-2xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 text-foreground disabled:opacity-50 aria-pressed:border-gm-yellow aria-pressed:bg-gm-yellow/15"
                 >
                   <Banknote className="size-5" />
-                  <span className="gm-display text-[12.5px] font-semibold">Efectivo</span>
+                  <span className="gm-display text-base font-semibold">Efectivo</span>
                 </button>
                 <button
                   type="button"
                   disabled={isPending}
-                  onClick={() => handleClose('PAYMENT', 'TRANSFER')}
-                  className="flex flex-col items-center justify-center gap-1.5 min-h-[76px] rounded-2xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 text-foreground disabled:opacity-50"
+                  onClick={() => setPaymentMethod('TRANSFER')}
+                  aria-pressed={paymentMethod === 'TRANSFER'}
+                  className="flex flex-col items-center justify-center gap-1.5 min-h-[76px] rounded-2xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 text-foreground disabled:opacity-50 aria-pressed:border-gm-yellow aria-pressed:bg-gm-yellow/15"
                 >
                   <CreditCard className="size-5" />
-                  <span className="gm-display text-[12.5px] font-semibold">Transferencia</span>
+                  <span className="gm-display text-base font-semibold">Transferencia</span>
                 </button>
+              </div>
+            ) : summary.cambioARetornar > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Button disabled={isPending} onClick={() => handleClose('NO_CHARGE', undefined, 'CASH')}>Devolver en efectivo</Button>
+                <Button disabled={isPending} onClick={() => handleClose('NO_CHARGE', undefined, 'TRANSFER')}>Devolver por transferencia</Button>
               </div>
             ) : (
               <button
@@ -220,11 +244,13 @@ export function CloseTicketPanel({
                 onClick={() => handleClose('NO_CHARGE')}
                 className="gm-display w-full h-[52px] rounded-2xl bg-gradient-to-br from-gm-yellow to-gm-yellow-deep text-sm font-bold text-gm-ink disabled:opacity-50"
               >
-                Cerrar sin cobro
+                Registrar salida: no queda saldo
               </button>
             )}
 
-            {!showCourtesy ? (
+            {summary.saldoACobrar > 0 && <div className="space-y-2"><p className="text-sm text-muted-foreground">Elegí cómo te pagó. Confirmá sólo después de recibir el efectivo o verificar la transferencia.</p><Button className="w-full min-h-12 whitespace-normal" disabled={isPending || !paymentMethod} onClick={() => paymentMethod && handleClose('PAYMENT', paymentMethod)}>{isPending ? 'Registrando…' : `Confirmar cobro de ${formatPrice(summary.saldoACobrar)} y salida`}</Button></div>}
+
+            {summary.saldoACobrar > 0 && (!showCourtesy ? (
               <button
                 type="button"
                 className="text-xs text-muted-foreground underline w-full text-center"
@@ -244,9 +270,9 @@ export function CloseTicketPanel({
                   Confirmar cortesía
                 </Button>
               </div>
-            )}
+            ))}
 
-            <Button type="button" variant="ghost" className="w-full" onClick={resetAll}>
+            <Button type="button" variant="ghost" disabled={isPending} className="w-full" onClick={resetAll}>
               Volver a buscar
             </Button>
           </div>

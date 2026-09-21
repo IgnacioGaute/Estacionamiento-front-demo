@@ -1,3 +1,4 @@
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
 import { getCacheTag } from './cache-tags';
 import {

@@ -2,7 +2,7 @@ import { Receipt } from "./receipt.type";
 import { TicketRegistration } from "./ticket-registration.type";
 
 export const TICKET_TYPE = ['AUTO', 'CAMIONETA'] as const;
-export type TicketType = (typeof TICKET_TYPE)[number];
+export type TicketType = string;
 
 export const TICKET_DAY_TYPE= ['DAY', 'NIGHT'] as const;
 export type TicketDayType = (typeof TICKET_DAY_TYPE)[number];
@@ -26,4 +26,6 @@ export type Scanner ={
     receipt: Receipt;
     receiptId?: string;
     warning?: string;
+    registrationId?: string;
+    requiresClose?: boolean;
 }

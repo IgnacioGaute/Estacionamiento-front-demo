@@ -2,7 +2,7 @@ export type FrequentCustomer = {
   licensePlateNormalized: string;
   licensePlateOriginal: string;
   lastNameCustomer: string | null;
-  vehicleType: 'AUTO' | 'CAMIONETA';
+  vehicleType: string;
   visits: number;
   firstVisit: string;
   lastVisit: string;

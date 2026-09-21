@@ -108,3 +108,25 @@ Two hooks connect directly to the backend via `socket.io-client`, bypassing the 
 | `API_SECRET_TOKEN` | Server-to-server calls that bypass user auth (passed as `authToken` param) |
 | `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS` | Password-reset email via Resend (`src/lib/email/`) |
 | `NEXT_PUBLIC_HOST_URL` | Base URL embedded in password-reset email links |
+
+
+### Ticket checkout and pricing contracts
+
+Physical cards and plates share `CloseTicketPanel`. Scanner requests send the session bearer token; a second scan returns `requiresClose` and `registrationId`, and does not charge. Closing submits `expectedPrice` and `expectedCollected` from the summary; stale values refresh the panel. Overpayment requires a refund method. Advance amounts are accumulated totals; decreases require a reason.
+
+New stays freeze pricing configuration. Admin recurring tariffs explicitly choose FIXED or DERIVED; the simulator calls the backend calculator. Schedule settings select ENTRY or EXIT for day/night pricing. `entryMode` preserves origin after the card is unlinked.
+
+The box planilla uses daily `ticketMovements` through `ticketBoxRows`, with legacy fallback. Courtesy is zero income and negative adjustments are outflows. Test with `node --test test/ticket-box-rows.test.cjs` and check types separately with `pnpm exec tsc --noEmit --incremental false` (the Next build currently skips type checking).
+
+
+### Shared cash drawer and handover
+
+`TurnoBar` is enabled in tickets and available from the box-list dialog. It manages successive shifts of arbitrary planned duration (including 24 hours), manual cash count, withdrawal and handover. The shared context comes from `/turnos/caja`; closing sends `efectivoEsperado` to detect intervening cash operations. The next opening includes `turnoAnteriorId` and acknowledges receipt of its cash. Only the responsible operator closes a shift. Cash differs from daily revenue: `BoxList.totalPrice` is daily net physical cash, and shift context/history show available/pending cash. Do not add handover funds to sales totals.
+
+
+### Tarifas configurables y claridad de uso
+
+- Forma de cobro y Cruces de horario son optativas y viven en `pricingOptions`; Reglas de permanencia está temporalmente retirada: el backend fuerza `stay.enabled = false` para nuevas entradas, configuraciones y simulaciones, conservando los snapshots históricos; las estadías conservan una copia al ingresar. Motor compartido `stay-pricing.ts`, simulador y cierre usan el mismo cálculo.
+- Los tipos de vehículo son códigos configurables (varchar), no una unión cerrada AUTO/CAMIONETA. Migración del backend previa a synchronize conserva datos. Desactivar bloquea nuevos ingresos, no salidas existentes.
+- La UI debe explicar decisiones con ejemplos, ocultar campos de opciones apagadas y separar configurar precios de cobrar. El simulador acepta opciones sin guardar sin producir movimientos. El operador elige medio de pago y confirma importe antes de cerrar.
+- Detalles y semántica: documentación del backend `docs/tickets-tarifas.md`. No presentar la antigua escalera como importe final cuando hay opciones avanzadas activas.

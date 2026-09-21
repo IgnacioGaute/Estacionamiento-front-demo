@@ -1,9 +1,11 @@
+import { PlayaSelector } from '@/components/tenant-provider';
 import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { ReactNode } from 'react';
 import { currentUser } from '@/lib/auth';
 import { NavUser } from './nav-user';
 import { ParkingMark } from '@/components/brand/logo';
+import { AssistantWidget } from '@/components/assistant/assistant-widget';
 
 interface AppNavbarProps {
   children: ReactNode;
@@ -16,10 +18,10 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
 
   return (
     <>
-      {user?.role === 'ADMIN' ? (
-        <div className="hidden md:block">{adminSidebar}</div>
+      {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') ? (
+        <>{adminSidebar}</>
       ) : (
-        <div className="hidden md:block">{userSidebar}</div>
+        <>{userSidebar}</>
       )}
 
       <SidebarInset className="flex flex-col">
@@ -28,14 +30,14 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
           {/* Caution-tape accent */}
           <div className="gm-stripes h-[3px] w-full" aria-hidden />
 
-          <div className="flex h-16 items-center gap-4 px-4 sm:px-6">
+          <div className="flex h-[74px] shrink-0 items-center gap-2.5 px-3 py-2 sm:gap-4 sm:px-6">
             {(adminSidebar || userSidebar) && (
               <SidebarTrigger className="md:hidden -ml-1 h-9 w-9 border border-border/60 bg-white/[0.04] hover:bg-white/[0.08]" />
             )}
 
             <Link
-              href="/tickets"
-              className="group ml-1 inline-flex items-center gap-2 transition-opacity hover:opacity-90"
+              href={user?.role === 'SUPER_ADMIN' ? '/admin/empresas' : '/tickets'}
+              className="group hidden shrink-0 items-center gap-2 transition-opacity hover:opacity-90 sm:inline-flex"
             >
               <ParkingMark size="sm" />
             </Link>
@@ -43,13 +45,15 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
             {/* Subtle separator */}
             <div className="hidden md:block h-6 w-px bg-border/40" />
 
-            {/* Ambient label */}
-            <span className="hidden md:inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-[hsl(120_35%_55%)] animate-pulse" />
-              Operativo
-            </span>
+            {user?.role === 'SUPER_ADMIN' && (
+              <span className="hidden shrink-0 items-center gap-2 rounded-full border border-gm-yellow/25 bg-gm-yellow/[0.07] px-3 py-1.5 text-[10px] font-semibold text-gm-yellow lg:inline-flex">
+                Administración de la plataforma
+              </span>
+            )}
 
-            <div className="flex-1" />
+            <div className="min-w-0 flex-1">
+              <PlayaSelector />
+            </div>
 
             <NavUser
               userNav={{
@@ -63,6 +67,7 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
         </header>
 
         {children}
+        <AssistantWidget />
       </SidebarInset>
     </>
   );

@@ -1,3 +1,4 @@
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
 import { LoginSchemaType } from '@/schemas/auth/login.schema';
 import { PasswordResetToken } from '@/types/password-reset-token.type';
@@ -33,7 +34,7 @@ export const getVerificationTokenByToken = async (
 ) => {
   try {
     const response = await fetch(
-      `${BASE_URL}/auth/verification-token?token=${token}`,
+      `${BASE_URL}/auth/verification-token?token=${encodeURIComponent(token)}`,
       {
         headers: await getAuthHeaders(authToken),
       },
@@ -58,7 +59,7 @@ export const getVerificationTokenByEmail = async (
 ) => {
   try {
     const response = await fetch(
-      `${BASE_URL}/auth/verification-token?email=${email}`,
+      `${BASE_URL}/auth/verification-token?email=${encodeURIComponent(email)}`,
       {
         headers: await getAuthHeaders(authToken),
       },
@@ -132,7 +133,7 @@ export const getPasswordResetTokenByToken = async (
 ) => {
   try {
     const response = await fetch(
-      `${BASE_URL}/auth/password-reset-token?token=${token}`,
+      `${BASE_URL}/auth/password-reset-token?token=${encodeURIComponent(token)}`,
       {
         headers: await getAuthHeaders(authToken),
       },
@@ -157,7 +158,7 @@ export const getPasswordResetTokenByEmail = async (
 ) => {
   try {
     const response = await fetch(
-      `${BASE_URL}/auth/password-reset-token?email=${email}`,
+      `${BASE_URL}/auth/password-reset-token?email=${encodeURIComponent(email)}`,
       {
         headers: await getAuthHeaders(authToken),
       },

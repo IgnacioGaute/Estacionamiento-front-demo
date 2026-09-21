@@ -1,5 +1,8 @@
 'use client';
 
+import { VehicleTypeOptions } from '@/components/vehicle-type-options';
+import { RecurringPriceExplanation } from './recurring-price-explanation';
+
 import { useState, useTransition } from 'react';
 import {
   Dialog,
@@ -22,7 +25,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { updateTicketPriceBracketSchema, UpdateTicketPriceBracketSchemaType } from '@/schemas/ticket-price-bracket.schema';
 import { updateTicketPriceBracketAction } from '@/actions/tickets/update-ticket-price-bracket.action';
 import { TicketPriceBracket } from '@/types/ticket-price-bracket.type';
@@ -43,9 +46,10 @@ export function UpdateTicketPriceBracketDialog({ bracket }: { bracket: TicketPri
   const form = useForm<UpdateTicketPriceBracketSchemaType>({
     resolver: zodResolver(updateTicketPriceBracketSchema),
     defaultValues: {
+      recurringPriceMode: bracket.recurringPriceMode ?? 'DERIVED',
       label: bracket.label,
       vehicleType: bracket.vehicleType,
-      ticketDayType: bracket.ticketDayType ?? undefined,
+      ticketDayType: bracket.ticketDayType ?? null,
       price: bracket.price,
     },
   });
@@ -74,7 +78,7 @@ export function UpdateTicketPriceBracketDialog({ bracket }: { bracket: TicketPri
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-md sm:max-w-lg">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto max-w-md sm:max-w-lg">
         <DialogHeader className="items-center">
           <DialogTitle>Actualizar Franja de Precio</DialogTitle>
         </DialogHeader>
@@ -105,8 +109,7 @@ export function UpdateTicketPriceBracketDialog({ bracket }: { bracket: TicketPri
                         <SelectValue placeholder="Selecciona un tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="AUTO">Auto</SelectItem>
-                        <SelectItem value="CAMIONETA">Camioneta</SelectItem>
+                        <VehicleTypeOptions />
                       </SelectContent>
                     </Select>
                   </FormControl>
@@ -123,7 +126,7 @@ export function UpdateTicketPriceBracketDialog({ bracket }: { bracket: TicketPri
                   <FormControl>
                     <Select
                       disabled={isPending}
-                      onValueChange={(value) => field.onChange(value === 'ANY' ? undefined : value)}
+                      onValueChange={(value) => field.onChange(value === 'ANY' ? null : value)}
                       defaultValue={bracket.ticketDayType ?? 'ANY'}
                     >
                       <SelectTrigger>
@@ -143,7 +146,7 @@ export function UpdateTicketPriceBracketDialog({ bracket }: { bracket: TicketPri
 
             <FormItem>
               <div className="flex items-center justify-between">
-                <FormLabel>Última franja (sin límite de tiempo)</FormLabel>
+                <FormLabel>Cobrar después de la última duración</FormLabel>
                 <Switch checked={noLimit} onCheckedChange={setNoLimit} disabled={isPending} />
               </div>
             </FormItem>
@@ -189,13 +192,13 @@ export function UpdateTicketPriceBracketDialog({ bracket }: { bracket: TicketPri
             {noLimit && (
               <FormItem>
                 <div className="flex items-center justify-between">
-                  <FormLabel>Tarifa recurrente (en vez de un monto fijo único)</FormLabel>
+                  <FormLabel>Sumar un precio por cada tiempo adicional</FormLabel>
                   <Switch checked={recurring} onCheckedChange={setRecurring} disabled={isPending} />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {recurring
-                    ? 'El precio se va a cobrar repetidas veces según cuánto dure la estadía (ej. "$1500 por cada día").'
-                    : 'Sin esto, "sin límite" cobra un monto fijo una sola vez, sin importar cuánto más se quede.'}
+                    ? 'Al superar la última duración, se conserva su precio y se suma un importe por cada bloque de tiempo adicional.'
+                    : 'Se cobra un único precio TOTAL al superar la última duración. Reemplaza el precio anterior y no aumenta aunque el vehículo se quede más tiempo.'}
                 </p>
               </FormItem>
             )}
@@ -234,16 +237,32 @@ export function UpdateTicketPriceBracketDialog({ bracket }: { bracket: TicketPri
 
             {noLimit && recurring && (
               <p className="-mt-2 text-xs text-gm-yellow">
-                Se va a cobrar {formatRecurringUnitLabel(amountUnitToMinutes(recurringAmount, recurringUnit))} de estadía.
+                Se suma un cobro {formatRecurringUnitLabel(amountUnitToMinutes(recurringAmount, recurringUnit))} de tiempo adicional. Cada bloque que empieza se cobra completo.
               </p>
             )}
 
+            {noLimit && recurring && (
+              <FormField control={form.control} name="recurringPriceMode" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>¿Cómo se obtiene el precio adicional?</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange} disabled={isPending}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="FIXED">Ingresar un precio</SelectItem>
+                      <SelectItem value="DERIVED">Calcular desde otra tarifa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">{field.value === 'DERIVED' ? 'El sistema toma una tarifa existente y calcula cuánto vale el tiempo que elegiste. Abajo podés ver qué tarifa usa y la cuenta.' : 'Elegís cuánto sumar por cada bloque de tiempo adicional.'}</p>
+                </FormItem>
+              )} />
+            )}
+            {noLimit && recurring && <RecurringPriceExplanation vehicle={form.watch('vehicleType')} day={form.watch('ticketDayType')} unitMinutes={amountUnitToMinutes(recurringAmount, recurringUnit)} price={form.watch('price')} derived={form.watch('recurringPriceMode') === 'DERIVED'} ignoreId={bracket.id} />}
             <FormField
               control={form.control}
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{noLimit && recurring ? 'Precio por cada bloque' : 'Precio'}</FormLabel>
+                  <FormLabel>{noLimit && recurring ? form.watch('recurringPriceMode') === 'DERIVED' ? 'Precio de respaldo (si no hay otra tarifa)' : 'Precio por cada bloque adicional' : noLimit ? 'Precio total de la estadía' : 'Precio'}</FormLabel>
                   <FormControl>
                     <Input type="number" disabled={isPending} {...field} />
                   </FormControl>

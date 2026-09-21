@@ -2,10 +2,11 @@ import { TICKET_DAY_TYPE, VEHICLE_TYPE } from '@/types/ticket-price';
 import { z } from 'zod';
 
 export const ticketPriceBracketSchema = z.object({
-  vehicleType: z.enum(VEHICLE_TYPE),
+  vehicleType: z.string().regex(/^[A-Z][A-Z0-9_]{0,31}$/, 'Elegí un tipo de vehículo válido'),
   ticketDayType: z.enum(TICKET_DAY_TYPE).optional(),
   label: z.string().min(1, 'Ingresá un nombre para la franja'),
   uptoMinutes: z.coerce.number().int().min(1, 'Debe ser mayor a 0').optional(),
+  recurringPriceMode: z.enum(['FIXED', 'DERIVED']).optional(),
   price: z.coerce.number().int().min(0, 'Debe ser mayor o igual a 0'),
   recurringUnitMinutes: z.coerce.number().int().min(1, 'Debe ser mayor a 0').optional(),
 });
@@ -14,6 +15,7 @@ export type TicketPriceBracketSchemaType = z.infer<typeof ticketPriceBracketSche
 // uptoMinutes/recurringUnitMinutes admiten `null` explícito (a diferencia del alta) para poder
 // "borrar" el valor al editar — ej. apagar la tarifa recurrente de una franja sin límite.
 export const updateTicketPriceBracketSchema = ticketPriceBracketSchema.partial().extend({
+  ticketDayType: z.enum(TICKET_DAY_TYPE).nullable().optional(),
   uptoMinutes: z.coerce.number().int().min(1, 'Debe ser mayor a 0').nullable().optional(),
   recurringUnitMinutes: z.coerce.number().int().min(1, 'Debe ser mayor a 0').nullable().optional(),
 });
@@ -25,6 +27,7 @@ export const deleteTicketPriceBracketSchema = z.object({
 export type DeleteTicketPriceBracketSchemaType = z.infer<typeof deleteTicketPriceBracketSchema>;
 
 export const advancePaymentSchema = z.object({
+  adjustmentReason: z.string().optional(),
   advancePaidAmount: z.coerce.number().int().min(0, 'Debe ser mayor o igual a 0').optional(),
   metodo: z.enum(['CASH', 'TRANSFER']).optional(),
   expectedBracketLabel: z.string().optional(),

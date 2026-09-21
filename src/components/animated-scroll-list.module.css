@@ -1,0 +1,23 @@
+.list {
+  max-height: min(360px, 45dvh);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--gm-yellow) / .55) transparent;
+  scrollbar-gutter: stable;
+  padding: 3px 5px 3px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.list > * { flex-shrink: 0; }
+.frame { position: relative; }
+.item > div { opacity: .5; transform: scale(.96); transition: opacity .2s ease-out .1s, transform .2s ease-out .1s; }
+.item[data-visible="true"] > div, .item:focus-within > div { opacity: 1; transform: scale(1); }
+.topFade, .bottomFade { position: absolute; left: 0; right: 12px; height: 16px; pointer-events: none; transition: opacity .15s; }
+.topFade { top: 0; background: linear-gradient(to bottom, hsl(var(--background)), transparent); }
+.bottomFade { bottom: 0; background: linear-gradient(to top, hsl(var(--background)), transparent); }
+@media (prefers-reduced-motion: reduce) { .item > div { opacity: 1; transform: none; transition: none; } }
+.list:focus-visible { outline: 2px solid hsl(var(--gm-yellow)); outline-offset: 3px; border-radius: 12px; }

@@ -52,7 +52,7 @@ export const ticketPriceBracketColumns: ColumnDef<TicketPriceBracket>[] = [
       const recurringUnitMinutes = row.original.recurringUnitMinutes;
       return (
         <div className="min-w-[80px] text-sm">
-          $ {row.getValue('price')}
+          {recurringUnitMinutes && row.original.recurringPriceMode !== 'FIXED' ? 'Derivado de otras franjas' : `$ ${row.getValue('price')}`}
           {recurringUnitMinutes && (
             <span className="text-muted-foreground"> {formatRecurringUnitLabel(recurringUnitMinutes)}</span>
           )}

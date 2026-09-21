@@ -23,7 +23,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { DeleteUserSchemaType, deleteUserSchema } from '@/schemas/user.schema';
 
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { User } from '@/types/user.type';
 import { deleteUserAction } from '@/actions/users/delete-user.action';
 import { deleteOwnerParkingTypeSchema, DeleteOwnerParkingTypeSchemaType } from '@/schemas/owner-parking-type.schema';

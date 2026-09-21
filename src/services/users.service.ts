@@ -1,3 +1,4 @@
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 
 import {
   UpdateUserPasswordType,
@@ -56,7 +57,7 @@ export const getUserByEmail = async (email: string, authToken?: string) => {
   try {
     if (!email) return null;
 
-    const response = await fetch(`${BASE_URL}/users?filter.email=${email}`, {
+    const response = await fetch(`${BASE_URL}/users?filter.email=${encodeURIComponent(email)}`, {
       headers: await getAuthHeaders(authToken),
     });
     const data = await response.json();
@@ -82,7 +83,7 @@ export const getUserByUsername = async (
     if (!username) return null;
 
     const response = await fetch(
-      `${BASE_URL}/users?filter.username=${username}`,
+      `${BASE_URL}/users?filter.username=${encodeURIComponent(username)}`,
       {
         headers: await getAuthHeaders(authToken),
       },

@@ -1,7 +1,7 @@
 // import { historialReceiptsAction } from '@/actions/receipts/create-receipt.action';
 // import { ReceiptSchemaType } from '@/schemas/receipt.schema';
 // import { PDFDocument, rgb } from 'pdf-lib';
-// import { toast } from 'sonner';
+// import { toast } from '@/lib/toast';
 // import JsBarcode from 'jsbarcode';
 
 // export default async function generateReceipt(customer: any, description: string, value:ReceiptSchemaType, pendingReceipt?: any): Promise<Uint8Array> {

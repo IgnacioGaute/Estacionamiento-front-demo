@@ -1,3 +1,5 @@
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
+import type { PricingOptions, PricingPreviewResult } from '@/types/pricing-options.type';
 import { TicketRegistration } from "@/types/ticket-registration.type";
 import { getCacheTag } from "./cache-tags";
 import { PaginatedResponse } from "@/types/paginated-response.type";
@@ -13,8 +15,10 @@ import { TicketPriceBracketSchemaType, UpdateTicketPriceBracketSchemaType, Advan
 import { EntryByPlateSchemaType } from "@/schemas/entry-by-plate.schema";
 import { CloseRegistrationSchemaType } from "@/schemas/close-registration.schema";
 import { FrequentCustomer } from "@/types/frequent-customer.type";
+import { TicketRegistrationForDay } from "@/types/ticket-registration-for-day.type";
+import { TicketRegistrationForDaySchemaType } from "@/schemas/ticket-registration-for-day.schema";
 
-export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean };
+export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean; pricingDayTypeBasis?: 'ENTRY' | 'EXIT'; pricingOptions?: PricingOptions | null };
 
 
 
@@ -501,15 +505,19 @@ export const searchActiveRegistrations = async (q: string, authToken?: string) =
 export type CloseSummary = {
   registration: TicketRegistration;
   elapsedMinutes: number;
-  previewBracket: { price: number; label: string; usedFallback: boolean };
+  previewBracket: PricingPreviewResult;
   totalCollectedSoFar: number;
   saldoACobrar: number;
   cambioARetornar: number;
+  pricingDayType?: 'DAY' | 'NIGHT' | 'MIXED';
+  pricingDayTypeBasis?: 'ENTRY' | 'EXIT' | 'SPLIT';
+  tariffSnapshotUsed?: boolean;
 };
 
 export const getCloseSummary = async (id: string, authToken?: string) => {
   try {
     const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/close-summary`, {
+      cache: 'no-store',
       headers: await getAuthHeaders(authToken),
     });
     const data = await response.json();
@@ -610,4 +618,139 @@ export const getPlateHistory = async (plate: string, authToken?: string) => {
   }
 };
 
+export const createTicketRegistrationForDay = async (
+  ticket: TicketRegistrationForDaySchemaType,
+  authToken?: string,
+) => {
+  try {
+    const response = await fetch(`${BASE_URL}/tickets/registrationForDays`, {
+      method: 'POST',
+      headers: await getAuthHeaders(authToken),
+      body: JSON.stringify(ticket),
+    });
+    const data = await response.json();
 
+    if (response.ok) {
+      revalidateTag(getCacheTag('registrationForDays', 'all'));
+      return data as TicketRegistrationForDay;
+    } else {
+      console.error(data);
+      return { error: { code: data.code || 'UNKNOWN_ERROR', message: data.message || 'Error desconocido' } };
+    }
+  } catch (error) {
+    console.error(error);
+    return { error: { code: 'UNKNOWN_ERROR', message: 'Error desconocido' } };
+  }
+};
+
+export const getTicketsRegistrationForDay = async (authToken?: string) => {
+  try {
+    const response = await fetch(`${BASE_URL}/tickets/registrationForDays`, {
+      headers: await getAuthHeaders(authToken),
+      next: {
+        tags: [getCacheTag('registrationForDays', 'all')],
+      },
+    });
+    const data = await response.json();
+
+    if (response.ok) {
+      return data as TicketRegistrationForDay[];
+    } else {
+      console.error(data);
+      return null;
+    }
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+export const updateTicketStatus = async (
+  id: string,
+  ticket: Partial<TicketRegistrationForDaySchemaType>,
+  authToken?: string,
+) => {
+  try {
+    const response = await fetch(`${BASE_URL}/tickets/registrationForDays/${id}/status`, {
+      method: 'PATCH',
+      headers: await getAuthHeaders(authToken),
+      body: JSON.stringify(ticket),
+    });
+
+    const data = await response.json();
+    revalidateTag(getCacheTag('registrationForDays', 'all'));
+
+    if (!response.ok) {
+      console.error(data);
+      return {
+        error: {
+          code: data.code || 'UNKNOWN_ERROR',
+          message: data.message || 'Error desconocido',
+        },
+      };
+    }
+
+    return data;
+  } catch (error) {
+    console.error(error);
+    return { error: { code: 'UNKNOWN_ERROR', message: 'Error desconocido' } };
+  }
+};
+
+export const retireOverdueRegistrations = async (ids: string[], authToken?: string) => {
+  try {
+    const response = await fetch(`${BASE_URL}/tickets/registrationForDays/retire-many`, {
+      method: 'PATCH',
+      headers: await getAuthHeaders(authToken),
+      body: JSON.stringify({ ids }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error(data);
+      return {
+        error: {
+          code: data.code || 'UNKNOWN_ERROR',
+          message: data.message || 'Error desconocido',
+        },
+      };
+    }
+
+    revalidateTag(getCacheTag('registrationForDays', 'all'));
+    return data;
+  } catch (error) {
+    console.error(error);
+    return { error: { code: 'UNKNOWN_ERROR', message: 'Error desconocido' } };
+  }
+};
+
+export const deleteTicketRegistrationForDay = async (id: string, authToken?: string) => {
+  try {
+    const response = await fetch(`${BASE_URL}/tickets/registrationForDays/${id}`, {
+      method: 'DELETE',
+      headers: await getAuthHeaders(authToken),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      revalidateTag(getCacheTag('registrationForDays', 'all'));
+      return data;
+    } else {
+      console.error(data);
+      return null;
+    }
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+export async function previewTicketPrice(vehicleType: string, ticketDayType: string, elapsedMinutes: number, entryAt?: string) {
+  const params = new URLSearchParams({ vehicleType, ticketDayType, elapsedMinutes: String(elapsedMinutes) });
+  if (entryAt) params.set('entryAt', entryAt);
+  const response = await fetch(`${BASE_URL}/tickets/priceBrackets/preview?${params}`, { headers: await getAuthHeaders(), cache: 'no-store' });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message ?? 'No se pudo calcular la tarifa.');
+  return data as PricingPreviewResult;
+}

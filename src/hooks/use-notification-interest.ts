@@ -1,64 +1,11 @@
 'use client';
-
-import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
-import { useRouter } from 'next/navigation';
-
-const socket = io('http://localhost:3030', {
-  transports: ['websocket'],
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 2000
-});
-
-export const useNotificationsInterest = () => {
-  const [notifications, setNotifications] = useState<any[]>(() => {
-    if (typeof window !== 'undefined') {
-      const storedNotifications = localStorage.getItem('notifications-interest');
-      return storedNotifications ? JSON.parse(storedNotifications) : [];
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('notifications-interest', JSON.stringify(notifications));
-  }, [notifications]);
-
-  useEffect(() => {
-    // Solo ejecutar el código en el cliente
-    if (typeof window !== 'undefined') {
-      socket.on('connect', () => {
-        console.log('🔌 Conectado al WebSocket');
-      });
-
-      socket.on('notification-interest', (data) => {
-        console.log('Notificación recibida:', data);
-        // Solo agregar la notificación si es de tipo 'INSUFFICIENT_FUNDS'
-        if (data.type === 'INTEREST_PROCESSED') {
-          setNotifications((prev) => [...prev, data]);
-        }
-      });
-
-      socket.on('disconnect', () => {
-        console.log('⚠️ Desconectado del WebSocket');
-      });
-
-      return () => {
-        socket.off('notification-interest');
-        socket.off('connect');
-        socket.off('disconnect');
-      };
-    }
-  }, []); // Se ejecuta solo una vez al montar el componente, asegurando que no se ejecute en SSR.
-
-  const clearNotifications = () => {
-    setNotifications([]); // Borra del estado
-    localStorage.removeItem('notifications-interest'); // Borra de localStorage
-  };
-
-  const removeNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((notification) => notification.id !== id));
-  };
-
-  return { notifications, clearNotifications, removeNotification };
-};
+import { useState, useEffect } from 'react';
+import { useTenant } from '@/components/tenant-provider';
+import { useTenantEvent } from './use-tenant-event';
+export function useNotificationsInterest() {
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const { playaId } = useTenant();
+  useEffect(() => { setNotifications([]); }, [playaId]);
+  useTenantEvent('notification-interest', data => { if (data.type === 'INTEREST_PROCESSED') setNotifications(prev => [...prev, data]); });
+  return { notifications, clearNotifications: () => setNotifications([]), removeNotification: (id: string) => setNotifications(prev => prev.filter(n => n.id !== id)) };
+}

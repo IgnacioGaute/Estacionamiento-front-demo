@@ -1,13 +1,17 @@
 "use client";
 
 import { TicketRegistration } from "@/types/ticket-registration.type";
+import { AnimatedScrollList } from "@/components/animated-scroll-list";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 import { Ticket } from "@/types/ticket.type";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Barcode, Car, ChevronRight, Timer } from "lucide-react";
+import { Barcode, Car, ChevronRight, Timer, Search } from "lucide-react";
 import {
   formatElapsed,
   isOverdue,
+  isBarcodeOrigin,
   isTicketActive,
   latestRegistrationForTicket,
   minutesSinceEntry,
@@ -31,6 +35,8 @@ export function ActiveTicketsList({
   onSelectPlate: (registrationId: string) => void;
 }) {
   const entryKey = (r: TicketRegistration) => `${r.entryDay ?? ""} ${r.entryTime ?? ""}`;
+  const [query, setQuery] = useState("");
+  const normalize = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
   // Los tickets por código de barras se descubren a través del catálogo (como antes); los
   // tickets por patente nunca tienen `ticket` poblado, así que se toman directo de los
@@ -41,12 +47,18 @@ export function ActiveTicketsList({
     .map((t) => ({ kind: "BARCODE", ticket: t, registration: latestRegistrationForTicket(t, registrations)! }));
 
   const plateRows: Row[] = registrations
-    .filter((r) => !r.departureTime && !r.departureDay && !r.ticket)
+    .filter((r) => !r.departureTime && !r.departureDay && !isBarcodeOrigin(r))
     .map((r) => ({ kind: "PLATE", registration: r }));
 
   const rows = [...barcodeRows, ...plateRows].sort((a, b) =>
     entryKey(a.registration).localeCompare(entryKey(b.registration)),
   );
+  const search = normalize(query);
+  const filteredRows = rows.filter(row => !search || [
+    row.kind === "BARCODE" ? row.ticket.codeBar : "",
+    row.registration.licensePlateOriginal ?? "",
+    row.registration.noPlate ? row.registration.lastNameCustomer ?? "" : "",
+  ].some(value => normalize(value).includes(search)));
 
   return (
     <div className="mb-4 [@media(max-height:850px)]:mb-2">
@@ -68,13 +80,19 @@ export function ActiveTicketsList({
         </div>
       </div>
 
+      {rows.length > 0 && <div className="relative mb-2.5">
+        <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input type="search" aria-label="Buscar vehículo activo por patente o ticket" placeholder="Patente o ticket…" value={query} onChange={event => setQuery(event.target.value)} className="h-9 rounded-lg pl-9 pr-3 text-sm" />
+      </div>}
       {rows.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-gm-surface-2/40 p-4 text-center text-[12px] text-muted-foreground">
           No hay vehículos activos.
         </div>
+      ) : filteredRows.length === 0 ? (
+        <p role="status" className="py-4 text-center text-xs text-muted-foreground">No hay vehículos que coincidan.</p>
       ) : (
-        <div className="space-y-1.5 max-h-[440px] overflow-y-auto pr-0.5">
-          {rows.map((row) => {
+        <AnimatedScrollList key={search} label="Vehículos activos: desplazá para ver más">
+          {filteredRows.map((row) => {
             const { registration } = row;
             const elapsed = minutesSinceEntry(registration, now);
             const overdue = isOverdue(registration, now);
@@ -150,7 +168,7 @@ export function ActiveTicketsList({
               </button>
             );
           })}
-        </div>
+        </AnimatedScrollList>
       )}
     </div>
   );

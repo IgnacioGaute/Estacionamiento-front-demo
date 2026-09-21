@@ -2,7 +2,6 @@
 
 import {
   ArrowLeft,
-  Banknote,
   Wrench,
 } from 'lucide-react';
 
@@ -18,7 +17,6 @@ import { NavMain } from './nav-main';
 import { SidebarWatermark } from './sidebar-watermark';
 
 export const userNavItems = [
-  { title: 'Registrar Gastos', url: '/admin/other-payments', icon: <Banknote /> },
   { title: 'Volver',           url: '/tickets',              icon: <ArrowLeft /> },
 ];
 
@@ -33,7 +31,7 @@ export function UserNavbarSidebar({
     >
       <div className="gm-stripes h-[3px] w-full shrink-0" aria-hidden />
 
-      <SidebarHeader className="h-16 border-b border-border bg-gm-surface flex items-center justify-center px-2">
+      <SidebarHeader className="h-[75px] shrink-0 border-b border-border bg-gm-surface flex items-center justify-center px-2">
         <SidebarTrigger className="h-8 w-8 rounded-md hover:bg-gm-surface-2 hover:text-foreground" />
       </SidebarHeader>
 

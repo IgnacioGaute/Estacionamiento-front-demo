@@ -1,4 +1,5 @@
-import { currentToken } from '@/lib/auth';
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
+import { getAuthHeaders } from '@/lib/auth';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -10,13 +11,14 @@ export const recognizePlateFromImage = async (
   file: File,
 ): Promise<PlateRecognitionResponse | { error: string }> => {
   try {
-    const token = await currentToken();
+    const headers = await getAuthHeaders();
+    delete headers['Content-Type'];
     const formData = new FormData();
     formData.append('image', file);
 
     const response = await fetch(`${BASE_URL}/plate-recognition/scan`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
       body: formData,
     });
 

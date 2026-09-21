@@ -1,0 +1,59 @@
+.admin-mobile { min-width: 0; }
+@media (max-width: 767px) {
+  .admin-mobile .container { padding-left: 12px; padding-right: 12px; }
+  .admin-mobile h1 { font-size: clamp(25px, 7vw, 36px); overflow-wrap: anywhere; }
+  .admin-mobile .grid > *, .admin-mobile form, .admin-mobile section { min-width: 0; }
+  .admin-mobile input, .admin-mobile select, .admin-mobile textarea,
+  [data-admin-dialog] input, [data-admin-dialog] select, [data-admin-dialog] textarea {
+    min-width: 0; max-width: 100%; font-size: 16px;
+  }
+  .admin-mobile input:not([type=checkbox]):not([type=radio]),
+  .admin-mobile select, .admin-mobile button[role=combobox],
+  [data-admin-dialog] input:not([type=checkbox]):not([type=radio]),
+  [data-admin-dialog] button[role=combobox] { min-height: 44px; }
+  .admin-mobile button:not([role=switch]):not([role=checkbox]),
+  [data-admin-dialog] button:not([role=switch]):not([role=checkbox]) { min-height: 40px; }
+  .admin-mobile [role=tablist] { max-width: 100%; height: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; margin: 0; }
+  .admin-mobile [role=tab] { white-space: normal; height: auto; min-height: 44px; justify-content: center; border-radius: 10px; padding: 10px 8px; transform: none !important; }
+
+  /* Keep the original cells and actions, but lay out each record as a card. */
+  .admin-responsive-table { overflow: visible; }
+  .admin-responsive-table table, .admin-responsive-table tbody { display: block; width: 100%; }
+  .admin-responsive-table thead { display: block; }
+  .admin-responsive-table thead tr { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; }
+  .admin-responsive-table thead th { display: none; }
+  .admin-responsive-table thead th:has(button), .admin-responsive-table thead th:has([role=checkbox]) {
+    display: block; height: auto; padding: 0; border: 0;
+  }
+  .admin-responsive-table thead tr:not(:has(button)):not(:has([role=checkbox])) {
+    position: absolute; width: 1px; height: 1px; padding: 0; clip-path: inset(50%); overflow: hidden;
+  }
+  .admin-responsive-table tbody > tr {
+    display: block; margin: 10px; padding: 4px 12px;
+    border: 1px solid hsl(var(--border)); border-radius: 14px; background: hsl(var(--card));
+  }
+  .admin-responsive-table tbody td {
+    display: flex; flex-direction: column; align-items: stretch; gap: 5px;
+    width: 100%; min-width: 0; height: auto; padding: 10px 0 !important;
+    text-align: left; white-space: normal; overflow-wrap: anywhere;
+  }
+  .admin-responsive-table tbody td::before {
+    content: attr(data-mobile-label); font-size: 11px; font-weight: 600;
+    color: hsl(var(--muted-foreground)); line-height: 1.4;
+  }
+  .admin-responsive-table tbody td[data-mobile-label=""]::before { display: none; }
+  .admin-responsive-table tbody td > * { min-width: 0; max-width: 100%; white-space: normal; }
+  .admin-responsive-table tbody td:last-child { border-bottom: 0; }
+  .admin-responsive-table tbody td:has([aria-haspopup=menu]) { align-items: flex-end; }
+  .admin-responsive-table tbody td:has([aria-haspopup=menu])::before { align-self: flex-start; }
+
+  [data-admin-dialog] {
+    width: calc(100% - 16px) !important; max-width: calc(100% - 16px) !important;
+    max-height: calc(100dvh - 24px) !important; overflow: hidden !important; border-radius: 16px;
+  }
+  [data-admin-dialog] [data-dialog-body] { padding: 20px; overscroll-behavior: contain; }
+  [data-admin-dialog] [data-dialog-body] > * { min-width: 0; }
+  [data-admin-dialog] [data-dialog-body] > form { min-width: 0; }
+  [data-admin-dialog] label { white-space: normal; line-height: 1.5; }
+  [data-admin-dialog] h2 { padding-right: 30px; }
+}

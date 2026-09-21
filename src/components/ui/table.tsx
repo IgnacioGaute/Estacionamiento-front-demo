@@ -1,19 +1,50 @@
+"use client"
+
 import * as React from "react"
+import { usePathname } from "next/navigation"
 
 import { cn } from "@/lib/utils"
 
 const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+>(({ className, ...props }, ref) => {
+  const pathname = usePathname()
+  const admin = pathname?.startsWith("/admin")
+  const tableRef = React.useRef<HTMLTableElement | null>(null)
+  React.useEffect(() => {
+    if (!admin || !tableRef.current) return
+    const table = tableRef.current
+    const labelCells = () => {
+      const headers = Array.from(table.querySelectorAll("thead tr:last-child th")).map(header =>
+        header.textContent?.trim() || "Acciones"
+      )
+      table.querySelectorAll("tbody tr").forEach(row => {
+        Array.from(row.children).forEach((cell, index) => {
+          const label = cell.getAttribute("colspan") ? "" : headers[index] ?? ""
+          if (cell.getAttribute("data-mobile-label") !== label) cell.setAttribute("data-mobile-label", label)
+        })
+      })
+    }
+    labelCells()
+    const observer = new MutationObserver(labelCells)
+    observer.observe(table, { childList: true, subtree: true, characterData: true })
+    return () => observer.disconnect()
+  }, [admin, props.children])
+  return (
+  <div className={cn("relative w-full overflow-auto", admin && "admin-responsive-table")}>
     <table
-      ref={ref}
+      ref={node => {
+        tableRef.current = node
+        if (typeof ref === "function") ref(node)
+        else if (ref) ref.current = node
+      }}
       className={cn("w-full caption-bottom text-sm border-separate border-spacing-0", className)}
       {...props}
     />
   </div>
-))
+  )
+})
 Table.displayName = "Table"
 
 const TableHeader = React.forwardRef<

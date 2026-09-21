@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useSession } from 'next-auth/react';
 
 import {
@@ -41,8 +41,8 @@ export function CreateNoteDialog() {
   });
 
   const onSubmit = (values: NoteSchemaType) => {
-    startTransition(() => {
-      createNoteAction(values, session.data?.user.id || '')
+    startTransition(async () => {
+      await createNoteAction(values, session.data?.user.id || '')
         .then((data) => {
           if (data.error) {
             toast.error(data.error);

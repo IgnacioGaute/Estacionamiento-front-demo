@@ -21,7 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { TicketPriceBracket } from '@/types/ticket-price-bracket.type';
 import { deleteTicketPriceBracketSchema, DeleteTicketPriceBracketSchemaType } from '@/schemas/ticket-price-bracket.schema';
 import { deleteTicketPriceBracketAction } from '@/actions/tickets/delete-ticket-price-bracket.action';

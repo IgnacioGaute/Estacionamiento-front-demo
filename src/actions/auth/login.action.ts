@@ -2,7 +2,6 @@
 
 import { signIn } from '@/auth';
 import { DEFAULT_LOGIN_REDIRECT } from '@/routes';
-import { getUserByEmail, getUserByUsername } from '@/services/users.service';
 import { loginSchema, LoginSchemaType } from '@/schemas/auth/login.schema';
 
 export async function loginAction(
@@ -18,20 +17,14 @@ export async function loginAction(
 
     const { identifier, password } = validatedFields.data;
 
-    const existingUserByEmail = await getUserByEmail(identifier, process.env.API_SECRET_TOKEN!);
-    const existingUserByUserName = await getUserByUsername(identifier, process.env.API_SECRET_TOKEN!);
-
-
-    if (!existingUserByEmail && !existingUserByUserName) {
-      return { error: 'No se encontró una cuenta con ese email o usuario.' };
-    }
       await signIn('credentials', {
         identifier,
         password,
         redirect: false,
       });
 
-      return { success: "Sesión iniciada — redirigiendo.", redirectTo: callbackUrl || DEFAULT_LOGIN_REDIRECT };
+      const safeRedirect = callbackUrl?.startsWith('/') && !callbackUrl.startsWith('//') && !callbackUrl.includes('\\') ? callbackUrl : DEFAULT_LOGIN_REDIRECT;
+      return { success: "Sesión iniciada — redirigiendo.", redirectTo: safeRedirect };
     } catch (error: unknown) {
       console.error("Error en signIn:", error);
 

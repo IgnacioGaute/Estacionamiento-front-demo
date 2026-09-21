@@ -8,7 +8,7 @@ import {
   Box,
   ChevronDown,
   LogOut,
-  Shield,
+  Banknote,
   TicketIcon,
 } from 'lucide-react';
 
@@ -16,7 +16,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -24,13 +23,34 @@ import {
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { User } from 'next-auth';
-import { NavigationMenuDemo } from './navegation-menu';
 import { BoxListDialog } from '../box-list-dialog';
+import { CreateOtherPaymentDialog } from '@/app/(protected)/admin/other-payments/components/create-other-payment-dialog';
 import { useNotifications } from '@/hooks/use-notification';
 import { cn } from '@/lib/utils';
 import { InstallAppMenuItem } from './install-app-menu-item';
+import { HojaDeRama, Rama as RamaMenu } from './branched-menu';
 
-export function NavUser({
+type RamaId = 'operacion' | 'clientes' | 'admin';
+
+// Las mismas secciones que el sidebar de administración, para que el menú no quede atrás
+// cuando ahí se agregue una.
+const SECCIONES_CLIENTES = [
+  { label: 'Propietarios', url: '/owners' },
+  { label: 'Inquilinos', url: '/renters' },
+  { label: 'Particulares', url: '/privates' },
+];
+
+const SECCIONES_ADMIN = [
+  { label: 'Panel', url: '/admin/dashboard' },
+  { label: 'Usuarios', url: '/admin/users' },
+  { label: 'Tickets y precios', url: '/admin/tickets' },
+  { label: 'Frecuentes', url: '/admin/frecuentes' },
+  // { label: 'Tipos de cochera', url: '/admin/parking-type' },
+  { label: 'Historial de turnos', url: '/admin/caja' },
+  { label: 'Varios', url: '/admin/other-payments' },
+];
+
+function OperationalNavUser({
   userNav,
 }: {
   userNav: {
@@ -40,15 +60,30 @@ export function NavUser({
     role: User['role'];
   };
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [openBoxDialog, setOpenBoxDialog] = useState(false);
+  const [openPaymentsDialog, setOpenPaymentsDialog] = useState(false);
   const { hasNewNoteAlert, clearNoteAlert } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const esAdmin = userNav.role === 'ADMIN';
+
+  // Se abre una rama por vez. Con Administración desplegada son siete hijos: las tres ramas
+  // abiertas a la vez pasarían de alto la pantalla en un monitor chico.
+  const [rama, setRama] = useState<RamaId | null>(null);
+  const alternarRama = (id: RamaId) => setRama((actual) => (actual === id ? null : id));
 
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
+
+  // Al abrir el menú, se despliega la rama donde estás parado: el menú muestra dónde estás en
+  // vez de obligarte a buscarlo.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (pathname.startsWith('/admin')) setRama('admin');
+    else if (SECCIONES_CLIENTES.some((s) => pathname.startsWith(s.url))) setRama('clientes');
+    else setRama('operacion');
+  }, [isOpen, pathname]);
 
   const initials = userNav.name
     .split(' ')
@@ -127,61 +162,84 @@ export function NavUser({
             </span>
           </div>
 
-          {/* Clients submenu (admin only) */}
-          {userNav.role === 'ADMIN' && (
-            <>
-              <NavigationMenuDemo setIsExpanded={setIsExpanded} />
-              <DropdownMenuSeparator className="bg-border/40 -mx-1.5 my-1" />
-            </>
-          )}
-
-          {/* Navigation items */}
-          <DropdownMenuGroup>
+          {/* Operación: lo que se usa todo el día */}
+          <RamaMenu
+            label="Operación"
+            abierta={rama === 'operacion'}
+            onAlternar={() => alternarRama('operacion')}
+          >
             <Link href="/tickets">
-              <DropdownMenuItem className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]">
-                <TicketIcon className="size-3.5 text-muted-foreground" />
+              <HojaDeRama activa={pathname === '/tickets'}>
+                <TicketIcon className="size-3.5" />
                 Tickets
-              </DropdownMenuItem>
+              </HojaDeRama>
             </Link>
 
-            <DropdownMenuItem
-              onClick={() => setOpenBoxDialog(true)}
-              className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]"
-            >
-              <Box className="size-3.5 text-muted-foreground" />
-              Planilla de caja
-            </DropdownMenuItem>
-
             <Link href="/notes">
-              <DropdownMenuItem
-                className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]"
-                onClick={clearNoteAlert}
-              >
-                <AlertCircle className="size-3.5 text-muted-foreground" />
+              <HojaDeRama activa={pathname === '/notes'} onSelect={clearNoteAlert}>
+                <AlertCircle className="size-3.5" />
                 Avisos
                 {hasNewNoteAlert && (
                   <BellDot className="ml-auto size-3.5 text-gm-orange" />
                 )}
-              </DropdownMenuItem>
+              </HojaDeRama>
             </Link>
+          </RamaMenu>
 
-            <InstallAppMenuItem />
-          </DropdownMenuGroup>
+          {/* Clientes y Administración son de encargado: el operador no las ve */}
+          {/* {esAdmin && (
+            <RamaMenu
+              label="Clientes"
+              abierta={rama === 'clientes'}
+              onAlternar={() => alternarRama('clientes')}
+            >
+              {SECCIONES_CLIENTES.map((seccion) => (
+                <Link key={seccion.url} href={seccion.url}>
+                  <HojaDeRama activa={pathname === seccion.url}>
+                    {seccion.label}
+                  </HojaDeRama>
+                </Link>
+              ))}
+            </RamaMenu>
+          )} */}
+
+          {esAdmin && (
+            <RamaMenu
+              label="Administración"
+              abierta={rama === 'admin'}
+              onAlternar={() => alternarRama('admin')}
+            >
+              {SECCIONES_ADMIN.map((seccion) => (
+                <Link key={seccion.url} href={seccion.url}>
+                  <HojaDeRama activa={pathname === seccion.url}>
+                    {seccion.label}
+                  </HojaDeRama>
+                </Link>
+              ))}
+            </RamaMenu>
+          )}
 
           <DropdownMenuSeparator className="bg-border/40 -mx-1.5 my-1" />
 
-          <Link
-            href={
-              userNav.role === 'ADMIN'
-                ? '/admin/dashboard'
-                : '/admin/other-payments'
-            }
+          {/* Hojas sueltas, sin codo: son acciones, no destinos. Las ramas llevan a una
+              pantalla; esto abre algo encima de donde ya estás, así que colgarlo de un codo
+              haría que el árbol mienta sobre lo que es. */}
+          <DropdownMenuItem
+            onClick={() => setOpenBoxDialog(true)}
+            className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]"
           >
-            <DropdownMenuItem className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]">
-              <Shield className="size-3.5 text-muted-foreground" />
-              {userNav.role === 'ADMIN' ? 'Administrar' : 'Administrar gastos'}
-            </DropdownMenuItem>
-          </Link>
+            <Box className="size-3.5 text-muted-foreground" />
+            Planilla de caja
+          </DropdownMenuItem>
+
+          <InstallAppMenuItem />
+
+          {!esAdmin && (
+              <DropdownMenuItem onSelect={() => { setIsOpen(false); setOpenPaymentsDialog(true); }} className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]">
+                <Banknote className="size-3.5 text-muted-foreground" />
+                Gastos e ingresos
+              </DropdownMenuItem>
+          )}
 
           <DropdownMenuSeparator className="bg-border/40 -mx-1.5 my-1" />
 
@@ -197,6 +255,25 @@ export function NavUser({
       </DropdownMenu>
 
       <BoxListDialog open={openBoxDialog} setOpen={setOpenBoxDialog} />
+      {!esAdmin && <CreateOtherPaymentDialog open={openPaymentsDialog} onOpenChange={setOpenPaymentsDialog} />}
     </>
+  );
+}
+
+// El menú de plataforma no monta avisos, caja ni suscripciones operativas.
+export function NavUser(props: { userNav: { name: string; email: string; avatar: string; role: User['role'] } }) {
+  if (props.userNav.role !== 'SUPER_ADMIN') return <OperationalNavUser {...props} />;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="rounded-lg border border-border px-3 py-2 text-sm">
+        {props.userNav.name.trim() || 'Mi cuenta'} · Super admin
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <div className="px-2 py-2 text-xs text-muted-foreground">{props.userNav.email}</div>
+        <DropdownMenuItem asChild><Link href="/admin/empresas">Empresas, playas y usuarios</Link></DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => signOut()}>Cerrar sesión</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

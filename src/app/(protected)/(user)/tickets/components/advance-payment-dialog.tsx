@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { advancePaymentSchema, AdvancePaymentSchemaType } from '@/schemas/ticket-price-bracket.schema';
 import { addAdvancePaymentAction } from '@/actions/tickets/add-advance-payment.action';
@@ -47,18 +47,20 @@ export function AdvancePaymentDialog({
   // Solo tiene sentido "avisar" una franja con techo — una "sin límite" nunca se puede superar.
   const expectedOptions = useMemo(
     () =>
-      priceBrackets
+      (existingRegistration?.pricingSnapshot?.brackets ?? priceBrackets)
         .filter((b) => b.vehicleType === vehicleType && b.uptoMinutes !== null)
         .sort((a, b) => (a.uptoMinutes ?? 0) - (b.uptoMinutes ?? 0)),
-    [priceBrackets, vehicleType],
+    [priceBrackets, vehicleType, existingRegistration?.pricingSnapshot],
   );
   const selectedBracket = expectedOptions.find((b) => b.id === selectedBracketId);
 
   // El precio de la franja es solo una sugerencia de arranque — se escribe en el campo real
   // del form para que se guarde tal cual aunque el operador no lo toque, en vez de quedar
   // como un valor de pantalla nada más (así se guardaba $0 si no se retipeaba a mano).
+  const advanced = existingRegistration?.pricingSnapshot?.schedule.pricingOptions;
+  const hasAdvancedPricing = !!(advanced?.charging.enabled || advanced?.stay.enabled || advanced?.crossing.enabled);
   const applyBracketAsSuggestedAmount = (bracket?: TicketPriceBracket) => {
-    if (bracket && !form.getValues('advancePaidAmount')) {
+    if (!hasAdvancedPricing && bracket && !form.getValues('advancePaidAmount')) {
       form.setValue('advancePaidAmount', bracket.price, { shouldValidate: true });
     }
   };
@@ -67,6 +69,7 @@ export function AdvancePaymentDialog({
     resolver: zodResolver(advancePaymentSchema),
     defaultValues: {
       advancePaidAmount: undefined,
+      adjustmentReason: '',
       firstNameCustomer: '',
       lastNameCustomer: '',
       vehiclePlateCustomer: '',
@@ -94,6 +97,7 @@ export function AdvancePaymentDialog({
     setPaidNow(hasAdvance);
     form.reset({
       advancePaidAmount: existingRegistration.advancePaidAmount ?? undefined,
+      adjustmentReason: '',
       firstNameCustomer: existingRegistration.firstNameCustomer ?? '',
       lastNameCustomer: existingRegistration.lastNameCustomer ?? '',
       vehiclePlateCustomer: existingRegistration.vehiclePlateCustomer ?? '',
@@ -155,6 +159,7 @@ export function AdvancePaymentDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormItem>
               <FormLabel>¿Cuánto tiempo avisó que se queda? (opcional)</FormLabel>
+              {hasAdvancedPricing && <p className="text-sm text-muted-foreground">El tiempo avisado es una referencia. Ingresá el adelanto que recibiste; el importe final se calcula al registrar la salida con las reglas de esta estadía.</p>}
               {unmatchedExistingLabel && (
                 <p className="text-xs text-gm-orange">
                   Duración guardada anteriormente: &quot;{unmatchedExistingLabel}&quot; (esa franja ya no está disponible). Elegí una nueva si querés actualizarla.
@@ -176,7 +181,7 @@ export function AdvancePaymentDialog({
                     <SelectItem value="NONE">No especificar</SelectItem>
                     {expectedOptions.map((b) => (
                       <SelectItem key={b.id} value={b.id}>
-                        {b.label} ({formatMinutesLabel(b.uptoMinutes)}) · ${b.price}
+                        {b.label} ({formatMinutesLabel(b.uptoMinutes)}){!hasAdvancedPricing && ` · $${b.price}`}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -208,7 +213,7 @@ export function AdvancePaymentDialog({
                   name="advancePaidAmount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Monto cobrado ahora</FormLabel>
+                      <FormLabel>Total de anticipos acumulados</FormLabel>
                       <FormControl>
                         <Input type="number" disabled={isPending} {...field} value={field.value ?? ''} />
                       </FormControl>
@@ -216,8 +221,20 @@ export function AdvancePaymentDialog({
                     </FormItem>
                   )}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Ya registrado: ${existingRegistration?.advancePaidAmount ?? 0}. Se registra sólo la diferencia con el total ingresado.
+                </p>
+                {Number(form.watch('advancePaidAmount')) < (existingRegistration?.advancePaidAmount ?? 0) && (
+                  <FormField control={form.control} name="adjustmentReason" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Motivo de la devolución</FormLabel>
+                      <FormControl><Input {...field} disabled={isPending} placeholder="Explicá por qué se devuelve parte del anticipo" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
                 <FormItem>
-                  <FormLabel>Medio de pago</FormLabel>
+                  <FormLabel>Medio de pago o devolución</FormLabel>
                   <div className="grid grid-cols-2 gap-2.5 mt-2">
                     <button
                       type="button"

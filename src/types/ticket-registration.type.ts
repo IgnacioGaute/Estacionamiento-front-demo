@@ -4,6 +4,8 @@ import { Ticket } from "./ticket.type";
 
 export type TicketRegistration = {
     id: string;
+    entryMode?: 'BARCODE' | 'PLATE' | null;
+    pricingSnapshot?: { capturedAt: string; brackets: import('./ticket-price-bracket.type').TicketPriceBracket[]; schedule: { pricingDayTypeBasis: 'ENTRY' | 'EXIT'; pricingOptions?: import('./pricing-options.type').PricingOptions | null } } | null;
     description: string;
     price: number;
     codeBarTicket: string;
@@ -25,7 +27,7 @@ export type TicketRegistration = {
     expectedUptoMinutes?: number | null;
     exceededExpectedStay?: boolean;
     // Flujo nuevo por patente — estos registros nunca tienen `ticket` poblado.
-    vehicleType?: 'AUTO' | 'CAMIONETA' | null;
+    vehicleType?: string | null;
     licensePlateOriginal?: string | null;
     licensePlateNormalized?: string | null;
     licensePlateSearch?: string | null;
@@ -35,5 +37,5 @@ export type TicketRegistration = {
     duplicateOfRegistrationId?: string | null;
     // Solo viene poblado cuando el endpoint que lo devuelve pide la relación explícitamente
     // (ej. la planilla de caja) — para mostrar el medio de pago con el que se cobró.
-    movimientos?: { metodo: 'CASH' | 'TRANSFER' }[];
+    movimientos?: { metodo: 'CASH' | 'TRANSFER'; tipo?: 'ANTICIPO' | 'SALDO' | 'CORTESIA' | 'AJUSTE'; monto?: number }[];
 }
