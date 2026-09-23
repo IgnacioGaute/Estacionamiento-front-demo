@@ -1,5 +1,6 @@
 
 import { VehicleTypeOptions } from '@/components/vehicle-type-options';
+import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 import { useState, useTransition } from "react";
 import {
   Dialog,
@@ -44,6 +45,7 @@ const DEFAULT_VALUES: TicketRegistrationForDaySchemaType = {
 
 export function CreateTicketRegistrationDialog({ setIsDialogOpen }: { setIsDialogOpen: (open: boolean) => void }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [ticketType, setTicketType] = useState<TicketTimeType>('SEMANA');
 
@@ -69,6 +71,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen }: { setIsDialo
         return;
       }
       toast.success("Ticket creado exitosamente");
+      if (result.registrationId) setReceiptId(result.registrationId);
       resetForm();
       setIsOpen(false);
       setIsDialogOpen(false);
@@ -90,6 +93,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen }: { setIsDialo
         Ticket por día, semana o mes
       </button>
 
+      <ParkingReceiptDelivery registrationId={receiptId} kind="ENTRY" onDismiss={() => setReceiptId(null)} />
       <Dialog
         open={isOpen}
         onOpenChange={(open) => {

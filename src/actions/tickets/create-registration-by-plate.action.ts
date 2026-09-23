@@ -33,7 +33,7 @@ export async function createRegistrationByPlateAction(values: EntryByPlateSchema
       return { error: handleTicketError(rawError) };
     }
 
-    return { success: 'Entrada registrada exitosamente' };
+    return { success: 'Entrada registrada exitosamente', registrationId: registration.id };
   } catch (error: unknown) {
     console.error('Error desde el backend:', error);
     return {

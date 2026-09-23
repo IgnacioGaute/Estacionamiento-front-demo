@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, CircleDollarSign, Landmark, LogOut } from 'lucide-react';
 import {
@@ -76,6 +77,7 @@ interface ActiveDayTicketDialogProps {
 export function ActiveDayTicketDialog({ registration, open, onOpenChange }: ActiveDayTicketDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
   const router = useRouter();
 
   const dueDate = registration ? estimatedDueDate(registration) : null;
@@ -106,6 +108,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange }: Acti
           toast.error(result.error);
         } else {
           toast.success('Salida registrada exitosamente');
+          setReceiptId(registration.id);
           onOpenChange(false);
           router.refresh();
         }
@@ -238,6 +241,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange }: Acti
         </DialogContent>
       </Dialog>
 
+      <ParkingReceiptDelivery registrationId={receiptId} kind="EXIT" onDismiss={() => setReceiptId(null)} />
       <PaymentMethodDialog
         price={registration?.price ?? null}
         open={showPaymentDialog}
@@ -250,6 +254,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange }: Acti
           })
         }
         onConfirmed={() => {
+          if (registration) setReceiptId(registration.id);
           onOpenChange(false);
           router.refresh();
         }}

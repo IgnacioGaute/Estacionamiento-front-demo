@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { JellyRadio } from "@/components/ui/jelly-radio";
 import { Button } from "@/components/ui/button";
+import { ParkingReceiptDelivery } from "@/components/parking-receipt-delivery";
+import { DepartureHistory } from './departure-history';
 import { cn } from "@/lib/utils";
 import { TicketRegistration } from "@/types/ticket-registration.type";
 import { Ticket } from "@/types/ticket.type";
@@ -136,6 +138,8 @@ export default function CardTicket({
   const [registrations, setRegistrations] =
     useState<TicketRegistration[]>(initialRegistrations);
   const [isScanning, setIsScanning] = useState(false);
+  const [receiptTarget, setReceiptTarget] = useState<{ id: string; kind: 'ENTRY' | 'EXIT' } | null>(null);
+  const receiptDeliveryEnabled = !!(schedule?.receiptDelivery?.whatsapp || schedule?.receiptDelivery?.qr || schedule?.receiptDelivery?.print);
   const [justScannedTicketId, setJustScannedTicketId] = useState<string | null>(null);
   const [advanceTarget, setAdvanceTarget] = useState<{
     id: string;
@@ -162,7 +166,7 @@ export default function CardTicket({
   // El diálogo de alta por día/semana/mes también tiene que silenciar el lector USB mientras
   // está abierto — si no, tipear la patente dispara el escáner.
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
-  const isDialogOpen = advanceTarget !== null || closePanelOpen || dayDialogOpen;
+  const isDialogOpen = advanceTarget !== null || closePanelOpen || dayDialogOpen || receiptTarget !== null;
 
   const selectSidebarTab = (tab: "hourly" | "daily") => {
     if (tab === sidebarTab) return;
@@ -393,6 +397,7 @@ export default function CardTicket({
                   {latestRegistration.description && <p className="break-words text-sm text-muted-foreground">{latestRegistration.description}</p>}
                   {latestRegistration.expectedBracketLabel && <p className="text-sm text-muted-foreground">Duración avisada: <span className="text-foreground">{latestRegistration.expectedBracketLabel}</span></p>}
                   {latestRegistration.priceBracketLabel && !isDayTicket && <p className="text-sm text-muted-foreground">Tarifa aplicada: {latestRegistration.priceBracketLabel}</p>}
+                  {receiptDeliveryEnabled && <Button variant="outline" className="min-h-11 w-full rounded-xl" onClick={() => setReceiptTarget({ id: latestRegistration.id, kind: isDayTicket ? 'ENTRY' : 'EXIT' })}><QrCode className="mr-2 size-4" />Volver a abrir comprobante</Button>}
                   {(latestRegistration.exceededExpectedStay || latestRegistration.priceBracketFallbackUsed) && <p className="rounded-xl border border-gm-orange/30 bg-gm-orange/10 p-3 text-sm">{latestRegistration.priceBracketFallbackUsed ? "La estadía superó los precios por duración configurados. Revisá la tarifa aplicada." : "El vehículo superó la duración avisada."}</p>}
                   {isDayTicket && <Button variant="outline" className="min-h-11 w-full rounded-xl" onClick={() => loadPreview({ id: latestRegistration.id, kind: isLatestPatenteOrigin ? "PLATE" : "BARCODE", codeBar: latestRegistration.ticket?.codeBar || latestRegistration.codeBarTicket, vehicleType: latestRegistration.vehicleType || latestRegistration.ticket?.vehicleType })}>Ver vehículo y consultar importe</Button>}
                 </div>
@@ -406,6 +411,7 @@ export default function CardTicket({
                   <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">{selectedTarget.kind === "BARCODE" ? "Ticket seleccionado" : "Vehículo seleccionado"}</p><h2 className="break-words text-3xl font-semibold tracking-tight">{selectedTarget.kind === "BARCODE" ? selectedTarget.codeBar : previewSummary.registration.licensePlateOriginal || previewSummary.registration.lastNameCustomer || "Sin patente"}</h2></div><Badge variant={isOverdue(previewSummary.registration, now) ? "red" : "green"}>{isOverdue(previewSummary.registration, now) ? "Tiempo avisado superado" : "En la playa"}</Badge></div>
                   <div className="grid grid-cols-2 gap-4 border-y border-border py-4 text-sm"><div><p className="text-xs text-muted-foreground">Entrada</p><p className="mt-1 font-medium">{previewSummary.registration.entryTime}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(previewSummary.registration.entryDay)}</p></div><div><p className="text-xs text-muted-foreground">Tiempo estacionado</p><p className="mt-1 font-medium">{formatElapsed(previewSummary.elapsedMinutes)}</p></div><div className="col-span-2"><p className="text-xs text-muted-foreground">Tipo de vehículo</p><p className="mt-1 break-words">{(selectedTarget.vehicleType || previewSummary.registration.vehicleType || "Sin especificar").replaceAll("_", " ")}</p></div></div>
                   {previewSummary.registration.expectedBracketLabel && <p className="text-sm text-muted-foreground">Duración avisada: {previewSummary.registration.expectedBracketLabel}</p>}
+                  {receiptDeliveryEnabled && <Button variant="outline" className="min-h-11 w-full rounded-xl" onClick={() => setReceiptTarget({ id: previewSummary.registration.id, kind: 'ENTRY' })}><QrCode className="mr-2 size-4" />Abrir comprobante de entrada</Button>}
                   {previewSummary.previewBracket.usedFallback && <p className="rounded-xl bg-gm-orange/10 p-3 text-sm">La estadía superó los precios por duración configurados. Revisá el importe antes de cobrar.</p>}
                   <div className="rounded-xl border border-gm-yellow/20 bg-gm-yellow/5 p-4"><p className="text-sm text-muted-foreground">Importe a cobrar ahora</p><p className="mt-1 break-words text-4xl font-semibold tracking-tight text-gm-yellow">{money(previewSummary.saldoACobrar)}</p><p className="mt-2 text-xs leading-relaxed text-muted-foreground">{previewSummary.previewBracket.label}</p>{previewSummary.totalCollectedSoFar > 0 && <p className="mt-2 text-sm">Anticipo descontado: {money(previewSummary.totalCollectedSoFar)}</p>}</div>
                   <div className="space-y-2"><Button className="min-h-12 w-full rounded-xl text-sm" onClick={() => { setClosePanelTargetId(previewSummary.registration.id); setClosePanelOpen(true); }}><Banknote className="mr-2 size-4" />Continuar con el cobro</Button><Button variant="outline" className="min-h-12 w-full whitespace-normal rounded-xl" onClick={() => setAdvanceTarget({ id: previewSummary.registration.id, codeBar: selectedTarget.codeBar ?? "", vehicleType: selectedTarget.vehicleType ?? previewSummary.registration.vehicleType ?? "", existing: previewSummary.registration })}>Registrar anticipo o avisar duración</Button></div>
@@ -626,6 +632,9 @@ export default function CardTicket({
           </div>
         </div>
       </div>
+
+      {receiptTarget && <ParkingReceiptDelivery registrationId={receiptTarget.id} kind={receiptTarget.kind} showDisabledMessage onDismiss={() => setReceiptTarget(null)} />}
+      <DepartureHistory registrations={registrations} dailyRegistrations={registrationsForDay} deliveryEnabled={receiptDeliveryEnabled} onReceipt={id => setReceiptTarget({ id, kind: 'EXIT' })} />
 
       <AdvancePaymentDialog
         registrationId={advanceTarget?.id ?? null}

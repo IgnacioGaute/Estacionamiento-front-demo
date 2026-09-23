@@ -1,4 +1,5 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
+import type { ReceiptDeliverySettings } from '@/types/parking-receipt.type';
 import type { PricingOptions, PricingPreviewResult } from '@/types/pricing-options.type';
 import { TicketRegistration } from "@/types/ticket-registration.type";
 import { getCacheTag } from "./cache-tags";
@@ -18,7 +19,7 @@ import { FrequentCustomer } from "@/types/frequent-customer.type";
 import { TicketRegistrationForDay } from "@/types/ticket-registration-for-day.type";
 import { TicketRegistrationForDaySchemaType } from "@/schemas/ticket-registration-for-day.schema";
 
-export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean; pricingDayTypeBasis?: 'ENTRY' | 'EXIT'; pricingOptions?: PricingOptions | null };
+export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean; pricingDayTypeBasis?: 'ENTRY' | 'EXIT'; pricingOptions?: PricingOptions | null; receiptDelivery?: ReceiptDeliverySettings };
 
 
 

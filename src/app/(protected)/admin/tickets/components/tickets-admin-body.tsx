@@ -1,6 +1,7 @@
 'use client';
 
 import { PricingOptionsCard } from './pricing-options-card';
+import { ReceiptDeliveryCard } from './receipt-delivery-card';
 import { VehicleTypesCard } from './vehicle-types-card';
 
 import { useEffect, useState } from 'react';
@@ -41,7 +42,7 @@ interface Props {
   isAdmin: boolean;
 }
 
-type TabValue = 'tickets' | 'tarifas' | 'mapaTarifas' | 'tarifasDiaSemanaMes' | 'opciones' | 'vehiculos';
+type TabValue = 'tickets' | 'tarifas' | 'mapaTarifas' | 'tarifasDiaSemanaMes' | 'opciones' | 'vehiculos' | 'comprobantes';
 
 export function TicketsAdminBody({
   sortedTickets,
@@ -159,6 +160,7 @@ export function TicketsAdminBody({
                   badge: chargingActive ? 'En pausa' : undefined,
                 },
                 { value: 'opciones', label: 'Cómo cobrar' },
+                { value: 'comprobantes', label: 'Comprobantes' },
                 { value: 'vehiculos', label: 'Tipos de vehículo' },
                 { value: 'mapaTarifas', label: 'Consultar precios' },
                 { value: 'tarifasDiaSemanaMes', label: 'Día / semana / mes' },
@@ -171,6 +173,7 @@ export function TicketsAdminBody({
               y React termina fallando con removeChild en SelectItemText. */}
           <TabsContent value="opciones" className="mt-4">{ticketSchedule && <PricingOptionsCard schedule={ticketSchedule} onSaved={options => setChargingActive(options.charging.enabled)} />}</TabsContent>
           <TabsContent value="vehiculos" className="mt-4"><VehicleTypesCard /></TabsContent>
+          <TabsContent value="comprobantes" className="mt-4"><ReceiptDeliveryCard initial={ticketSchedule?.receiptDelivery} /></TabsContent>
 
           <TabsContent value="tickets" className="mt-4">
             <div className="mb-4 space-y-2 rounded-xl border border-gm-yellow/25 bg-gm-yellow/5 p-4">

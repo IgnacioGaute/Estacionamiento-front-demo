@@ -1,6 +1,7 @@
 'use client';
 
 import { PricingBreakdown, formatPrice } from '@/components/pricing-breakdown';
+import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -28,6 +29,7 @@ export function CloseTicketPanel({
   initialRegistrationId?: string | null;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [receiptId, setReceiptId] = useState<string | null>(null);
   const summaryRequest = useRef(0);
   const searchRequest = useRef(0);
   const [query, setQuery] = useState('');
@@ -109,6 +111,7 @@ export function CloseTicketPanel({
         setPaymentMethod(null);
       } else {
         toast.success('Ticket cerrado exitosamente');
+        if (data.registrationId) setReceiptId(data.registrationId);
         onOpenChange(false);
         onSuccess?.();
       }
@@ -116,7 +119,7 @@ export function CloseTicketPanel({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (isPending) return; if (!o) resetAll(); onOpenChange(o); }}>
+    <><Dialog open={open} onOpenChange={(o) => { if (isPending) return; if (!o) resetAll(); onOpenChange(o); }}>
       <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader className="items-center">
           <DialogTitle>Registrar salida y cobrar</DialogTitle>
@@ -279,5 +282,7 @@ export function CloseTicketPanel({
         )}
       </DialogContent>
     </Dialog>
+    <ParkingReceiptDelivery registrationId={receiptId} kind="EXIT" onDismiss={() => setReceiptId(null)} />
+    </>
   );
 }

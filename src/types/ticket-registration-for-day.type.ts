@@ -19,6 +19,7 @@ export type TicketRegistrationForDay = {
     vehiclePlateCustomer: string;
     paid: boolean;
     retired: boolean;
+    retiredAt?: string | null;
     paymentMetodo: 'CASH' | 'TRANSFER' | null;
     boxList: BoxList;
 }

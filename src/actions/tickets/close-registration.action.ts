@@ -26,7 +26,7 @@ export async function closeRegistrationAction(id: string, values: CloseRegistrat
       return { error: handleTicketError(registration.error as TicketError) };
     }
 
-    return { success: 'Ticket cerrado exitosamente' };
+    return { success: 'Ticket cerrado exitosamente', registrationId: registration.id };
   } catch (error: unknown) {
     console.error('Error desde el backend:', error);
     return {

@@ -1,5 +1,6 @@
 'use client';
 import { useTenant } from '@/components/tenant-provider';
+import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 
 import { VehicleTypePicker } from '@/components/vehicle-type-options';
 
@@ -61,6 +62,7 @@ export function EntryByPlateDialog({
   const { playaId } = useTenant();
   const session = useSession();
   const [open, setOpen] = useState(false);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [duplicateError, setDuplicateError] = useState<DuplicateError | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
@@ -84,7 +86,8 @@ export function EntryByPlateDialog({
     return frequentCustomers.filter(
       (c) =>
         (qNorm && c.licensePlateNormalized.includes(qNorm)) ||
-        (c.lastNameCustomer && c.lastNameCustomer.toLowerCase().includes(qLower)),
+        (c.lastNameCustomer && c.lastNameCustomer.toLowerCase().includes(qLower)) ||
+        (!!q.replace(/\D/g, '') && !!c.phoneCustomer?.includes(q.replace(/\D/g, ''))),
     );
   }, [frequentQuery, frequentCustomers]);
 
@@ -95,6 +98,7 @@ export function EntryByPlateDialog({
       vehicleType: 'AUTO',
       casilleroNumber: '',
       lastNameCustomer: '',
+      phoneCustomer: '',
     },
   });
 
@@ -137,6 +141,7 @@ export function EntryByPlateDialog({
     resetAll();
     setOpen(false);
     onTicketRegistered?.();
+    if (data.registrationId) setReceiptId(data.registrationId);
   };
 
   const submit = (values: EntryByPlateSchemaType, override?: boolean) => {
@@ -157,6 +162,8 @@ export function EntryByPlateDialog({
         toast.error(errorMessage ?? 'Error desconocido');
       } else {
         toast.success('Entrada registrada exitosamente');
+        if (data.registrationId) setReceiptId(data.registrationId);
+        onTicketRegistered?.();
         resetAll();
         setOpen(false);
       }
@@ -164,14 +171,16 @@ export function EntryByPlateDialog({
   };
 
   const onSubmit = (values: EntryByPlateSchemaType) => submit(values, false);
-  const submitFrequentDirect = () => {
+  const submitFrequentDirect = async () => {
     if (!selectedFrequent) return;
+    if (!await form.trigger('phoneCustomer')) return;
     submit(
       {
         licensePlate: selectedFrequent.licensePlateOriginal,
         vehicleType: selectedFrequent.vehicleType,
         casilleroNumber: '',
         lastNameCustomer: selectedFrequent.lastNameCustomer ?? '',
+        phoneCustomer: form.getValues('phoneCustomer') ?? '',
       },
       false,
     );
@@ -185,7 +194,7 @@ export function EntryByPlateDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) resetAll(); setOpen(o); }}>
+    <><Dialog open={open} onOpenChange={(o) => { if (!o) resetAll(); setOpen(o); }}>
       <DialogTrigger asChild>
         <button
           ref={triggerRef}
@@ -331,6 +340,7 @@ export function EntryByPlateDialog({
                           </span>
                           <span className="truncate text-xs text-muted-foreground">
                             {selectedFrequent.lastNameCustomer ?? 'Sin apellido'}
+                            {selectedFrequent.phoneCustomer && ` · +${selectedFrequent.phoneCustomer}`}
                           </span>
                         </div>
                       </div>
@@ -361,7 +371,7 @@ export function EntryByPlateDialog({
                     <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       id="frequent-entry-search"
-                      placeholder="Buscar por patente o apellido..."
+                      placeholder="Buscar por patente, apellido o teléfono..."
                       value={frequentQuery}
                       onChange={(e) => setFrequentQuery(e.target.value)}
                       className="h-11 pl-10 pr-3 text-base"
@@ -380,6 +390,10 @@ export function EntryByPlateDialog({
                               key={c.licensePlateNormalized}
                               onClick={() => {
                                 setSelectedFrequent(c);
+                                form.setValue('licensePlate', c.licensePlateOriginal);
+                                form.setValue('vehicleType', c.vehicleType);
+                                form.setValue('lastNameCustomer', c.lastNameCustomer ?? '');
+                                form.setValue('phoneCustomer', c.phoneCustomer ?? '');
                                 setFrequentQuery('');
                               }}
                               className="flex min-h-16 w-full flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-gm-line-strong px-3.5 py-3 text-left last:border-b-0 hover:bg-gm-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow"
@@ -408,6 +422,13 @@ export function EntryByPlateDialog({
               </div>
 
               {selectedFrequent ? (
+                <>
+                <FormField control={form.control} name="phoneCustomer" render={({ field }) => (
+                  <FormItem><FormLabel>Teléfono de WhatsApp (opcional)</FormLabel>
+                    <FormControl><Input type="tel" autoComplete="tel" placeholder="+54 9 11 1234 5678" disabled={isPending} {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 <button
                   type="button"
                   onClick={submitFrequentDirect}
@@ -416,6 +437,7 @@ export function EntryByPlateDialog({
                 >
                   Registrar entrada
                 </button>
+                </>
               ) : (
                 <>
                   <div className="flex items-center gap-2.5 text-[10.5px] uppercase tracking-wide text-muted-foreground">
@@ -478,6 +500,18 @@ export function EntryByPlateDialog({
                     )}
                   />
 
+                  <FormField
+                    control={form.control}
+                    name="phoneCustomer"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Teléfono de WhatsApp (opcional)</FormLabel>
+                        <FormControl><Input type="tel" autoComplete="tel" placeholder="+54 9 11 1234 5678" disabled={isPending} {...field} /></FormControl>
+                        <p className="text-xs text-muted-foreground">Incluí el código de país. Al guardarlo, el cliente aparecerá en frecuentes desde esta visita.</p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <button
                     type="submit"
                     disabled={isPending}
@@ -494,5 +528,7 @@ export function EntryByPlateDialog({
         )}
       </DialogContent>
     </Dialog>
+    <ParkingReceiptDelivery registrationId={receiptId} kind="ENTRY" onDismiss={() => setReceiptId(null)} />
+    </>
   );
 }

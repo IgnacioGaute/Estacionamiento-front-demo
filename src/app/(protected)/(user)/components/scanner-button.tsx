@@ -1,5 +1,6 @@
 'use client';
 import { useTenant } from '@/components/tenant-provider';
+import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 
 import React, { useState, useRef, useEffect, startTransition } from 'react';
 import { startScanner } from '@/services/scanner.service';
@@ -44,6 +45,7 @@ export default function ScannerButton({
   const [isScanning, setIsScanning] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [closeId, setCloseId] = useState<string | null>(null);
+  const [entryReceiptId, setEntryReceiptId] = useState<string | null>(null);
   const requestInFlight = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const session = useSession();
@@ -119,6 +121,7 @@ export default function ScannerButton({
                 toast.warning(data.warning, { duration: 8000 });
               }
               onTicketRegistered?.();
+              if (data.registrationId) setEntryReceiptId(data.registrationId);
             }
           }
           setIsScanning(false);
@@ -288,6 +291,7 @@ export default function ScannerButton({
       )}
 
       <CloseTicketPanel open={!!closeId} initialRegistrationId={closeId} onOpenChange={(open) => { if (!open) setCloseId(null); }} onSuccess={onTicketRegistered} />
+      <ParkingReceiptDelivery registrationId={entryReceiptId} kind="ENTRY" onDismiss={() => setEntryReceiptId(null)} />
       <OpenScannerDialog
         open={dialogOpen}
         onConfirm={handleConfirm}

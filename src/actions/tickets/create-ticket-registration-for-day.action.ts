@@ -18,7 +18,7 @@ export async function createTicketRegistrationForDayAction(values: TicketRegistr
     if ('error' in ticket) {
       return { error: ticket.error.message };
     }
-    return { success: 'Ticket creado exitosamente' };
+    return { success: 'Ticket creado exitosamente', registrationId: ticket.id };
   } catch (error) {
     console.error(error);
     return { error: 'Error al crear el ticket' };

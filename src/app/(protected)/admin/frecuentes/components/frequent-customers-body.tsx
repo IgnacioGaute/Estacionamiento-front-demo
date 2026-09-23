@@ -29,7 +29,7 @@ const TOUR_STEPS: PageTourStep[] = [
     key: 'filtros',
     selector: '[data-tour="frecuentes-filtros"]',
     title: 'Período que se mira',
-    desc: 'La lista se arma con los tickets ya cerrados entre estas dos fechas. Sin fechas, toma todo el historial.',
+    desc: 'La lista incluye ingresos entre estas fechas, incluso abiertos. Los clientes con teléfono aparecen desde su primera visita.',
     radius: 10,
   },
   {
@@ -43,7 +43,7 @@ const TOUR_STEPS: PageTourStep[] = [
     key: 'visitas',
     selector: '[data-tour="frecuentes-visitas"]',
     title: 'Cuántas visitas cuentan',
-    desc: 'Con 2 aparece todo el que volvió alguna vez. Subilo para quedarte solo con los que vienen muy seguido.',
+    desc: 'Filtra por cantidad de ingresos. Los contactos con teléfono se conservan en la lista aunque no alcancen ese mínimo.',
     radius: 10,
   },
   {
@@ -96,7 +96,7 @@ export function FrequentCustomersBody({ initialCustomers }: FrequentCustomersBod
       <PageHeader
         breadcrumb={['Estacionamiento', 'Administración', 'Frecuentes']}
         title="Clientes frecuentes"
-        description="Patentes con más de una visita, armado a partir del historial de tickets ya cerrados."
+        description="Historial de visitas y contactos guardados. Los clientes con teléfono aparecen desde su primer ingreso."
         actions={<PageTour steps={TOUR_STEPS} />}
       />
 
@@ -143,6 +143,7 @@ export function FrequentCustomersBody({ initialCustomers }: FrequentCustomersBod
               <TableRow className="hover:bg-transparent">
                 <TableHead>Patente</TableHead>
                 <TableHead>Apellido</TableHead>
+                <TableHead>WhatsApp</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Visitas</TableHead>
                 <TableHead>Primera visita</TableHead>
@@ -157,7 +158,7 @@ export function FrequentCustomersBody({ initialCustomers }: FrequentCustomersBod
             <TableBody>
               {customers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="h-28 text-center">
+                  <TableCell colSpan={12} className="h-28 text-center">
                     <div className="flex flex-col items-center justify-center gap-1.5 text-muted-foreground">
                       <Inbox className="size-5 opacity-50" />
                       <span className="text-[12.5px]">No hay clientes frecuentes para estos filtros.</span>
@@ -169,6 +170,7 @@ export function FrequentCustomersBody({ initialCustomers }: FrequentCustomersBod
                   <TableRow key={customer.licensePlateNormalized}>
                     <TableCell className="whitespace-nowrap font-bold">{customer.licensePlateOriginal}</TableCell>
                     <TableCell className="whitespace-nowrap">{customer.lastNameCustomer ?? '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{customer.phoneCustomer ? `+${customer.phoneCustomer}` : '—'}</TableCell>
                     <TableCell className="whitespace-nowrap">{VEHICLE_TYPE_LABEL[customer.vehicleType] ?? customer.vehicleType}</TableCell>
                     <TableCell className="text-right">{customer.visits}</TableCell>
                     <TableCell className="whitespace-nowrap text-[12.5px]">

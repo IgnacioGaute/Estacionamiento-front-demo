@@ -20,6 +20,7 @@ export type TicketRegistration = {
     advancePaidAmount?: number | null;
     firstNameCustomer?: string | null;
     lastNameCustomer?: string | null;
+    phoneCustomer?: string | null;
     vehiclePlateCustomer?: string | null;
     priceBracketLabel?: string | null;
     priceBracketFallbackUsed?: boolean;
