@@ -5,6 +5,7 @@ import { ReceiptDeliveryCard } from './receipt-delivery-card';
 import { VehicleTypesCard } from './vehicle-types-card';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { FileSpreadsheet, PauseCircle } from 'lucide-react';
 import {
   DropdownMenu,
@@ -52,6 +53,10 @@ export function TicketsAdminBody({
   isAdmin,
 }: Props) {
   const [tab, setTab] = useState<TabValue>('tickets');
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (isAdmin && searchParams.get('tab') === 'tarifasDiaSemanaMes') setTab('tarifasDiaSemanaMes');
+  }, [isAdmin, searchParams]);
   const [chargingActive, setChargingActive] = useState(!!ticketSchedule?.pricingOptions?.charging.enabled);
   useEffect(() => setChargingActive(!!ticketSchedule?.pricingOptions?.charging.enabled), [ticketSchedule?.pricingOptions?.charging.enabled]);
 

@@ -8,14 +8,9 @@ import {
   publicRoutes,
 } from "./routes";
 
+// Acá no hay ninguna ruta pública: los comprobantes que se entregan al cliente los sirve otro
+// servicio, en su propio dominio (repo `estacionamiento-comprobantes-demo`).
 export default async function middleware(req: NextRequest) {
-  if (/^\/comprobantes\/[a-f0-9]{64}\/?$/.test(req.nextUrl.pathname)) {
-    const response = NextResponse.next();
-    response.headers.set('Referrer-Policy', 'no-referrer');
-    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
-    response.headers.set('Cache-Control', 'no-store');
-    return response;
-  }
   const session = await auth();
   const { nextUrl } = req;
 

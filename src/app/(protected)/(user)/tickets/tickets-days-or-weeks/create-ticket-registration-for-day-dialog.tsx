@@ -1,5 +1,6 @@
 
 import { VehicleTypeOptions } from '@/components/vehicle-type-options';
+import Link from 'next/link';
 import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 import { useState, useTransition } from "react";
 import {
@@ -23,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { CalendarPlus, Loader2 } from "lucide-react";
+import { CalendarPlus, Loader2, ArrowUpRight, ChevronRight } from "lucide-react";
 import { ticketRegistrationForDaySchema, TicketRegistrationForDaySchemaType } from "@/schemas/ticket-registration-for-day.schema";
 import { createTicketRegistrationForDayAction } from "@/actions/tickets/create-ticket-registration-for-day.action";
 
@@ -43,7 +44,7 @@ const DEFAULT_VALUES: TicketRegistrationForDaySchemaType = {
   months: undefined,
 };
 
-export function CreateTicketRegistrationDialog({ setIsDialogOpen }: { setIsDialogOpen: (open: boolean) => void }) {
+export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = false }: { setIsDialogOpen: (open: boolean) => void; isAdmin?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [receiptId, setReceiptId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -81,16 +82,18 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen }: { setIsDialo
   return (
     <>
       <button
+        type="button"
         onClick={() => {
           setIsOpen(true);
           setIsDialogOpen(true);
         }}
-        className="group flex min-h-12 w-full items-center gap-3 rounded-xl px-2 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="group flex min-h-[76px] w-full items-center gap-3 rounded-xl border border-gm-yellow/20 bg-gm-yellow/5 px-4 py-3 text-left transition-colors hover:border-gm-yellow/50 hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <span className="grid size-8 place-items-center rounded-xl border border-gm-orange/30 bg-gm-orange/15 text-[#FF8458] transition-colors group-hover:bg-gm-orange/25">
-          <CalendarPlus className="size-4" />
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gm-yellow/10 text-gm-yellow transition-colors group-hover:bg-gm-yellow/20">
+          <CalendarPlus className="size-5" />
         </span>
-        Ticket por día, semana o mes
+        <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">Ticket por día, semana o mes</span><span className="mt-1 block text-xs text-muted-foreground">Registrá una estadía larga</span></span>
+        <ChevronRight className="size-4 shrink-0 text-gm-yellow transition-transform group-hover:translate-x-0.5" />
       </button>
 
       <ParkingReceiptDelivery registrationId={receiptId} kind="ENTRY" onDismiss={() => setReceiptId(null)} />
@@ -102,7 +105,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen }: { setIsDialo
           if (!open) resetForm();
         }}
       >
-        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl sm:max-w-lg">
+        <DialogContent className="w-[calc(100vw_-_1.5rem)] max-w-md max-h-[90dvh] overflow-hidden rounded-2xl sm:max-w-lg">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <span className="grid size-9 place-items-center rounded-md border border-gm-orange/40 bg-gm-orange/15 text-[#FF8458]">
@@ -118,6 +121,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen }: { setIsDialo
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {isAdmin && <Link href="/admin/tickets?tab=tarifasDiaSemanaMes" className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-gm-yellow/15 bg-gm-yellow/5 px-3 py-2 text-xs font-medium text-gm-yellow transition-colors hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span>Crear o editar precios de día / semana / mes</span><ArrowUpRight className="size-4 shrink-0" /></Link>}
               <FormField
                 control={form.control}
                 name="ticketTimeType"

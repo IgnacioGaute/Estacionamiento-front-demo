@@ -54,7 +54,7 @@ export function PaymentMethodDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-sm">
+      <DialogContent className="w-[calc(100%_-_2rem)] max-w-sm">
         <DialogHeader className="items-center text-center">
           <DialogTitle>¿Cómo pagó?</DialogTitle>
           {price !== null && (

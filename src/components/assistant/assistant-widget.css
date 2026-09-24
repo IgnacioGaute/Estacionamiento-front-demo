@@ -7,6 +7,9 @@
 .ai-widget button:focus-visible, .ai-widget input:focus-visible { outline:2px solid #f7ce46; outline-offset:3px; }
 .ai-orb-position { position:fixed; z-index:60; width:72px; height:56px; transition:left .18s ease,top .18s ease; }
 .ai-orb-position.ai-dragging { transition:none; transform:scale(1.08); }
+.ai-widget button.ai-help-label { position:absolute; top:59px; left:50%; transform:translateX(-50%); display:block; width:max-content; max-width:100px; box-sizing:border-box; margin:0; padding:5px 0; border:0; border-radius:4px; background:transparent; color:#a99a60; font-family:inherit; font-size:9px; font-weight:500; line-height:14px; letter-spacing:.01em; white-space:nowrap; text-align:center; box-shadow:none; -webkit-text-size-adjust:100%; transition:color .18s ease; }
+.ai-widget button.ai-help-label:hover, .ai-widget button.ai-help-label:focus-visible { color:#f7ce46; background:transparent; }
+.ai-dragging .ai-help-label { pointer-events:none; opacity:.6; }
 .ai-orb { position:relative; display:block; padding:0; width:72px; height:56px; border-radius:28px; cursor:grab!important; touch-action:none; user-select:none; background:linear-gradient(165deg,#34322b,#17160f); border:1px solid #403e35; box-shadow:0 14px 30px rgba(0,0,0,.6); animation:ai-orbFloat 4.6s ease-in-out infinite; }
 .ai-dragging .ai-orb { cursor:grabbing!important; }
 .ai-halo { position:absolute; inset:-6px; border-radius:32px; border:1.5px solid rgba(247,206,70,.4); animation:ai-orbHalo 2.8s ease-out infinite; pointer-events:none; }

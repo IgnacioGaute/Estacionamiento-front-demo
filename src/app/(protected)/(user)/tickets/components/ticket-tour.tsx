@@ -23,13 +23,14 @@ interface Pos {
   height: number;
 }
 
-const DURATION = 4200;
 
 function tooltipStyle(pos: Pos | null): React.CSSProperties {
   const base: React.CSSProperties = {
     position: 'fixed',
     zIndex: 50,
-    width: 320,
+    width: 'min(320px, calc(100vw - 24px))',
+    maxHeight: 'calc(100dvh - 28px)',
+    overflowY: 'auto',
     background: 'hsl(32 22% 9%)',
     border: '1px solid hsl(34 16% 28%)',
     borderRadius: 12,
@@ -39,7 +40,7 @@ function tooltipStyle(pos: Pos | null): React.CSSProperties {
   if (!pos) return { ...base, top: '50%', left: '50%', transform: 'translate(-50%,-50%)' };
   const spaceBelow = window.innerHeight - (pos.top + pos.height);
   const top = spaceBelow > 220 ? pos.top + pos.height + 14 : Math.max(14, pos.top - 14 - 260);
-  const left = Math.min(Math.max(14, pos.left), window.innerWidth - 334);
+  const left = Math.max(12, Math.min(Math.max(12, pos.left), window.innerWidth - 332));
   return { ...base, top, left };
 }
 
@@ -55,13 +56,13 @@ export function useTour(steps: TourStep[]): TourHandle {
   const [pos, setPos] = useState<Pos | null>(null);
   const [mounted, setMounted] = useState(false);
   const elsRef = useRef<Record<string, HTMLElement | null>>({});
-  const pausedRef = useRef(false);
 
   useEffect(() => { setMounted(true); }, []);
 
   // Reposition + resize + auto-scroll the target into view on smaller screens
   useEffect(() => {
     if (!open) return;
+    setPos(null);
     let scrolled = false;
 
     // Si el paso necesita cambiar de pestaña para que su sección exista, esto lo
@@ -103,27 +104,14 @@ export function useTour(steps: TourStep[]): TourHandle {
     };
   }, [open, idx, steps]);
 
-  // Auto-advance timer — restarts on each step
-  useEffect(() => {
-    if (!open) return;
-    pausedRef.current = false;
-    let tick = 0;
-    const timer = setInterval(() => {
-      if (pausedRef.current) return;
-      tick += 100;
-      if (tick >= DURATION) {
-        tick = 0;
-        if (idx + 1 >= steps.length) {
-          setOpen(false);
-        } else {
-          setIdx(prev => prev + 1);
-        }
-      }
-    }, 100);
-    return () => clearInterval(timer);
-  }, [open, idx, steps.length]);
 
   const close = () => { setOpen(false); setPos(null); };
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { setOpen(false); setPos(null); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
   const start = () => { setIdx(0); setOpen(true); };
   const next  = () => { if (idx + 1 >= steps.length) close(); else setIdx(prev => prev + 1); };
   const prev  = () => { if (idx > 0) setIdx(i => i - 1); };
@@ -168,14 +156,15 @@ export function useTour(steps: TourStep[]): TourHandle {
           {/* Tooltip */}
           <div
             style={tooltipStyle(pos)}
-            onMouseEnter={() => { pausedRef.current = true; }}
-            onMouseLeave={() => { pausedRef.current = false; }}
+            role="dialog"
+            aria-label="Ayuda de Tickets"
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'hsl(46 92% 53%)' }}>
                 PASO {idx + 1} DE {steps.length}
               </span>
               <button
+                aria-label="Cerrar recorrido de ayuda"
                 onClick={close}
                 style={{ background: 'transparent', border: 'none', color: 'hsl(34 12% 60%)', fontSize: 14, cursor: 'pointer', lineHeight: 1, padding: 0 }}
               >
@@ -193,7 +182,8 @@ export function useTour(steps: TourStep[]): TourHandle {
                 style={{
                   height: '100%',
                   background: 'hsl(46 92% 53%)',
-                  animation: `gm-tour-progress ${DURATION}ms linear forwards`,
+                  width: `${((idx + 1) / steps.length) * 100}%`,
+                  transition: 'width 200ms ease',
                 }}
               />
             </div>

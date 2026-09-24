@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 import { useRouter } from 'next/navigation';
-import { CalendarDays, CircleDollarSign, Landmark, LogOut } from 'lucide-react';
+import { CalendarDays, CircleDollarSign, Landmark, LogOut, ReceiptText } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -69,15 +69,17 @@ function estimatedDueDate(registration: TicketRegistrationForDay) {
 }
 
 interface ActiveDayTicketDialogProps {
+  deliveryEnabled?: boolean;
   registration: TicketRegistrationForDay | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function ActiveDayTicketDialog({ registration, open, onOpenChange }: ActiveDayTicketDialogProps) {
+export function ActiveDayTicketDialog({ registration, open, onOpenChange, deliveryEnabled = false }: ActiveDayTicketDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [receiptKind, setReceiptKind] = useState<'ENTRY' | 'EXIT'>('EXIT');
   const router = useRouter();
 
   const dueDate = registration ? estimatedDueDate(registration) : null;
@@ -108,7 +110,8 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange }: Acti
           toast.error(result.error);
         } else {
           toast.success('Salida registrada exitosamente');
-          setReceiptId(registration.id);
+          if (deliveryEnabled) setReceiptId(registration.id);
+          setReceiptKind('EXIT');
           onOpenChange(false);
           router.refresh();
         }
@@ -123,7 +126,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange }: Acti
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[85dvh] w-[calc(100%-2rem)] max-w-sm overflow-y-auto sm:max-h-[90dvh]">
+        <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] max-w-sm overflow-hidden sm:max-h-[90dvh]">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <span className="grid size-9 place-items-center rounded-md border border-gm-yellow/40 bg-gm-yellow/15 text-gm-yellow">
@@ -142,6 +145,15 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange }: Acti
 
           {registration && (
             <div className="space-y-3">
+              {deliveryEnabled && (
+                <section aria-label="Comprobantes del ticket" className="rounded-xl border border-gm-yellow/15 bg-gm-yellow/5 p-3">
+                  <p className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground"><ReceiptText className="size-4 text-gm-yellow" />Comprobantes</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="ghost" size="sm" className="min-h-11 flex-1 bg-background/40 text-gm-yellow hover:bg-gm-yellow/10" onClick={() => { setReceiptKind('ENTRY'); setReceiptId(registration.id); onOpenChange(false); }}>Ver entrada</Button>
+                    {registration.retired && <Button variant="ghost" size="sm" className="min-h-11 flex-1 bg-background/40 text-gm-yellow hover:bg-gm-yellow/10" onClick={() => { setReceiptKind('EXIT'); setReceiptId(registration.id); onOpenChange(false); }}>Ver salida</Button>}
+                  </div>
+                </section>
+              )}
               <div className="rounded-md border border-border bg-gm-surface-2 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
@@ -241,7 +253,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange }: Acti
         </DialogContent>
       </Dialog>
 
-      <ParkingReceiptDelivery registrationId={receiptId} kind="EXIT" onDismiss={() => setReceiptId(null)} />
+      {deliveryEnabled && <ParkingReceiptDelivery registrationId={receiptId} kind={receiptKind} showDisabledMessage onDismiss={() => setReceiptId(null)} />}
       <PaymentMethodDialog
         price={registration?.price ?? null}
         open={showPaymentDialog}
@@ -254,7 +266,8 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange }: Acti
           })
         }
         onConfirmed={() => {
-          if (registration) setReceiptId(registration.id);
+          setReceiptKind('EXIT');
+          if (registration && deliveryEnabled) setReceiptId(registration.id);
           onOpenChange(false);
           router.refresh();
         }}

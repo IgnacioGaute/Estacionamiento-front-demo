@@ -13,7 +13,7 @@ import './assistant-font.css';
 // guardarlo como mensaje no hay que volver a animarlo palabra por palabra.
 type Message = { role: 'user' | 'assistant'; text: string; consulted?: boolean; sinAnimar?: boolean };
 type Point = { x: number; y: number };
-const greeting: Message = { role: 'assistant', text: 'Hola. Soy el asistente de la playa. Preguntame cómo registrar una entrada, cobrar una salida o manejar turnos y abonos.' };
+const greeting: Message = { role: 'assistant', text: '¡Hola! Estoy para darte una mano con la playa.\n\nPodés preguntarme sobre entradas, cobros, comprobantes o turnos. ¿Qué necesitás resolver?' };
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, Math.max(min, max)));
 
 export function AssistantWidget() {
@@ -31,11 +31,12 @@ function RobotAvatar({ thinking = false }: { thinking?: boolean }) {
   </span>;
 }
 
-function AnimatedText({ text }: { text: string }) {
+function AnimatedText({ text, animate = true }: { text: string; animate?: boolean }) {
   let word = 0;
   return <>{text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
     const bold = part.startsWith('**') && part.endsWith('**');
-    const content = (bold ? part.slice(2, -2) : part).split(/(\s+)/).map((token, i) => /^\s+$/.test(token) ? <Fragment key={i}>{token}</Fragment> : <span key={i} className="ai-word" style={{ animationDelay: `${Math.min(word++ * 30, 900)}ms` }}>{token}</span>);
+    const plain = bold ? part.slice(2, -2) : part;
+    const content = animate ? plain.split(/(\s+)/).map((token, i) => /^\s+$/.test(token) ? <Fragment key={i}>{token}</Fragment> : <span key={i} className="ai-word" style={{ animationDelay: `${Math.min(word++ * 30, 900)}ms` }}>{token}</span>) : plain;
     return bold ? <strong key={index}>{content}</strong> : <Fragment key={index}>{content}</Fragment>;
   })}</>;
 }
@@ -158,7 +159,7 @@ function ScopedAssistant() {
   }
   if (!viewport.width) return null;
   const x = clamp(position?.x ?? viewport.width - 90, viewport.left + 8, viewport.left + viewport.width - 80);
-  const y = clamp(position?.y ?? viewport.height - 90, viewport.top + 8, viewport.top + viewport.height - 64);
+  const y = clamp(position?.y ?? viewport.height - 114, viewport.top + 8, viewport.top + viewport.height - 104);
   // The source's 316 × 430 content box has a 1px border on each side.
   const width = Math.min(318, viewport.width - 24);
   const height = Math.min(432, viewport.height - 24);
@@ -174,11 +175,11 @@ function ScopedAssistant() {
         <div ref={scroller} role="log" aria-label="Conversación con el asistente" aria-live="polite" aria-relevant="additions" className="ai-messages">
           {messages.map((m, i) => <div key={i} className={`ai-message ai-message-${m.role}`}>
             {m.role === 'assistant' && <RobotAvatar />}
-            <div className="ai-bubble"><span className="sr-only">{m.role === 'user' ? 'Vos: ' : 'Asistente: '}</span>{m.sinAnimar ? m.text : <AnimatedText text={m.text} />}</div>
+            <div className="ai-bubble"><span className="sr-only">{m.role === 'user' ? 'Vos: ' : 'Asistente: '}</span>{m.role === 'user' ? m.text : <AnimatedText text={m.text} animate={!m.sinAnimar} />}</div>
           </div>)}
           {parcial && <div className="ai-message ai-message-assistant">
             <RobotAvatar />
-            <div className="ai-bubble"><span className="sr-only">Asistente: </span>{parcial}</div>
+            <div className="ai-bubble"><span className="sr-only">Asistente: </span><AnimatedText text={parcial} animate={false} /></div>
           </div>}
           {pending && <div role="status" aria-label="El asistente está pensando" className="ai-thinking"><RobotAvatar thinking /><div className="ai-thinking-bubble"><span className="ai-thinking-label">Pensando</span><span className="ai-dots" aria-hidden="true"><span /><span /><span /></span></div></div>}
           {error && <p role="alert" className="ai-error">
@@ -205,6 +206,7 @@ function ScopedAssistant() {
         onClick={e => { if (suppressClick.current) { suppressClick.current = false; return; } setOpen(v => !v); if (e.detail === 0 && !open) requestAnimationFrame(() => input.current?.focus()); }}>
         <span className="ai-halo" aria-hidden="true" /><span className="ai-visor" aria-hidden="true"><span className="ai-eyes"><span /><span /></span></span><span className="ai-smile" aria-hidden="true" />
       </button>
+      {!open && <button type="button" className="ai-help-label" aria-label="Abrir asistente" onClick={() => { setOpen(true); requestAnimationFrame(() => input.current?.focus()); }}>¿Necesitás ayuda?</button>}
     </div>
   </div>, document.body);
 }
