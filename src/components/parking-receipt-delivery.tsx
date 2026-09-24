@@ -34,7 +34,9 @@ export function ParkingReceiptDelivery({ registrationId, kind, onDismiss, showDi
     <DialogContent className="max-h-[90dvh] overflow-hidden sm:max-w-md [&_a]:h-auto [&_a]:min-h-10 [&_a]:whitespace-normal [&_a]:text-center [&_svg]:shrink-0">
       <DialogHeader><DialogTitle>Entregar comprobante</DialogTitle><DialogDescription>La {kind === 'ENTRY' ? 'entrada' : 'salida'} ya está registrada.</DialogDescription></DialogHeader>
       {error ? <div className="space-y-3"><p role="alert">{error}</p><Button onClick={() => setAttempt(value => value + 1)}>Reintentar comprobante</Button></div> : receipt && <>
-        <ParkingReceiptView receipt={receipt.snapshot} />
+        {/* Fondo blanco fijo: el operador ve exactamente el papel que recibe el cliente, no una
+            versión adaptada al tema oscuro del sistema. */}
+        <div className="rounded-xl bg-white p-4 text-black"><ParkingReceiptView receipt={receipt.snapshot} /></div>
         {!url ? <p role="alert" className="text-sm">El comprobante quedó registrado, pero falta configurar la dirección del sitio de comprobantes (<code>NEXT_PUBLIC_RECEIPTS_URL</code>) para poder entregarlo.</p> : <>
         {receipt.settings.qr && <div className="min-w-0 space-y-2 text-center"><QRCodeSVG value={url} size={224} marginSize={4} className="mx-auto h-auto w-full max-w-[224px] rounded bg-white" title="Escaneá para ver el comprobante" /><p className="text-sm">Escaneá el QR con tu celular</p></div>}
         <div className="flex flex-col gap-2">
