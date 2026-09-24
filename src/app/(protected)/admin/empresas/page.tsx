@@ -11,10 +11,17 @@ import { EmpresasPanel } from './components/empresas-panel';
 // todavía no hay ninguna: PageTour pasa al siguiente cuando no encuentra el elemento.
 const TOUR_STEPS: PageTourStep[] = [
   {
+    key: 'filtro',
+    selector: '[data-tour="empresas-filtro"]',
+    title: 'Ver una empresa sola',
+    desc: 'Al elegir una empresa, las métricas, el gráfico y la lista de abajo pasan a mostrar solo lo suyo.',
+    radius: 10,
+  },
+  {
     key: 'resumen',
     selector: '[data-tour="empresas-resumen"]',
-    title: 'El total de la plataforma',
-    desc: 'Cuántas empresas hay dadas de alta, cuántas playas suman entre todas y cuántos usuarios tienen acceso.',
+    title: 'El pulso de la plataforma',
+    desc: 'Altas, playas y usuarios, más lo cobrado en los últimos 30 días con las estadías y los turnos que siguen abiertos ahora mismo.',
     radius: 12,
   },
   {
@@ -28,14 +35,14 @@ const TOUR_STEPS: PageTourStep[] = [
     key: 'buscar',
     selector: '[data-tour="empresas-buscar"]',
     title: 'Buscar',
-    desc: 'Filtra por nombre de empresa, de playa o de usuario, todo junto.',
+    desc: 'Filtra por nombre de empresa, de playa o de usuario, todo junto. Se combina con el filtro de empresa.',
     radius: 8,
   },
   {
     key: 'ficha',
     selector: '[data-tour="empresas-ficha"]',
     title: 'La ficha de cada empresa',
-    desc: 'Arriba, el nombre con sus totales y los botones para editarla o eliminarla. Una empresa solo se puede eliminar si no le queda ninguna playa ni usuario.',
+    desc: 'Cada fila muestra su estado, lo cobrado y cuándo fue su última operación. Se despliega para administrar sus playas y usuarios.',
     radius: 12,
   },
   {

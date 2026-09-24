@@ -41,6 +41,7 @@ export function AdminNavbarSidebar({
   // muestra acá para no mezclar los dos trabajos.
   const superAdminNavItems = [
     { title: 'Empresas', url: '/admin/empresas', icon: <Building2 /> },
+    { title: 'Métricas', url: '/admin/metricas', icon: <LayoutDashboard /> },
   ];
 
   const allNavItems = [

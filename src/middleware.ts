@@ -27,20 +27,20 @@ export default async function middleware(req: NextRequest) {
 
   if (nextUrl.pathname === '/' && !isLoggedIn) return NextResponse.redirect(new URL('/auth/login', nextUrl));
 
+  // Las secciones de plataforma: solo el super admin entra, y solo a estas. Agregar una ruta
+  // nueva de administración de la plataforma exige sumarla acá, o el super admin rebota a su
+  // pantalla inicial.
   const platformHome = "/admin/empresas";
+  const platformRoutes = [platformHome, "/admin/metricas"];
+  const enPlataforma = platformRoutes.some(
+    (ruta) =>
+      nextUrl.pathname === ruta || nextUrl.pathname.startsWith(ruta + "/"),
+  );
   if (isLoggedIn && role === "SUPER_ADMIN") {
-    if (
-      nextUrl.pathname === platformHome ||
-      nextUrl.pathname.startsWith(platformHome + "/")
-    ) {
-      return NextResponse.next();
-    }
+    if (enPlataforma) return NextResponse.next();
     return NextResponse.redirect(new URL(platformHome, nextUrl));
   }
-  if (
-    nextUrl.pathname === platformHome ||
-    nextUrl.pathname.startsWith(platformHome + "/")
-  ) {
+  if (enPlataforma) {
     return NextResponse.redirect(
       new URL(isLoggedIn ? "/403" : "/auth/login", nextUrl),
     );

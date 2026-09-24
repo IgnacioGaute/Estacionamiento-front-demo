@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getInstallPrompt, setInstallPrompt } from '@/lib/pwa-install';
 
 // Chrome/Android disparan este evento y guardan un prompt que se puede activar por código.
 // Safari/iOS nunca lo dispara — ahí no existe forma de disparar "Agregar a inicio" desde JS, la
@@ -50,6 +51,9 @@ export function InstallAppMenuItem() {
 
   useEffect(() => {
     setAlreadyInstalled(isStandalone());
+    const syncPrompt = () => setDeferredPrompt(getInstallPrompt());
+    syncPrompt();
+    window.addEventListener('parking-install-ready', syncPrompt);
 
     const onBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -62,11 +66,12 @@ export function InstallAppMenuItem() {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+      window.removeEventListener('parking-install-ready', syncPrompt);
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
 
-  if (!isMobile || alreadyInstalled) return null;
+  if (alreadyInstalled) return null;
   if (!deferredPrompt && !isIos()) return null; // ni prompt nativo ni iOS: no hay nada que ofrecer
 
   const handleClick = async () => {
@@ -75,6 +80,7 @@ export function InstallAppMenuItem() {
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') setAlreadyInstalled(true);
       setDeferredPrompt(null);
+      setInstallPrompt(null);
       return;
     }
     setShowIosHelp(true);
@@ -90,7 +96,7 @@ export function InstallAppMenuItem() {
         className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]"
       >
         <Download className="size-3.5 text-muted-foreground" />
-        Agregar a pantalla de inicio
+        {isMobile ? 'Agregar a pantalla de inicio' : 'Instalar aplicación'}
       </DropdownMenuItem>
 
       <Dialog open={showIosHelp} onOpenChange={setShowIosHelp}>

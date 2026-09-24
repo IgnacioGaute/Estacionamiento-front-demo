@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#18150f"><meta name="robots" content="noindex"><title>Consulta sin conexión · Estacionamiento</title><link rel="stylesheet" href="/offline.css"><script type="module" src="/offline.js"></script></head>
+<body><main><div class="stripe"></div><header><span class="tag">Modo de consulta</span><h1>Tu playa, sin conexión</h1><p>No pudimos abrir la aplicación o estás consultando una copia local. Los datos guardados no se actualizan solos.</p></header>
+<aside>No se registran entradas, salidas ni cobros desde esta pantalla. La sincronización de operaciones todavía no está habilitada.</aside>
+<form id="unlock"><label for="password">Frase de acceso a la copia local</label><input id="password" type="password" required autocomplete="off"><button>Ver copia guardada</button></form>
+<p id="status" role="status"></p>
+<section id="snapshot" hidden><h2 id="parking"></h2><p id="stamp"></p><label for="search">Buscar patente o identificación</label><input id="search" type="search" placeholder="Buscar…"><div id="rows"></div><h2>Tarifas de referencia guardadas</h2><p>Esta tabla no calcula saldos. Puede haber reglas de cobro y anticipos que cambien el importe de una estadía.</p><div id="prices"></div><button id="lock" type="button">Bloquear consulta</button></section>
+<footer><a href="/tickets">Volver a la aplicación</a><button id="delete" type="button" class="secondary">Eliminar copia local</button><p>Para preparar una copia, entrá con conexión y elegí “Consulta sin conexión” en la pantalla de operación. La copia vence a las 24 horas.</p></footer></main></body></html>

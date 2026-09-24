@@ -12,6 +12,11 @@ import {
   deletePlaya,
   getEmpresas,
   updateEmpresa,
+  getPlataformaMetrics,
+  getResumenEliminacion,
+  getEmpresa,
+  getActividadEmpresa,
+  getMetricsDetalle,
 } from "@/services/tenancy.service";
 
 const mensaje = (error: unknown, porDefecto: string) =>
@@ -117,5 +122,50 @@ export async function deleteUsuarioEmpresaAction(
     return { ok: true };
   } catch (error) {
     return { error: mensaje(error, "No se pudo dar de baja el usuario.") };
+  }
+}
+
+export async function getPlataformaMetricsAction(dias = 30) {
+  try {
+    return { metrics: await getPlataformaMetrics(dias) };
+  } catch (error) {
+    return { error: mensaje(error, "No se pudieron cargar las métricas.") };
+  }
+}
+
+export async function getResumenEliminacionAction(
+  tipo: "empresa" | "playa",
+  id: string,
+) {
+  try {
+    return { resumen: await getResumenEliminacion(tipo, id) };
+  } catch (error) {
+    return {
+      error: mensaje(error, "No se pudo consultar el estado del borrado."),
+    };
+  }
+}
+
+export async function getEmpresaAction(id: string) {
+  try {
+    return { empresa: await getEmpresa(id) };
+  } catch (error) {
+    return { error: mensaje(error, "No se pudo cargar la empresa.") };
+  }
+}
+
+export async function getActividadEmpresaAction(id: string) {
+  try {
+    return { actividad: await getActividadEmpresa(id) };
+  } catch (error) {
+    return { error: mensaje(error, "No se pudo cargar la actividad.") };
+  }
+}
+
+export async function getMetricsDetalleAction(dias = 30, empresaId?: string) {
+  try {
+    return { detalle: await getMetricsDetalle(dias, empresaId) };
+  } catch (error) {
+    return { error: mensaje(error, "No se pudieron cargar las métricas.") };
   }
 }

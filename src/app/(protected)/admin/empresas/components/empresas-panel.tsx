@@ -1,123 +1,192 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
-import { Building2, MapPin, Plus, Search, Users } from "lucide-react";
+import {
+  Building2,
+  ChevronRight,
+  Clock,
+  MapPin,
+  Plus,
+  Search,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import {
   EmpresaConDetalle,
-  PlayaResumen,
-  UsuarioDeEmpresa,
+  PlataformaMetrics,
+  PlayaMetrics,
 } from "@/types/tenancy.type";
 import {
-  asignarPlayasAction,
-  createEmpresaAction,
-  createPlayaAction,
   deleteEmpresaAction,
   deletePlayaAction,
-  getEmpresasAction,
-  updateEmpresaAction,
-  updatePlayaAction,
-  saveUsuarioEmpresaAction,
   deleteUsuarioEmpresaAction,
+  getEmpresasAction,
+  getPlataformaMetricsAction,
+  updateEmpresaAction,
 } from "@/actions/tenancy/tenancy.action";
+import { Editor, EditorDialog } from "./editor-dialog";
+import { Borrado, BorradoDialog } from "./borrado-dialog";
 
-type Editor =
-  | { tipo: "empresa"; empresa?: EmpresaConDetalle }
-  | { tipo: "playa"; empresa: EmpresaConDetalle; playa?: PlayaResumen }
-  | { tipo: "usuario"; empresa: EmpresaConDetalle; usuario?: UsuarioDeEmpresa }
-  | { tipo: "accesos"; empresa: EmpresaConDetalle; usuario: UsuarioDeEmpresa };
-type Borrado = {
-  nombre: string;
-  detalle: string;
-  ejecutar: () => Promise<{ error?: string }>;
+const plata = new Intl.NumberFormat("es-AR", {
+  style: "currency",
+  currency: "ARS",
+  maximumFractionDigits: 0,
+});
+
+function haceCuanto(iso: string | null) {
+  if (!iso) return "Sin operación";
+  const minutos = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutos < 1) return "recién";
+  if (minutos < 60) return `hace ${minutos} min`;
+  const horas = Math.round(minutos / 60);
+  if (horas < 24) return `hace ${horas} h`;
+  const dias = Math.round(horas / 24);
+  return `hace ${dias} día${dias === 1 ? "" : "s"}`;
+}
+
+const VACIO: PlayaMetrics = {
+  playaId: "",
+  empresaId: "",
+  nombre: "",
+  cobrado: 0,
+  estadiasAbiertas: 0,
+  turnosAbiertos: 0,
+  tieneTarifas: true,
+  ultimaOperacion: null,
 };
 
 export function EmpresasPanel() {
   const [empresas, setEmpresas] = useState<EmpresaConDetalle[]>([]);
+  const [metrics, setMetrics] = useState<PlataformaMetrics | null>(null);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
+  const [filtro, setFiltro] = useState("todas");
+
   const [editor, setEditor] = useState<Editor | null>(null);
   const [borrado, setBorrado] = useState<Borrado | null>(null);
-  const [borrando, setBorrando] = useState(false);
+
   async function refrescar() {
     setCargando(true);
-    const r = await getEmpresasAction();
-    if (r.empresas) {
-      setEmpresas(r.empresas);
+    // Las métricas no son críticas: si fallan, el panel sigue sirviendo para administrar.
+    const [e, m] = await Promise.all([
+      getEmpresasAction(),
+      getPlataformaMetricsAction(30),
+    ]);
+    if (e.empresas) {
+      setEmpresas(e.empresas);
       setError("");
-    } else setError(r.error ?? "No se pudieron cargar las empresas.");
+    } else setError(e.error ?? "No se pudieron cargar las empresas.");
+    setMetrics(m.metrics ?? null);
     setCargando(false);
   }
   useEffect(() => {
     void refrescar();
   }, []);
-  const visibles = empresas.filter((e) =>
-    [
-      e.nombre,
-      ...e.playas.map((p) => p.nombre),
-      ...e.usuarios.map(
-        (u) => `${u.firstName} ${u.lastName} ${u.email} ${u.username}`,
-      ),
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(busqueda.toLowerCase().trim()),
+
+  const porPlaya = useMemo(() => {
+    const mapa = new Map<string, PlayaMetrics>();
+    for (const p of metrics?.playas ?? []) mapa.set(p.playaId, p);
+    return mapa;
+  }, [metrics]);
+
+  const texto = busqueda.toLowerCase().trim();
+  const visibles = empresas
+    .filter((e) => filtro === "todas" || e.id === filtro)
+    .filter(
+      (e) =>
+        !texto ||
+        [
+          e.nombre,
+          ...e.playas.map((p) => p.nombre),
+          ...e.usuarios.map(
+            (u) => `${u.firstName} ${u.lastName} ${u.email} ${u.username}`,
+          ),
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(texto),
+    );
+
+  const metricasDe = (empresa: EmpresaConDetalle) =>
+    empresa.playas.map((p) => porPlaya.get(p.id) ?? { ...VACIO, playaId: p.id });
+  const sumar = (campo: "cobrado" | "estadiasAbiertas" | "turnosAbiertos") =>
+    visibles.reduce(
+      (total, e) =>
+        total + metricasDe(e).reduce((n, m) => n + (m[campo] || 0), 0),
+      0,
+    );
+  const totalPlayas = visibles.reduce((n, e) => n + e.playas.length, 0);
+  const totalUsuarios = visibles.reduce((n, e) => n + e.usuarios.length, 0);
+  const activas = visibles.filter((e) => e.estado === "ACTIVA").length;
+  const sinTarifas = visibles.flatMap((e) =>
+    metricasDe(e).filter((m) => m.playaId && !m.tieneTarifas),
   );
-  async function eliminar() {
-    if (!borrado || borrando) return;
-    setBorrando(true);
-    try {
-      const r = await borrado.ejecutar();
-      if (r.error) toast.error(r.error);
-      else {
-        toast.success("Cambio guardado.");
-        setBorrado(null);
-        await refrescar();
-      }
-    } finally {
-      setBorrando(false);
+
+  const barras = visibles
+    .flatMap((e) =>
+      e.playas.map((p) => ({
+        nombre: p.nombre,
+        empresa: e.nombre,
+        cobrado: porPlaya.get(p.id)?.cobrado ?? 0,
+      })),
+    )
+    .sort((a, b) => b.cobrado - a.cobrado)
+    .slice(0, 6);
+  const tope = Math.max(1, ...barras.map((b) => b.cobrado));
+
+  async function suspender(empresa: EmpresaConDetalle) {
+    const r = await updateEmpresaAction(empresa.id, {
+      estado: empresa.estado === "ACTIVA" ? "SUSPENDIDA" : "ACTIVA",
+    });
+    if (r.error) toast.error(r.error);
+    else {
+      toast.success(
+        empresa.estado === "ACTIVA"
+          ? "Empresa suspendida. Sus usuarios no pueden iniciar sesión."
+          : "Empresa reactivada.",
+      );
+      await refrescar();
     }
+    return r;
   }
+
+  const kpis = [
+    {
+      titulo: "Empresas",
+      valor: String(visibles.length),
+      pie: `${activas} activas · ${visibles.length - activas} suspendidas`,
+      Icono: Building2,
+    },
+    {
+      titulo: "Playas",
+      valor: String(totalPlayas),
+      pie: sinTarifas.length
+        ? `${sinTarifas.length} sin tarifas cargadas`
+        : "Todas con tarifas cargadas",
+      Icono: MapPin,
+    },
+    {
+      titulo: "Usuarios con acceso",
+      valor: String(totalUsuarios),
+      pie: "Administradores y operadores",
+      Icono: Users,
+    },
+    {
+      titulo: `Cobrado · ${metrics?.dias ?? 30} días`,
+      valor: metrics ? plata.format(sumar("cobrado")) : "—",
+      pie: `${sumar("estadiasAbiertas")} estadías abiertas · ${sumar("turnosAbiertos")} turnos en curso`,
+      Icono: Wallet,
+      destacado: true,
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div data-tour="empresas-resumen" className="grid gap-3 sm:grid-cols-3">
-        {[
-          ["Empresas", empresas.length, Building2],
-          ["Playas", empresas.reduce((n, e) => n + e.playas.length, 0), MapPin],
-          [
-            "Usuarios",
-            empresas.reduce((n, e) => n + e.usuarios.length, 0),
-            Users,
-          ],
-        ].map(([titulo, valor, Icono]) => {
-          const Icon = Icono as typeof Building2;
-          return (
-            <div
-              key={String(titulo)}
-              className="flex items-center gap-3 rounded-xl border border-border bg-gm-surface-2 p-4"
-            >
-              <Icon className="size-5 text-gm-yellow" />
-              <div>
-                <div className="text-2xl font-semibold">{String(valor)}</div>
-                <div className="text-sm text-muted-foreground">
-                  {String(titulo)}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
       <div className="flex flex-col gap-3 sm:flex-row">
         <div data-tour="empresas-buscar" className="relative flex-1">
           <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
@@ -129,16 +198,145 @@ export function EmpresasPanel() {
             onChange={(e) => setBusqueda(e.target.value)}
           />
         </div>
-        <Button data-tour="empresas-crear" onClick={() => setEditor({ tipo: "empresa" })}>
+        <Button
+          data-tour="empresas-crear"
+          onClick={() => setEditor({ tipo: "empresa" })}
+        >
           <Plus className="mr-2 size-4" />
-          Crear empresa
+          Nueva empresa
         </Button>
       </div>
+
+      <div
+        data-tour="empresas-filtro"
+        className="flex flex-wrap items-center gap-2 border-b border-border pb-4"
+      >
+        <span className="mr-1 text-xs uppercase tracking-wider text-muted-foreground">
+          Filtrar
+        </span>
+        {[{ id: "todas", nombre: "Todas las empresas" }, ...empresas].map(
+          (opcion) => (
+            <button
+              key={opcion.id}
+              type="button"
+              aria-pressed={filtro === opcion.id}
+              onClick={() => setFiltro(opcion.id)}
+              className={`h-9 rounded-full border px-4 text-sm font-semibold transition-colors ${
+                filtro === opcion.id
+                  ? "border-gm-yellow bg-gm-yellow text-gm-ink"
+                  : "border-border text-foreground hover:bg-gm-surface-2"
+              }`}
+            >
+              {opcion.nombre}
+            </button>
+          ),
+        )}
+      </div>
+
+      <div
+        data-tour="empresas-resumen"
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        {kpis.map(({ titulo, valor, pie, Icono, destacado }) => (
+          <div
+            key={titulo}
+            className="rounded-2xl border border-border bg-gm-surface-2 p-5"
+          >
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Icono className="size-4 text-gm-yellow" />
+              {titulo}
+            </div>
+            <div
+              className={`mt-3 font-display text-[38px] font-semibold leading-none tabular-nums ${destacado ? "text-gm-yellow" : ""}`}
+            >
+              {valor}
+            </div>
+            <div className="mt-2.5 text-sm text-muted-foreground">{pie}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-xl border border-border bg-gm-surface-2 p-5 lg:col-span-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-[15px] font-semibold tracking-tight">
+              Cobrado por playa · {metrics?.dias ?? 30} días
+            </h2>
+            <span className="text-sm text-muted-foreground">
+              {filtro === "todas"
+                ? "Todas las empresas"
+                : (empresas.find((e) => e.id === filtro)?.nombre ?? "")}
+            </span>
+          </div>
+          <div className="mt-4 space-y-3">
+            {!barras.length && (
+              <p className="text-sm text-muted-foreground">
+                Todavía no hay playas para mostrar.
+              </p>
+            )}
+            {barras.map((barra) => (
+              <div key={`${barra.empresa}-${barra.nombre}`}>
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="truncate">{barra.nombre}</span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                    {plata.format(barra.cobrado)}
+                  </span>
+                </div>
+                <div className="mt-1.5 h-2.5 rounded-full bg-gm-surface-3">
+                  <div
+                    className={`h-2.5 rounded-full ${barra.cobrado === tope ? "bg-gm-yellow" : "bg-gm-yellow-deep/60"}`}
+                    style={{
+                      width: `${Math.max(2, Math.round((barra.cobrado / tope) * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-gm-surface-2 p-6">
+          <h2 className="text-[15px] font-semibold tracking-tight">Requiere atención</h2>
+          <div className="mt-4 space-y-3">
+            {sinTarifas.map((m) => (
+              <div
+                key={m.playaId}
+                className="rounded-lg border border-border border-l-4 border-l-gm-orange bg-gm-surface p-3"
+              >
+                <p className="text-sm font-medium">{m.nombre}: sin tarifas</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  No puede registrar entradas hasta cargar sus precios por hora.
+                </p>
+              </div>
+            ))}
+            {visibles
+              .filter((e) => e.estado !== "ACTIVA")
+              .map((e) => (
+                <div
+                  key={e.id}
+                  className="rounded-lg border border-border border-l-4 border-l-muted-foreground bg-gm-surface p-3"
+                >
+                  <p className="text-sm font-medium">
+                    {e.nombre}: suspendida
+                  </p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Sus {e.usuarios.length} usuarios no pueden iniciar sesión.
+                  </p>
+                </div>
+              ))}
+            {!sinTarifas.length &&
+              !visibles.some((e) => e.estado !== "ACTIVA") && (
+                <p className="text-sm text-muted-foreground">
+                  Nada pendiente: todas las playas con tarifas y todas las
+                  empresas activas.
+                </p>
+              )}
+          </div>
+        </div>
+      </div>
+
       {error && (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive p-4 text-sm"
-        >
+        <div role="alert" className="rounded-lg border border-destructive p-4 text-sm">
           {error}
           <Button variant="outline" className="ml-3" onClick={refrescar}>
             Reintentar
@@ -147,7 +345,7 @@ export function EmpresasPanel() {
       )}
       {cargando && (
         <p role="status" className="text-sm text-muted-foreground">
-          Actualizando empresas…
+          Actualizando plataforma…
         </p>
       )}
       {!cargando && !error && !visibles.length && (
@@ -157,190 +355,85 @@ export function EmpresasPanel() {
             : "Creá tu primera empresa. Después agregá sus playas y usuarios."}
         </p>
       )}
-      {visibles.map((empresa, i) => (
-        <section
-          key={empresa.id}
-          data-tour={i === 0 ? "empresas-ficha" : undefined}
-          className="overflow-hidden rounded-xl border border-border"
-        >
-          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-gm-surface-2 p-4">
-            <div className="min-w-0">
-              <h2 className="break-words text-lg font-semibold">
-                {empresa.nombre}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {empresa.playas.length} playas · {empresa.usuarios.length}{" "}
-                usuarios
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEditor({ tipo: "empresa", empresa })}
-              >
-                Editar empresa
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive"
-                onClick={() =>
-                  setBorrado({
-                    nombre: empresa.nombre,
-                    detalle:
-                      "Solo se puede eliminar una empresa sin playas ni usuarios, incluidos los usuarios dados de baja.",
-                    ejecutar: () => deleteEmpresaAction(empresa.id),
-                  })
-                }
-              >
-                Eliminar
-              </Button>
-            </div>
-          </header>
-          <div className="grid gap-6 p-4 lg:grid-cols-2">
-            <div data-tour={i === 0 ? "empresas-playas" : undefined} className="min-w-0 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="flex items-center gap-2 font-semibold">
-                  <MapPin className="size-4" />
-                  Playas
-                </h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditor({ tipo: "playa", empresa })}
-                >
-                  Agregar playa
+
+      <div className="overflow-hidden rounded-xl border border-border">
+        {visibles.map((empresa, i) => {
+          const m = metricasDe(empresa);
+          const cobrado = m.reduce((n, x) => n + x.cobrado, 0);
+          const ultima = m
+            .map((x) => x.ultimaOperacion)
+            .filter(Boolean)
+            .sort()
+            .pop() as string | undefined;
+          return (
+            <section
+              key={empresa.id}
+              data-tour={i === 0 ? "empresas-ficha" : undefined}
+              className="border-b border-border last:border-b-0"
+            >
+              <div className="flex flex-wrap items-center gap-4 bg-gm-surface-2 p-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/admin/empresas/${empresa.id}`}
+                      className="break-words font-semibold text-foreground hover:text-gm-yellow"
+                    >
+                      {empresa.nombre}
+                    </Link>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        empresa.estado === "ACTIVA"
+                          ? "bg-emerald-500/15 text-emerald-400"
+                          : "bg-gm-orange/15 text-gm-orange"
+                      }`}
+                    >
+                      {empresa.estado === "ACTIVA" ? "Activa" : "Suspendida"}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {empresa.playas.length} playas · {empresa.usuarios.length}{" "}
+                    usuarios
+                  </p>
+                </div>
+                <dl className="flex flex-wrap items-center gap-x-8 gap-y-2">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      Cobrado {metrics?.dias ?? 30} días
+                    </dt>
+                    <dd className="font-semibold tabular-nums">
+                      {metrics ? plata.format(cobrado) : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      Estadías abiertas
+                    </dt>
+                    <dd className="font-semibold tabular-nums">
+                      {m.reduce((n, x) => n + x.estadiasAbiertas, 0)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      Última operación
+                    </dt>
+                    <dd className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Clock className="size-3.5" />
+                      {haceCuanto(ultima ?? null)}
+                    </dd>
+                  </div>
+                </dl>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/admin/empresas/${empresa.id}`}>
+                    Ver ficha
+                    <ChevronRight className="ml-1 size-4" />
+                  </Link>
                 </Button>
               </div>
-              {!empresa.playas.length && (
-                <p className="text-sm text-muted-foreground">
-                  Todavía no hay playas en esta empresa.
-                </p>
-              )}
-              {empresa.playas.map((playa) => (
-                <div
-                  key={playa.id}
-                  className="rounded-lg border border-border p-3"
-                >
-                  <div className="break-words font-medium">{playa.nombre}</div>
-                  <div className="break-words text-sm text-muted-foreground">
-                    {playa.direccion || "Sin dirección cargada"}
-                  </div>
-                  <div className="mt-2 flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setEditor({ tipo: "playa", empresa, playa })
-                      }
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() =>
-                        setBorrado({
-                          nombre: playa.nombre,
-                          detalle:
-                            "Solo se puede eliminar si no tiene registros asociados. Se quitarán las asignaciones de usuarios.",
-                          ejecutar: () => deletePlayaAction(playa.id),
-                        })
-                      }
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="min-w-0 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="flex items-center gap-2 font-semibold">
-                  <Users className="size-4" />
-                  Usuarios
-                </h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditor({ tipo: "usuario", empresa })}
-                >
-                  Agregar usuario
-                </Button>
-              </div>
-              {!empresa.usuarios.length && (
-                <p className="text-sm text-muted-foreground">
-                  Agregá al administrador y a los operadores de esta empresa.
-                </p>
-              )}
-              {empresa.usuarios.map((usuario) => (
-                <div
-                  key={usuario.id}
-                  className="rounded-lg border border-border p-3"
-                >
-                  <div className="break-words font-medium">
-                    {usuario.firstName} {usuario.lastName}
-                  </div>
-                  <p className="break-all text-sm text-muted-foreground">
-                    {usuario.email}
-                  </p>
-                  <p className="mt-1 text-sm">
-                    {usuario.role === "ADMIN"
-                      ? "Administrador de empresa"
-                      : "Operador"}{" "}
-                    · @{usuario.username}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Playas asignadas:{" "}
-                    {empresa.playas
-                      .filter((p) => usuario.playaIds.includes(p.id))
-                      .map((p) => p.nombre)
-                      .join(", ") || "Ninguna"}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setEditor({ tipo: "usuario", empresa, usuario })
-                      }
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setEditor({ tipo: "accesos", empresa, usuario })
-                      }
-                    >
-                      Asignar playas
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() =>
-                        setBorrado({
-                          nombre: `${usuario.firstName} ${usuario.lastName}`,
-                          detalle:
-                            "Se dará de baja la cuenta y se quitarán sus playas asignadas. Su historial de operaciones se conserva.",
-                          ejecutar: () =>
-                            deleteUsuarioEmpresaAction(empresa.id, usuario.id),
-                        })
-                      }
-                    >
-                      Dar de baja
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ))}
+            </section>
+          );
+        })}
+      </div>
+
       {editor && (
         <EditorDialog
           editor={editor}
@@ -351,276 +444,15 @@ export function EmpresasPanel() {
           }}
         />
       )}
-      <Dialog
-        open={!!borrado}
-        onOpenChange={(open) => {
-          if (!open && !borrando) setBorrado(null);
+      <BorradoDialog
+        borrado={borrado}
+        cerrar={() => setBorrado(null)}
+        hecho={() => {
+          setBorrado(null);
+          toast.success("Listo.");
+          void refrescar();
         }}
-      >
-        <DialogContent className="w-[calc(100vw-2rem)] max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirmar baja</DialogTitle>
-            <DialogDescription>
-              {borrado?.nombre}. {borrado?.detalle}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              disabled={borrando}
-              onClick={() => setBorrado(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={borrando}
-              onClick={eliminar}
-            >
-              {borrando ? "Guardando…" : "Confirmar"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function EditorDialog({
-  editor,
-  cerrar,
-  guardado,
-}: {
-  editor: Editor;
-  cerrar: () => void;
-  guardado: () => void;
-}) {
-  const usuario = editor.tipo === "usuario" ? editor.usuario : undefined;
-  const [nombre, setNombre] = useState(
-    editor.tipo === "empresa"
-      ? (editor.empresa?.nombre ?? "")
-      : editor.tipo === "playa"
-        ? (editor.playa?.nombre ?? "")
-        : "",
-  );
-  const [direccion, setDireccion] = useState(
-    editor.tipo === "playa" ? (editor.playa?.direccion ?? "") : "",
-  );
-  const [firstName, setFirstName] = useState(usuario?.firstName ?? "");
-  const [lastName, setLastName] = useState(usuario?.lastName ?? "");
-  const [email, setEmail] = useState(usuario?.email ?? "");
-  const [username, setUsername] = useState(usuario?.username ?? "");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"USER" | "ADMIN">(
-    usuario?.role === "ADMIN" ? "ADMIN" : "USER",
-  );
-  const [playaIds, setPlayaIds] = useState(
-    editor.tipo === "accesos" ? editor.usuario.playaIds : [],
-  );
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
-  const titulo =
-    editor.tipo === "accesos"
-      ? "Asignar playas"
-      : `${(editor.tipo === "empresa" && editor.empresa) || (editor.tipo === "playa" && editor.playa) || usuario ? "Editar" : "Crear"} ${editor.tipo}`;
-  async function guardar(e: React.FormEvent) {
-    e.preventDefault();
-    if (pending) return;
-    setPending(true);
-    setError("");
-    try {
-      let r: { error?: string };
-      if (editor.tipo === "empresa")
-        r = editor.empresa
-          ? await updateEmpresaAction(editor.empresa.id, {
-              nombre: nombre.trim(),
-            })
-          : await createEmpresaAction(nombre.trim());
-      else if (editor.tipo === "playa")
-        r = editor.playa
-          ? await updatePlayaAction(editor.playa.id, {
-              nombre: nombre.trim(),
-              direccion: direccion.trim(),
-            })
-          : await createPlayaAction(editor.empresa.id, {
-              nombre: nombre.trim(),
-              direccion: direccion.trim(),
-            });
-      else if (editor.tipo === "accesos")
-        r = await asignarPlayasAction(editor.usuario.id, playaIds);
-      else
-        r = await saveUsuarioEmpresaAction(
-          editor.empresa.id,
-          {
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-            email: email.trim(),
-            username: username.trim(),
-            role,
-            ...(password ? { password } : {}),
-          },
-          usuario?.id,
-        );
-      if (r.error) setError(r.error);
-      else {
-        toast.success("Cambios guardados.");
-        guardado();
-      }
-    } catch {
-      setError("No se pudo guardar. Intentá nuevamente.");
-    } finally {
-      setPending(false);
-    }
-  }
-  const campo = (
-    id: string,
-    label: string,
-    value: string,
-    cambiar: (v: string) => void,
-    type = "text",
-    required = true,
-  ) => (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        value={value}
-        onChange={(e) => cambiar(e.target.value)}
-        type={type}
-        required={required}
-        maxLength={type === "password" ? 72 : 255}
-        minLength={type === "password" ? 8 : 1}
-        autoComplete={type === "password" ? "new-password" : "off"}
-        disabled={pending}
       />
     </div>
-  );
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !pending) cerrar();
-      }}
-    >
-      <DialogContent className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{titulo}</DialogTitle>
-          <DialogDescription>
-            {editor.tipo === "empresa"
-              ? "Una empresa reúne sus playas y sus usuarios."
-              : `Empresa: ${editor.empresa.nombre}`}
-          </DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" onSubmit={guardar}>
-          {(editor.tipo === "empresa" || editor.tipo === "playa") &&
-            campo("nombre", "Nombre", nombre, setNombre)}
-          {editor.tipo === "playa" &&
-            campo(
-              "direccion",
-              "Dirección (opcional)",
-              direccion,
-              setDireccion,
-              "text",
-              false,
-            )}
-          {editor.tipo === "usuario" && (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {campo("firstName", "Nombre", firstName, setFirstName)}
-                {campo("lastName", "Apellido", lastName, setLastName)}
-              </div>
-              {campo("email", "Email", email, setEmail, "email")}
-              {campo(
-                "username",
-                "Nombre de usuario para ingresar",
-                username,
-                setUsername,
-              )}
-              {campo(
-                "password",
-                usuario
-                  ? "Nueva contraseña (opcional)"
-                  : "Contraseña (mínimo 8 caracteres)",
-                password,
-                setPassword,
-                "password",
-                !usuario,
-              )}
-              <div className="space-y-1.5">
-                <Label htmlFor="role">Función en la empresa</Label>
-                <select
-                  id="role"
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as "USER" | "ADMIN")}
-                  disabled={pending}
-                >
-                  <option value="USER">Operador</option>
-                  <option value="ADMIN">Administrador de empresa</option>
-                </select>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Después de crear el usuario, elegí sus playas en «Asignar
-                playas».
-              </p>
-            </>
-          )}
-          {editor.tipo === "accesos" && (
-            <div className="space-y-3">
-              <p className="text-sm">
-                {editor.usuario.role === "USER"
-                  ? `Elegí la playa donde va a trabajar ${editor.usuario.firstName}. Entrará directamente, sin tener que elegir.`
-                  : `Elegí las playas para ${editor.usuario.firstName}.`}
-              </p>
-              {!editor.empresa.playas.length && (
-                <p className="text-sm text-muted-foreground">
-                  Primero agregá una playa a esta empresa.
-                </p>
-              )}
-              {editor.empresa.playas.map((p) => (
-                <label
-                  key={p.id}
-                  className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3"
-                >
-                  <input
-                    type={editor.usuario.role === "USER" ? "radio" : "checkbox"}
-                    name="playa-asignada"
-                    checked={playaIds.includes(p.id)}
-                    disabled={pending}
-                    onChange={(e) =>
-                      setPlayaIds((ids) =>
-                        e.target.checked
-                          ? [...ids, p.id]
-                          : ids.filter((id) => id !== p.id),
-                      )
-                    }
-                    className="size-4 accent-yellow-400"
-                  />
-                  <span>{p.nombre}</span>
-                </label>
-              ))}
-            </div>
-          )}
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
-          <div className="flex justify-end gap-2 border-t border-border pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={cerrar}
-              disabled={pending}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Guardando…" : "Guardar"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }

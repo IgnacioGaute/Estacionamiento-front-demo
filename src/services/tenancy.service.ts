@@ -1,6 +1,13 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from "@/lib/auth";
-import { EmpresaConDetalle, PlayaResumen } from "@/types/tenancy.type";
+import {
+  EmpresaConDetalle,
+  ActividadEmpresa,
+  MetricsDetalle,
+  PlataformaMetrics,
+  PlayaResumen,
+  ResumenEliminacion,
+} from "@/types/tenancy.type";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -163,3 +170,78 @@ export const saveUsuarioEmpresa = (
   );
 export const deleteUsuarioEmpresa = (empresaId: string, id: string) =>
   modificar(`empresas/${empresaId}/usuarios/${id}`, "DELETE");
+
+export async function getPlataformaMetrics(
+  dias = 30,
+): Promise<PlataformaMetrics> {
+  const response = await fetch(`${BASE_URL}/tenancy/metrics?dias=${dias}`, {
+    headers: await getAuthHeaders(),
+    cache: "no-store",
+  });
+  if (!response.ok)
+    throw new Error(
+      await leerError(response, "No se pudieron cargar las métricas."),
+    );
+  return response.json();
+}
+
+// El panel consulta los bloqueos antes de ofrecer el borrado: el backend los vuelve a validar
+// al borrar, así que esto es para explicar, nunca para autorizar.
+export async function getResumenEliminacion(
+  tipo: "empresa" | "playa",
+  id: string,
+): Promise<ResumenEliminacion> {
+  const ruta = tipo === "empresa" ? "empresas" : "playas";
+  const response = await fetch(
+    `${BASE_URL}/tenancy/${ruta}/${encodeURIComponent(id)}/eliminacion`,
+    { headers: await getAuthHeaders(), cache: "no-store" },
+  );
+  if (!response.ok)
+    throw new Error(
+      await leerError(response, "No se pudo consultar el estado del borrado."),
+    );
+  return response.json();
+}
+
+export async function getEmpresa(id: string): Promise<EmpresaConDetalle> {
+  const response = await fetch(
+    `${BASE_URL}/tenancy/empresas/${encodeURIComponent(id)}`,
+    { headers: await getAuthHeaders(), cache: "no-store" },
+  );
+  if (!response.ok)
+    throw new Error(
+      await leerError(response, "No se pudo cargar la empresa."),
+    );
+  return response.json();
+}
+
+export async function getActividadEmpresa(
+  id: string,
+): Promise<ActividadEmpresa[]> {
+  const response = await fetch(
+    `${BASE_URL}/tenancy/empresas/${encodeURIComponent(id)}/actividad`,
+    { headers: await getAuthHeaders(), cache: "no-store" },
+  );
+  if (!response.ok)
+    throw new Error(
+      await leerError(response, "No se pudo cargar la actividad."),
+    );
+  return response.json();
+}
+
+export async function getMetricsDetalle(
+  dias: number,
+  empresaId?: string,
+): Promise<MetricsDetalle> {
+  const query = new URLSearchParams({ dias: String(dias) });
+  if (empresaId) query.set("empresaId", empresaId);
+  const response = await fetch(
+    `${BASE_URL}/tenancy/metrics/detalle?${query.toString()}`,
+    { headers: await getAuthHeaders(), cache: "no-store" },
+  );
+  if (!response.ok)
+    throw new Error(
+      await leerError(response, "No se pudieron cargar las métricas."),
+    );
+  return response.json();
+}

@@ -6,6 +6,7 @@ import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { Toaster } from '@/components/ui/toaster';
 import { Metadata, Viewport } from 'next';
 import { NavigationLoader } from '@/components/navigation-loader';
+import { PwaRuntime } from '@/components/pwa-runtime';
 
 const archivo = Archivo({
   subsets: ['latin'],
@@ -97,6 +98,7 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <NavigationLoader />
+          <PwaRuntime />
           {children}
         </ThemeProvider>
         <SonnerToaster />

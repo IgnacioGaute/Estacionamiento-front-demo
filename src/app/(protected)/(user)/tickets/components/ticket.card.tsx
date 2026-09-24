@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { OfflineConsultation } from '@/components/offline-consultation';
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -356,7 +357,7 @@ export default function CardTicket({
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{barcodeTicketsEnabled ? "Tickets y patentes" : "Entradas y salidas"}</h1>
             <p className="mt-2 text-sm text-muted-foreground">Registrá una entrada o cobrá una salida.</p>
           </div>
-          <div className="shrink-0">{tour.node}</div>
+          <div className="flex shrink-0 flex-col items-end gap-1">{tour.node}</div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
           <div className="flex items-center gap-3">
@@ -366,6 +367,7 @@ export default function CardTicket({
           {TURNO_BAR_ENABLED && <div ref={tour.refFor('turno')} style={tour.isActive('turno') ? { ...tourTransition, ...tourHighlight } : tourTransition}><TurnoBar /></div>}
         </div>
       </header>
+      <div className="mx-auto mb-3 max-w-[1180px]"><OfflineConsultation /></div>
 
       <div className="mx-auto mb-4 grid max-w-[1180px] grid-cols-2 gap-1 rounded-2xl border border-border bg-card p-1 sm:hidden" aria-label="Secciones de tickets">
         <button type="button" aria-pressed={mobileTab === "ingreso"} onClick={() => setMobileTab("ingreso")} className={cn("min-h-12 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileTab === "ingreso" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground")}>Entrada y salida</button>

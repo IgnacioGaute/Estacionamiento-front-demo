@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ReactNode } from 'react';
 import { currentUser } from '@/lib/auth';
 import { NavUser } from './nav-user';
+import { PlatformBar } from './platform-bar';
 import { ParkingMark } from '@/components/brand/logo';
 import { AssistantWidget } from '@/components/assistant/assistant-widget';
 
@@ -45,15 +46,15 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
             {/* Subtle separator */}
             <div className="hidden md:block h-6 w-px bg-border/40" />
 
-            {user?.role === 'SUPER_ADMIN' && (
-              <span className="hidden shrink-0 items-center gap-2 rounded-full border border-gm-yellow/25 bg-gm-yellow/[0.07] px-3 py-1.5 text-[10px] font-semibold text-gm-yellow lg:inline-flex">
-                Administración de la plataforma
-              </span>
+            {/* El super admin no opera una playa: en vez del selector lleva la ruta actual, el
+                buscador de la plataforma y su estado. */}
+            {user?.role === 'SUPER_ADMIN' ? (
+              <PlatformBar />
+            ) : (
+              <div className="min-w-0 flex-1">
+                <PlayaSelector />
+              </div>
             )}
-
-            <div className="min-w-0 flex-1">
-              <PlayaSelector />
-            </div>
 
             <NavUser
               userNav={{
