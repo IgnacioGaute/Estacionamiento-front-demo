@@ -19,7 +19,7 @@ import { FrequentCustomer } from "@/types/frequent-customer.type";
 import { TicketRegistrationForDay } from "@/types/ticket-registration-for-day.type";
 import { TicketRegistrationForDaySchemaType } from "@/schemas/ticket-registration-for-day.schema";
 
-export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean; pricingDayTypeBasis?: 'ENTRY' | 'EXIT'; pricingOptions?: PricingOptions | null; receiptDelivery?: ReceiptDeliverySettings };
+export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean; shiftsEnabled?: boolean; pricingDayTypeBasis?: 'ENTRY' | 'EXIT'; pricingOptions?: PricingOptions | null; receiptDelivery?: ReceiptDeliverySettings };
 
 
 
@@ -152,7 +152,7 @@ export const getTicketSchedule = async (authToken?: string) => {
   }
 };
 
-export const updateTicketSchedule = async (schedule: TicketScheduleSchemaType, authToken?: string) => {
+export const updateTicketSchedule = async (schedule: Partial<TicketScheduleSchemaType> & { barcodeTicketsEnabled?: boolean; shiftsEnabled?: boolean }, authToken?: string) => {
   try {
     const response = await fetch(`${BASE_URL}/tickets/schedule-settings`, {
       method: 'PATCH',

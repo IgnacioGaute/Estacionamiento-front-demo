@@ -2,7 +2,7 @@
 const LABELS = new Set([
   'Tickets', 'Tickets y patentes', 'Registrar entrada', 'Registrar entradas', 'Cobrar salida', 'Cobrar salidas',
   'Registrar salida y cobrar', 'Patente', 'Ticket', 'Por hora', 'Día/Sem/Mes', 'Consultar precios',
-  'Administrar tickets', 'Turno actual', 'Abrir turno', 'Cerrar turno', 'Cerrar este turno',
+  'Administrar tickets', 'Administrar precios', 'Estadía por día, semana o mes', 'Turno actual', 'Abrir turno', 'Cerrar turno', 'Cerrar este turno',
   'Precios por duración', 'Cómo cobrar', 'Tipos de vehículo', 'Día / semana / mes',
   'Forma de cobro', 'Cruces de horario', 'Probar tarifas', 'Ver cuánto cobrar',
   'Historial de turnos', 'Turnos cerrados', 'Hoy', 'Ayer', '7 días', 'Todo', 'Más filtros',

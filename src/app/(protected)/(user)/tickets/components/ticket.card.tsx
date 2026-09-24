@@ -57,7 +57,6 @@ const OVERDUE_CHECK_INTERVAL_MS = 20_000;
 const money = (value: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(value);
 
 // Desactivado a pedido — se dejó el componente sin borrar para reactivarlo después.
-const TURNO_BAR_ENABLED = true;
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -119,6 +118,7 @@ export default function CardTicket({
 }) {
   const [registrations, setRegistrations] =
     useState<TicketRegistration[]>(initialRegistrations);
+  const TURNO_BAR_ENABLED = schedule?.shiftsEnabled !== false;
   const [isScanning, setIsScanning] = useState(false);
   const [receiptTarget, setReceiptTarget] = useState<{ id: string; kind: 'ENTRY' | 'EXIT' } | null>(null);
   const receiptDeliveryEnabled = !!(schedule?.receiptDelivery?.whatsapp || schedule?.receiptDelivery?.qr || schedule?.receiptDelivery?.print);
@@ -187,6 +187,7 @@ export default function CardTicket({
       ...(TURNO_BAR_ENABLED ? [{ key: 'turno', title: 'Revisá tu turno', desc: 'Desde Turno actual revisás la caja y accedés a la apertura o cierre. Antes de cerrar, contá el efectivo y revisá las diferencias. Este panel es independiente del cobro de vehículos.' }] : []),
     ].map((step) => ({
       ...step,
+      desc: barcodeTicketsEnabled ? step.desc : step.desc.replaceAll("Administrar tickets", "Administrar precios").replaceAll("patente o el ticket", "patente o el apellido").replaceAll("patente o ticket", "patente o apellido").replaceAll("patente, ticket o apellido", "patente o apellido"),
       onEnter: () => {
         setMobileTab(['occupancy', 'abonos', 'comprobantes', 'precios', 'admin'].includes(step.key) ? 'activos' : 'ingreso');
         if (step.key === 'occupancy') setSidebarTab('hourly');
@@ -195,7 +196,7 @@ export default function CardTicket({
         if (step.key === 'ticket') setSelectedTarget(null);
       },
     })),
-    [barcodeTicketsEnabled, receiptDeliveryEnabled, isAdmin],
+    [barcodeTicketsEnabled, receiptDeliveryEnabled, isAdmin, TURNO_BAR_ENABLED],
   );
   const tour = useTour(tourSteps);
 
@@ -352,7 +353,7 @@ export default function CardTicket({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="mb-1 text-xs font-medium text-muted-foreground">Estacionamiento · {todayStr}</p>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Tickets y patentes</h1>
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{barcodeTicketsEnabled ? "Tickets y patentes" : "Entradas y salidas"}</h1>
             <p className="mt-2 text-sm text-muted-foreground">Registrá una entrada o cobrá una salida.</p>
           </div>
           <div className="shrink-0">{tour.node}</div>
@@ -381,7 +382,7 @@ export default function CardTicket({
               <EntryByPlateDialog ticketEntryEnabled={barcodeTicketsEnabled} onGoToRegistration={(id) => { setClosePanelTargetId(id); setClosePanelOpen(true); }} onTicketRegistered={() => router.refresh()} triggerRef={(el) => tour.refFor("entrada")(el)} triggerStyle={tour.isActive("entrada") ? { ...tourTransition, ...tourHighlight } : tourTransition} />
               <button type="button" onClick={() => { setClosePanelTargetId(null); setClosePanelOpen(true); }} className="flex min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-gm-line-strong bg-secondary px-4 py-4 text-left transition-colors hover:border-gm-yellow/60 hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-background text-gm-yellow"><Banknote className="size-5" /></span>
-                <span className="min-w-0"><span className="block text-base font-semibold">Cobrar salida</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Buscá la patente o el ticket</span></span>
+                <span className="min-w-0"><span className="block text-base font-semibold">Cobrar salida</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{barcodeTicketsEnabled ? "Buscá la patente o el ticket" : "Buscá por patente o apellido"}</span></span>
               </button>
             </div>
             {barcodeTicketsEnabled && <p role="status" className="mt-3 flex items-center gap-2 text-xs leading-relaxed text-muted-foreground"><Barcode className={cn("size-4 shrink-0", isScanning && "text-gm-yellow")} />{isScanning ? "Leyendo ticket…" : "También podés usar el lector de tickets."}</p>}
@@ -452,8 +453,8 @@ export default function CardTicket({
               <Search className="size-[18px]" />
             </span>
             <span className="flex flex-col gap-0.5">
-              <span className="gm-display text-[14px] font-semibold text-foreground">Buscar y cerrar ticket</span>
-              <span className="text-[11.5px] font-normal normal-case text-muted-foreground">Patente o código</span>
+              <span className="gm-display text-[14px] font-semibold text-foreground">{barcodeTicketsEnabled ? "Buscar y cerrar ticket" : "Buscar y cobrar salida"}</span>
+              <span className="text-[11.5px] font-normal normal-case text-muted-foreground">{barcodeTicketsEnabled ? "Patente o código" : "Patente o apellido"}</span>
             </span>
           </button>
 
@@ -471,7 +472,7 @@ export default function CardTicket({
                 className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-gm-yellow"
               >
                 <Settings className="size-3.5" />
-                Administrar tickets
+                {barcodeTicketsEnabled ? "Administrar tickets" : "Administrar precios"}
               </Link>
             )}
             <div ref={tour.refFor('precios')} style={tour.isActive('precios') ? { ...tourTransition, ...tourHighlight } : tourTransition}><PriceBracketMapDialog brackets={priceBrackets} schedule={schedule} /></div>
@@ -503,6 +504,7 @@ export default function CardTicket({
           {sidebarTab === "hourly" ? (
           <>
           <ActiveTicketsList
+            barcodeTicketsEnabled={barcodeTicketsEnabled}
             ticketCatalog={barcodeTicketsEnabled ? sortedCatalog : []}
             registrations={visibleRegistrations}
             now={now}
@@ -629,7 +631,7 @@ export default function CardTicket({
           </div>
           </>
           ) : (
-            sidebarTab === 'receipts' && receiptDeliveryEnabled ? <DepartureHistory today={dayjs(now).tz(TZ).format('YYYY-MM-DD')} registrations={registrations} dailyRegistrations={registrationsForDay} onReceipt={(id, kind) => setReceiptTarget({ id, kind })} /> : <DayRegistrationsPanel
+            sidebarTab === 'receipts' && receiptDeliveryEnabled ? <DepartureHistory barcodeTicketsEnabled={barcodeTicketsEnabled} today={dayjs(now).tz(TZ).format('YYYY-MM-DD')} registrations={registrations} dailyRegistrations={registrationsForDay} onReceipt={(id, kind) => setReceiptTarget({ id, kind })} /> : <DayRegistrationsPanel
               active={activeDayRegistrations}
               overdue={overdueDayRegistrations}
               isOverdue={isDayRegistrationOverdue}
@@ -665,6 +667,7 @@ export default function CardTicket({
       />
 
       <CloseTicketPanel
+        barcodeTicketsEnabled={barcodeTicketsEnabled}
         open={closePanelOpen}
         initialRegistrationId={closePanelTargetId}
         onOpenChange={(open) => {

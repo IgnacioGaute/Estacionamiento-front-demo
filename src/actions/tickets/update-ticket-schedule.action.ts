@@ -1,10 +1,11 @@
 'use server';
+import { revalidatePath } from 'next/cache';
 
 import { TicketScheduleSchemaType } from '@/schemas/ticket-schedule.schema';
 import { updateTicketSchedule as updateTicketScheduleAPI } from '@/services/tickets.service';
 import { handleTicketError, TicketError } from './ticket.utility';
 
-export async function updateTicketScheduleAction(values: TicketScheduleSchemaType) {
+export async function updateTicketScheduleAction(values: Partial<TicketScheduleSchemaType> & { barcodeTicketsEnabled?: boolean; shiftsEnabled?: boolean }) {
   try {
     const schedule = await updateTicketScheduleAPI(values);
     if (!schedule) {
@@ -20,6 +21,7 @@ export async function updateTicketScheduleAction(values: TicketScheduleSchemaTyp
       return { error: handleTicketError(schedule.error as TicketError) };
     }
 
+    revalidatePath('/', 'layout');
     return { success: 'Horario de tarifas actualizado exitosamente' };
   } catch (error: unknown) {
     console.error('Error desde el backend:', error);

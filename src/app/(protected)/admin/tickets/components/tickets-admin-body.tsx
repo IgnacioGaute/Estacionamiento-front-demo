@@ -52,7 +52,9 @@ export function TicketsAdminBody({
   dayWeekMonthPrices,
   isAdmin,
 }: Props) {
-  const [tab, setTab] = useState<TabValue>('tickets');
+  const ticketsEnabled = ticketSchedule?.barcodeTicketsEnabled !== false;
+  const [tab, setTab] = useState<TabValue>(ticketsEnabled ? 'tickets' : 'tarifas');
+  const visibleTab = !ticketsEnabled && tab === 'tickets' ? 'tarifas' : tab;
   const searchParams = useSearchParams();
   useEffect(() => {
     if (isAdmin && searchParams.get('tab') === 'tarifasDiaSemanaMes') setTab('tarifasDiaSemanaMes');
@@ -126,8 +128,8 @@ export function TicketsAdminBody({
         description="Gestiona todos los tickets registrados."
         actions={
           <div className="flex items-center gap-2">
-            <PageTour steps={isAdmin ? adminSteps : baseSteps} />
-            <DropdownMenu>
+            <PageTour steps={(isAdmin ? adminSteps : baseSteps).filter(step => ticketsEnabled || !['create', 'table', 'export'].includes(step.key)).map(step => !ticketsEnabled && step.key === 'tabs' ? { ...step, onEnter: goTo('tarifas') } : step)} />
+            {ticketsEnabled && <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="flex items-center gap-2" data-tour="tickets-export">
                   <FileSpreadsheet className="w-4 h-4" />
@@ -139,21 +141,21 @@ export function TicketsAdminBody({
                   <ExportTicketsExcel tickets={sortedTickets} />
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu>}
           </div>
         }
       />
 
       {isAdmin ? (
-        <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)}>
+        <Tabs value={visibleTab} onValueChange={(v) => setTab(v as TabValue)}>
           <div data-tour="tickets-tabs">
             <JellyRadio
               aria-label="Secciones de tickets"
               size="lg"
-              value={tab}
+              value={visibleTab}
               onChange={(v) => setTab(v as TabValue)}
               items={[
-                { value: 'tickets', label: 'Tickets' },
+                ...(ticketsEnabled ? [{ value: 'tickets', label: 'Tickets' }] : []),
                 {
                   value: 'tarifas',
                   label: (
@@ -180,14 +182,14 @@ export function TicketsAdminBody({
           <TabsContent value="vehiculos" className="mt-4"><VehicleTypesCard /></TabsContent>
           <TabsContent value="comprobantes" className="mt-4"><ReceiptDeliveryCard initial={ticketSchedule?.receiptDelivery} /></TabsContent>
 
-          <TabsContent value="tickets" className="mt-4">
+          {ticketsEnabled && <TabsContent value="tickets" className="mt-4">
             <div className="mb-4 space-y-2 rounded-xl border border-gm-yellow/25 bg-gm-yellow/5 p-4">
               <h3 className="font-semibold">Tus tarjetas físicas de estacionamiento</h3>
               <p className="text-sm text-muted-foreground">Cada ticket es una tarjeta que le entregás al conductor cuando entra. Cargá el número de su código de barras tal como está impreso en la tarjeta.</p>
               <p className="text-sm text-muted-foreground">Al ingresar el auto, escaneá el código o escribilo manualmente. Al devolver la tarjeta, buscá o escaneá el mismo código para ver el importe y confirmar la salida. Después podés volver a usar esa tarjeta.</p>
             </div>
             <TicketsTable columns={ticketColumns} data={sortedTickets} />
-          </TabsContent>
+          </TabsContent>}
 
           <TabsContent value="tarifas" className="mt-4 space-y-4">
             <div className="rounded-xl border border-gm-yellow/25 bg-gm-yellow/5 p-4 text-sm">

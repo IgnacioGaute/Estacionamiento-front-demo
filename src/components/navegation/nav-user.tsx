@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
+import { useTenant } from '@/components/tenant-provider';
 import { User } from 'next-auth';
 import { BoxListDialog } from '../box-list-dialog';
 import { CreateOtherPaymentDialog } from '@/app/(protected)/admin/other-payments/components/create-other-payment-dialog';
@@ -47,6 +48,7 @@ const SECCIONES_ADMIN = [
   { label: 'Frecuentes', url: '/admin/frecuentes' },
   // { label: 'Tipos de cochera', url: '/admin/parking-type' },
   { label: 'Historial de turnos', url: '/admin/caja' },
+  { label: 'Configuración', url: '/admin/configuracion' },
   { label: 'Varios', url: '/admin/other-payments' },
 ];
 
@@ -61,6 +63,7 @@ function OperationalNavUser({
   };
 }) {
   const [openBoxDialog, setOpenBoxDialog] = useState(false);
+  const { shiftsEnabled } = useTenant();
   const [openPaymentsDialog, setOpenPaymentsDialog] = useState(false);
   const { hasNewNoteAlert, clearNoteAlert } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
@@ -209,7 +212,7 @@ function OperationalNavUser({
               abierta={rama === 'admin'}
               onAlternar={() => alternarRama('admin')}
             >
-              {SECCIONES_ADMIN.map((seccion) => (
+              {SECCIONES_ADMIN.filter(seccion => shiftsEnabled || seccion.url !== '/admin/caja').map((seccion) => (
                 <Link key={seccion.url} href={seccion.url}>
                   <HojaDeRama activa={pathname === seccion.url}>
                     {seccion.label}

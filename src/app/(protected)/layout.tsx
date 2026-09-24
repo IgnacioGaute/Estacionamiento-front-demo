@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { getTicketSchedule } from '@/services/tickets.service';
 import { SessionProvider } from "next-auth/react";
 import { cookies } from "next/headers";
 import {
@@ -31,9 +32,10 @@ export default async function ProtectedLayout({
       : ""
     : context.playas.find((p) => selected === `${session.user.id}:${p.id}`)
         ?.id || (context.playas.length === 1 ? context.playas[0].id : "");
+  const schedule = !platform && chosen ? await getTicketSchedule() : null;
   return (
     <SessionProvider session={session}>
-      <TenantProvider context={context} playaId={chosen}>
+      <TenantProvider context={context} playaId={chosen} shiftsEnabled={schedule?.shiftsEnabled !== false}>
         <div className="flex w-full flex-col overflow-hidden">
           {platform || chosen ? children : <NoPlaya message={error} />}
         </div>

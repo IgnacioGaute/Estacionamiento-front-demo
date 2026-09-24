@@ -68,10 +68,10 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
     startTransition(async () => {
       const result = await createTicketRegistrationForDayAction(payload);
       if (result && 'error' in result && result.error) {
-        toast.error(typeof result.error === 'string' ? result.error : 'Error al crear el ticket');
+        toast.error(typeof result.error === 'string' ? result.error : 'Error al registrar la estadía');
         return;
       }
-      toast.success("Ticket creado exitosamente");
+      toast.success("Estadía registrada exitosamente");
       if (result.registrationId) setReceiptId(result.registrationId);
       resetForm();
       setIsOpen(false);
@@ -92,7 +92,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gm-yellow/10 text-gm-yellow transition-colors group-hover:bg-gm-yellow/20">
           <CalendarPlus className="size-5" />
         </span>
-        <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">Ticket por día, semana o mes</span><span className="mt-1 block text-xs text-muted-foreground">Registrá una estadía larga</span></span>
+        <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-foreground">Estadía por día, semana o mes</span><span className="mt-1 block text-xs text-muted-foreground">Registrá una estadía larga</span></span>
         <ChevronRight className="size-4 shrink-0 text-gm-yellow transition-transform group-hover:translate-x-0.5" />
       </button>
 
@@ -112,7 +112,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
                 <CalendarPlus className="size-4" />
               </span>
               <div>
-                <DialogTitle>Ticket por día, semana o mes</DialogTitle>
+                <DialogTitle>Estadía por día, semana o mes</DialogTitle>
                 <DialogDescription className="mt-0.5">
                   Para estadías largas planificadas — día suelto, semana/s o mes/es.
                 </DialogDescription>

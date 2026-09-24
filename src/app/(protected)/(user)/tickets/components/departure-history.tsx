@@ -16,8 +16,9 @@ dayjs.extend(timezone);
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const PAGE_SIZE = 20;
 
-export function DepartureHistory({ registrations, dailyRegistrations, onReceipt, today }: {
+export function DepartureHistory({ registrations, dailyRegistrations, onReceipt, today, barcodeTicketsEnabled = true }: {
   today: string;
+  barcodeTicketsEnabled?: boolean;
   registrations: TicketRegistration[];
   dailyRegistrations: TicketRegistrationForDay[];
   onReceipt: (id: string, kind: 'ENTRY' | 'EXIT') => void;
@@ -57,7 +58,7 @@ export function DepartureHistory({ registrations, dailyRegistrations, onReceipt,
         <Button variant="outline" aria-pressed={date === today} onClick={() => { setDate(null); setLimit(PAGE_SIZE); }}>Hoy</Button>
       </div>
       <div className="grid gap-3">
-        <label className="space-y-1 text-xs text-muted-foreground"><span>Patente, ticket o apellido</span><Input value={query} placeholder="Buscar comprobantes…" onChange={e => { setQuery(e.target.value); setLimit(PAGE_SIZE); }} /></label>
+        <label className="space-y-1 text-xs text-muted-foreground"><span>{barcodeTicketsEnabled ? 'Patente, ticket o apellido' : 'Patente o apellido'}</span><Input value={query} placeholder="Buscar comprobantes…" onChange={e => { setQuery(e.target.value); setLimit(PAGE_SIZE); }} /></label>
       </div>
       <p role="status" className="text-xs text-muted-foreground">{rows.length} estadías · {date === today ? 'Hoy' : date.split('-').reverse().join('/')}</p>
       <AnimatedScrollList key={`${date}-${query}`} label="Comprobantes: desplazá para ver más">

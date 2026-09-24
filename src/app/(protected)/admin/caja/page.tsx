@@ -6,6 +6,7 @@ import { auth } from '@/auth';
 import { PageHeader } from '@/components/page-header';
 import { PageTour, type PageTourStep } from '@/components/page-tour';
 import { CajaActions } from './components/caja-actions';
+import { getTicketSchedule } from '@/services/tickets.service';
 
 const TOUR_STEPS: PageTourStep[] = [
   {
@@ -58,6 +59,8 @@ export default async function CajaHistorialPage() {
   // AdminNavbarSidebar — llega con mayúsculas inconsistentes y comparar exacto rebota al admin.
   const session = await auth();
   if ((session?.user?.role ?? '').toUpperCase() !== 'ADMIN') redirect('/tickets');
+  const schedule = await getTicketSchedule();
+  const shiftsEnabled = schedule?.shiftsEnabled !== false;
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-6 sm:p-8">
@@ -65,10 +68,10 @@ export default async function CajaHistorialPage() {
         breadcrumb={['Estacionamiento', 'Administración', 'Historial de turnos']}
         title="Historial de turnos"
         description="Revisá cuánto se contó, cuánto se retiró y cuánto quedó para el siguiente operador. La planilla diaria agrupa los movimientos por fecha."
-        actions={<PageTour steps={TOUR_STEPS} />}
+        actions={<PageTour steps={TOUR_STEPS.filter(step => shiftsEnabled || step.key !== 'turno')} />}
       />
       <div className="mt-2">
-        <CajaActions />
+        <CajaActions shiftsEnabled={shiftsEnabled} />
       </div>
     </div>
   );

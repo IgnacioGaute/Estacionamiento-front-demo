@@ -8,19 +8,22 @@ import { signOut } from "next-auth/react";
 const TenantContext = createContext<{
   playaId: string;
   context: OperationalContext;
-}>({ playaId: "", context: { empresa: null, playas: [] } });
+  shiftsEnabled: boolean;
+}>({ playaId: "", context: { empresa: null, playas: [] }, shiftsEnabled: true });
 export const useTenant = () => useContext(TenantContext);
 export function TenantProvider({
   context,
   playaId,
   children,
+  shiftsEnabled = true,
 }: {
   context: OperationalContext;
   playaId: string;
   children: React.ReactNode;
+  shiftsEnabled?: boolean;
 }) {
   return (
-    <TenantContext.Provider value={{ context, playaId }}>
+    <TenantContext.Provider value={{ context, playaId, shiftsEnabled }}>
       {children}
     </TenantContext.Provider>
   );

@@ -23,12 +23,14 @@ type Row =
 
 export function ActiveTicketsList({
   ticketCatalog,
+  barcodeTicketsEnabled = true,
   registrations,
   now,
   onSelect,
   onSelectPlate,
 }: {
   ticketCatalog: Ticket[];
+  barcodeTicketsEnabled?: boolean;
   registrations: TicketRegistration[];
   now: number;
   onSelect: (target: { id: string; codeBar: string; vehicleType: string; existing: TicketRegistration }) => void;
@@ -57,7 +59,7 @@ export function ActiveTicketsList({
   const filteredRows = rows.filter(row => !search || [
     row.kind === "BARCODE" ? row.ticket.codeBar : "",
     row.registration.licensePlateOriginal ?? "",
-    row.registration.noPlate ? row.registration.lastNameCustomer ?? "" : "",
+    row.registration.lastNameCustomer ?? "",
   ].some(value => normalize(value).includes(search)));
 
   return (
@@ -82,7 +84,7 @@ export function ActiveTicketsList({
 
       {rows.length > 0 && <div className="relative mb-2.5">
         <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input type="search" aria-label="Buscar vehículo activo por patente o ticket" placeholder="Patente o ticket…" value={query} onChange={event => setQuery(event.target.value)} className="h-9 rounded-lg pl-9 pr-3 text-sm" />
+        <Input type="search" aria-label={barcodeTicketsEnabled ? "Buscar vehículo activo por patente o ticket" : "Buscar vehículo activo por patente o apellido"} placeholder={barcodeTicketsEnabled ? "Patente o ticket…" : "Patente o apellido…"} value={query} onChange={event => setQuery(event.target.value)} className="h-9 rounded-lg pl-9 pr-3 text-sm" />
       </div>}
       {rows.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-gm-surface-2/40 p-4 text-center text-[12px] text-muted-foreground">

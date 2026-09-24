@@ -22,8 +22,10 @@ export function CloseTicketPanel({
   onOpenChange,
   onSuccess,
   initialRegistrationId,
+  barcodeTicketsEnabled = true,
 }: {
   open: boolean;
+  barcodeTicketsEnabled?: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
   initialRegistrationId?: string | null;
@@ -72,7 +74,7 @@ export function CloseTicketPanel({
       const data = await getCloseSummaryAction(id);
       if (request !== summaryRequest.current) return;
       if (!data) {
-        toast.error('No se pudo cargar el ticket.');
+        toast.error('No se pudo cargar la estadía.');
         return;
       }
       setSummary(data);
@@ -110,7 +112,7 @@ export function CloseTicketPanel({
         if (refreshed) setSummary(refreshed);
         setPaymentMethod(null);
       } else {
-        toast.success('Ticket cerrado exitosamente');
+        toast.success('Salida registrada exitosamente');
         if (data.registrationId) setReceiptId(data.registrationId);
         onOpenChange(false);
         onSuccess?.();
@@ -132,7 +134,7 @@ export function CloseTicketPanel({
               <Input
                 autoFocus
                 className="pl-9 h-[46px] rounded-xl border-gm-line-strong bg-gm-surface-2 gm-mono uppercase"
-                placeholder="Patente, ficha, casillero o apellido"
+                placeholder={barcodeTicketsEnabled ? "Patente, ficha, casillero o apellido" : "Patente o apellido"}
                 value={query}
                 onChange={(e) => handleSearchChange(e.target.value)}
               />
@@ -176,7 +178,7 @@ export function CloseTicketPanel({
               })}
               {results.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  {isPending ? 'Buscando vehículos…' : query.trim() ? 'No encontramos ese vehículo. Revisá la patente o el número de ticket.' : 'No hay vehículos adentro.'}
+                  {isPending ? 'Buscando vehículos…' : query.trim() ? (barcodeTicketsEnabled ? 'No encontramos ese vehículo. Revisá la patente o el número de ticket.' : 'No encontramos ese vehículo. Revisá la patente o el apellido.') : 'No hay vehículos adentro.'}
                 </p>
               )}
             </div>

@@ -11,6 +11,7 @@ import {
   Ticket,
   User,
   Wallet,
+  Settings,
 } from 'lucide-react';
 
 import {
@@ -24,11 +25,13 @@ import {
 import { NavMain } from './nav-main';
 import { SidebarWatermark } from './sidebar-watermark';
 import { useSession } from 'next-auth/react';
+import { useTenant } from '@/components/tenant-provider';
 
 export function AdminNavbarSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
+  const { shiftsEnabled } = useTenant();
   const role = session?.user?.role?.toUpperCase() ?? 'USER';
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const isAdmin = role === 'ADMIN' || isSuperAdmin;
@@ -50,10 +53,11 @@ export function AdminNavbarSidebar({
     // «Varios» y «Volver» al final. Caja y turnos muestra el arqueo de cada operador.
     { title: 'Historial de turnos',     url: '/admin/caja',                   icon: <Wallet /> },
     { title: 'Varios',                  url: '/admin/other-payments',         icon: <Banknote /> },
+    { title: 'Configuración', url: '/admin/configuracion', icon: <Settings /> },
     { title: 'Volver',                  url: '/tickets',                       icon: <ArrowLeft /> },
   ];
 
-  const navItems = isSuperAdmin ? superAdminNavItems : isAdmin ? allNavItems : allNavItems.slice(-1);
+  const navItems = (isSuperAdmin ? superAdminNavItems : isAdmin ? allNavItems : allNavItems.slice(-1)).filter(item => shiftsEnabled || item.url !== '/admin/caja');
 
   return (
     <Sidebar

@@ -7,7 +7,7 @@ import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { ticketScheduleSchema, TicketScheduleSchemaType } from '@/schemas/ticket-schedule.schema';
 import { updateTicketScheduleAction } from '@/actions/tickets/update-ticket-schedule.action';
@@ -22,7 +22,7 @@ export function TicketScheduleCard({ schedule }: { schedule: TicketSchedule }) {
       dayStartHour: schedule.dayStartHour,
       dayEndHour: schedule.dayEndHour,
       graceMinutes: schedule.graceMinutes,
-      barcodeTicketsEnabled: schedule.barcodeTicketsEnabled,
+
       pricingDayTypeBasis: schedule.pricingDayTypeBasis ?? 'EXIT',
     },
   });
@@ -41,25 +41,7 @@ export function TicketScheduleCard({ schedule }: { schedule: TicketSchedule }) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-        <FormField
-          control={form.control}
-          name="barcodeTicketsEnabled"
-          render={({ field }) => (
-            <FormItem className="rounded-xl border bg-background px-4 py-3">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <FormLabel className="text-sm font-semibold">Tickets por código de barras</FormLabel>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Activado: podés registrar entradas y salidas escaneando tickets físicos. Apagado: trabajás con patentes. Antes de apagarlo, registrá la salida de los tickets físicos que estén en uso.
-                  </p>
-                </div>
-                <FormControl>
-                  <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isPending} />
-                </FormControl>
-              </div>
-            </FormItem>
-          )}
-        />
+
 
         <FormField control={form.control} name="pricingDayTypeBasis" render={({ field }) => (
           <FormItem>
