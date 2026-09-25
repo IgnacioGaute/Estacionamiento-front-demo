@@ -39,9 +39,12 @@ export async function conectarMercadoPagoAction(code: string, state: string) {
   }
 }
 
-export async function crearCobroMercadoPagoAction(registrationId: string) {
+export async function crearCobroMercadoPagoAction(
+  registrationId: string,
+  tipo: 'HORA' | 'ABONO' = 'HORA',
+) {
   try {
-    return { cobro: await crearCobroMercadoPago(registrationId) };
+    return { cobro: await crearCobroMercadoPago(registrationId, tipo) };
   } catch (error) {
     return { error: mensaje(error, 'No se pudo generar el QR.') };
   }

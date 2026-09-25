@@ -17,6 +17,7 @@ import { toast } from '@/lib/toast';
 import { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
 import { updateTicketRegistrationForDayStatusAction } from '@/actions/tickets/update-ticket-registration-for-day-status.action';
 import { PaymentMethodDialog } from './payment-method-dialog';
+import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 
 const ars = (n: number) =>
   new Intl.NumberFormat('es-AR', {
@@ -25,7 +26,7 @@ const ars = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
-const metodoLabel: Record<'CASH' | 'TRANSFER', string> = { CASH: 'Efectivo', TRANSFER: 'Transferencia' };
+const metodoLabel: Record<string, string> = { CASH: 'Efectivo', TRANSFER: 'Transferencia', MERCADOPAGO: 'MercadoPago' };
 
 const ticketTimeTypeLabel: Record<string, string> = {
   DIA: 'Día/s',
@@ -164,11 +165,30 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
                   </Badge>
                 </div>
                 <p className="mt-1.5 text-[13px] font-medium text-foreground">
-                  {[registration.firstNameCustomer, registration.lastNameCustomer].filter(Boolean).join(' ') || '—'}
+                  {[registration.firstNameCustomer, registration.lastNameCustomer].filter(Boolean).join(' ') || 'Sin nombre cargado'}
                 </p>
-                <p className="text-[12px] text-muted-foreground">
-                  {registration.vehicleType === 'CAMIONETA' ? 'Camioneta' : 'Automóvil'}
-                </p>
+                {/* La patente también está en el título, pero acá va rotulada: en el título sola
+                    no se distingue de un número de ticket. */}
+                <dl className="mt-2 space-y-1 border-t border-border pt-2 text-[12px]">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-muted-foreground">Patente</dt>
+                    <dd className="gm-mono break-all text-right font-semibold uppercase tracking-wide text-foreground">
+                      {registration.vehiclePlateCustomer || 'Sin patente'}
+                    </dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-muted-foreground">Vehículo</dt>
+                    <dd className="text-right text-foreground">
+                      {registration.vehicleType === 'CAMIONETA' ? 'Camioneta' : 'Automóvil'}
+                    </dd>
+                  </div>
+                  {registration.description && (
+                    <div className="flex items-baseline justify-between gap-3">
+                      <dt className="text-muted-foreground">Detalle</dt>
+                      <dd className="break-words text-right text-foreground">{registration.description}</dd>
+                    </div>
+                  )}
+                </dl>
                 {registration.paid && registration.paymentMetodo && (
                   <p className="mt-1 text-[11.5px] text-muted-foreground">
                     Pagó con {metodoLabel[registration.paymentMetodo]}
@@ -262,6 +282,14 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
           updateTicketRegistrationForDayStatusAction(registration!.id, {
             paid: true,
             paymentMetodo: metodo,
+            retired: true,
+          })
+        }
+        onQr={() => crearCobroMercadoPagoAction(registration!.id, 'ABONO')}
+        // El cobro ya dejó el abono pagado; falta marcar que el vehículo se retiró, que es la otra
+        // mitad de lo que hace registrar la salida.
+        onQrListo={() =>
+          updateTicketRegistrationForDayStatusAction(registration!.id, {
             retired: true,
           })
         }

@@ -20,6 +20,6 @@ export type TicketRegistrationForDay = {
     paid: boolean;
     retired: boolean;
     retiredAt?: string | null;
-    paymentMetodo: 'CASH' | 'TRANSFER' | null;
+    paymentMetodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO' | null;
     boxList: BoxList;
 }

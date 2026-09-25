@@ -71,11 +71,13 @@ export async function conectarMercadoPago(
  */
 export async function crearCobroMercadoPago(
   registrationId: string,
+  // HORA: estadía que se cobra al salir. ABONO: día, semana o mes, que se paga por adelantado.
+  tipo: 'HORA' | 'ABONO' = 'HORA',
 ): Promise<CobroMercadoPago> {
   const response = await fetch(`${BASE_URL}/mercadopago/cobros`, {
     method: 'POST',
     headers: await getAuthHeaders(),
-    body: JSON.stringify({ registrationId }),
+    body: JSON.stringify({ registrationId, tipo }),
     cache: 'no-store',
   });
   if (!response.ok)
