@@ -782,7 +782,10 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       if (movimientos.length === 0) return t.movimientos?.some((m) => m.tipo === "CORTESIA") ? "CORT" : undefined
       const metodos = new Set(movimientos.map((m) => m.metodo))
       if (metodos.size > 1) return "MIX"
-      return metodos.has("TRANSFER") ? "TR" : "EF"
+      // MercadoPago va como TR y no como EF: no es plata que quede en el cajón, así que tiene que
+      // caer del mismo lado que una transferencia. Preguntar sólo por TRANSFER lo habría rotulado
+      // como efectivo y descuadrado el arqueo contra la planilla.
+      return metodos.has("TRANSFER") || metodos.has("MERCADOPAGO") ? "TR" : "EF"
     }
 
     addDataSection("tickets_hora", "ticket x hora", tickets, (ticket: TicketRegistration) => {

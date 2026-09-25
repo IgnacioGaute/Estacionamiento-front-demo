@@ -10,7 +10,7 @@ export type BoxList = {
     totalPrice: number;
     boxNumber: number;
     ticketRegistrations: TicketRegistration[];
-    ticketMovements?: { id: string; monto: number; metodo: 'CASH' | 'TRANSFER'; tipo: 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'CORTESIA'; fechaHora: string; ticketRegistration: TicketRegistration }[];
+    ticketMovements?: { id: string; monto: number; metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; tipo: 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'CORTESIA'; fechaHora: string; ticketRegistration: TicketRegistration }[];
     ticketRegistrationForDays: TicketRegistrationForDay[];
     receipts: Receipt[];
     otherPayments: OtherPayment[];

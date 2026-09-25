@@ -315,6 +315,18 @@ export default function CardTicket({
     setPreviewSummary(null);
   };
 
+  // En el celular el encabezado ocupa casi toda la pantalla, así que al tocar una pestaña el
+  // contenido queda abajo, fuera de vista, y parece que no pasó nada. Se scrollea acá y no en un
+  // efecto sobre `mobileTab` a propósito: elegir un vehículo activo también cambia de pestaña, y
+  // ahí el scroll que corresponde es el de su ficha, que ya existe más abajo.
+  const contenidoRef = useRef<HTMLDivElement>(null);
+  const irATab = (tab: "ingreso" | "activos") => {
+    setMobileTab(tab);
+    requestAnimationFrame(() => {
+      contenidoRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
   // Al elegir un vehículo activo (en mobile eso además cambia de pestaña), llevar el arranque
   // de su ficha al tope de la pantalla — si no, según dónde haya quedado el scroll de "Activos"
   // puede aparecer fuera de vista. "start" en vez de "center": la ficha es más alta que la
@@ -370,11 +382,11 @@ export default function CardTicket({
       <div className="mx-auto mb-3 max-w-[1180px]"><OfflineConsultation /></div>
 
       <div className="mx-auto mb-4 grid max-w-[1180px] grid-cols-2 gap-1 rounded-2xl border border-border bg-card p-1 sm:hidden" aria-label="Secciones de tickets">
-        <button type="button" aria-pressed={mobileTab === "ingreso"} onClick={() => setMobileTab("ingreso")} className={cn("min-h-12 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileTab === "ingreso" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground")}>Entrada y salida</button>
-        <button type="button" aria-pressed={mobileTab === "activos"} onClick={() => setMobileTab("activos")} className={cn("min-h-12 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileTab === "activos" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground")}>Activos <span className="ml-1 rounded-md bg-foreground/10 px-1.5 py-0.5 text-xs">{activeHourlyCount + activeDayRegistrations.length}</span></button>
+        <button type="button" aria-pressed={mobileTab === "ingreso"} onClick={() => irATab("ingreso")} className={cn("min-h-12 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileTab === "ingreso" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground")}>Entrada y salida</button>
+        <button type="button" aria-pressed={mobileTab === "activos"} onClick={() => irATab("activos")} className={cn("min-h-12 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileTab === "activos" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground")}>Activos <span className="ml-1 rounded-md bg-foreground/10 px-1.5 py-0.5 text-xs">{activeHourlyCount + activeDayRegistrations.length}</span></button>
       </div>
 
-      <div className="mx-auto flex max-w-[1180px] flex-wrap items-start gap-5 lg:gap-7">
+      <div ref={contenidoRef} className="mx-auto flex max-w-[1180px] flex-wrap items-start gap-5 lg:gap-7">
         <div className={cn("w-full min-w-0 flex-1 sm:min-w-[320px]", mobileTab !== "ingreso" && "hidden sm:block")}>
           {barcodeTicketsEnabled && <ScannerButton hideControls isDialogOpen={isDialogOpen} onScanningChange={setIsScanning} onTicketRegistered={() => router.refresh()} />}
 

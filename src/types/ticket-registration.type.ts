@@ -38,5 +38,5 @@ export type TicketRegistration = {
     duplicateOfRegistrationId?: string | null;
     // Solo viene poblado cuando el endpoint que lo devuelve pide la relación explícitamente
     // (ej. la planilla de caja) — para mostrar el medio de pago con el que se cobró.
-    movimientos?: { metodo: 'CASH' | 'TRANSFER'; tipo?: 'ANTICIPO' | 'SALDO' | 'CORTESIA' | 'AJUSTE'; monto?: number }[];
+    movimientos?: { metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; tipo?: 'ANTICIPO' | 'SALDO' | 'CORTESIA' | 'AJUSTE'; monto?: number }[];
 }
