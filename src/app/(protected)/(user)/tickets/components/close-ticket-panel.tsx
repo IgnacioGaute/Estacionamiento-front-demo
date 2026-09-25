@@ -234,19 +234,25 @@ export function CloseTicketPanel({
               <p className="text-4xl font-bold text-foreground gm-mono gm-tnum">{formatPrice(summary.saldoACobrar)}</p>
             </div>
 
-            {cobroQr && summary.saldoACobrar > 0 && (
+            {/* Queda en pantalla también después de acreditado: ahí muestra el tilde de pagado,
+                y recién entonces el cajero registra la salida con el botón de abajo. */}
+            {cobroQr && (
               <CobroQrMercadoPago
                 cobro={cobroQr}
                 telefono={summary.registration.phoneCustomer}
-                onAcreditado={() => {
-                  setCobroQr(null);
+                onAcreditado={(pagado) => {
+                  setCobroQr(pagado);
                   loadSummary(summary.registration.id);
                 }}
                 onCancelar={() => setCobroQr(null)}
               />
             )}
 
-            {!cobroQr && summary.saldoACobrar > 0 ? (
+            {summary.saldoACobrar > 0 ? (
+              // Con un QR esperando pago no se ofrecen los otros medios: o se paga ese, o se
+              // cancela. Si el pago entró y aún así quedó un saldo —la tarifa subió mientras
+              // pagaba— vuelven a aparecer para cobrar la diferencia.
+              cobroQr?.estado === 'PENDIENTE' ? null : (
               <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
@@ -258,35 +264,31 @@ export function CloseTicketPanel({
                   <Banknote className="size-5" />
                   <span className="gm-display text-base font-semibold">Efectivo</span>
                 </button>
+                {/* Los otros dos medios son el cajero declarando que le pagaron. Este lo verifica
+                    el sistema contra MercadoPago, por eso va arriba y destacado. */}
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={generarQr}
+                  className="flex flex-col items-center justify-center gap-1.5 min-h-[76px] rounded-2xl border-[1.5px] border-gm-yellow/60 bg-gm-yellow/10 text-foreground disabled:opacity-50"
+                >
+                  <QrCode className="size-5 text-gm-yellow" />
+                  <span className="gm-display text-base font-semibold">
+                    {isPending ? 'Generando…' : 'QR / Celular'}
+                  </span>
+                </button>
                 <button
                   type="button"
                   disabled={isPending}
                   onClick={() => setPaymentMethod('TRANSFER')}
                   aria-pressed={paymentMethod === 'TRANSFER'}
-                  className="flex flex-col items-center justify-center gap-1.5 min-h-[76px] rounded-2xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 text-foreground disabled:opacity-50 aria-pressed:border-gm-yellow aria-pressed:bg-gm-yellow/15"
+                  className="col-span-2 flex items-center justify-center gap-2 min-h-[52px] rounded-2xl border border-border bg-transparent text-muted-foreground disabled:opacity-50 aria-pressed:border-gm-yellow aria-pressed:bg-gm-yellow/15 aria-pressed:text-foreground"
                 >
-                  <CreditCard className="size-5" />
-                  <span className="gm-display text-base font-semibold">Transferencia</span>
-                </button>
-                {/* A diferencia de los otros dos, este no es el cajero declarando que le pagaron:
-                    el sistema verifica contra MercadoPago que la plata haya entrado. */}
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={generarQr}
-                  className="col-span-2 flex items-center justify-center gap-2.5 min-h-[64px] rounded-2xl border-[1.5px] border-gm-yellow/60 bg-gm-yellow/10 text-foreground disabled:opacity-50"
-                >
-                  <QrCode className="size-5 text-gm-yellow" />
-                  <span className="flex flex-col items-start">
-                    <span className="gm-display text-base font-semibold">
-                      {isPending ? 'Generando el QR…' : 'Cobrar con QR'}
-                    </span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      Paga con el celular · se verifica solo
-                    </span>
-                  </span>
+                  <CreditCard className="size-4" />
+                  <span className="text-sm font-medium">Transferencia que ya verificaste vos</span>
                 </button>
               </div>
+              )
             ) : summary.cambioARetornar > 0 ? (
               <div className="grid grid-cols-2 gap-2">
                 <Button disabled={isPending} onClick={() => handleClose('NO_CHARGE', undefined, 'CASH')}>Devolver en efectivo</Button>
@@ -303,9 +305,9 @@ export function CloseTicketPanel({
               </button>
             )}
 
-            {!cobroQr && summary.saldoACobrar > 0 && <div className="space-y-2"><p className="text-sm text-muted-foreground">Elegí cómo te pagó. Confirmá sólo después de recibir el efectivo o verificar la transferencia.</p><Button className="w-full min-h-12 whitespace-normal" disabled={isPending || !paymentMethod} onClick={() => paymentMethod && handleClose('PAYMENT', paymentMethod)}>{isPending ? 'Registrando…' : `Confirmar cobro de ${formatPrice(summary.saldoACobrar)} y salida`}</Button></div>}
+            {cobroQr?.estado !== 'PENDIENTE' && summary.saldoACobrar > 0 && <div className="space-y-2"><p className="text-sm text-muted-foreground">Elegí cómo te pagó. Confirmá sólo después de recibir el efectivo o verificar la transferencia.</p><Button className="w-full min-h-12 whitespace-normal" disabled={isPending || !paymentMethod} onClick={() => paymentMethod && handleClose('PAYMENT', paymentMethod)}>{isPending ? 'Registrando…' : `Confirmar cobro de ${formatPrice(summary.saldoACobrar)} y salida`}</Button></div>}
 
-            {!cobroQr && summary.saldoACobrar > 0 && (!showCourtesy ? (
+            {cobroQr?.estado !== 'PENDIENTE' && summary.saldoACobrar > 0 && (!showCourtesy ? (
               <button
                 type="button"
                 className="text-xs text-muted-foreground underline w-full text-center"

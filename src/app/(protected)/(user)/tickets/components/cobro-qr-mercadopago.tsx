@@ -35,7 +35,9 @@ export function CobroQrMercadoPago({
   cobro: CobroMercadoPago;
   telefono?: string | null;
   nombrePlaya?: string;
-  onAcreditado: () => void;
+  // Recibe el cobro ya acreditado: el panel de cierre lo necesita para saber que este QR dejó de
+  // estar esperando y volver a habilitar el resto de las opciones.
+  onAcreditado: (cobro: CobroMercadoPago) => void;
   onCancelar: () => void;
 }) {
   const [cobro, setCobro] = useState(inicial);
@@ -59,7 +61,7 @@ export function CobroQrMercadoPago({
       if (r.cobro.estado === 'ACREDITADO' && !yaAviso.current) {
         yaAviso.current = true;
         toast.success('Pago acreditado en MercadoPago.');
-        onAcreditado();
+        onAcreditado(r.cobro);
       } else if (manual && r.cobro.estado === 'PENDIENTE') {
         toast.info('Todavía no figura el pago. Probá de nuevo en unos segundos.');
       }
@@ -80,13 +82,21 @@ export function CobroQrMercadoPago({
     return () => clearInterval(reloj);
   }, [pendiente, cobro.expiraEl, consultar]);
 
+  // Queda en el lugar donde estaba el QR, para que el cajero vea de un vistazo que ya está pago
+  // antes de registrar la salida.
   if (cobro.estado === 'ACREDITADO')
     return (
-      <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-5 text-center">
-        <CheckCircle2 className="mx-auto size-8 text-emerald-400" />
-        <p className="mt-2 gm-display text-lg font-bold">Pago acreditado</p>
-        <p className="text-sm text-muted-foreground">
-          Entraron {formatPrice(cobro.monto)} a la cuenta de MercadoPago.
+      <div
+        role="status"
+        className="rounded-2xl border-[1.5px] border-emerald-500/50 bg-emerald-500/10 p-6 text-center"
+      >
+        <CheckCircle2 className="mx-auto size-14 text-emerald-400" strokeWidth={1.75} />
+        <p className="mt-3 gm-display text-2xl font-bold text-emerald-400">PAGADO</p>
+        <p className="gm-mono gm-tnum mt-1 text-lg font-semibold text-foreground">
+          {formatPrice(cobro.monto)}
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          MercadoPago confirmó que el dinero entró a la cuenta.
         </p>
       </div>
     );
