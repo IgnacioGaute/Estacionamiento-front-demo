@@ -9,11 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
-import { AlertTriangle, Banknote, Barcode, Car, CreditCard, Search } from 'lucide-react';
+import { AlertTriangle, Banknote, Barcode, Car, CreditCard, QrCode, Search } from 'lucide-react';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
 import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
 import { closeRegistrationAction } from '@/actions/tickets/close-registration.action';
+import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
+import { CobroMercadoPago } from '@/types/mercadopago.type';
+import { CobroQrMercadoPago } from './cobro-qr-mercadopago';
 import { CloseSummary } from '@/services/tickets.service';
 import { formatElapsed, minutesSinceEntry, isOverdue, isBarcodeOrigin } from '@/utils/ticket-registration.utils';
 
@@ -40,6 +43,7 @@ export function CloseTicketPanel({
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'TRANSFER' | null>(null);
   const [showCourtesy, setShowCourtesy] = useState(false);
   const [courtesyReason, setCourtesyReason] = useState('');
+  const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
 
   const resetAll = () => {
     summaryRequest.current++;
@@ -50,6 +54,22 @@ export function CloseTicketPanel({
     setPaymentMethod(null);
     setShowCourtesy(false);
     setCourtesyReason('');
+    setCobroQr(null);
+  };
+
+  // El pago por QR entra como un cobro más de la estadía, no como el cierre: cuando se acredita,
+  // se vuelve a pedir el resumen y el saldo pasa a cero. El cajero cierra con «no queda saldo».
+  const generarQr = () => {
+    if (!summary) return;
+    startTransition(async () => {
+      const r = await crearCobroMercadoPagoAction(summary.registration.id);
+      if (r.error || !r.cobro) {
+        toast.error(r.error ?? 'No se pudo generar el QR.');
+        return;
+      }
+      setPaymentMethod(null);
+      setCobroQr(r.cobro);
+    });
   };
 
   useEffect(() => {
@@ -214,7 +234,19 @@ export function CloseTicketPanel({
               <p className="text-4xl font-bold text-foreground gm-mono gm-tnum">{formatPrice(summary.saldoACobrar)}</p>
             </div>
 
-            {summary.saldoACobrar > 0 ? (
+            {cobroQr && summary.saldoACobrar > 0 && (
+              <CobroQrMercadoPago
+                cobro={cobroQr}
+                telefono={summary.registration.phoneCustomer}
+                onAcreditado={() => {
+                  setCobroQr(null);
+                  loadSummary(summary.registration.id);
+                }}
+                onCancelar={() => setCobroQr(null)}
+              />
+            )}
+
+            {!cobroQr && summary.saldoACobrar > 0 ? (
               <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
@@ -236,6 +268,24 @@ export function CloseTicketPanel({
                   <CreditCard className="size-5" />
                   <span className="gm-display text-base font-semibold">Transferencia</span>
                 </button>
+                {/* A diferencia de los otros dos, este no es el cajero declarando que le pagaron:
+                    el sistema verifica contra MercadoPago que la plata haya entrado. */}
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={generarQr}
+                  className="col-span-2 flex items-center justify-center gap-2.5 min-h-[64px] rounded-2xl border-[1.5px] border-gm-yellow/60 bg-gm-yellow/10 text-foreground disabled:opacity-50"
+                >
+                  <QrCode className="size-5 text-gm-yellow" />
+                  <span className="flex flex-col items-start">
+                    <span className="gm-display text-base font-semibold">
+                      {isPending ? 'Generando el QR…' : 'Cobrar con QR'}
+                    </span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      Paga con el celular · se verifica solo
+                    </span>
+                  </span>
+                </button>
               </div>
             ) : summary.cambioARetornar > 0 ? (
               <div className="grid grid-cols-2 gap-2">
@@ -253,9 +303,9 @@ export function CloseTicketPanel({
               </button>
             )}
 
-            {summary.saldoACobrar > 0 && <div className="space-y-2"><p className="text-sm text-muted-foreground">Elegí cómo te pagó. Confirmá sólo después de recibir el efectivo o verificar la transferencia.</p><Button className="w-full min-h-12 whitespace-normal" disabled={isPending || !paymentMethod} onClick={() => paymentMethod && handleClose('PAYMENT', paymentMethod)}>{isPending ? 'Registrando…' : `Confirmar cobro de ${formatPrice(summary.saldoACobrar)} y salida`}</Button></div>}
+            {!cobroQr && summary.saldoACobrar > 0 && <div className="space-y-2"><p className="text-sm text-muted-foreground">Elegí cómo te pagó. Confirmá sólo después de recibir el efectivo o verificar la transferencia.</p><Button className="w-full min-h-12 whitespace-normal" disabled={isPending || !paymentMethod} onClick={() => paymentMethod && handleClose('PAYMENT', paymentMethod)}>{isPending ? 'Registrando…' : `Confirmar cobro de ${formatPrice(summary.saldoACobrar)} y salida`}</Button></div>}
 
-            {summary.saldoACobrar > 0 && (!showCourtesy ? (
+            {!cobroQr && summary.saldoACobrar > 0 && (!showCourtesy ? (
               <button
                 type="button"
                 className="text-xs text-muted-foreground underline w-full text-center"

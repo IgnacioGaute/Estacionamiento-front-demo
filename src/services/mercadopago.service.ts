@@ -1,6 +1,6 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
-import { EstadoMercadoPago } from '@/types/mercadopago.type';
+import { CobroMercadoPago, EstadoMercadoPago } from '@/types/mercadopago.type';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -62,6 +62,52 @@ export async function conectarMercadoPago(
     throw new Error(
       await leerError(response, 'No se pudo conectar la cuenta.'),
     );
+  return response.json();
+}
+
+/**
+ * Genera el QR de cobro de una estadía. El importe no se manda: lo calcula el servidor a partir
+ * de lo que falta cobrar, así un pedido manipulado no puede cobrar cualquier cosa.
+ */
+export async function crearCobroMercadoPago(
+  registrationId: string,
+): Promise<CobroMercadoPago> {
+  const response = await fetch(`${BASE_URL}/mercadopago/cobros`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ registrationId }),
+    cache: 'no-store',
+  });
+  if (!response.ok)
+    throw new Error(await leerError(response, 'No se pudo generar el QR.'));
+  return response.json();
+}
+
+/** Le pregunta a MercadoPago si este cobro entró. Es la verificación real, no un aviso. */
+export async function consultarCobroMercadoPago(
+  id: string,
+): Promise<CobroMercadoPago> {
+  const response = await fetch(`${BASE_URL}/mercadopago/cobros/${id}`, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  if (!response.ok)
+    throw new Error(
+      await leerError(response, 'No se pudo consultar el estado del pago.'),
+    );
+  return response.json();
+}
+
+export async function cancelarCobroMercadoPago(
+  id: string,
+): Promise<CobroMercadoPago> {
+  const response = await fetch(`${BASE_URL}/mercadopago/cobros/${id}`, {
+    method: 'DELETE',
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  if (!response.ok)
+    throw new Error(await leerError(response, 'No se pudo cancelar el cobro.'));
   return response.json();
 }
 
