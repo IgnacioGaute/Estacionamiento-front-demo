@@ -1,7 +1,7 @@
 /* Cache only this public, versioned offline shell. Never cache authenticated HTML,
    RSC, API responses, receipts, login pages or mutations. */
-const CACHE = 'parking-public-offline-v1';
-const ASSETS = ['/offline.html', '/offline.css', '/offline.js', '/offline-vault.js', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'parking-public-offline-v2';
+const ASSETS = ['/offline.html', '/offline.css', '/offline.js', '/offline-vault.js', '/icon-192.png', '/icon-512.png', '/offline-stay-pricing.js', '/offline-pricing.js', '/offline-pricing.types.js', '/offline-errors.js', '/offline-dayjs-module.js', '/offline-utc-module.js', '/offline-timezone-module.js', '/offline-dayjs-vendor.js', '/offline-utc-vendor.js', '/offline-timezone-vendor.js'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
 });

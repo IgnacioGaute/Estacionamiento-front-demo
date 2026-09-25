@@ -21,5 +21,5 @@ export function PwaRuntime() {
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); window.removeEventListener('beforeinstallprompt', install); window.removeEventListener('appinstalled', installed); };
   }, []);
   if (!offline) return null;
-  return <div role="status" className="border-b border-gm-yellow/30 bg-gm-yellow/10 px-4 py-3 text-center text-sm">Sin conexión. No confirmes operaciones hasta recuperar el acceso. <a className="font-semibold text-gm-yellow underline" href="/offline.html">Abrir consulta guardada</a></div>;
+  return <div role="status" className="border-b border-gm-yellow/30 bg-gm-yellow/10 px-4 py-3 text-center text-sm">Sin conexión. Para seguir registrando en el equipo de contingencia: <a className="font-semibold text-gm-yellow underline" href="/offline.html">Abrir modo operativo</a></div>;
 }

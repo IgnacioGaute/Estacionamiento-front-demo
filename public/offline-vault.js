@@ -41,3 +41,43 @@ export async function openSnapshot(password) {
   return snapshot;
 }
 export async function clearSnapshot() { await access('readwrite', store => store.delete('current')); }
+
+export async function hasOperations() { return !!(await access('readonly', store => store.get('operations'))); }
+export async function openOperations(password) {
+  const record = await access('readonly', store => store.get('operations'));
+  if (!record) throw new Error('Activá este equipo desde la pantalla de operación, con conexión, antes del primer corte.');
+  try {
+    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: record.iv }, await key(password, record.salt), record.encrypted);
+    const state = JSON.parse(new TextDecoder().decode(decrypted));
+    if (state.version !== 2) throw new Error();
+    return { state, revision: record.revision };
+  } catch { throw new Error('La frase no coincide o los datos están dañados. No se borró ninguna operación.'); }
+}
+export async function saveOperations(state, password, expectedRevision = 0) {
+  if (password.length < 12) throw new Error('Usá una frase de al menos 12 caracteres.');
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await key(password, salt), new TextEncoder().encode(JSON.stringify(state)));
+  const db = await database();
+  try { await new Promise((resolve, reject) => {
+    const tx = db.transaction('vault', 'readwrite');
+    const store = tx.objectStore('vault');
+    const read = store.get('operations');
+    let conflict = false;
+    read.onsuccess = () => {
+      if ((read.result?.revision ?? 0) !== expectedRevision) { conflict = true; tx.abort(); return; }
+      store.put({ salt, iv, encrypted, revision: expectedRevision + 1 }, 'operations');
+    };
+    tx.oncomplete = resolve;
+    tx.onerror = tx.onabort = () => reject(new Error(conflict ? 'Otra pestaña modificó los datos. Bloqueá y volvé a abrir antes de continuar.' : 'No se pudo guardar. La operación NO fue registrada.'));
+  }); } finally { db.close(); }
+  return expectedRevision + 1;
+}
+export async function finishOperations(expectedRevision) {
+  const db = await database();
+  try { await new Promise((resolve, reject) => {
+    const tx = db.transaction('vault', 'readwrite'); const store = tx.objectStore('vault'); const read = store.get('operations');
+    read.onsuccess = () => { if (read.result?.revision !== expectedRevision) { tx.abort(); return; } store.delete('operations'); };
+    tx.oncomplete = resolve; tx.onabort = tx.onerror = () => reject(new Error('Los datos cambiaron en otra pestaña. Volvé a abrir antes de finalizar.'));
+  }); } finally { db.close(); }
+}

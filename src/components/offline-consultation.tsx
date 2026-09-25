@@ -12,32 +12,37 @@ export function OfflineConsultation() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
   return <>
-    <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs text-muted-foreground hover:text-gm-yellow" onClick={() => { setStatus(''); setOpen(true); }}><Download className="size-3.5" />Consulta sin conexión</button>
-    <Dialog open={open} onOpenChange={value => { if (busy) return; setOpen(value); setPassword(''); setConfirmation(''); }}><DialogContent><DialogHeader><DialogTitle>Preparar consulta sin conexión</DialogTitle><DialogDescription>Guardá una copia cifrada de vehículos activos y tarifas de referencia en este dispositivo. Vence en 24 horas.</DialogDescription></DialogHeader>
+    <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-xs text-muted-foreground hover:text-gm-yellow" onClick={() => { setStatus(''); setOpen(true); }}><Download className="size-3.5" />Modo sin conexión</button>
+    <Dialog open={open} onOpenChange={value => { if (busy) return; setOpen(value); setPassword(''); setConfirmation(''); }}><DialogContent><DialogHeader><DialogTitle>Activar equipo de contingencia</DialogTitle><DialogDescription>Este será el único equipo de contingencia de la playa. Permite registrar entradas por patente y cobrar salidas por hora, con sincronización posterior.</DialogDescription></DialogHeader>
       <form className="space-y-4" onSubmit={async event => {
         event.preventDefault();
         if (password !== confirmation) { setStatus('Las frases no coinciden.'); return; }
-        setBusy(true); setStatus('Preparando copia…');
+        setBusy(true); setStatus('Preparando equipo…');
         try {
           if (!window.isSecureContext || !('serviceWorker' in navigator)) throw new Error('Necesitás HTTPS y un navegador compatible.');
           await Promise.race([navigator.serviceWorker.ready, new Promise((_, reject) => setTimeout(() => reject(new Error('La app offline aún no está lista. Recargá y volvé a intentar.')), 15000))]);
-          const response = await fetch('/api/offline/snapshot', { cache: 'no-store', signal: AbortSignal.timeout(20000) });
-          if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) throw new Error('No se pudo preparar la copia. Revisá tu sesión y conexión.');
-          const snapshot = await response.json();
           const moduleUrl = '/offline-vault.js';
           const vault = await import(/* webpackIgnore: true */ moduleUrl);
-          await vault.saveSnapshot(snapshot, password);
+          if (typeof vault.hasOperations !== 'function') throw new Error('Hay una actualización pendiente. Cerrá todas las ventanas de la app y volvé a abrirla con conexión.');
+          if (await vault.hasOperations()) throw new Error('Este equipo ya tiene una contingencia guardada. Abrí el modo operativo para sincronizar o finalizar; no se reemplazaron sus datos.');
+          let deviceId = localStorage.getItem('parking-contingency-device');
+          if (!deviceId) { deviceId = crypto.randomUUID(); localStorage.setItem('parking-contingency-device', deviceId); }
+          const response = await fetch('/api/offline/prepare', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId }), signal: AbortSignal.timeout(25000) });
+          if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Revisá tu sesión y conexión.');
+          const snapshot = await response.json();
+          if (!response.ok) throw new Error(snapshot.message || 'No se pudo activar este equipo.');
+          await vault.saveOperations({ ...snapshot, deviceId, pending: [], syncedCount: 0 }, password);
           setPassword(''); setConfirmation('');
-          setStatus(`Copia guardada: ${snapshot.vehicles.length} vehículos. Podés abrirla desde el enlace de abajo.`);
+          setStatus(`Equipo listo: ${snapshot.vehicles.length} vehículos. Abrí el modo operativo desde el enlace de abajo.`);
         } catch (error) { setStatus(error instanceof Error ? error.message : 'No se pudo guardar la copia.'); }
         finally { setBusy(false); }
       }}>
-        <p className="rounded-lg border border-gm-yellow/20 bg-gm-yellow/5 p-3 text-sm">Solo consulta. Registrar entradas, cobrar y sincronizar sin conexión todavía no está habilitado.</p>
-        <p className="text-xs text-muted-foreground">La copia reemplaza cualquier copia anterior de este navegador. No incluye teléfonos ni claves de sesión. Usá una frase distinta de tu contraseña; no se envía al servidor. Si la olvidás, tendrás que preparar otra copia con conexión.</p>
+        <p className="rounded-lg border border-gm-yellow/20 bg-gm-yellow/5 p-3 text-sm">Requiere turnos desactivados. Admite estadías por hora; no abonos Día/Sem/Mes, cortesías ni devoluciones. Se autoriza por 24 horas; las operaciones pendientes se conservan aunque venza.</p>
+        <p className="text-xs text-muted-foreground">Los datos y las operaciones quedan cifrados. Usá una frase distinta de tu contraseña y conservala: sin ella no podrás recuperar operaciones pendientes. No borres datos del navegador ni cambies de equipo hasta sincronizar y finalizar la contingencia.</p>
         <label className="block space-y-1 text-sm"><span>Frase de acceso (mínimo 12 caracteres)</span><Input type="password" autoComplete="new-password" minLength={12} required disabled={busy} value={password} onChange={e => setPassword(e.target.value)} /></label>
         <label className="block space-y-1 text-sm"><span>Repetir frase</span><Input type="password" autoComplete="new-password" minLength={12} required disabled={busy} value={confirmation} onChange={e => setConfirmation(e.target.value)} /></label>
-        <p role="status" className="text-sm">{status}</p><Button disabled={busy}>{busy ? 'Guardando…' : 'Guardar copia en este dispositivo'}</Button>
-        <a href="/offline.html" className="block text-sm text-gm-yellow underline">Abrir consulta guardada</a>
+        <p role="status" className="text-sm">{status}</p><Button disabled={busy}>{busy ? 'Guardando…' : 'Activar este equipo'}</Button>
+        <a href="/offline.html" className="block text-sm text-gm-yellow underline">Abrir modo operativo</a>
       </form>
     </DialogContent></Dialog>
   </>;
