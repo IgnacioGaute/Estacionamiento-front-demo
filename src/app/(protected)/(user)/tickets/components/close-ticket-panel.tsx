@@ -239,7 +239,6 @@ export function CloseTicketPanel({
             {cobroQr && (
               <CobroQrMercadoPago
                 cobro={cobroQr}
-                telefono={summary.registration.phoneCustomer}
                 onAcreditado={(pagado) => {
                   setCobroQr(pagado);
                   loadSummary(summary.registration.id);
