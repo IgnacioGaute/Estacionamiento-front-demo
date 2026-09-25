@@ -44,6 +44,10 @@ export function CloseTicketPanel({
   const [showCourtesy, setShowCourtesy] = useState(false);
   const [courtesyReason, setCourtesyReason] = useState('');
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
+  // Se entró desde un vehículo ya elegido y el resumen todavía está cargando. No alcanza con
+  // mirar `initialRegistrationId`: al apretar «Volver a buscar» ese prop sigue puesto y el
+  // buscador nunca aparecería.
+  const [abriendoDirecto, setAbriendoDirecto] = useState(false);
 
   const resetAll = () => {
     summaryRequest.current++;
@@ -55,6 +59,7 @@ export function CloseTicketPanel({
     setShowCourtesy(false);
     setCourtesyReason('');
     setCobroQr(null);
+    setAbriendoDirecto(false);
   };
 
   // El pago por QR entra como un cobro más de la estadía, no como el cierre: cuando se acredita,
@@ -79,6 +84,7 @@ export function CloseTicketPanel({
     }
     resetAll();
     if (initialRegistrationId) {
+      setAbriendoDirecto(true);
       loadSummary(initialRegistrationId);
     } else {
       // Sin ticket puntual preseleccionado, el buscador arranca poblado con todos los
@@ -93,6 +99,7 @@ export function CloseTicketPanel({
     startTransition(async () => {
       const data = await getCloseSummaryAction(id);
       if (request !== summaryRequest.current) return;
+      setAbriendoDirecto(false);
       if (!data) {
         toast.error('No se pudo cargar la estadía.');
         return;
@@ -147,7 +154,14 @@ export function CloseTicketPanel({
           <DialogTitle>Registrar salida y cobrar</DialogTitle>
         </DialogHeader>
 
-        {!summary ? (
+        {!summary && abriendoDirecto ? (
+          // Al entrar desde un vehículo ya elegido no hay nada que buscar: mostrar el buscador
+          // mientras carga el resumen hacía aparecer una pantalla intermedia que nadie pidió y
+          // que se iba sola.
+          <p role="status" className="py-10 text-center text-sm text-muted-foreground">
+            Cargando la estadía…
+          </p>
+        ) : !summary ? (
           <div className="space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

@@ -53,9 +53,11 @@ export function DepartureHistory({ registrations, dailyRegistrations, onReceipt,
   }, [registrations, dailyRegistrations, query, date]);
 
   return <section aria-label="Comprobantes" className="min-w-0 space-y-3">
-      <div className="flex min-w-0 items-end gap-2">
+      {/* En el celular van apilados: el campo de fecha nativo no se achica por debajo de su ancho
+          mínimo, así que al lado del botón lo empujaba fuera de la pantalla. */}
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
         <label className="min-w-0 flex-1 space-y-1 text-xs text-muted-foreground"><span>Fecha de entrada o salida</span><Input aria-label="Fecha de comprobantes" className="min-w-0 w-full" type="date" value={date} onChange={e => { setDate(e.target.value || null); setLimit(PAGE_SIZE); }} /></label>
-        <Button variant="outline" aria-pressed={date === today} onClick={() => { setDate(null); setLimit(PAGE_SIZE); }}>Hoy</Button>
+        <Button variant="outline" className="w-full shrink-0 sm:w-auto" aria-pressed={date === today} onClick={() => { setDate(null); setLimit(PAGE_SIZE); }}>Hoy</Button>
       </div>
       <div className="grid gap-3">
         <label className="space-y-1 text-xs text-muted-foreground"><span>{barcodeTicketsEnabled ? 'Patente, ticket o apellido' : 'Patente o apellido'}</span><Input value={query} placeholder="Buscar comprobantes…" onChange={e => { setQuery(e.target.value); setLimit(PAGE_SIZE); }} /></label>
