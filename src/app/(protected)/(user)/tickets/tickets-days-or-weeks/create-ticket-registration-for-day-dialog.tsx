@@ -121,7 +121,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {isAdmin && <Link href="/admin/tickets?tab=tarifasDiaSemanaMes" className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-gm-yellow/15 bg-gm-yellow/5 px-3 py-2 text-xs font-medium text-gm-yellow transition-colors hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span>Crear o editar precios de día / semana / mes</span><ArrowUpRight className="size-4 shrink-0" /></Link>}
+              {isAdmin && <Link href="/admin/tarifas?tab=pases" className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-gm-yellow/15 bg-gm-yellow/5 px-3 py-2 text-xs font-medium text-gm-yellow transition-colors hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span>Crear o editar precios de día / semana / mes</span><ArrowUpRight className="size-4 shrink-0" /></Link>}
               <FormField
                 control={form.control}
                 name="ticketTimeType"

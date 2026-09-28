@@ -43,6 +43,20 @@ export async function openSnapshot(password) {
 export async function clearSnapshot() { await access('readwrite', store => store.delete('current')); }
 
 export async function hasOperations() { return !!(await access('readonly', store => store.get('operations'))); }
+// Trusted-device access. The browser stores a non-exportable wrapping key;
+// anyone with access to this browser profile can operate this device.
+export async function rememberDeviceAccess(password) {
+  const deviceKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, deviceKey, new TextEncoder().encode(password));
+  await access('readwrite', store => store.put({ deviceKey, iv, encrypted }, 'device-access'));
+}
+export async function getDeviceAccess() {
+  const record = await access('readonly', store => store.get('device-access'));
+  if (!record) return null;
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: record.iv }, record.deviceKey, record.encrypted);
+  return new TextDecoder().decode(plain);
+}
 export async function openOperations(password) {
   const record = await access('readonly', store => store.get('operations'));
   if (!record) throw new Error('Activá este equipo desde la pantalla de operación, con conexión, antes del primer corte.');
@@ -77,7 +91,7 @@ export async function finishOperations(expectedRevision) {
   const db = await database();
   try { await new Promise((resolve, reject) => {
     const tx = db.transaction('vault', 'readwrite'); const store = tx.objectStore('vault'); const read = store.get('operations');
-    read.onsuccess = () => { if (read.result?.revision !== expectedRevision) { tx.abort(); return; } store.delete('operations'); };
+    read.onsuccess = () => { if (read.result?.revision !== expectedRevision) { tx.abort(); return; } store.delete('operations'); store.delete('device-access'); };
     tx.oncomplete = resolve; tx.onabort = tx.onerror = () => reject(new Error('Los datos cambiaron en otra pestaña. Volvé a abrir antes de finalizar.'));
   }); } finally { db.close(); }
 }

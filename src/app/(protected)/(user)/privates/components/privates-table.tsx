@@ -15,11 +15,12 @@ import { CustomerPageTour } from '../../components/customer-page-tour';
 interface PrivatesTableProps {
   columns: (customersRenters: ParkingOwner[], renterParkingTypes: RenterParkingType[]) => ColumnDef<Customer>[];
   data: Customer[];
+  total?: number;
   customersRenters: ParkingOwner[];
   renterParkingTypes: RenterParkingType[];
 }
 
-export function PrivatesTable({ columns, data, customersRenters, renterParkingTypes }: PrivatesTableProps) {
+export function PrivatesTable({ columns, data, total, customersRenters, renterParkingTypes }: PrivatesTableProps) {
   const searchParams = useSearchParams();
   const lastNameQuery = searchParams.get('lastName') || '';
   const session = useSession();
@@ -28,6 +29,7 @@ export function PrivatesTable({ columns, data, customersRenters, renterParkingTy
   return (
     <DataTableShell
       data={data}
+      serverTotal={total}
       columns={columns(customersRenters, renterParkingTypes)}
       filterColumn="lastName"
       filterPlaceholder="Filtrar por apellido..."

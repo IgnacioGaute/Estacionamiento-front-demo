@@ -73,8 +73,8 @@ export async function getCashContext(): Promise<CashContext> {
   if (!response.ok) throw new Error(data.message || 'No se pudo consultar la caja.');
   return data;
 }
-export async function getTurnos(filtros: { desde?: string; hasta?: string; usuarioId?: string; estado?: 'ABIERTO' | 'CERRADO'; fechaPor?: 'APERTURA' | 'CIERRE' } = {}): Promise<Turno[]> {
-  const params = new URLSearchParams();
+export async function getTurnos(filtros: { desde?: string; hasta?: string; usuarioId?: string; estado?: 'ABIERTO' | 'CERRADO'; fechaPor?: 'APERTURA' | 'CIERRE'; page?: number; limit?: number; soloDiferencias?: boolean } = {}): Promise<{ data: Turno[]; meta: { totalItems: number }; summary: { total: number; diferencias: number; sinConteo: number } }> {
+  const params = new URLSearchParams({ page: String(filtros.page ?? 1), limit: String(filtros.limit ?? 5), soloDiferencias: String(filtros.soloDiferencias ?? false) });
   if (filtros.estado) params.set('estado', filtros.estado);
   if (filtros.fechaPor) params.set('fechaPor', filtros.fechaPor);
   if (filtros.desde) params.set('desde', filtros.desde);

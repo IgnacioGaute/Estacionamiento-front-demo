@@ -2,8 +2,10 @@
 
 import {
   ArrowLeft,
+  Users,
   Wrench,
 } from 'lucide-react';
+import { useTenant } from '@/components/tenant-provider';
 
 import {
   Sidebar,
@@ -23,6 +25,10 @@ export const userNavItems = [
 export function UserNavbarSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
+  const { inquilinosEnabled } = useTenant();
+  const items = inquilinosEnabled
+    ? [{ title: 'Inquilinos', url: '/renters', icon: <Users /> }, ...userNavItems]
+    : userNavItems;
   return (
     <Sidebar
       collapsible="icon"
@@ -40,7 +46,7 @@ export function UserNavbarSidebar({
       </div>
 
       <SidebarContent className="relative overflow-hidden bg-gm-surface px-1 py-1">
-        <NavMain items={userNavItems} />
+        <NavMain items={items} />
         <SidebarWatermark />
       </SidebarContent>
 

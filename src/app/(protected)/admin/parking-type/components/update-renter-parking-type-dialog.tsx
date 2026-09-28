@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { toast } from '@/lib/toast'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -9,46 +9,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 import { RenterParkingType } from '@/types/renter-parking-type'
 import { updateRenterParkingTypeSchema, UpdateRenterParkingTypeSchemaType } from '@/schemas/renter-parking-type.schema'
 import { updateRenterParkingTypeAction } from '@/actions/renter-parking-type/update-renter-parking-type.action'
 
-// ==============================
-// Helpers: mes/año a "YYYY-MM"
-// ==============================
-const MONTHS_ES = [
-  { value: '01', label: 'Enero' },
-  { value: '02', label: 'Febrero' },
-  { value: '03', label: 'Marzo' },
-  { value: '04', label: 'Abril' },
-  { value: '05', label: 'Mayo' },
-  { value: '06', label: 'Junio' },
-  { value: '07', label: 'Julio' },
-  { value: '08', label: 'Agosto' },
-  { value: '09', label: 'Septiembre' },
-  { value: '10', label: 'Octubre' },
-  { value: '11', label: 'Noviembre' },
-  { value: '12', label: 'Diciembre' },
-]
-
+// El backend todavía recibe el mes, pero ya no lo usa para reescribir cargos: se manda el actual.
 const getCurrentMonthYYYYMM = () => {
   const d = new Date()
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   return `${y}-${m}`
 }
-
-const parseYYYYMM = (ym: string) => {
-  const [y, m] = (ym || '').split('-')
-  return {
-    year: y || String(new Date().getFullYear()),
-    month: m || String(new Date().getMonth() + 1).padStart(2, '0'),
-  }
-}
-
-const buildYYYYMM = (year: string, month: string) => `${year}-${month}`
 
 export function UpdateRenterParkingTypeDialog({ parkingType }: { parkingType: RenterParkingType }) {
   const [isPending, startTransition] = useTransition()
@@ -62,15 +34,6 @@ export function UpdateRenterParkingTypeDialog({ parkingType }: { parkingType: Re
       month: getCurrentMonthYYYYMM(), // "YYYY-MM"
     },
   })
-
-  const years = useMemo(() => {
-    const current = new Date().getFullYear()
-    const start = current - 2
-    const end = current + 10
-    const list: string[] = []
-    for (let y = start; y <= end; y++) list.push(String(y))
-    return list
-  }, [])
 
   const onSubmit = async (values: UpdateRenterParkingTypeSchemaType) => {
     startTransition(async () => {
@@ -106,59 +69,12 @@ export function UpdateRenterParkingTypeDialog({ parkingType }: { parkingType: Re
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* ✅ Mes a actualizar (Select) */}
-            <FormField
-              control={form.control}
-              name="month"
-              render={({ field }) => {
-                const { year, month } = parseYYYYMM(field.value)
-
-                const setYear = (newYear: string) => field.onChange(buildYYYYMM(newYear, month))
-                const setMonth = (newMonth: string) => field.onChange(buildYYYYMM(year, newMonth))
-
-                return (
-                  <FormItem>
-                    <FormLabel>Mes a actualizar</FormLabel>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Año */}
-                      <FormControl>
-                        <Select disabled={isPending} value={year} onValueChange={setYear}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Año" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {years.map((y) => (
-                              <SelectItem key={y} value={y}>
-                                {y}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-
-                      {/* Mes */}
-                      <FormControl>
-                        <Select disabled={isPending} value={month} onValueChange={setMonth}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Mes" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {MONTHS_ES.map((m) => (
-                              <SelectItem key={m.value} value={m.value}>
-                                {m.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                    </div>
-
-                    <FormMessage />
-                  </FormItem>
-                )
-              }}
-            />
+            {/* El precio ya no reescribe el cargo de un mes: rige para los abonos que se carguen de
+                acá en adelante (la cuenta corriente conserva lo registrado; se corrige con ajustes). */}
+            <p className="rounded-lg border border-gm-yellow/40 bg-gm-yellow/[0.06] px-3 py-2.5 text-sm">
+              El precio nuevo rige para los abonos que se carguen de acá en adelante. Los cargos ya registrados conservan su
+              importe; si hace falta corregir alguno, cargá un ajuste en la cuenta del inquilino.
+            </p>
 
             {/* Nombre */}
             <FormField

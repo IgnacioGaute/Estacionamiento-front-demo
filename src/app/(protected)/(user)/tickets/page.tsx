@@ -22,7 +22,7 @@ export default async function TicketPage() {
         registrationsForDay={registrationsForDay || []}
         schedule={schedule}
         isAdmin={user?.role === "ADMIN"}
-        barcodeTicketsEnabled={schedule?.barcodeTicketsEnabled ?? true}
+        barcodeTicketsEnabled={schedule?.barcodeTicketsEnabled ?? false}
       />
     </div>
   );

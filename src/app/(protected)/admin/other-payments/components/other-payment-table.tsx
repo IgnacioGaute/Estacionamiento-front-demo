@@ -26,17 +26,20 @@ import { Input } from '@/components/ui/input';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { CreateOtherPaymentDialog } from './create-other-payment-dialog';
+import { useServerTable } from '@/hooks/use-server-table';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  total: number;
 }
 
 export function ExpenseTable<TData, TValue>({
   columns,
   data,
+  total,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([]); // 👈 si el usuario cambia el orden, se actualiza
+  const server = useServerTable(total);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const table = useReactTable({
@@ -46,11 +49,12 @@ export function ExpenseTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    onSortingChange: setSorting,
+    ...server.options,
     getSortedRowModel: getSortedRowModel(),
     state: {
       columnFilters,
-      sorting,
+      sorting: server.sorting,
+      pagination: server.pagination,
     },
     initialState: {
       sorting: [
@@ -71,9 +75,9 @@ export function ExpenseTable<TData, TValue>({
         <Input
           data-tour="varios-filter"
           placeholder="Filtrar por descripcion..."
-          value={(table.getColumn('description')?.getFilterValue() as string) ?? ''}
+          value={server.search}
           onChange={(event) =>
-            table.getColumn('description')?.setFilterValue(event.target.value)
+            server.searchChange(event.target.value)
           }
           className="w-full sm:max-w-sm rounded-xl bg-secondary border-white"
         />

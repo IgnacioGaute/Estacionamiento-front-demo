@@ -25,27 +25,20 @@ import { ParkingOwner } from "@/types/parking-owner.type";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 
-export const getCustomers = async (customer: CustomerType, authToken?: string) => {
-    try {
-      const response = await fetch(`${BASE_URL}/customers/customer/${customer}`, {
-        headers: await getAuthHeaders(authToken),
-        next: {
-          tags: [getCacheTag('customers', 'all'),getCacheTag('receipts', 'all')],
-        },
-      });
-      const data = await response.json();
-  
-      if (response.ok) {
-        return data as Customer[]
-      } else {
-        console.error(data);
-        return null;
-      }
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
-  };
+export async function getCustomersPage(customer: CustomerType, params: Record<string, string> = {}, authToken?: string): Promise<{ data: Customer[]; meta: { totalItems: number; totalPages: number } }> {
+  const query = new URLSearchParams(params);
+  const response = await fetch(`${BASE_URL}/customers/customer/${customer}?${query}`, { headers: await getAuthHeaders(authToken), cache: 'no-store' });
+  if (!response.ok) throw new Error('No se pudieron consultar los clientes.');
+  return response.json();
+}
+
+// Complete traversal is reserved for explicit bulk printing/export actions.
+export async function getCustomers(customer: CustomerType, authToken?: string): Promise<Customer[]> {
+  const result: Customer[] = [];
+  let page = 1, pages = 1;
+  do { const current = await getCustomersPage(customer, { page: String(page), limit: '100' }, authToken); result.push(...current.data); pages = current.meta.totalPages; page++; } while (page <= pages);
+  return result;
+}
 
   export const getCustomerById = async (customerId:string, authToken?: string) => {
     try {
@@ -318,51 +311,25 @@ export const createCustomer = async (
   };
 
 
-  export const findAllPendingReceipts = async (
-    customer: CustomerType
-  ) => {
-    try {
-      const response = await fetch(`${BASE_URL}/receipts/${customer}`, {
-        headers: await getAuthHeaders(),
-      });
-      const data = await response.json();
-  
-      if (response.ok) {
-        return data as Receipt[]
-      } else {
-        console.error(data);
-        return {
-          error: {
-            code: data.code || 'UNKNOWN_ERROR',
-            message: data.message || 'Error desconocido'
-          },
-        };
-      }
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
-  };
-
-    export const findReceipts = async (
-  ) => {
-    try {
-      const response = await fetch(`${BASE_URL}/receipts`, {
-        headers: await getAuthHeaders(),
-      });
-      const data = await response.json();
-  
-      if (response.ok) {
-        return data as Receipt[]
-      } else {
-        console.error(data);
-        return null;
-      }
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
-  };
+  async function receiptPages(path: string): Promise<Receipt[]> {
+    const result: Receipt[] = [];
+    let page = 1, pages = 1;
+    do {
+      const response = await fetch(`${BASE_URL}/${path}?limit=100&page=${page}`, { headers: await getAuthHeaders(), cache: 'no-store' });
+      if (!response.ok) throw new Error('No se pudieron consultar los recibos.');
+      const current = await response.json();
+      result.push(...current.data); pages = current.meta.totalPages; page++;
+    } while (page <= pages);
+    return result;
+  }
+  export async function findAllPendingReceipts(customer: CustomerType) { return receiptPages('receipts/' + customer); }
+  export async function findReceipts() { return receiptPages('receipts'); }
+  export async function hasPendingReceiptsForMonth(customer: CustomerType, month: string) {
+    const response = await fetch(`${BASE_URL}/receipts/${customer}?limit=1&month=${encodeURIComponent(month)}`, { headers: await getAuthHeaders(), cache: 'no-store' });
+    if (!response.ok) throw new Error('No se pudo consultar el período.');
+    const result = await response.json();
+    return result.meta.totalItems > 0;
+  }
 
   export const createInterest = async (
     values: InterestSchemaType, authToken?: string
@@ -630,49 +597,27 @@ export const createRenterParkingType = async (
     }
   };
 
-  export const getOwnersAvailableForRent = async (authToken?: string) => {
-    try {
-      const response = await fetch(`${BASE_URL}/parking/owners/for-rent`, {
-        headers: await getAuthHeaders(authToken),
-        next: {
-          tags: [getCacheTag('customers', 'all')],
-        },
-      });
-      const data = await response.json();
+export const getOwnersAvailableForRent = async (authToken?: string): Promise<ParkingOwner[]> => {
+  const result: ParkingOwner[] = [];
+  let page = 1, pages = 1;
+  do {
+    const response = await fetch(`${BASE_URL}/parking/owners/for-rent?page=${page}&limit=100`, { headers: await getAuthHeaders(authToken), cache: 'no-store' });
+    if (!response.ok) throw new Error('No se pudo cargar el catálogo.');
+    const current = await response.json(); result.push(...current.data); pages = current.meta.totalPages; page++;
+  } while (page <= pages);
+  return result;
+};
 
-      if (response.ok) {
-        return data as ParkingOwner[]
-      } else {
-        console.error(data);
-        return null;
-      }
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
-  };
-
-    export const getCustomerThird= async (authToken?: string) => {
-    try {
-      const response = await fetch(`${BASE_URL}/customers/thirds`, {
-        headers: await getAuthHeaders(authToken),
-        next: {
-          tags: [getCacheTag('customers', 'all')],
-        },
-      });
-      const data = await response.json();
-  
-      if (response.ok) {
-        return data as Customer[]
-      } else {
-        console.error(data);
-        return null;
-      }
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
-  };
+export const getCustomerThird = async (authToken?: string): Promise<Customer[]> => {
+  const result: Customer[] = [];
+  let page = 1, pages = 1;
+  do {
+    const response = await fetch(`${BASE_URL}/customers/thirds?page=${page}&limit=100`, { headers: await getAuthHeaders(authToken), cache: 'no-store' });
+    if (!response.ok) throw new Error('No se pudo cargar el catálogo.');
+    const current = await response.json(); result.push(...current.data); pages = current.meta.totalPages; page++;
+  } while (page <= pages);
+  return result;
+};
 
 
     export const deleteReceipt = async (id: string, authToken?: string) => {

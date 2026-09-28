@@ -9,7 +9,7 @@ import { BoxListDialog } from '@/components/box-list-dialog';
 import { TurnoBar } from '@/app/(protected)/(user)/tickets/components/turno-bar';
 import { TurnosHistorialPanel } from './turnos-historial-panel';
 
-export function CajaActions({ shiftsEnabled = true }: { shiftsEnabled?: boolean }) {
+export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [revision, setRevision] = useState(0);
   const [context, setContext] = useState<CashContext | null>(null);
@@ -23,9 +23,11 @@ export function CajaActions({ shiftsEnabled = true }: { shiftsEnabled?: boolean 
     });
     return () => { vigente = false; };
   }, [revision, shiftsEnabled]);
+
+  if (!shiftsEnabled) return null;
   return (
     <>
-    {shiftsEnabled ? <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gm-yellow/30 bg-gm-yellow/5 p-4">
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gm-yellow/30 bg-gm-yellow/5 p-4">
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-wide text-gm-yellow">Turno actual</p>
         {error ? <p role="alert" className="mt-2 text-sm">{error}</p> : !context ? <p className="mt-2 text-sm">Cargando turno…</p> : context.active ? <>
@@ -38,7 +40,7 @@ export function CajaActions({ shiftsEnabled = true }: { shiftsEnabled?: boolean 
       <span data-tour="caja-turno" className="inline-flex flex-wrap items-center gap-3">
         <TurnoBar onUpdated={() => setRevision(value => value + 1)} />
       </span>
-    </div> : <p className="mb-6 rounded-xl border border-border p-4 text-sm text-muted-foreground">Los turnos están desactivados en Configuración. Podés consultar el historial y la planilla diaria.</p>}
+    </div>
     <div className="mb-5">
       <Button data-tour="caja-planilla" variant="outline" size="sm" onClick={() => setOpen(true)}>
         <FileText className="size-4" /> Planilla diaria de caja

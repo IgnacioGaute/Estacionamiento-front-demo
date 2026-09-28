@@ -3,6 +3,8 @@ export type PlayaResumen = {
   empresaId: string;
   nombre: string;
   direccion: string | null;
+  // Secciones opcionales que prende el super admin.
+  modulos?: { inquilinos?: boolean };
 };
 
 export type UsuarioDeEmpresa = {
@@ -22,6 +24,11 @@ export type EmpresaConDetalle = {
   estado: 'ACTIVA' | 'SUSPENDIDA' | 'BAJA';
   playas: PlayaResumen[];
   usuarios: UsuarioDeEmpresa[];
+  // La cuenta con la que cobra por QR. Null = nunca la conectó.
+  mercadoPago?: {
+    estado: 'ACTIVA' | 'DESCONECTADA' | 'ERROR';
+    conectadaEl: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -37,6 +44,8 @@ export type PlayaMetrics = {
   // Sin franjas de precio cargadas la playa no puede registrar entradas.
   tieneTarifas: boolean;
   ultimaOperacion: string | null;
+  // Canales de comprobante que la playa tiene encendidos.
+  comprobantes?: { whatsapp: boolean; qr: boolean; print: boolean };
 };
 
 export type PlataformaMetrics = {
@@ -75,7 +84,39 @@ export type MetricsDetalle = {
   anterior: { dia: string; total: number }[];
   // Estadías cerradas por día, para que el KPI dibuje su propia forma y no la del dinero.
   serieEstadias: { dia: string; total: number }[];
+  // Las del período anterior, con sus propias fechas (igual que `anterior`).
+  serieEstadiasAnterior?: { dia: string; total: number }[];
+  // Cobrado por playa y por día del período actual.
+  seriePlayas?: { playaId: string; dia: string; total: number }[];
   metodos: { metodo: string; total: number }[];
+  metodosAnterior?: { metodo: string; total: number }[];
+  // Estadías abiertas hora por hora en las últimas 24 horas; la última es ahora.
+  abiertas24h?: { hora: string; abiertas: number }[];
+  // Entradas (día de apertura) y salidas (día de cierre), desde el período anterior.
+  entradas?: { dia: string; total: number }[];
+  salidas?: { dia: string; total: number }[];
+  // Estadías por día, semana o mes: vendidas en el período, importe y las vigentes ahora.
+  abonos?: {
+    tipo: 'DIA' | 'SEMANA' | 'MES';
+    vendidos: number;
+    anteriores: number;
+    importe: number;
+    pendientes: number;
+    vigentes: number;
+  }[];
+  // Lo que los operadores le preguntan al asistente.
+  asistente?: {
+    temas: { tema: string; total: number; anterior: number; sinRespuesta: number }[];
+    recientes: {
+      pregunta: string;
+      tema: string;
+      respondida: boolean;
+      fecha: string;
+      playa: string;
+      empresa: string;
+    }[];
+    frecuentes: { pregunta: string; tema: string; veces: number }[];
+  };
   // `dia` es ISODOW: 1 = lunes … 7 = domingo.
   horas: { dia: number; hora: number; entradas: number }[];
   empresas: {

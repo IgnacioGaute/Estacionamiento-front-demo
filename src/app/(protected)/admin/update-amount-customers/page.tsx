@@ -31,7 +31,7 @@ const TOUR_STEPS = [
     key: 'save',
     selector: '[data-tour="amount-save"]',
     title: 'Guardar cambios',
-    desc: 'Aplica el ajuste a todos los inquilinos del tipo de propietario seleccionado.',
+    desc: 'Aplica el ajuste a todos los inquilinos del tipo de propietario seleccionado. Rige para los abonos que se carguen desde ahora: los cargos ya registrados no cambian.',
     radius: 8,
   },
 ];

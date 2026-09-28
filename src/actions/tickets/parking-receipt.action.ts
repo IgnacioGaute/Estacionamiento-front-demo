@@ -12,7 +12,7 @@ export async function saveReceiptDeliveryAction(settings: ReceiptDeliverySetting
       body: JSON.stringify({ receiptDelivery: settings }), cache: 'no-store',
     });
     if (!response.ok) return { error: 'No se pudo guardar la configuración de comprobantes.' };
-    revalidatePath('/admin/tickets');
+    revalidatePath('/admin/configuracion/comprobantes');
     revalidatePath('/tickets');
     return { success: true };
   } catch { return { error: 'No se pudo conectar con el servidor.' }; }

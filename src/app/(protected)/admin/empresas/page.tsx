@@ -3,7 +3,6 @@ export const fetchCache = 'force-no-store';
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { PageHeader } from '@/components/page-header';
 import { PageTour, type PageTourStep } from '@/components/page-tour';
 import { EmpresasPanel } from './components/empresas-panel';
 
@@ -11,46 +10,46 @@ import { EmpresasPanel } from './components/empresas-panel';
 // todavía no hay ninguna: PageTour pasa al siguiente cuando no encuentra el elemento.
 const TOUR_STEPS: PageTourStep[] = [
   {
-    key: 'filtro',
-    selector: '[data-tour="empresas-filtro"]',
-    title: 'Ver una empresa sola',
-    desc: 'Al elegir una empresa, las métricas, el gráfico y la lista de abajo pasan a mostrar solo lo suyo.',
-    radius: 10,
-  },
-  {
     key: 'resumen',
     selector: '[data-tour="empresas-resumen"]',
     title: 'El pulso de la plataforma',
-    desc: 'Altas, playas y usuarios, más lo cobrado en los últimos 30 días con las estadías y los turnos que siguen abiertos ahora mismo.',
-    radius: 12,
+    desc: 'Empresas, playas y usuarios con lo que falta resolver de cada uno, más lo cobrado en los últimos 30 días.',
+    radius: 22,
+  },
+  {
+    key: 'atencion',
+    selector: '[data-tour="empresas-atencion"]',
+    title: 'Lo que hay que resolver',
+    desc: 'Playas sin tarifas, operadores sin playa, empresas suspendidas o quietas. Cada aviso lleva directo a donde se arregla.',
+    radius: 10,
   },
   {
     key: 'crear',
     selector: '[data-tour="empresas-crear"]',
     title: 'Dar de alta una empresa',
     desc: 'Una empresa nace vacía: después se le agregan sus playas y sus usuarios. Sus registros quedan separados del resto desde el primer día.',
-    radius: 8,
+    radius: 12,
   },
   {
     key: 'buscar',
     selector: '[data-tour="empresas-buscar"]',
     title: 'Buscar',
-    desc: 'Filtra por nombre de empresa, de playa o de usuario, todo junto. Se combina con el filtro de empresa.',
-    radius: 8,
+    desc: 'Filtra por nombre de empresa, de playa o de usuario, todo junto. Se combina con el filtro de estado.',
+    radius: 12,
+  },
+  {
+    key: 'filtro',
+    selector: '[data-tour="empresas-filtro"]',
+    title: 'Filtrar por estado',
+    desc: '«Con alertas» deja solo las empresas que tienen algo pendiente en la lista de arriba.',
+    radius: 13,
   },
   {
     key: 'ficha',
     selector: '[data-tour="empresas-ficha"]',
     title: 'La ficha de cada empresa',
-    desc: 'Cada fila muestra su estado, lo cobrado y cuándo fue su última operación. Se despliega para administrar sus playas y usuarios.',
-    radius: 12,
-  },
-  {
-    key: 'playas',
-    selector: '[data-tour="empresas-playas"]',
-    title: 'Playas de la empresa',
-    desc: 'Acá se agregan las playas. Cada una lleva sus propios tickets, tarifas, caja y turnos, y los usuarios se asignan a una playa concreta.',
-    radius: 10,
+    desc: 'Cada fila muestra su estado, lo cobrado con su tendencia, cuándo fue su última operación y si cobra con QR. La ficha tiene sus playas, usuarios y actividad.',
+    radius: 8,
   },
 ];
 
@@ -63,15 +62,7 @@ export default async function EmpresasPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-6 sm:p-8">
-      <PageHeader
-        breadcrumb={['Plataforma', 'Administración', 'Empresas']}
-        title="Empresas"
-        description="Cada empresa con sus playas y sus usuarios. Acá se dan de alta y se asignan los accesos."
-        actions={<PageTour steps={TOUR_STEPS} />}
-      />
-      <div className="mt-2">
-        <EmpresasPanel />
-      </div>
+      <EmpresasPanel tour={<PageTour steps={TOUR_STEPS} />} />
     </div>
   );
 }

@@ -24,4 +24,6 @@ export type CobroMercadoPago = {
   initPoint: string;
   expiraEl: string;
   acreditadoEl: string | null;
+  // Solo en un cobro de inquilino ya acreditado: el recibo del pago que quedó asentado.
+  recibo?: import('./cuenta.type').ResultadoPago | null;
 };

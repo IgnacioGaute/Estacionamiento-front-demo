@@ -1,13 +1,14 @@
 "use client";
 
-// Métricas de toda la plataforma. Los gráficos son SVG dibujados acá: son tres formas simples y
-// no justifican sumar una librería de charts al bundle del panel.
+// Métricas de toda la plataforma. El período (7/30/90 días) y la empresa recalculan todo: KPIs,
+// curva, medios de pago, mapa de calor, ranking y comparativa salen de la misma consulta, así que
+// nunca muestran ventanas distintas a la vez.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { chispa, completar, eje } from "@/utils/serie-diaria";
+import dayjs from "dayjs";
+import { ArrowUpRight, Download } from "lucide-react";
+import { completar, eje } from "@/utils/serie-diaria";
 import {
   EmpresaConDetalle,
   MetricsDetalle,
@@ -18,37 +19,108 @@ import {
   getMetricsDetalleAction,
   getPlataformaMetricsAction,
 } from "@/actions/tenancy/tenancy.action";
+import {
+  Encabezado,
+  Escenario,
+  Pastilla,
+  Pie,
+  PuntoVivo,
+  Rotulo,
+  Segmentos,
+  Selector,
+  Tarjeta,
+  Variacion,
+  Avatar,
+  EJE,
+} from "@/components/plataforma/mono";
+import {
+  AMARILLO,
+  CREMA,
+  Anillo,
+  Anillos,
+  Chispa,
+  Curva,
+  Espejo,
+  FilaTooltip,
+  LeyendaNiveles,
+  MapaCalor,
+  Medidor,
+  Pilares,
+} from "@/components/plataforma/graficos";
+import {
+  DIAS_SEMANA,
+  DIAS_SEMANA_LARGO,
+  colorAvatar,
+  corto,
+  haceCuanto,
+  iniciales,
+  numero,
+  plata,
+  plural,
+  resumir,
+  variacion,
+} from "@/components/plataforma/formato";
+import { alertasDePlataforma } from "@/components/plataforma/alertas";
 
-const plata = new Intl.NumberFormat("es-AR", {
-  style: "currency",
-  currency: "ARS",
-  maximumFractionDigits: 0,
-});
-const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+// Colores de medio de pago validados contra el fondo oscuro (lightness, croma y separación para
+// daltonismo). El efectivo va en dorado y no en el amarillo de marca: el amarillo ya significa
+// «este período» en toda la pantalla.
 const METODOS: Record<string, { label: string; color: string }> = {
-  CASH: { label: "Efectivo", color: "hsl(var(--gm-yellow))" },
-  TRANSFER: { label: "Transferencia", color: "#45B8A8" },
-  CHECK: { label: "Cheque", color: "#8E9BFF" },
+  CASH: { label: "Efectivo", color: "#BA8B0C" },
+  TRANSFER: { label: "Transferencia", color: "#20A28F" },
+  MERCADOPAGO: { label: "MercadoPago QR", color: "#7E86F0" },
+  CHECK: { label: "Cheque", color: "#6E6457" },
+};
+const ORDEN_METODOS = ["CASH", "TRANSFER", "MERCADOPAGO", "CHECK"];
+const DIAS_ISO = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const PERIODOS = [7, 30, 90];
+const TIPOS_ABONO = [
+  { id: "DIA", label: "Por día" },
+  { id: "SEMANA", label: "Por semana" },
+  { id: "MES", label: "Por mes" },
+] as const;
+// Los temas que clasifica el backend (src/assistant/temas.ts), en palabras del panel.
+const TEMAS: Record<string, string> = {
+  mercadopago: "MercadoPago",
+  caja: "Caja y turnos",
+  comprobantes: "Comprobantes",
+  abonos: "Día, semana y mes",
+  tarifas: "Tarifas y precios",
+  cobros: "Cobros y saldos",
+  vehiculos: "Vehículos y patentes",
+  sistema: "Acceso y sistema",
+  otros: "Otras consultas",
 };
 
-function camino(valores: number[], tope: number, ancho: number, alto: number) {
-  if (!valores.length) return "";
-  const x = (i: number) =>
-    46 + (i / Math.max(1, valores.length - 1)) * (ancho - 56);
-  const y = (v: number) => 12 + (1 - v / tope) * (alto - 38);
-  return valores
-    .map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`)
-    .join(" ");
+const etiqueta = (d: dayjs.Dayjs) => `${DIAS_SEMANA[d.day()]} ${d.format("DD/MM")}`;
+const dos = (n: number) => String(n).padStart(2, "0");
+
+// Rótulos del eje Y: «3 M», «1,5 M», «800 k».
+function formatoEje(v: number) {
+  if (v >= 1e6) {
+    const m = v / 1e6;
+    return `${numero(m, Number.isInteger(m) ? 0 : 1)} M`;
+  }
+  if (v >= 1e3) return `${numero(v / 1e3)} k`;
+  return numero(v);
+}
+
+function puntos(fraccion: number | null) {
+  if (fraccion === null) return "—";
+  return `${fraccion >= 0 ? "+" : "−"}${numero(Math.abs(fraccion) * 100, 1)} pts`;
 }
 
 export function MetricasPanel() {
   const [dias, setDias] = useState(30);
   const [empresaId, setEmpresaId] = useState("");
+  const [dual, setDual] = useState(true);
+  const [celda, setCelda] = useState<{ d: number; h: number } | null>(null);
   const [empresas, setEmpresas] = useState<EmpresaConDetalle[]>([]);
   const [detalle, setDetalle] = useState<MetricsDetalle | null>(null);
   const [metrics, setMetrics] = useState<PlataformaMetrics | null>(null);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     void getEmpresasAction().then((r) => setEmpresas(r.empresas ?? []));
@@ -72,97 +144,228 @@ export function MetricasPanel() {
     return () => {
       activo = false;
     };
-  }, [dias, empresaId]);
+  }, [dias, empresaId, intento]);
 
-  const diasEje = eje(dias);
+  const diasEje = useMemo(() => eje(dias), [dias]);
+
   // Las dos mitades se buscan sobre la unión, no cada una en su lista: el día del corte cae en
   // una o en otra según la hora, y buscándolo sólo en «anterior» el último punto de la línea de
   // comparación daba cero. Las fechas de las dos mitades no se pisan, así que unirlas es seguro.
   const porDia = [...(detalle?.serie ?? []), ...(detalle?.anterior ?? [])];
   const serie = completar(porDia, diasEje);
   const anterior = completar(porDia, diasEje, dias);
-  const cierres = completar(detalle?.serieEstadias ?? [], diasEje);
-  const tope = Math.max(1, ...serie, ...anterior) * 1.12;
-  const totalActual = detalle?.totales.actual ?? 0;
-  const totalAnterior = detalle?.totales.anterior ?? 0;
-  const varia = (actual: number, previo: number) =>
-    previo ? Math.round(((actual - previo) / previo) * 100) : null;
-  const variacion = varia(totalActual, totalAnterior);
+  const estadiasPorDia = [
+    ...(detalle?.serieEstadias ?? []),
+    ...(detalle?.serieEstadiasAnterior ?? []),
+  ];
+  const cierres = completar(estadiasPorDia, diasEje);
+  const cierresPrevios = completar(estadiasPorDia, diasEje, dias);
+
+  const total = detalle?.totales.actual ?? 0;
+  const totalPrevio = detalle?.totales.anterior ?? 0;
   const estadias = detalle?.totales.estadias ?? 0;
-  const estadiasAnterior = detalle?.totales.estadiasAnterior ?? 0;
-  // Ticket promedio por día: sólo donde hubo cierres, para que el sparkline no baje a cero los
-  // días sin salidas y muestre una caída que no pasó.
-  const promedios = cierres.map((c, i) => (c ? serie[i] / c : 0));
+  const estadiasPrevias = detalle?.totales.estadiasAnterior ?? 0;
+  const ticket = estadias ? total / estadias : 0;
+  const ticketPrevio = estadiasPrevias ? totalPrevio / estadiasPrevias : 0;
 
-  // Cinco marcas en el eje, como el resto de los gráficos del panel: extremos y cuartos.
-  const marcasX = [
-    0,
-    Math.floor((dias - 1) / 4),
-    Math.floor((dias - 1) / 2),
-    Math.floor(((dias - 1) * 3) / 4),
-    dias - 1,
-  ].filter((i, pos, todas) => todas.indexOf(i) === pos);
-
-  const playasFiltradas = (metrics?.playas ?? []).filter(
+  const empresasVista = empresas.filter((e) => !empresaId || e.id === empresaId);
+  const playas = (metrics?.playas ?? []).filter(
     (p) => !empresaId || p.empresaId === empresaId,
   );
-  const ranking = [...playasFiltradas]
-    .sort((a, b) => b.cobrado - a.cobrado)
-    .slice(0, 6);
-  const topeRanking = Math.max(1, ...ranking.map((r) => r.cobrado));
+  const abiertas = playas.reduce((n, p) => n + p.estadiasAbiertas, 0);
+  const turnos = playas.reduce((n, p) => n + p.turnosAbiertos, 0);
+  const playasConTurno = playas.filter((p) => p.turnosAbiertos > 0).length;
+  const nombreEmpresa = new Map(empresas.map((e) => [e.id, e.nombre]));
 
-  const totalMetodos = (detalle?.metodos ?? []).reduce(
+  // Ticket promedio por día: sólo donde hubo cierres, para que el sparkline no baje a cero los
+  // días sin salidas y muestre una caída que no pasó.
+  const promedios = cierres
+    .map((c, i) => (c ? serie[i] / c : null))
+    .filter((v): v is number => v !== null);
+
+  const kpis = [
+    {
+      label: "Cobrado",
+      valor: corto(total),
+      unidad: "ARS",
+      destacado: true,
+      delta: variacion(total, totalPrevio),
+      chispa: resumir(serie),
+      color: AMARILLO,
+      pie: ["Período anterior", corto(totalPrevio)],
+    },
+    {
+      label: "Estadías cerradas",
+      valor: numero(estadias),
+      unidad: "estadías",
+      delta: variacion(estadias, estadiasPrevias),
+      chispa: resumir(cierres),
+      color: CREMA,
+      pie: ["Promedio por día", numero(estadias / dias)],
+    },
+    {
+      label: "Ticket promedio",
+      valor: estadias ? plata(ticket) : "—",
+      unidad: "por estadía",
+      delta: ticketPrevio ? variacion(ticket, ticketPrevio) : null,
+      chispa: resumir(promedios),
+      color: CREMA,
+      pie: ["Sin cortesías", ticketPrevio ? `antes ${plata(ticketPrevio)}` : "—"],
+    },
+    {
+      label: "Estadías abiertas",
+      valor: numero(abiertas),
+      unidad: "ahora",
+      vivo: true,
+      chispa: (detalle?.abiertas24h ?? []).map((a) => a.abiertas),
+      color: CREMA,
+      pie: [
+        "Turnos en curso",
+        turnos ? `${turnos} en ${plural(playasConTurno, "playa", "playas")}` : "Ninguno",
+      ],
+    },
+  ];
+
+  const indicePico = serie.reduce((max, v, i) => (v > serie[max] ? i : max), 0);
+
+  // Medios de pago.
+  const ordenar = (lista: { metodo: string; total: number }[] = []) =>
+    [...lista].sort(
+      (a, b) =>
+        (ORDEN_METODOS.indexOf(a.metodo) + 1 || 99) -
+        (ORDEN_METODOS.indexOf(b.metodo) + 1 || 99),
+    );
+  const metodos = ordenar(detalle?.metodos).filter((m) => m.total > 0);
+  const totalMetodos = metodos.reduce((n, m) => n + m.total, 0);
+  const principal =
+    metodos.find((m) => m.metodo === "CASH") ??
+    [...metodos].sort((a, b) => b.total - a.total)[0];
+  const totalMetodosPrevio = (detalle?.metodosAnterior ?? []).reduce(
     (n, m) => n + m.total,
     0,
   );
-  const maxHora = Math.max(1, ...(detalle?.horas ?? []).map((h) => h.entradas));
-  const entradasDe = (dia: number, hora: number) =>
-    detalle?.horas.find((h) => h.dia === dia && h.hora === hora)?.entradas ?? 0;
+  const qr = metodos.find((m) => m.metodo === "MERCADOPAGO")?.total ?? 0;
+  const fraccionQr = totalMetodos ? qr / totalMetodos : 0;
+  const qrPrevio =
+    detalle?.metodosAnterior?.find((m) => m.metodo === "MERCADOPAGO")?.total ?? 0;
+  const cambioQr = totalMetodosPrevio
+    ? fraccionQr - qrPrevio / totalMetodosPrevio
+    : null;
+  const conectadas = empresasVista.filter((e) => e.mercadoPago?.estado === "ACTIVA");
 
-  const ANCHO = 860;
-  const ALTO = 240;
+  // Mapa de calor: `dia` llega en ISODOW (1 = lunes).
+  const matriz = Array.from({ length: 7 }, () => Array(24).fill(0) as number[]);
+  for (const h of detalle?.horas ?? []) matriz[h.dia - 1][h.hora] = h.entradas;
+  const entradas = matriz.flat().reduce((n, v) => n + v, 0);
+  let pico = { d: 0, h: 0 };
+  matriz.forEach((fila, d) =>
+    fila.forEach((v, h) => {
+      if (v > matriz[pico.d][pico.h]) pico = { d, h };
+    }),
+  );
+  const lectura = celda
+    ? `${DIAS_ISO[celda.d]} ${dos(celda.h)}:00–${dos((celda.h + 1) % 24)}:00 · ${numero(matriz[celda.d][celda.h])} entradas`
+    : "Pasá el cursor por la grilla";
 
-  // Arcos del anillo de medios de pago: el perímetro se reparte según el peso de cada uno.
-  const PERIMETRO = 2 * Math.PI * 46;
-  let recorrido = 0;
-  const segmentos = (detalle?.metodos ?? [])
-    .slice()
-    .sort((a, b) => b.total - a.total)
-    .map((m) => {
-      const info = METODOS[m.metodo] ?? { label: m.metodo, color: "#A59B8D" };
-      const pct = Math.round((m.total / Math.max(1, totalMetodos)) * 100);
-      const largo = (m.total / Math.max(1, totalMetodos)) * PERIMETRO;
-      const seg = {
-        metodo: m.metodo,
-        total: m.total,
-        pct,
-        label: info.label,
-        color: info.color,
-        dash: `${largo.toFixed(1)} ${(PERIMETRO - largo).toFixed(1)}`,
-        offset: -recorrido,
-      };
-      recorrido += largo;
-      return seg;
-    });
-  const mayor = segmentos[0] ?? { pct: 0, label: "—" };
+  // Salud: lo mismo que cuenta la pantalla de empresas.
+  const operando = empresasVista.filter(
+    (e) => e.estado === "ACTIVA" && e.playas.length > 0,
+  ).length;
+  const conTarifas = playas.filter((p) => p.tieneTarifas).length;
+  const operadores = empresasVista.flatMap((e) => e.usuarios.filter((u) => u.role === "USER"));
+  const operadoresConPlaya = operadores.filter((u) => u.playaIds.length).length;
+  const temas = alertasDePlataforma(empresasVista, metrics?.playas ?? []).length;
+
+  const ranking = [...playas].sort((a, b) => b.cobrado - a.cobrado).slice(0, 6);
+  const topeRanking = Math.max(1, ranking[0]?.cobrado ?? 0);
+
+  // Estadías por día de la semana, este período contra el anterior.
+  const porDiaActual = Array(7).fill(0) as number[];
+  const porDiaPrevio = Array(7).fill(0) as number[];
+  diasEje.forEach((d, i) => {
+    porDiaActual[d.day()] += cierres[i];
+    porDiaPrevio[d.day()] += cierresPrevios[i];
+  });
+  const mejorDia = porDiaActual.some(Boolean)
+    ? porDiaActual.indexOf(Math.max(...porDiaActual))
+    : -1;
+  const pilares = [1, 2, 3, 4, 5, 6, 0].map((dw) => ({
+    nombre: DIAS_SEMANA[dw],
+    actual: porDiaActual[dw],
+    anterior: porDiaPrevio[dw],
+    destacado: dw === mejorDia,
+    titulo: `${DIAS_SEMANA_LARGO[dw]}: ${numero(porDiaActual[dw])} estadías (antes ${numero(porDiaPrevio[dw])})`,
+  }));
+
+  // Tendencia de cada empresa: la suma de sus playas día por día.
+  const empresaDePlaya = new Map((metrics?.playas ?? []).map((p) => [p.playaId, p.empresaId]));
+  const seriePorEmpresa = new Map<string, { dia: string; total: number }[]>();
+  for (const f of detalle?.seriePlayas ?? []) {
+    const id = empresaDePlaya.get(f.playaId);
+    if (!id) continue;
+    const lista = seriePorEmpresa.get(id) ?? [];
+    const dia = lista.find((x) => x.dia === f.dia);
+    if (dia) dia.total += f.total;
+    else lista.push({ dia: f.dia, total: f.total });
+    seriePorEmpresa.set(id, lista);
+  }
+  const comparativa = (detalle?.empresas ?? []).slice(0, empresaId ? undefined : 8);
+  const topeComparativa = Math.max(1, detalle?.empresas[0]?.cobrado ?? 0);
+
+  // Movimiento de vehículos: entradas por día de apertura, salidas por día de cierre.
+  const ingresos = completar(detalle?.entradas ?? [], diasEje);
+  const ingresosPrevios = completar(detalle?.entradas ?? [], diasEje, dias);
+  const egresos = completar(detalle?.salidas ?? [], diasEje);
+  const egresosPrevios = completar(detalle?.salidas ?? [], diasEje, dias);
+  const sumar = (v: number[]) => v.reduce((n, x) => n + x, 0);
+  const totalIngresos = sumar(ingresos);
+  const totalEgresos = sumar(egresos);
+  const balance = totalIngresos - totalEgresos;
+
+  // Estadías por día, semana o mes.
+  const abonos = TIPOS_ABONO.map((t) => {
+    const fila = detalle?.abonos?.find((a) => a.tipo === t.id);
+    return {
+      ...t,
+      vendidos: fila?.vendidos ?? 0,
+      anteriores: fila?.anteriores ?? 0,
+      importe: fila?.importe ?? 0,
+      pendientes: fila?.pendientes ?? 0,
+      vigentes: fila?.vigentes ?? 0,
+    };
+  });
+  const abonosVendidos = abonos.reduce((n, a) => n + a.vendidos, 0);
+  const abonosPrevios = abonos.reduce((n, a) => n + a.anteriores, 0);
+  const abonosVigentes = abonos.reduce((n, a) => n + a.vigentes, 0);
+  const abonosPendientes = abonos.reduce((n, a) => n + a.pendientes, 0);
+  const abonosImporte = abonos.reduce((n, a) => n + a.importe, 0);
+  const topeAbonos = Math.max(1, ...abonos.map((a) => a.vendidos));
+
+  // Lo que le preguntan al asistente.
+  const temasAsistente = [...(detalle?.asistente?.temas ?? [])]
+    .filter((t) => t.total > 0)
+    .sort((a, b) => b.total - a.total);
+  const preguntas = temasAsistente.reduce((n, t) => n + t.total, 0);
+  const preguntasPrevias = (detalle?.asistente?.temas ?? []).reduce((n, t) => n + t.anterior, 0);
+  const sinRespuesta = temasAsistente.reduce((n, t) => n + t.sinRespuesta, 0);
+  const topeTemas = Math.max(1, temasAsistente[0]?.total ?? 0);
 
   // El CSV sale de lo que se está viendo: mismo período y misma empresa.
   function exportar() {
     const filas = [
-      ["Empresa", "Cobrado", "Período anterior", "Estadías cerradas"],
+      ["Empresa", "Cobrado", "Período anterior", "Estadías cerradas", "Ticket promedio"],
       ...(detalle?.empresas ?? []).map((e) => [
         e.nombre,
         String(e.cobrado),
         String(e.anterior),
         String(e.estadias),
+        e.estadias ? String(Math.round(e.cobrado / e.estadias)) : "",
       ]),
     ];
     const csv = filas
       .map((f) => f.map((c) => `"${c.replace(/"/g, '""')}"`).join(","))
       .join("\n");
-    const url = URL.createObjectURL(
-      new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }),
-    );
+    const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
     const enlace = document.createElement("a");
     enlace.href = url;
     enlace.download = `metricas-${dias}-dias.csv`;
@@ -173,509 +376,742 @@ export function MetricasPanel() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <div
-          role="group"
-          aria-label="Período"
-          className="flex gap-1 rounded-xl border border-border bg-gm-surface-2 p-1"
-        >
-          {[7, 30, 90].map((d) => (
-            <button
-              key={d}
-              type="button"
-              aria-pressed={dias === d}
-              onClick={() => setDias(d)}
-              className={`h-9 rounded-lg px-4 text-sm font-semibold transition-colors ${
-                dias === d
-                  ? "bg-gm-yellow text-gm-ink"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {d} días
-            </button>
-          ))}
+    <div className="space-y-5">
+      {/* Si no entran en una línea, los controles bajan enteros: partir el título se ve peor. */}
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div>
+          <div className="font-mono text-[11px] tracking-[0.14em] text-gm-yellow">
+            PLATAFORMA · {diasEje[0].format("DD/MM")} → {diasEje[dias - 1].format("DD/MM/YYYY")}
+          </div>
+          <h1 className="mt-2 font-display text-[34px] font-semibold leading-none tracking-[0.01em] sm:whitespace-nowrap sm:text-[40px]">
+            Métricas de la plataforma
+          </h1>
         </div>
-        <label className="flex items-center gap-2">
-          <span className="sr-only">Empresa</span>
-          <select
-            value={empresaId}
-            onChange={(e) => setEmpresaId(e.target.value)}
-            className="h-11 rounded-xl border border-border bg-gm-surface-2 px-3 text-sm"
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Segmentos
+            etiqueta="Período"
+            opciones={PERIODOS.map((d) => ({ id: d, label: `${d} días` }))}
+            valor={dias}
+            onChange={(d) => {
+              setDias(d);
+              setCelda(null);
+            }}
+          />
+          <Selector
+            etiqueta="EMPRESA"
+            ariaLabel="Empresa"
+            className="max-w-[300px]"
+            valor={empresaId || "todas"}
+            opciones={[
+              { id: "todas", label: "Todas las empresas" },
+              ...empresas.map((e) => ({ id: e.id, label: e.nombre })),
+            ]}
+            onChange={(id) => setEmpresaId(id === "todas" ? "" : id)}
+          />
+          <button
+            type="button"
+            onClick={exportar}
+            disabled={!detalle?.empresas.length}
+            className="flex h-[46px] items-center gap-2 rounded-[13px] border border-border bg-gm-surface px-4 text-[13.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2 disabled:opacity-50"
           >
-            <option value="">Todas las empresas</option>
-            {empresas.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button
-          variant="outline"
-          className="h-11"
-          disabled={!detalle?.empresas.length}
-          onClick={exportar}
-        >
-          <Download className="mr-2 size-4" />
-          Exportar
-        </Button>
-        {cargando && (
-          <span role="status" className="text-sm text-muted-foreground">
-            Actualizando…
-          </span>
-        )}
+            <Download className="size-4" />
+            Exportar CSV
+          </button>
+          {cargando && (
+            <span role="status" className="text-sm text-muted-foreground">
+              Actualizando…
+            </span>
+          )}
+        </div>
       </div>
 
       {error && (
-        <div role="alert" className="rounded-lg border border-destructive p-4 text-sm">
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl border border-destructive/60 p-4 text-sm">
           {error}
-          <Button
-            variant="outline"
-            className="ml-3"
-            onClick={() => setDias((d) => d)}
+          <button
+            type="button"
+            onClick={() => setIntento((n) => n + 1)}
+            className="h-9 rounded-lg border border-border px-3 font-semibold hover:bg-gm-surface-2"
           >
             Reintentar
-          </Button>
+          </button>
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          {
-            label: `Cobrado · ${dias} días`,
-            valor: plata.format(totalActual),
-            pie:
-              variacion === null
-                ? "Sin período anterior para comparar"
-                : `vs ${plata.format(totalAnterior)} el período anterior`,
-            delta: variacion,
-            destacado: true,
-            spark: serie,
-            color: "hsl(var(--gm-yellow))",
-          },
-          {
-            label: "Estadías cerradas",
-            valor: estadias.toLocaleString("es-AR"),
-            pie: estadiasAnterior
-              ? `vs ${estadiasAnterior.toLocaleString("es-AR")} el período anterior`
-              : `Promedio ${Math.round(estadias / dias)} por día`,
-            delta: varia(estadias, estadiasAnterior),
-            spark: cierres,
-            color: "#45B8A8",
-          },
-          {
-            label: "Ticket promedio",
-            valor: estadias
-              ? plata.format(Math.round(totalActual / estadias))
-              : "—",
-            pie: "Por estadía cobrada",
-            spark: promedios,
-            color: "#8E9BFF",
-          },
-          {
-            label: "Estadías abiertas",
-            valor: String(
-              playasFiltradas.reduce((n, p) => n + p.estadiasAbiertas, 0),
-            ),
-            pie: `${playasFiltradas.reduce((n, p) => n + p.turnosAbiertos, 0)} turnos en curso`,
-            spark: [],
-            color: "#45B8A8",
-          },
-        ].map((k) => (
-          <div
-            key={k.label}
-            className="rounded-2xl border border-border bg-gm-surface-2 p-5"
-          >
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((k) => (
+          <Tarjeta key={k.label} className="min-h-[190px] overflow-hidden">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{k.label}</span>
-              {typeof k.delta === "number" && (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                    k.delta >= 0
-                      ? "bg-emerald-500/15 text-emerald-400"
-                      : "bg-gm-orange/15 text-gm-orange"
-                  }`}
-                >
-                  {k.delta >= 0 ? "+" : ""}
-                  {k.delta}%
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  {k.label}
                 </span>
-              )}
+                {/* El período ya está en el encabezado: se repite solo en el primero, así los
+                    rótulos largos entran en una línea junto a su variación. */}
+                {k.vivo ? (
+                  <Pastilla tono="verde" vivo>
+                    En vivo
+                  </Pastilla>
+                ) : (
+                  k.destacado && <Pastilla>{dias} d</Pastilla>
+                )}
+              </div>
+              {!k.vivo && <Variacion valor={k.delta ?? null} />}
             </div>
-            <div
-              className={`mt-3 font-display text-[34px] font-semibold leading-none tabular-nums ${k.destacado ? "text-gm-yellow" : ""}`}
-            >
-              {k.valor}
-            </div>
-            {k.spark.length > 1 && (
-              <svg
-                viewBox="0 0 220 40"
-                preserveAspectRatio="none"
-                className="mt-3 block h-8 w-full"
-                aria-hidden
+            <div className="mt-2.5 flex items-baseline gap-2">
+              <span
+                className={`font-display text-[34px] font-semibold leading-none tabular-nums ${k.destacado ? "text-gm-yellow" : ""}`}
               >
-                <path
-                  d={chispa(k.spark)}
-                  fill="none"
-                  stroke={k.color}
-                  strokeWidth="2"
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              </svg>
-            )}
-            <div className="mt-2 text-xs text-muted-foreground">{k.pie}</div>
-          </div>
+                {k.valor}
+              </span>
+              <span className="text-[12.5px] text-muted-foreground">{k.unidad}</span>
+            </div>
+            <div className="mt-auto pt-3">
+              <Chispa valores={k.chispa} color={k.color} />
+            </div>
+            <Pie izquierda={k.pie[0]} derecha={k.pie[1]} />
+          </Tarjeta>
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-border bg-gm-surface-2 p-5 lg:col-span-2">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 className="text-[15px] font-semibold tracking-tight">Cobrado por día</h2>
-            <div className="flex gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="h-0.5 w-3 rounded bg-gm-yellow" />
-                Este período
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-0.5 w-3 rounded bg-muted-foreground" />
-                Anterior
-              </span>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <Tarjeta className="min-h-[380px] lg:col-span-2">
+          <div className="flex items-center gap-2">
+            <Rotulo>Entradas y salidas</Rotulo>
+            <Pastilla>Espejo</Pastilla>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-3 sm:flex sm:gap-8">
+            {[
+              { label: "Entradas", valor: totalIngresos, previo: sumar(ingresosPrevios), color: AMARILLO },
+              { label: "Salidas", valor: totalEgresos, previo: sumar(egresosPrevios), color: CREMA },
+            ].map((d) => (
+              <div key={d.label} className="min-w-0">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span aria-hidden className="size-2 rounded-full" style={{ background: d.color }} />
+                  {d.label}
+                </div>
+                <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                  <span className="font-display text-[28px] font-semibold leading-none tabular-nums">
+                    {numero(d.valor)}
+                  </span>
+                  <Variacion valor={variacion(d.valor, d.previo)} decimales={0} />
+                </div>
+              </div>
+            ))}
+            <div className="min-w-0 sm:border-l sm:border-border sm:pl-8">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <PuntoVivo />
+                Adentro ahora
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="font-display text-[28px] font-semibold leading-none tabular-nums">
+                  {numero(abiertas)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {abonosVigentes ? `+ ${numero(abonosVigentes)} por día/sem/mes` : "vehículos"}
+                </span>
+              </div>
             </div>
           </div>
-          <svg
-            viewBox={`0 0 ${ANCHO} ${ALTO}`}
-            className="mt-4 block h-60 w-full"
-            role="img"
-            aria-label={`Cobrado por día en los últimos ${dias} días`}
-          >
-            {[0, 0.25, 0.5, 0.75, 1].map((f) => {
-              const valor = tope * (1 - f);
-              const y = 12 + f * (ALTO - 38);
-              return (
-                <g key={f}>
-                  <line
-                    x1="46"
-                    y1={y}
-                    x2={ANCHO - 10}
-                    y2={y}
-                    stroke="hsl(var(--border))"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x="38"
-                    y={y + 4}
-                    textAnchor="end"
-                    fill="hsl(var(--muted-foreground))"
-                    fontSize="11"
-                  >
-                    {valor >= 1000 ? `${Math.round(valor / 1000)}k` : "0"}
-                  </text>
-                </g>
-              );
-            })}
-            <path
-              d={camino(anterior, tope, ANCHO, ALTO)}
-              fill="none"
-              stroke="hsl(var(--muted-foreground))"
-              strokeWidth="2"
-              strokeDasharray="4 4"
+          <Escenario className="px-3 pt-3">
+            <Espejo
+              arriba={ingresos}
+              abajo={egresos}
+              ejeX={diasEje.map(etiqueta)}
+              ariaLabel={`Entradas y salidas por día en los últimos ${dias} días: ${numero(totalIngresos)} entradas y ${numero(totalEgresos)} salidas`}
+              tooltip={(i) => (
+                <>
+                  <div className="border-b border-border pb-1.5 font-mono text-[10.5px] text-muted-foreground">
+                    {etiqueta(diasEje[i])}
+                  </div>
+                  <FilaTooltip color={AMARILLO} label="Entradas" valor={numero(ingresos[i])} />
+                  <FilaTooltip color={CREMA} label="Salidas" valor={numero(egresos[i])} />
+                </>
+              )}
             />
-            <path
-              d={`${camino(serie, tope, ANCHO, ALTO)} L${ANCHO - 10},${ALTO - 26} L46,${ALTO - 26} Z`}
-              fill="hsl(var(--gm-yellow) / 0.14)"
-              stroke="none"
-            />
-            <path
-              d={camino(serie, tope, ANCHO, ALTO)}
-              fill="none"
-              stroke="hsl(var(--gm-yellow))"
-              strokeWidth="2.5"
-              strokeLinejoin="round"
-            />
-            {/* Fechas del eje: sin ellas no se sabe si el pico fue ayer o hace tres semanas. */}
-            {marcasX.map((i) => (
-              <text
-                key={i}
-                x={46 + (i / Math.max(1, dias - 1)) * (ANCHO - 56)}
-                y={ALTO - 6}
-                textAnchor={i === 0 ? "start" : i === dias - 1 ? "end" : "middle"}
-                fill="hsl(var(--muted-foreground))"
-                fontSize="11"
-              >
-                {diasEje[i]?.format("DD/MM")}
-              </text>
-            ))}
-          </svg>
-        </div>
+          </Escenario>
+          <Pie
+            izquierda={
+              balance === 0
+                ? "Entró lo mismo que salió"
+                : `Balance del período: ${balance > 0 ? "+" : "−"}${numero(Math.abs(balance))} ${balance > 0 ? "quedaron adentro" : "más salidas que entradas"}`
+            }
+            derecha={`${numero(totalIngresos / dias, totalIngresos / dias < 10 ? 1 : 0)} entradas por día`}
+          />
+        </Tarjeta>
 
-        <div className="rounded-2xl border border-border bg-gm-surface-2 p-6">
-          <h2 className="text-[15px] font-semibold tracking-tight">Cómo pagan</h2>
-          {!totalMetodos && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Sin cobros en el período.
-            </p>
-          )}
-          {!!totalMetodos && (
-            <div className="mt-3">
-              <div className="flex items-center gap-5">
-                {/* Anillo: cada medio es un arco del mismo círculo, corrido por el largo de los
-                    anteriores. En el centro, el que más pesa. */}
-                <svg
-                  viewBox="0 0 120 120"
-                  className="size-[132px] shrink-0"
-                  role="img"
-                  aria-label="Distribución por medio de pago"
-                >
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="46"
-                    fill="none"
-                    stroke="hsl(var(--gm-surface-3))"
-                    strokeWidth="18"
+        <Tarjeta className="min-h-[380px]">
+          <Encabezado
+            rotulo="Día · semana · mes"
+            pastilla={<Pastilla>Estadías largas</Pastilla>}
+            valor={numero(abonosVendidos)}
+            unidad={`${abonosVendidos === 1 ? "vendida" : "vendidas"} en ${dias} días`}
+            derecha={<Variacion valor={variacion(abonosVendidos, abonosPrevios)} decimales={0} />}
+          />
+          <Escenario className="flex flex-col justify-center gap-4 px-4 py-4">
+            {abonos.map((a, i) => (
+              <div key={a.id}>
+                <div className="flex items-baseline justify-between gap-2 text-[13px]">
+                  <span className="font-semibold">{a.label}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    <span className="font-display text-lg font-semibold text-foreground">{numero(a.vendidos)}</span>
+                    {a.importe > 0 && <span className="ml-2 text-xs">{corto(a.importe)}</span>}
+                  </span>
+                </div>
+                <div className="mt-1.5 h-2 rounded-full bg-[#231D17]">
+                  <div
+                    className="h-2 rounded-full"
+                    style={{
+                      width: `${a.vendidos ? Math.max(3, (a.vendidos / topeAbonos) * 100) : 0}%`,
+                      background: i === 0 ? AMARILLO : CREMA,
+                    }}
                   />
-                  {segmentos.map((s) => (
-                    <circle
-                      key={s.metodo}
-                      cx="60"
-                      cy="60"
-                      r="46"
-                      fill="none"
-                      stroke={s.color}
-                      strokeWidth="18"
-                      strokeDasharray={s.dash}
-                      strokeDashoffset={s.offset}
-                      transform="rotate(-90 60 60)"
-                    />
-                  ))}
-                  <text
-                    x="60"
-                    y="57"
-                    textAnchor="middle"
-                    className="fill-foreground font-display"
-                    fontSize="19"
-                    fontWeight="700"
-                  >
-                    {mayor.pct}%
-                  </text>
-                  <text
-                    x="60"
-                    y="73"
-                    textAnchor="middle"
-                    className="fill-muted-foreground"
-                    fontSize="10"
-                  >
-                    {mayor.label.toLowerCase()}
-                  </text>
-                </svg>
-                <div className="min-w-0 space-y-3">
-                  {segmentos.map((s) => (
-                    <div key={s.metodo}>
-                      <div className="flex items-center gap-2 text-sm">
-                        <span
-                          className="size-2.5 shrink-0 rounded-sm"
-                          style={{ background: s.color }}
-                        />
-                        {s.label}
-                      </div>
-                      <div className="ml-[18px] text-sm tabular-nums text-muted-foreground">
-                        {s.pct}% · {plata.format(s.total)}
-                      </div>
+                </div>
+                <div className="mt-1 font-mono text-[10.5px]" style={{ color: EJE }}>
+                  {a.vigentes ? `${numero(a.vigentes)} vigente${a.vigentes === 1 ? "" : "s"} ahora` : "Ninguna vigente"}
+                  {a.pendientes > 0 && (
+                    <span className="text-[#FF7A4D]"> · {numero(a.pendientes)} sin cobrar</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </Escenario>
+          <Pie
+            izquierda={`${numero(abonosVigentes)} vigentes · ${numero(abonosPendientes)} sin cobrar`}
+            derecha={corto(abonosImporte)}
+          />
+        </Tarjeta>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        <Tarjeta className="min-h-[410px] lg:col-span-2">
+          <Encabezado
+            rotulo="Cobrado por día"
+            pastilla={<Pastilla>Curva</Pastilla>}
+            valor={corto(total)}
+            unidad={`en ${dias} días · vs ${corto(totalPrevio)} el período anterior`}
+            derecha={
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-3.5 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <span aria-hidden className="h-[3px] w-3.5 rounded-sm bg-gm-yellow" />
+                    Este período
+                  </span>
+                  <span className={`flex items-center gap-1.5 ${dual ? "" : "opacity-35"}`}>
+                    <span aria-hidden className="w-3.5 border-t-2 border-dashed border-muted-foreground" />
+                    Anterior
+                  </span>
+                </div>
+                <Segmentos
+                  etiqueta="Comparación"
+                  redondo
+                  claro
+                  opciones={[
+                    { id: "dual", label: "Dual" },
+                    { id: "simple", label: "Simple" },
+                  ]}
+                  valor={dual ? "dual" : "simple"}
+                  onChange={(v) => setDual(v === "dual")}
+                />
+              </div>
+            }
+          />
+          <Escenario className="pl-1.5 pr-[18px] pt-4">
+            <Curva
+              serie={serie}
+              comparacion={dual ? anterior : null}
+              ejeX={diasEje.map(etiqueta)}
+              formatoEje={formatoEje}
+              ariaLabel={`Cobrado por día en los últimos ${dias} días: ${corto(total)}, contra ${corto(totalPrevio)} el período anterior`}
+              tooltip={(i) => {
+                const cambio = variacion(serie[i], anterior[i]);
+                return (
+                  <>
+                    <div className="border-b border-border pb-1.5 font-mono text-[10.5px] text-muted-foreground">
+                      {etiqueta(diasEje[i])}
+                      {dual ? ` · vs ${etiqueta(diasEje[i].subtract(dias, "day"))}` : ""}
+                    </div>
+                    <FilaTooltip color={AMARILLO} label="Cobrado" valor={plata(serie[i])} />
+                    {dual && (
+                      <FilaTooltip color="#A59B8D" hueco label="Anterior" valor={plata(anterior[i])} tenue />
+                    )}
+                    <div className="flex items-center justify-between gap-4 text-xs text-muted-foreground">
+                      <span>{numero(cierres[i])} estadías</span>
+                      {dual && cambio !== null && (
+                        <span className={`font-bold ${cambio >= 0 ? "text-emerald-400" : "text-[#FF7A4D]"}`}>
+                          {cambio >= 0 ? "↑" : "↓"} {numero(Math.abs(cambio), 1)}%
+                        </span>
+                      )}
+                    </div>
+                  </>
+                );
+              }}
+            />
+          </Escenario>
+          <Pie
+            izquierda={
+              serie[indicePico]
+                ? `Día más alto · ${DIAS_SEMANA_LARGO[diasEje[indicePico].day()].toLowerCase()} ${diasEje[indicePico].format("DD/MM")}`
+                : "Sin cobros en el período"
+            }
+            derecha={serie[indicePico] ? plata(serie[indicePico]) : ""}
+          />
+        </Tarjeta>
+
+        <Tarjeta className="min-h-[410px]">
+          <Encabezado
+            rotulo="Medios de pago"
+            pastilla={<Pastilla>Anillo</Pastilla>}
+            valor={corto(totalMetodos)}
+            unidad={`cobrados por ${metodos.length} ${metodos.length === 1 ? "medio" : "medios"}`}
+          />
+          <Escenario className="flex flex-col items-center gap-3.5 p-4">
+            {totalMetodos ? (
+              <>
+                <Anillo
+                  ariaLabel={`Medios de pago: ${metodos
+                    .map((m) => `${METODOS[m.metodo]?.label ?? m.metodo} ${Math.round((m.total / totalMetodos) * 100)}%`)
+                    .join(", ")}`}
+                  segmentos={metodos.map((m) => ({
+                    id: m.metodo,
+                    valor: m.total,
+                    color: METODOS[m.metodo]?.color ?? "#6E6457",
+                  }))}
+                >
+                  <span className="font-display text-[28px] font-semibold leading-none">
+                    {principal ? `${Math.round((principal.total / totalMetodos) * 100)}%` : "—"}
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    {(METODOS[principal?.metodo ?? ""]?.label ?? "").toLowerCase()}
+                  </span>
+                </Anillo>
+                <div className="flex w-full flex-col gap-2.5">
+                  {metodos.map((m) => (
+                    <div key={m.metodo} className="flex items-center gap-2.5 text-[13px]">
+                      <span
+                        aria-hidden
+                        className="size-2.5 shrink-0 rounded-[3px]"
+                        style={{ background: METODOS[m.metodo]?.color ?? "#6E6457" }}
+                      />
+                      <span className="flex-1">{METODOS[m.metodo]?.label ?? m.metodo}</span>
+                      <span className="font-mono text-[11.5px]">
+                        {Math.round((m.total / totalMetodos) * 100)}%
+                      </span>
+                      <span className="w-[72px] text-right text-xs tabular-nums text-muted-foreground">
+                        {corto(m.total)}
+                      </span>
                     </div>
                   ))}
                 </div>
+              </>
+            ) : (
+              <p className="m-auto text-sm text-muted-foreground">Sin cobros en el período.</p>
+            )}
+          </Escenario>
+          <Pie izquierda="Solo el efectivo se arquea" derecha={`QR ${puntos(cambioQr)}`} />
+        </Tarjeta>
+
+        <Tarjeta className="min-h-[360px] lg:col-span-2">
+          <Encabezado
+            rotulo="Entradas por hora y día"
+            pastilla={<Pastilla>7 × 24</Pastilla>}
+            valor={numero(entradas)}
+            unidad={`entradas en ${dias} días`}
+            derecha={
+              <div
+                role="status"
+                className="flex h-[30px] items-center rounded-full border border-border bg-background px-3 font-mono text-[11px]"
+                style={{ color: celda ? "#F2ECE3" : EJE }}
+              >
+                {lectura}
               </div>
-              <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
-                El efectivo es lo único que se arquea en caja. Transferencias y
-                cheques quedan fuera del conteo del turno.
-              </p>
+            }
+          />
+          <Escenario className="overflow-x-auto px-4 py-3">
+            <MapaCalor matriz={matriz} dias={DIAS_ISO} seleccion={celda} onSeleccion={setCelda} />
+          </Escenario>
+          <Pie
+            izquierda={entradas ? `Pico · ${DIAS_ISO[pico.d].toLowerCase()} ${dos(pico.h)} h` : "Sin entradas en el período"}
+            derecha={<LeyendaNiveles />}
+          />
+        </Tarjeta>
+
+        <Tarjeta className="min-h-[360px]">
+          <Encabezado
+            rotulo="Salud de la plataforma"
+            pastilla={<Pastilla>Anillos</Pastilla>}
+            valor={temas}
+            unidad={temas === 1 ? "tema para revisar" : "temas para revisar"}
+          />
+          <Escenario className="flex items-center gap-3.5 p-3.5">
+            <Anillos
+              ariaLabel={`Empresas operando ${operando} de ${empresasVista.length}, playas con tarifas ${conTarifas} de ${playas.length}, operadores con playa ${operadoresConPlaya} de ${operadores.length}`}
+              anillos={[
+                { fraccion: empresasVista.length ? operando / empresasVista.length : 0, color: AMARILLO },
+                { fraccion: playas.length ? conTarifas / playas.length : 0, color: CREMA },
+                { fraccion: operadores.length ? operadoresConPlaya / operadores.length : 0, color: EJE },
+              ]}
+            />
+            <div className="flex min-w-0 flex-col gap-3">
+              {[
+                { color: AMARILLO, label: "Empresas operando", n: operando, de: empresasVista.length },
+                { color: CREMA, label: "Playas con tarifas", n: conTarifas, de: playas.length },
+                { color: EJE, label: "Operadores con playa", n: operadoresConPlaya, de: operadores.length },
+              ].map((a) => (
+                <div key={a.label}>
+                  <div className="flex items-center gap-[7px] text-xs text-muted-foreground">
+                    <span aria-hidden className="size-[9px] rounded-[3px]" style={{ background: a.color }} />
+                    {a.label}
+                  </div>
+                  <div className="mt-0.5 font-display text-[19px] font-semibold">
+                    {a.n} <span className="text-[13px]" style={{ color: EJE }}>/ {a.de}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+          </Escenario>
+          <Pie
+            izquierda="Tarifas · accesos · estado"
+            derecha={
+              <Link href="/admin/empresas?filtro=alertas" className="font-semibold text-gm-yellow hover:text-[#FFD84D]">
+                Revisar →
+              </Link>
+            }
+          />
+        </Tarjeta>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-border bg-gm-surface-2 p-5 lg:col-span-2">
-          <div className="flex flex-wrap items-baseline justify-between gap-3">
-            <h2 className="text-[15px] font-semibold tracking-tight">Entradas por hora y día</h2>
-            <span className="text-xs text-muted-foreground">
-              Acumulado de los últimos {dias} días
-            </span>
-          </div>
-          <div className="mt-4 overflow-x-auto">
-            <div className="min-w-[640px]">
-              <div className="ml-10 grid gap-[3px] text-[10px] text-muted-foreground" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
-                {Array.from({ length: 24 }, (unused, h) => (
-                  <div key={h} className="text-center">
-                    {h % 3 === 0 ? h : ""}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-1 space-y-[3px]">
-                {DIAS_SEMANA.map((nombre, i) => (
-                  <div key={nombre} className="flex items-center gap-2">
-                    <span className="w-8 text-[11px] text-muted-foreground">
-                      {nombre}
-                    </span>
-                    <div className="grid flex-1 gap-[3px]" style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}>
-                      {Array.from({ length: 24 }, (unused, h) => {
-                        const entradas = entradasDe(i + 1, h);
-                        const intensidad = entradas / maxHora;
-                        return (
-                          <div
-                            key={h}
-                            title={`${nombre} ${h}:00 — ${entradas} entradas`}
-                            className="h-5 rounded"
-                            style={{
-                              background: entradas
-                                ? `hsl(var(--gm-yellow) / ${(0.14 + intensidad * 0.86).toFixed(2)})`
-                                : "hsl(var(--gm-surface-3))",
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center justify-end gap-2 text-[11px] text-muted-foreground">
-            Menos
-            <span className="h-2.5 w-4 rounded bg-gm-surface-3" />
-            <span className="h-2.5 w-4 rounded bg-gm-yellow/30" />
-            <span className="h-2.5 w-4 rounded bg-gm-yellow/60" />
-            <span className="h-2.5 w-4 rounded bg-gm-yellow" />
-            Más
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-gm-surface-2 p-6">
-          <h2 className="text-[15px] font-semibold tracking-tight">Ranking de playas</h2>
-          <div className="mt-4 space-y-3">
-            {!ranking.length && (
-              <p className="text-sm text-muted-foreground">
-                Sin playas para mostrar.
-              </p>
-            )}
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <Tarjeta className="min-h-[350px]">
+          <Encabezado
+            rotulo="Ranking de playas"
+            pastilla={<Pastilla>Top {Math.max(1, ranking.length)}</Pastilla>}
+            valor={ranking[0] ? corto(ranking[0].cobrado) : "—"}
+            unidad={ranking[0] ? `${ranking[0].nombre} lidera` : "sin playas"}
+          />
+          <Escenario className="flex flex-col justify-between gap-2 px-3.5 py-3">
+            {!ranking.length && <p className="m-auto text-sm text-muted-foreground">Sin playas para mostrar.</p>}
             {ranking.map((p, i) => (
-              <div key={p.playaId} className="flex items-center gap-3">
-                <span className="w-5 text-sm text-muted-foreground">
-                  {i + 1}
+              <div key={p.playaId} className="grid grid-cols-[20px_minmax(0,1fr)] items-center gap-2">
+                <span className="font-mono text-[10.5px]" style={{ color: EJE }}>
+                  {dos(i + 1)}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{p.nombre}</div>
-                  <div className="mt-1 h-1.5 rounded-full bg-gm-surface-3">
+                <div className="min-w-0">
+                  <div className="flex justify-between gap-2 text-[12.5px]">
+                    <span className="truncate">
+                      <span className="font-semibold">{p.nombre}</span>
+                      <span style={{ color: EJE }}> · {nombreEmpresa.get(p.empresaId) ?? ""}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums text-[#C9BFB1]">{corto(p.cobrado)}</span>
+                  </div>
+                  <div className="mt-[5px] h-[7px] rounded-full bg-[#231D17]">
                     <div
-                      className={`h-1.5 rounded-full ${i === 0 ? "bg-gm-yellow" : "bg-gm-yellow-deep/60"}`}
+                      className="h-[7px] rounded-full"
                       style={{
-                        width: `${Math.max(2, Math.round((p.cobrado / topeRanking) * 100))}%`,
+                        width: `${Math.max(2, (p.cobrado / topeRanking) * 100)}%`,
+                        background: i === 0 ? AMARILLO : CREMA,
                       }}
                     />
                   </div>
                 </div>
-                <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-                  {plata.format(p.cobrado)}
-                </span>
               </div>
             ))}
-          </div>
-        </div>
+          </Escenario>
+          <Pie
+            izquierda={`${plural(playas.length, "playa", "playas")} en total`}
+            derecha={
+              <Link href="/admin/empresas" className="font-semibold text-gm-yellow hover:text-[#FFD84D]">
+                Ver todas →
+              </Link>
+            }
+          />
+        </Tarjeta>
+
+        <Tarjeta className="min-h-[350px]">
+          <Encabezado
+            rotulo="Estadías por día"
+            pastilla={<Pastilla>Pilares</Pastilla>}
+            valor={mejorDia >= 0 ? DIAS_SEMANA_LARGO[mejorDia] : "—"}
+            unidad={mejorDia >= 0 ? "es el día más fuerte" : "sin estadías cerradas"}
+          />
+          <Escenario className="px-3 pb-2.5 pt-3.5">
+            <Pilares columnas={pilares} />
+          </Escenario>
+          <Pie
+            izquierda={
+              <span className="flex items-center gap-3 text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden className="size-2 rounded-full" style={{ background: CREMA }} />
+                  Este período
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden className="size-2 rounded-full bg-[#3A3228]" />
+                  Anterior
+                </span>
+              </span>
+            }
+            derecha={`${numero(estadias)} estadías`}
+          />
+        </Tarjeta>
+
+        <Tarjeta className="min-h-[350px]">
+          <Encabezado
+            rotulo="Cobros con QR"
+            pastilla={<Pastilla tono="lavanda">MercadoPago</Pastilla>}
+            valor={corto(qr)}
+            unidad="cobrados con QR"
+          />
+          <Escenario className="flex flex-col items-center px-4 pb-3.5 pt-2.5">
+            <Medidor
+              fraccion={fraccionQr}
+              color="#7E86F0"
+              ariaLabel={`Cobros con QR: ${numero(fraccionQr * 100, 1)}% de lo cobrado`}
+            >
+              <span className="font-display text-[30px] font-semibold leading-none">
+                {numero(fraccionQr * 100, 1)}%
+              </span>
+              <span className="font-mono text-[10.5px] text-muted-foreground">del cobrado</span>
+            </Medidor>
+            <div className="mt-auto w-full">
+              <div className="mb-[7px] flex justify-between text-xs text-muted-foreground">
+                <span>Empresas conectadas</span>
+                <span className="font-semibold text-foreground">
+                  {conectadas.length} de {empresasVista.length}
+                </span>
+              </div>
+              {empresasVista.length <= 30 ? (
+                <div
+                  className="grid gap-1"
+                  style={{ gridTemplateColumns: `repeat(${Math.max(1, empresasVista.length)}, minmax(0, 1fr))` }}
+                >
+                  {empresasVista.map((e) => {
+                    const ok = e.mercadoPago?.estado === "ACTIVA";
+                    return (
+                      <span
+                        key={e.id}
+                        title={`${e.nombre}: ${ok ? "conectada" : "sin conectar"}`}
+                        className="h-2 rounded-full"
+                        style={{ background: ok ? "#7E86F0" : "#2A251D" }}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="h-2 rounded-full bg-[#2A251D]">
+                  <div
+                    className="h-2 rounded-full bg-[#7E86F0]"
+                    style={{ width: `${(conectadas.length / empresasVista.length) * 100}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          </Escenario>
+          <Pie izquierda="vs período anterior" derecha={puntos(cambioQr)} />
+        </Tarjeta>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-gm-surface-2">
-        <div className="border-b border-border p-5">
-          <h2 className="text-[15px] font-semibold tracking-tight">
-            Comparativa por empresa
-          </h2>
+      <Tarjeta className={preguntas ? "min-h-[340px]" : ""}>
+        <Encabezado
+          rotulo="Lo que le preguntan al asistente"
+          pastilla={<Pastilla tono="lavanda">IA</Pastilla>}
+          valor={numero(preguntas)}
+          unidad={`${preguntas === 1 ? "pregunta" : "preguntas"} en ${dias} días`}
+          derecha={
+            <div className="flex items-center gap-2">
+              {sinRespuesta > 0 && (
+                <span
+                  title="Preguntas que el asistente no pudo contestar"
+                  className="rounded-full bg-[#FF7A4D]/[0.14] px-2.5 py-[3px] text-[11.5px] font-bold text-[#FF7A4D]"
+                >
+                  {numero(sinRespuesta)} sin respuesta
+                </span>
+              )}
+              {preguntas > 0 && (
+                <Variacion valor={variacion(preguntas, preguntasPrevias)} decimales={0} />
+              )}
+            </div>
+          }
+        />
+        {!preguntas ? (
+          <Escenario className="flex flex-none items-center justify-center p-8">
+            <p className="max-w-md text-center text-sm text-muted-foreground">
+              Todavía no hay preguntas en el período. Cada consulta al asistente se registra con
+              su tema, así que acá vas a ver qué se pregunta más y qué no sabe contestar.
+            </p>
+          </Escenario>
+        ) : (
+          <div className="mt-3.5 grid flex-1 gap-4 lg:grid-cols-3">
+            <div className="flex flex-col rounded-2xl border border-[#262019] bg-background p-4">
+              <span className="font-mono text-[10.5px] tracking-[0.12em]" style={{ color: EJE }}>
+                POR TEMA
+              </span>
+              <div className="mt-3 flex flex-1 flex-col gap-3">
+                {temasAsistente.slice(0, 6).map((t, i) => (
+                  <div key={t.tema}>
+                    <div className="flex justify-between gap-2 text-[12.5px]">
+                      <span className="font-semibold">{TEMAS[t.tema] ?? t.tema}</span>
+                      <span className="tabular-nums text-[#C9BFB1]">
+                        {numero(t.total)}{" "}
+                        <span style={{ color: EJE }}>· {Math.round((t.total / preguntas) * 100)}%</span>
+                      </span>
+                    </div>
+                    <div className="mt-[5px] h-[7px] rounded-full bg-[#231D17]">
+                      <div
+                        className="h-[7px] rounded-full"
+                        style={{
+                          width: `${Math.max(3, (t.total / topeTemas) * 100)}%`,
+                          background: i === 0 ? AMARILLO : CREMA,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col rounded-2xl border border-[#262019] bg-background p-4">
+              <span className="font-mono text-[10.5px] tracking-[0.12em]" style={{ color: EJE }}>
+                SE REPITEN
+              </span>
+              {detalle?.asistente?.frecuentes.length ? (
+                <ol className="mt-3 flex flex-col gap-2.5">
+                  {detalle.asistente.frecuentes.map((f) => (
+                    <li key={f.pregunta} className="flex items-start gap-2.5">
+                      <span className="mt-0.5 shrink-0 rounded-full bg-gm-yellow/[0.14] px-2 py-0.5 font-mono text-[11px] font-semibold text-gm-yellow">
+                        ×{f.veces}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="line-clamp-2 text-[13px] leading-snug">«{f.pregunta}»</span>
+                        <span className="font-mono text-[10.5px]" style={{ color: EJE }}>
+                          {TEMAS[f.tema] ?? f.tema}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="m-auto py-6 text-center text-[13px] text-muted-foreground">
+                  Ninguna pregunta se repitió todavía.
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col rounded-2xl border border-[#262019] bg-background p-4">
+              <span className="font-mono text-[10.5px] tracking-[0.12em]" style={{ color: EJE }}>
+                ÚLTIMAS
+              </span>
+              <ol className="mt-3 flex flex-col gap-2.5">
+                {(detalle?.asistente?.recientes ?? []).map((r) => (
+                  <li key={`${r.fecha}-${r.pregunta}`} className="min-w-0">
+                    <span className="line-clamp-2 text-[13px] leading-snug">«{r.pregunta}»</span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 font-mono text-[10.5px]" style={{ color: EJE }}>
+                      {!r.respondida && <span className="text-[#FF7A4D]">sin respuesta ·</span>}
+                      {r.empresa} · {r.playa} · {haceCuanto(r.fecha)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        )}
+      </Tarjeta>
+
+      <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2E2820] px-5 py-[18px]">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                Comparativa
+              </span>
+              <Pastilla>{dias} días</Pastilla>
+            </div>
+            <h2 className="mt-1.5 font-display text-2xl font-semibold leading-tight">
+              Empresas por cobrado
+            </h2>
+          </div>
+          <Link
+            href="/admin/empresas"
+            className="flex h-[38px] items-center gap-2 rounded-[11px] border border-border px-3.5 text-[13px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2"
+          >
+            Ver las {empresas.length} empresas
+            <ArrowUpRight className="size-3.5" />
+          </Link>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-[0.1em] text-muted-foreground">
-                <th className="px-5 py-3 font-medium">Empresa</th>
-                <th className="px-4 py-3 font-medium">Cobrado</th>
-                <th className="px-4 py-3 font-medium">vs. anterior</th>
-                <th className="px-4 py-3 font-medium">Estadías cerradas</th>
-                <th className="px-4 py-3 font-medium">Ticket promedio</th>
-                <th className="px-5 py-3 font-medium">Participación</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!detalle?.empresas.length && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-5 py-8 text-center text-muted-foreground"
-                  >
-                    Sin cobros en el período.
-                  </td>
-                </tr>
-              )}
-              {(detalle?.empresas ?? []).map((e) => {
-                const delta = e.anterior
-                  ? Math.round(((e.cobrado - e.anterior) / e.anterior) * 100)
-                  : null;
-                const parte = Math.round(
-                  (e.cobrado / Math.max(1, totalActual)) * 100,
-                );
-                return (
-                  <tr key={e.empresaId} className="border-t border-border">
-                    <td className="px-5 py-4 font-semibold">
-                      <Link
-                        href={`/admin/empresas/${e.empresaId}`}
-                        className="hover:text-gm-yellow"
-                      >
-                        {e.nombre}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-4 tabular-nums">
-                      {plata.format(e.cobrado)}
-                    </td>
-                    <td className="px-4 py-4">
-                      {delta === null ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                            delta >= 0
-                              ? "bg-emerald-500/15 text-emerald-400"
-                              : "bg-gm-orange/15 text-gm-orange"
-                          }`}
-                        >
-                          {delta >= 0 ? "+" : ""}
-                          {delta}%
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 tabular-nums">{e.estadias}</td>
-                    <td className="px-4 py-4 tabular-nums">
-                      {e.estadias
-                        ? plata.format(Math.round(e.cobrado / e.estadias))
-                        : "—"}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-1.5 w-28 rounded-full bg-gm-surface-3">
-                          <div
-                            className="h-1.5 rounded-full bg-gm-yellow"
-                            style={{ width: `${Math.max(2, parte)}%` }}
-                          />
-                        </div>
-                        <span className="text-sm tabular-nums text-muted-foreground">
-                          {parte}%
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div role="table" aria-label="Comparativa por empresa" className="min-w-[1000px]">
+            <div
+              role="row"
+              className="grid h-[42px] grid-cols-[56px_minmax(0,1fr)_140px_110px_150px_110px_120px_180px] items-center bg-[#19140F] pl-3 pr-5 font-mono text-[10.5px] tracking-[0.1em]"
+              style={{ color: EJE }}
+            >
+              <span role="columnheader" className="pl-2">#</span>
+              <span role="columnheader">EMPRESA</span>
+              <span role="columnheader">COBRADO</span>
+              <span role="columnheader">VS ANTERIOR</span>
+              <span role="columnheader">TENDENCIA</span>
+              <span role="columnheader">ESTADÍAS</span>
+              <span role="columnheader">TICKET PROM.</span>
+              <span role="columnheader">PARTICIPACIÓN</span>
+            </div>
+            {!comparativa.length && (
+              <p className="border-t border-[#2A241D] px-5 py-10 text-center text-sm text-muted-foreground">
+                Sin cobros en el período.
+              </p>
+            )}
+            {comparativa.map((e, i) => {
+              const empresa = empresas.find((x) => x.id === e.empresaId);
+              const tendencia = completar(seriePorEmpresa.get(e.empresaId) ?? [], diasEje);
+              const parte = total ? (e.cobrado / total) * 100 : 0;
+              return (
+                <Link
+                  key={e.empresaId}
+                  href={`/admin/empresas/${e.empresaId}`}
+                  role="row"
+                  className="grid h-[60px] grid-cols-[56px_minmax(0,1fr)_140px_110px_150px_110px_120px_180px] items-center border-t border-[#2A241D] pl-3 pr-5 text-[13.5px] transition-colors hover:bg-[#201A15]"
+                >
+                  <span role="cell" className="pl-2 font-mono text-[11px]" style={{ color: EJE }}>
+                    {dos(i + 1)}
+                  </span>
+                  <span role="cell" className="flex min-w-0 items-center gap-3">
+                    <Avatar texto={iniciales(e.nombre)} fondo={colorAvatar(e.empresaId)} className="size-[34px] rounded-[10px] text-[13px]" />
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="truncate font-semibold">{e.nombre}</span>
+                      <span className="text-xs" style={{ color: EJE }}>
+                        {empresa
+                          ? `${plural(empresa.playas.length, "playa", "playas")} · ${empresa.estado === "ACTIVA" ? "activa" : "suspendida"}`
+                          : ""}
+                      </span>
+                    </span>
+                  </span>
+                  <span role="cell" className="font-semibold tabular-nums">{corto(e.cobrado)}</span>
+                  <span role="cell">
+                    <Variacion valor={variacion(e.cobrado, e.anterior)} decimales={0} />
+                  </span>
+                  <span role="cell">
+                    <Chispa valores={resumir(tendencia, 16)} ancho={120} alto={30} color={i === 0 ? AMARILLO : CREMA} />
+                  </span>
+                  <span role="cell" className="tabular-nums text-[#C9BFB1]">{numero(e.estadias)}</span>
+                  <span role="cell" className="tabular-nums text-[#C9BFB1]">
+                    {e.estadias ? plata(e.cobrado / e.estadias) : "—"}
+                  </span>
+                  <span role="cell" className="flex items-center gap-2.5">
+                    <span className="h-[7px] w-[110px] rounded-full bg-[#231D17]">
+                      <span
+                        className="block h-[7px] rounded-full"
+                        style={{
+                          width: `${Math.max(2, (e.cobrado / topeComparativa) * 100)}%`,
+                          background: i === 0 ? AMARILLO : CREMA,
+                        }}
+                      />
+                    </span>
+                    <span className="font-mono text-[11px] text-[#C9BFB1]">{numero(parte, 1)}%</span>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

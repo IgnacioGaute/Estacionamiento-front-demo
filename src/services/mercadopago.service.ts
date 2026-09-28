@@ -66,18 +66,23 @@ export async function conectarMercadoPago(
 }
 
 /**
- * Genera el QR de cobro de una estadía. El importe no se manda: lo calcula el servidor a partir
- * de lo que falta cobrar, así un pedido manipulado no puede cobrar cualquier cosa.
+ * Genera el QR de cobro. Para una estadía o un abono el importe no se manda: lo calcula el
+ * servidor a partir de lo que falta cobrar, así un pedido manipulado no puede cobrar cualquier
+ * cosa. Para un inquilino sí: puede pagar una parte o de más, y se asienta lo que MercadoPago
+ * confirme que entró.
  */
 export async function crearCobroMercadoPago(
+  // Estadía o abono: su id. Inquilino: el id del cliente.
   registrationId: string,
   // HORA: estadía que se cobra al salir. ABONO: día, semana o mes, que se paga por adelantado.
-  tipo: 'HORA' | 'ABONO' = 'HORA',
+  // INQUILINO: un pago a su cuenta corriente.
+  tipo: 'HORA' | 'ABONO' | 'INQUILINO' = 'HORA',
+  inquilino?: { monto: number; receiptIds?: string[]; nota?: string },
 ): Promise<CobroMercadoPago> {
   const response = await fetch(`${BASE_URL}/mercadopago/cobros`, {
     method: 'POST',
     headers: await getAuthHeaders(),
-    body: JSON.stringify({ registrationId, tipo }),
+    body: JSON.stringify({ registrationId, tipo, ...(inquilino ?? {}) }),
     cache: 'no-store',
   });
   if (!response.ok)

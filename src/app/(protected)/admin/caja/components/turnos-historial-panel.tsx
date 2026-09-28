@@ -29,6 +29,8 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
   const [operador, setOperador] = useState('todos');
   const [operadores, setOperadores] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
   const [turnos, setTurnos] = useState<Turno[]>([]);
+  const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState({ total: 0, diferencias: 0, sinConteo: 0 });
   const [error, setError] = useState(''); const [pending, setPending] = useState(true);
   const [soloDiferencias, setSoloDiferencias] = useState(false); const [page, setPage] = useState(0);
   const [retry, setRetry] = useState(0);
@@ -39,17 +41,17 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
   }, [revision]);
   useEffect(() => {
     let vigente = true;
-    setPending(true); setError(''); setPage(0);
+    setPending(true); setError('');
     if (rango === 'libre' && desde && hasta && desde > hasta) { setError('Desde debe ser anterior o igual a Hasta.'); setPending(false); return; }
-    getTurnosAction({ ...limites(rango, desde, hasta), usuarioId: operador === 'todos' ? undefined : operador, estado: 'CERRADO', fechaPor: 'CIERRE' }).then(r => {
+    getTurnosAction({ ...limites(rango, desde, hasta), usuarioId: operador === 'todos' ? undefined : operador, estado: 'CERRADO', fechaPor: 'CIERRE', page: page + 1, limit: 5, soloDiferencias }).then(r => {
       if (!vigente) return;
-      setTurnos(r.turnos ?? []); setError(r.error ?? ''); setPending(false);
+      setTurnos(r.result?.data ?? []); setTotal(r.result?.meta.totalItems ?? 0); setSummary(r.result?.summary ?? { total: 0, diferencias: 0, sinConteo: 0 }); setError(r.error ?? ''); setPending(false);
     });
     return () => { vigente = false; };
-  }, [rango, desde, hasta, operador, revision, retry]);
-  const conDiferencias = turnos.filter(t => t.efectivoContado != null && t.diferencia != null && t.diferencia !== 0);
-  const visibles = soloDiferencias ? conDiferencias : turnos;
-  const pagina = Math.min(page, Math.max(0, Math.ceil(visibles.length / 5) - 1));
+  }, [rango, desde, hasta, operador, revision, retry, page, soloDiferencias]);
+  useEffect(() => { setPage(0); }, [rango, desde, hasta, operador, soloDiferencias, revision]);
+  const visibles = turnos;
+  const pagina = page;
   const hoy = dayjs().tz(TZ).format('YYYY-MM-DD');
   return <section className="min-w-0 space-y-4">
     <div><h2 className="text-lg font-semibold">Turnos cerrados</h2><p className="text-sm text-muted-foreground">Buscá por el día en que se cerró el turno.</p></div>
@@ -66,8 +68,8 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
       <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-yellow-400" checked={soloDiferencias} onChange={e => { setSoloDiferencias(e.target.checked); setPage(0); }} /> Solo con diferencias de efectivo</label>
     </div>
     <div aria-live="polite" aria-busy={pending}>{pending ? <p className="py-8 text-center text-muted-foreground">Cargando cierres…</p> : error ? <div role="alert"><p>{error}</p><Button variant="outline" onClick={() => setRetry(v => v + 1)}>Reintentar</Button></div> : <>
-      <div data-tour="caja-totales" className="mb-4 flex flex-wrap gap-x-5 gap-y-2 rounded-lg bg-gm-surface-2 p-3 text-sm"><span><strong>{turnos.length}</strong> cierres en el período</span><span><strong>{conDiferencias.length}</strong> con diferencias</span><span className="text-muted-foreground"><strong>{turnos.filter(t => t.efectivoContado == null).length}</strong> sin conteo</span></div>
-      <div data-tour="caja-tabla" className="space-y-3">{visibles.length === 0 ? <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{soloDiferencias ? 'No hay cierres con diferencias en este período.' : 'No hay turnos cerrados en este período. Probá con otra fecha.'}</p> : visibles.slice(pagina * 5, pagina * 5 + 5).map(t => <Ficha key={t.id} turno={t} />)}<CompactPagination page={pagina} total={visibles.length} pageSize={5} onChange={setPage} /></div>
+      <div data-tour="caja-totales" className="mb-4 flex flex-wrap gap-x-5 gap-y-2 rounded-lg bg-gm-surface-2 p-3 text-sm"><span><strong>{summary.total}</strong> cierres en el período</span><span><strong>{summary.diferencias}</strong> con diferencias</span><span className="text-muted-foreground"><strong>{summary.sinConteo}</strong> sin conteo</span></div>
+      <div data-tour="caja-tabla" className="space-y-3">{visibles.length === 0 ? <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{soloDiferencias ? 'No hay cierres con diferencias en este período.' : 'No hay turnos cerrados en este período. Probá con otra fecha.'}</p> : visibles.map(t => <Ficha key={t.id} turno={t} />)}<CompactPagination page={pagina} total={total} pageSize={5} onChange={setPage} /></div>
     </>}</div>
   </section>;
 }

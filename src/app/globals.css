@@ -226,6 +226,15 @@
   color: #F08775;
 }
 
+/* Punto «en vivo» de las pantallas de plataforma: late mientras la cifra se está moviendo. */
+@keyframes latido {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
+  50% { box-shadow: 0 0 0 5px rgba(52, 211, 153, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [class*="animate-[latido"] { animation: none !important; }
+}
+
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--gm-line-strong)); border-radius: 8px; }

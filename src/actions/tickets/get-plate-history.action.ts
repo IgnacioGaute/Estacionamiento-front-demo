@@ -2,6 +2,6 @@
 
 import { getPlateHistory as getPlateHistoryAPI } from '@/services/tickets.service';
 
-export async function getPlateHistoryAction(plate: string) {
-  return getPlateHistoryAPI(plate);
+export async function getPlateHistoryAction(plate: string, page = 1) {
+  return getPlateHistoryAPI(plate, undefined, page);
 }

@@ -29,9 +29,11 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { DataTableViewOptions } from '@/components/ui/data-table-view-options';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useServerTable } from '@/hooks/use-server-table';
 
 interface DataTableShellProps<TData, TValue> {
   data: TData[];
+  serverTotal?: number;
   columns: ColumnDef<TData, TValue>[];
   filterColumn?: string;
   filterPlaceholder?: string;
@@ -50,6 +52,7 @@ interface DataTableShellProps<TData, TValue> {
 
 export function DataTableShell<TData, TValue>({
   data,
+  serverTotal,
   columns,
   filterColumn,
   filterPlaceholder = 'Filtrar...',
@@ -63,6 +66,7 @@ export function DataTableShell<TData, TValue>({
   filterTour,
   tableTour,
 }: DataTableShellProps<TData, TValue>) {
+  const server = useServerTable(serverTotal ?? 0, initialSort[0]?.id || 'lastName', initialSort[0]?.desc ?? false);
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
     initialFilter && filterColumn
@@ -83,7 +87,8 @@ export function DataTableShell<TData, TValue>({
     onExpandedChange: setExpanded,
     getExpandedRowModel: getExpandedRowModel(),
     getRowCanExpand: () => !!renderSubComponent,
-    state: { columnFilters, sorting, expanded },
+    ...(serverTotal === undefined ? {} : server.options),
+    state: { columnFilters, sorting: serverTotal === undefined ? sorting : server.sorting, expanded, ...(serverTotal === undefined ? {} : { pagination: server.pagination }) },
     initialState: { pagination: { pageSize }, sorting: initialSort },
     autoResetPageIndex: false,
   });
@@ -98,10 +103,10 @@ export function DataTableShell<TData, TValue>({
             <Input
               placeholder={filterPlaceholder}
               value={
-                (table.getColumn(filterColumn)?.getFilterValue() as string) ?? ''
+                serverTotal === undefined ? (table.getColumn(filterColumn)?.getFilterValue() as string) ?? '' : server.search
               }
               onChange={(e) =>
-                table.getColumn(filterColumn)?.setFilterValue(e.target.value)
+                serverTotal === undefined ? table.getColumn(filterColumn)?.setFilterValue(e.target.value) : server.searchChange(e.target.value)
               }
               className="pl-9 h-8 text-[13px]"
             />

@@ -1,19 +1,23 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-import { getCustomers, getOwnerParkingTypes, findAllPendingReceipts } from '@/services/customers.service';
+import { getCustomersPage, getOwnerParkingTypes, findAllPendingReceipts } from '@/services/customers.service';
 import { OwnersTable } from './components/owners-table';
 import { OwnerColumns } from './components/owner-columns';
 import { CUSTOMER_TYPE } from '@/types/cutomer.type';
 import { PageHeader } from '@/components/page-header';
 import { CustomerActionsBar } from '../components/customers/drop-menu-actions';
 
-export default async function OwnerPage() {
-  const customers = await getCustomers(CUSTOMER_TYPE[0]);
+export default async function OwnerPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const query = await searchParams;
+  const params = Object.fromEntries(Object.entries(query).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+  if (params.lastName && !params.search) params.search = params.lastName;
+  const result = await getCustomersPage(CUSTOMER_TYPE[0], params);
+  const customers = result.data;
   const ownerParkingTypes = await getOwnerParkingTypes();
   const receiptsData = await findAllPendingReceipts(CUSTOMER_TYPE[0]);
   const receipts = Array.isArray(receiptsData) ? receiptsData : [];
-  const count = customers?.length ?? 0;
+  const count = result.meta.totalItems;
 
   return (
     <div className="container mx-auto px-4 py-6 sm:p-8 max-w-7xl">
@@ -38,6 +42,7 @@ export default async function OwnerPage() {
         <OwnersTable
           columns={OwnerColumns}
           data={customers || []}
+          total={result.meta.totalItems}
           ownerParkingTypes={ownerParkingTypes?.data || []}
         />
       </div>

@@ -21,6 +21,17 @@ export const customerSchema = z.object({
   parkingOwners: z.array(parkingOwnerSchema).optional(),
   parkingRenters: z.array(parkingRenterSchema).optional(),
   credit: z.number().min(0).default(0),
+  // Sólo inquilinos: cómo está su cuenta corriente al darlo de alta.
+  saldoInicial: z
+    .object({
+      tipo: z.enum(['AL_DIA', 'DEUDA', 'A_FAVOR']),
+      modo: z.enum(['TOTAL', 'POR_MES']).optional(),
+      importe: z.number().int().positive().optional(),
+      fecha: z.string().optional(),
+      meses: z.array(z.object({ mes: z.string(), importe: z.number().int().positive() })).optional(),
+      nota: z.string().max(255).optional(),
+    })
+    .optional(),
 });
 
 

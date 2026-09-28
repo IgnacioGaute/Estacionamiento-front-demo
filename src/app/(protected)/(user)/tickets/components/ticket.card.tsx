@@ -184,7 +184,7 @@ export default function CardTicket({
         { key: 'comprobantes', title: 'Elegí entrada o salida', desc: 'Cada fila permite abrir Entrada y, si el vehículo ya se retiró, Salida. La entrega muestra solo los medios activos: WhatsApp requiere confirmar el envío, QR abre el enlace en el celular e impresión usa la impresora instalada. Desde el enlace público se puede descargar PDF o imagen.' },
       ] : []),
       { key: 'precios', title: 'Consultá antes de cobrar', desc: 'Consultar precios te permite revisar las tarifas de la playa. Los precios de Día/Sem/Mes son distintos de los precios por duración.' },
-      ...(isAdmin ? [{ key: 'admin', title: 'Configuración de la playa', desc: 'Administrar tickets abre tarifas, forma de cobro, tipos de vehículo y precios de Día/Sem/Mes. En Comprobantes elegís WhatsApp, QR o impresora y el ancho del papel. Podés activar varios medios o ninguno.' }] : []),
+      ...(isAdmin ? [{ key: 'admin', title: 'Configuración de la playa', desc: 'Tarifas reúne los precios por tiempo y los pases de día, semana o mes. Podés editar un borrador, probar cuánto cobrarías y aplicar los cambios juntos. Los vehículos, las tarjetas físicas y los comprobantes se administran desde Configuración.' }] : []),
       ...(TURNO_BAR_ENABLED ? [{ key: 'turno', title: 'Revisá tu turno', desc: 'Desde Turno actual revisás la caja y accedés a la apertura o cierre. Antes de cerrar, contá el efectivo y revisá las diferencias. Este panel es independiente del cobro de vehículos.' }] : []),
     ].map((step) => ({
       ...step,
@@ -379,7 +379,7 @@ export default function CardTicket({
           {TURNO_BAR_ENABLED && <div ref={tour.refFor('turno')} style={tour.isActive('turno') ? { ...tourTransition, ...tourHighlight } : tourTransition}><TurnoBar /></div>}
         </div>
       </header>
-      <div className="mx-auto mb-3 max-w-[1180px]"><OfflineConsultation /></div>
+      <div className="mx-auto mb-3 max-w-[1180px]"><OfflineConsultation revision={registrations} /></div>
 
       <div className="mx-auto mb-4 grid max-w-[1180px] grid-cols-2 gap-1 rounded-2xl border border-border bg-card p-1 sm:hidden" aria-label="Secciones de tickets">
         <button type="button" aria-pressed={mobileTab === "ingreso"} onClick={() => irATab("ingreso")} className={cn("min-h-12 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileTab === "ingreso" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground")}>Entrada y salida</button>
@@ -480,13 +480,13 @@ export default function CardTicket({
           >
             {isAdmin && (
               <Link
-                href="/admin/tickets"
+                href="/admin/tarifas"
                 ref={tour.refFor('admin')}
                 style={tour.isActive('admin') ? { ...tourTransition, ...tourHighlight } : tourTransition}
                 className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-gm-yellow"
               >
                 <Settings className="size-3.5" />
-                {barcodeTicketsEnabled ? "Administrar tickets" : "Administrar precios"}
+                Tarifas
               </Link>
             )}
             <div ref={tour.refFor('precios')} style={tour.isActive('precios') ? { ...tourTransition, ...tourHighlight } : tourTransition}><PriceBracketMapDialog brackets={priceBrackets} schedule={schedule} /></div>
@@ -534,7 +534,7 @@ export default function CardTicket({
                   Vehículos en el playón
                 </h3>
                 <div className="flex items-center gap-2">
-                  {isAdmin && <Link href="/admin/tickets?crear=ticket" className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow" aria-label="Crear tarjeta física">+ Crear</Link>}
+                  {isAdmin && <Link href="/admin/configuracion/operacion#tarjetas" className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow" aria-label="Crear tarjeta física">+ Crear</Link>}
                 <span className="gm-mono text-[10.5px] text-muted-foreground">
                   {activeTickets.length}/{sortedCatalog.length}
                 </span>

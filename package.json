@@ -35,6 +35,7 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "file-saver": "^2.0.5",
+    "framer-motion": "^13.4.4",
     "jose": "5.10.0",
     "jsbarcode": "^3.11.6",
     "lucide-react": "^0.473.0",

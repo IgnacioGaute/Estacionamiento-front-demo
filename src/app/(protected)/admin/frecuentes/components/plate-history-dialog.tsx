@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { CompactPagination } from '@/components/compact-pagination';
 import dayjs from 'dayjs';
 import { History, Loader2 } from 'lucide-react';
 
@@ -33,16 +34,23 @@ export function PlateHistoryDialog({ licensePlateNormalized, licensePlateOrigina
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [visits, setVisits] = useState<TicketRegistration[] | null>(null);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState('');
 
   const handleOpenChange = async (nextOpen: boolean) => {
     setOpen(nextOpen);
-    if (nextOpen && visits === null) {
-      setLoading(true);
-      const data = await getPlateHistoryAction(licensePlateNormalized);
-      setVisits(data);
-      setLoading(false);
-    }
+    if (nextOpen) setPage(0);
   };
+  useEffect(() => {
+    if (!open) return;
+    let current = true; setLoading(true); setError('');
+    getPlateHistoryAction(licensePlateNormalized, page + 1).then(result => {
+      if (current) { setVisits(result.data); setTotal(result.meta.totalItems); }
+    }).catch(() => { if (current) setError('No se pudo consultar el historial.'); })
+      .finally(() => { if (current) setLoading(false); });
+    return () => { current = false; };
+  }, [open, page, licensePlateNormalized]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -120,6 +128,8 @@ export function PlateHistoryDialog({ licensePlateNormalized, licensePlateOrigina
             </Table>
           </div>
         )}
+        {error && <p role="alert">{error}</p>}
+        {!loading && !error && <CompactPagination page={page} total={total} pageSize={20} onChange={setPage} />}
       </DialogContent>
     </Dialog>
   );

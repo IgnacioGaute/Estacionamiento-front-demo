@@ -92,7 +92,7 @@ export async function asignarPlayasAction(
 
 export async function updatePlayaAction(
   id: string,
-  datos: { nombre: string; direccion?: string },
+  datos: { nombre?: string; direccion?: string; modulos?: { inquilinos?: boolean } },
 ) {
   try {
     await updatePlaya(id, datos);

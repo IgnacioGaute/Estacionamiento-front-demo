@@ -36,9 +36,13 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
               <SidebarTrigger className="md:hidden -ml-1 h-9 w-9 border border-border/60 bg-white/[0.04] hover:bg-white/[0.08]" />
             )}
 
+            {/* La barra del super admin trae su marca: con ella abierta, el logo de acá se
+                repetiría al lado. Se muestra cuando está colapsada o en el celular. */}
             <Link
               href={user?.role === 'SUPER_ADMIN' ? '/admin/empresas' : '/tickets'}
-              className="group hidden shrink-0 items-center gap-2 transition-opacity hover:opacity-90 sm:inline-flex"
+              className={`group hidden shrink-0 items-center gap-2 transition-opacity hover:opacity-90 sm:inline-flex ${
+                user?.role === 'SUPER_ADMIN' ? 'md:[.peer[data-state=expanded]~*_&]:hidden' : ''
+              }`}
             >
               <ParkingMark size="sm" />
             </Link>

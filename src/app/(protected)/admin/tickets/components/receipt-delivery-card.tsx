@@ -34,7 +34,7 @@ export function ReceiptDeliveryCard({ initial }: { initial?: ReceiptDeliverySett
   return <section className="w-full space-y-6 py-2">
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div className="max-w-2xl"><h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Entrega de comprobantes</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Elegí cómo entregar las entradas y salidas de esta playa. Podés combinar los medios que necesites.</p></div>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Elegí cómo entregar las entradas y salidas de esta playa, y los recibos de pago de los inquilinos. Podés combinar los medios que necesites. A los inquilinos con celular cargado el recibo siempre se les puede mandar por WhatsApp.</p></div>
       <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground"><span className={cn('size-1.5 rounded-full', enabledCount ? 'bg-gm-yellow' : 'bg-muted-foreground')} />{enabledCount} de 3 seleccionados</span>
     </header>
 

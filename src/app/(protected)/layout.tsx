@@ -35,7 +35,7 @@ export default async function ProtectedLayout({
   const schedule = !platform && chosen ? await getTicketSchedule() : null;
   return (
     <SessionProvider session={session}>
-      <TenantProvider context={context} playaId={chosen} shiftsEnabled={schedule?.shiftsEnabled !== false}>
+      <TenantProvider context={context} playaId={chosen} shiftsEnabled={schedule?.shiftsEnabled === true}>
         <div className="flex w-full flex-col overflow-hidden">
           {platform || chosen ? children : <NoPlaya message={error} />}
         </div>

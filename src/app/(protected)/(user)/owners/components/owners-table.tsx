@@ -14,10 +14,11 @@ import { CustomerPageTour } from '../../components/customer-page-tour';
 interface OwnersTableProps {
   columns: (ownerParkingTypes: OwnerParkingType[]) => ColumnDef<Customer>[];
   data: Customer[];
+  total?: number;
   ownerParkingTypes: OwnerParkingType[];
 }
 
-export function OwnersTable({ columns, data, ownerParkingTypes }: OwnersTableProps) {
+export function OwnersTable({ columns, data, total, ownerParkingTypes }: OwnersTableProps) {
   const searchParams = useSearchParams();
   const lastNameQuery = searchParams.get('lastName') || '';
   const session = useSession();
@@ -26,6 +27,7 @@ export function OwnersTable({ columns, data, ownerParkingTypes }: OwnersTablePro
   return (
     <DataTableShell
       data={data}
+      serverTotal={total}
       columns={columns(ownerParkingTypes)}
       filterColumn="lastName"
       filterPlaceholder="Filtrar por apellido..."

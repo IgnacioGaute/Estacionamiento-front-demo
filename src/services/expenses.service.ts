@@ -8,9 +8,9 @@ import { revalidateTag } from "next/cache";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-export const getExpenses = async (authToken?: string) => {
+export const getExpenses = async (authToken?: string, params: Record<string, string> = {}) => {
     try {
-      const response = await fetch(`${BASE_URL}/box-lists/otherPayment`, {
+      const response = await fetch(`${BASE_URL}/box-lists/otherPayment?${new URLSearchParams(params)}`, {
         headers: await getAuthHeaders(authToken),
         next: {
           tags: [getCacheTag('expenses', 'all')],
@@ -19,7 +19,7 @@ export const getExpenses = async (authToken?: string) => {
       const data = await response.json();
   
       if (response.ok) {
-        return data as OtherPayment[]
+        return data as { data: OtherPayment[]; meta: { totalItems: number } }
       } else {
         console.error(data);
         return null;

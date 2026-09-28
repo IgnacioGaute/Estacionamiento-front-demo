@@ -152,8 +152,6 @@ export const renterColumns = (
                     <>
                       <UpdateRenterDialog
                         customer={customer}
-                        customersRenters={customerRenters}
-                        renterParkingTypes={renterParkingTypes}
                       />
                       <SoftDeleteRenterDialog customer={customer} />
                     </>

@@ -21,6 +21,7 @@ import {
   UserCog,
 } from "lucide-react";
 import { ActividadEmpresa } from "@/types/tenancy.type";
+import { Segmentos } from "@/components/plataforma/mono";
 
 type Categoria =
   | "tarifas"
@@ -47,6 +48,7 @@ const ACCIONES: Record<
   EMPRESA_ELIMINADA: { texto: "Eliminó la empresa", categoria: "plataforma", Icono: Trash2, destructiva: true },
   PLAYA_CREADA: { texto: "Creó la playa", categoria: "plataforma", Icono: Building2 },
   PLAYA_EDITADA: { texto: "Editó la playa", categoria: "plataforma", Icono: Building2 },
+  PLAYA_MODULOS: { texto: "Cambió las secciones habilitadas de la playa", categoria: "plataforma", Icono: Building2 },
   PLAYA_ELIMINADA: { texto: "Eliminó la playa", categoria: "plataforma", Icono: Trash2, destructiva: true },
   USUARIO_CREADO: { texto: "Dio de alta un usuario", categoria: "cuentas", Icono: UserCog },
   USUARIO_EDITADO: { texto: "Editó un usuario", categoria: "cuentas", Icono: UserCog },
@@ -224,18 +226,53 @@ function frase(ruta: string, dato: unknown) {
   return { verbo: "Definió", resto: `${que}${en}`, de: null, a: texto(ruta, dato) };
 }
 
-function dia(iso: string) {
+// «hace 12 min», «hace 3 h», «ayer 18:40», «22/09 11:05»: lo reciente se lee en relativo, lo
+// viejo con su fecha.
+export function cuandoFue(iso: string) {
   const fecha = new Date(iso);
-  const hoy = new Date();
+  const minutos = Math.floor((Date.now() - fecha.getTime()) / 60000);
+  const hora = fecha.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  if (minutos < 1) return "recién";
+  if (minutos < 60) return `hace ${minutos} min`;
+  if (minutos < 6 * 60) return `hace ${Math.floor(minutos / 60)} h`;
   const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const mismo = (a: Date, b: Date) => a.toDateString() === b.toDateString();
-  if (mismo(fecha, hoy)) return "Hoy";
-  if (mismo(fecha, ayer)) return "Ayer";
-  return fecha.toLocaleDateString("es-AR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  if (fecha.toDateString() === new Date().toDateString()) return `hoy ${hora}`;
+  if (fecha.toDateString() === ayer.toDateString()) return `ayer ${hora}`;
+  return `${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })} ${hora}`;
+}
+
+// Las entidades genéricas no suman nada a la línea; un email o un nombre sí.
+const ENTIDADES_GENERICAS = new Set(["usuario", "empresa", "asignación", "playa"]);
+
+// Una entrada contada en una línea: quién, qué hizo y el primer cambio. La usa el resumen de la
+// ficha, que muestra las últimas sin desplegar nada.
+export function describirActividad(a: ActividadEmpresa) {
+  const info = ACCIONES[a.accion];
+  const cambios = aplanar(a.detalle);
+  const primero = cambios[0] ? frase(cambios[0][0], cambios[0][1]) : null;
+  const resto =
+    cambios.length > 1
+      ? ` · +${cambios.length - 1} ${cambios.length === 2 ? "cambio" : "cambios"}`
+      : "";
+  const valor =
+    primero && primero.a !== null
+      ? `: ${primero.de !== null ? `${primero.de} → ` : ""}${primero.a}`
+      : "";
+  const detalle = primero
+    ? `${primero.verbo} ${primero.resto}${valor}${resto}`
+    : a.entidad && !ENTIDADES_GENERICAS.has(a.entidad)
+      ? a.entidad
+      : "";
+  const texto = info?.texto ?? a.accion;
+  return {
+    quien: a.usuario ?? "Sistema",
+    que: texto.charAt(0).toLowerCase() + texto.slice(1),
+    detalle,
+    cambios,
+    Icono: info?.Icono ?? ClipboardList,
+    destructiva: !!info?.destructiva,
+    categoria: info?.categoria,
+  };
 }
 
 export function ActividadDeEmpresa({
@@ -256,197 +293,160 @@ export function ActividadDeEmpresa({
     [actividad, categoria],
   );
 
-  const grupos = useMemo(() => {
-    const mapa = new Map<string, ActividadEmpresa[]>();
-    for (const a of visibles) {
-      const clave = dia(a.fecha);
-      mapa.set(clave, [...(mapa.get(clave) ?? []), a]);
-    }
-    return [...mapa.entries()];
-  }, [visibles]);
+  // Solo las categorías que tienen algo: un filtro que siempre da vacío es un clic perdido.
+  const opciones = CATEGORIAS.map((c) => ({
+    id: c.id,
+    label: c.label,
+    cuenta:
+      c.id === "todo"
+        ? actividad.length
+        : actividad.filter((a) => ACCIONES[a.accion]?.categoria === c.id).length,
+  })).filter((c) => c.id === "todo" || c.cuenta > 0);
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
-        {CATEGORIAS.map((c) => {
-          const cuantas =
-            c.id === "todo"
-              ? actividad.length
-              : actividad.filter((a) => ACCIONES[a.accion]?.categoria === c.id)
-                  .length;
-          return (
-            <button
-              key={c.id}
-              type="button"
-              aria-pressed={categoria === c.id}
-              onClick={() => setCategoria(c.id)}
-              disabled={!cuantas}
-              className={`h-9 rounded-full border px-4 text-sm font-semibold transition-colors disabled:opacity-40 ${
-                categoria === c.id
-                  ? "border-gm-yellow bg-gm-yellow text-gm-ink"
-                  : "border-border text-foreground hover:bg-gm-surface-2"
-              }`}
-            >
-              {c.label}
-              {cuantas > 0 && (
-                <span
-                  className={`ml-2 tabular-nums ${categoria === c.id ? "text-gm-ink/60" : "text-muted-foreground"}`}
-                >
-                  {cuantas}
-                </span>
-              )}
-            </button>
-          );
-        })}
+    <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2E2820] px-5 py-4">
+        <div>
+          <h2 className="font-display text-[22px] font-semibold leading-tight">Actividad</h2>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Cambios de reglas y accesos hechos por personas. Nunca muestra contraseñas ni tokens.
+          </p>
+        </div>
+        <div className="max-w-full overflow-x-auto">
+          <Segmentos
+            etiqueta="Tipo de cambio"
+            className="w-max"
+            opciones={opciones}
+            valor={categoria}
+            onChange={setCategoria}
+          />
+        </div>
       </div>
 
       {!visibles.length && (
-        <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            {actividad.length
-              ? "No hay movimientos de ese tipo."
-              : "Todavía no hay movimientos. Se anota cada cambio de tarifas, configuración, usuarios y clientes."}
-          </p>
-        </div>
+        <p className="px-5 py-14 text-center text-sm text-muted-foreground">
+          {actividad.length
+            ? "No hay movimientos de ese tipo."
+            : "Todavía no hay movimientos. Se anota cada cambio de tarifas, configuración, usuarios y clientes."}
+        </p>
       )}
 
-      {grupos.map(([fecha, entradas]) => (
-        <section key={fecha}>
-          <div className="mb-3 flex items-center gap-3">
-            <h3 className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {fecha}
-            </h3>
-            <span className="h-px flex-1 bg-border" aria-hidden />
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {entradas.length}
-            </span>
-          </div>
-
-          {/* Línea de tiempo: el hilo vertical sale del ícono de cada entrada. */}
-          <ol className="relative space-y-3 before:absolute before:bottom-6 before:left-[19px] before:top-6 before:w-px before:bg-border">
-            {entradas.map((a, i) => {
-              const info = ACCIONES[a.accion];
-              const Icono = info?.Icono ?? ClipboardList;
-              const cambios = aplanar(a.detalle);
-              const nueva = !!desdeQue && a.fecha > desdeQue;
-              return (
-                <li
-                  key={`${a.fecha}-${i}`}
-                  className={`relative rounded-2xl border transition-colors ${
-                    nueva
-                      ? "border-gm-yellow/40 bg-gm-yellow/[0.04]"
-                      : "border-border bg-gm-surface-2"
+      <ol className="px-3 pb-3 pt-2 sm:px-5">
+        {visibles.map((a, i) => {
+          const d = describirActividad(a);
+          const nueva = !!desdeQue && a.fecha > desdeQue;
+          const Icono = d.Icono;
+          const desplegable = d.cambios.length > 1;
+          return (
+            <li key={`${a.fecha}-${i}`} className="border-b border-[#2A241D] last:border-b-0">
+              {/* Cerrado por defecto; los movimientos sin ver arrancan abiertos, que son los que
+                  se vienen a mirar. `details` da el plegado y el foco de teclado sin estado. */}
+              <details open={nueva && desplegable} className="group">
+                <summary
+                  className={`grid min-h-16 list-none grid-cols-[40px_minmax(0,1fr)] items-center gap-3.5 rounded-xl px-2.5 py-2 transition-colors hover:bg-[#201A15] sm:grid-cols-[40px_minmax(0,1fr)_190px_140px] [&::-webkit-details-marker]:hidden ${
+                    desplegable ? "cursor-pointer" : "cursor-default"
                   }`}
                 >
-                  {/* Cerrado por defecto; los movimientos sin ver arrancan abiertos, que son
-                      los que se vienen a mirar. `details` da el plegado y el foco de teclado
-                      sin estado propio. */}
-                  <details open={nueva} className="group">
-                    <summary
-                      className={`flex list-none items-center gap-4 p-4 [&::-webkit-details-marker]:hidden ${
-                        cambios.length ? "cursor-pointer" : "cursor-default"
+                  <span
+                    className={`flex size-9 items-center justify-center rounded-[11px] ${
+                      d.destructiva ? "bg-[#FF7A4D]/[0.14]" : "bg-[#231D17]"
+                    }`}
+                  >
+                    <Icono
+                      aria-hidden
+                      className={`size-4 ${
+                        d.destructiva
+                          ? "text-[#FF7A4D]"
+                          : nueva
+                            ? "text-gm-yellow"
+                            : "text-muted-foreground"
                       }`}
-                    >
-                      <span
-                        className={`z-10 flex size-10 shrink-0 items-center justify-center rounded-xl border ${
-                          info?.destructiva
-                            ? "border-destructive/40 bg-destructive/10 text-destructive"
-                            : "border-border bg-gm-surface text-gm-yellow"
-                        }`}
-                      >
-                        <Icono className="size-[18px]" />
+                    />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2 text-[13.5px]">
+                      <span>
+                        <span className="font-bold">{d.quien}</span>{" "}
+                        <span className="text-[#C9BFB1]">{d.que}</span>
                       </span>
-
-                      <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
-                        <span className="font-semibold">
-                          {info?.texto ?? a.accion}
-                        </span>
-                        {nueva && (
-                          <span className="rounded-full bg-gm-yellow px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gm-ink">
-                            Nuevo
-                          </span>
-                        )}
-                        <span className="text-sm text-muted-foreground">
-                          {a.usuario ?? "Sistema"}
-                          {a.playa ? ` · ${a.playa}` : ""}
-                        </span>
-                      </span>
-
-                      {!!cambios.length && (
-                        <span className="shrink-0 rounded-full border border-border px-2.5 py-0.5 text-xs tabular-nums text-muted-foreground">
-                          {cambios.length}{" "}
-                          {cambios.length === 1 ? "cambio" : "cambios"}
+                      {nueva && (
+                        <span className="rounded-full bg-gm-yellow px-[7px] py-0.5 text-[10.5px] font-extrabold text-gm-ink">
+                          Nuevo
                         </span>
                       )}
-                      <time
-                        dateTime={a.fecha}
-                        className="shrink-0 text-xs tabular-nums text-muted-foreground"
-                      >
-                        {new Date(a.fecha).toLocaleTimeString("es-AR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </time>
-                      {!!cambios.length && (
+                      {desplegable && (
                         <ChevronDown
                           aria-hidden
-                          className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+                          className="size-3.5 text-muted-foreground transition-transform group-open:rotate-180"
                         />
                       )}
-                    </summary>
-
-                    {!!cambios.length && (
-                      <ul className="space-y-1.5 px-4 pb-4 pl-[72px]">
-                        {cambios.map(([ruta, dato]) => {
-                          const f = frase(ruta, dato);
-                          return (
-                            <li
-                              key={ruta}
-                              className="flex flex-wrap items-baseline gap-x-2 text-sm"
-                            >
-                              <span
-                                className={`font-semibold ${
-                                  f.verbo === "Desactivó"
-                                    ? "text-gm-orange"
-                                    : f.verbo === "Activó"
-                                      ? "text-emerald-400"
-                                      : "text-foreground"
-                                }`}
-                              >
-                                {f.verbo}
-                              </span>
-                              <span className="text-muted-foreground">
-                                {f.resto}
-                              </span>
-                              {f.a !== null && (
-                                <span className="flex items-baseline gap-1.5">
-                                  {f.de !== null && (
-                                    <>
-                                      <span className="text-muted-foreground line-through decoration-muted-foreground/50">
-                                        {f.de}
-                                      </span>
-                                      <span aria-hidden className="text-muted-foreground">
-                                        →
-                                      </span>
-                                    </>
-                                  )}
-                                  <span className="font-semibold tabular-nums text-gm-yellow">
-                                    {f.a}
-                                  </span>
-                                </span>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
+                    </span>
+                    {d.detalle && (
+                      <span className="mt-1 block truncate font-mono text-[11px] text-muted-foreground">
+                        {d.detalle}
+                      </span>
                     )}
-                  </details>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      ))}
-    </div>
+                    <span className="mt-1 block text-xs text-muted-foreground sm:hidden">
+                      {a.playa ?? "Toda la empresa"} · {cuandoFue(a.fecha)}
+                    </span>
+                  </span>
+                  <span className="hidden truncate text-[12.5px] text-[#C9BFB1] sm:block">
+                    {a.playa ?? "Toda la empresa"}
+                  </span>
+                  <time
+                    dateTime={a.fecha}
+                    title={new Date(a.fecha).toLocaleString("es-AR")}
+                    className="hidden text-right font-mono text-[11px] text-[#8A8073] sm:block"
+                  >
+                    {cuandoFue(a.fecha)}
+                  </time>
+                </summary>
+
+                {desplegable && (
+                  <ul className="space-y-1.5 pb-4 pl-[66px] pr-4">
+                    {d.cambios.map(([ruta, dato]) => {
+                      const f = frase(ruta, dato);
+                      return (
+                        <li key={ruta} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                          <span
+                            className={`font-semibold ${
+                              f.verbo === "Desactivó"
+                                ? "text-[#FF7A4D]"
+                                : f.verbo === "Activó"
+                                  ? "text-emerald-400"
+                                  : "text-foreground"
+                            }`}
+                          >
+                            {f.verbo}
+                          </span>
+                          <span className="text-muted-foreground">{f.resto}</span>
+                          {f.a !== null && (
+                            <span className="flex items-baseline gap-1.5">
+                              {f.de !== null && (
+                                <>
+                                  <span className="text-muted-foreground line-through decoration-muted-foreground/50">
+                                    {f.de}
+                                  </span>
+                                  <span aria-hidden className="text-muted-foreground">
+                                    →
+                                  </span>
+                                </>
+                              )}
+                              <span className="font-semibold tabular-nums text-gm-yellow">
+                                {f.a}
+                              </span>
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </details>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }

@@ -2,14 +2,12 @@
 
 import {
   ArrowLeft,
-  Banknote,
-  Building2,
   LayoutDashboard,
-  ParkingCircle,
   Repeat,
   Shield,
-  Ticket,
+  CircleDollarSign,
   User,
+  Users,
   Wallet,
   Settings,
 } from 'lucide-react';
@@ -26,39 +24,33 @@ import { NavMain } from './nav-main';
 import { SidebarWatermark } from './sidebar-watermark';
 import { useSession } from 'next-auth/react';
 import { useTenant } from '@/components/tenant-provider';
+import { SuperAdminSidebar } from './super-admin-sidebar';
 
 export function AdminNavbarSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
-  const { shiftsEnabled } = useTenant();
+  const { inquilinosEnabled } = useTenant();
   const role = session?.user?.role?.toUpperCase() ?? 'USER';
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const isAdmin = role === 'ADMIN' || isSuperAdmin;
 
-  // El super admin administra la plataforma, no opera un estacionamiento: ve únicamente
-  // Empresas. El acceso a los datos de cada playa existe en el backend, pero por ahora no se
-  // muestra acá para no mezclar los dos trabajos.
-  const superAdminNavItems = [
-    { title: 'Empresas', url: '/admin/empresas', icon: <Building2 /> },
-    { title: 'Métricas', url: '/admin/metricas', icon: <LayoutDashboard /> },
-  ];
+  // El super admin administra la plataforma, no opera un estacionamiento: tiene su propia barra
+  // con métricas, empresas y el acceso rápido. El acceso a los datos de cada playa existe en el
+  // backend, pero no se muestra acá para no mezclar los dos trabajos.
+  if (isSuperAdmin) return <SuperAdminSidebar {...props} />;
 
   const allNavItems = [
-    { title: 'Dashboard',               url: '/admin/dashboard',              icon: <LayoutDashboard /> },
+    { title: 'Panel',               url: '/admin/dashboard',              icon: <LayoutDashboard /> },
     { title: 'Usuarios',                url: '/admin/users',                  icon: <User /> },
-    { title: 'Tickets / Precios',       url: '/admin/tickets',                icon: <Ticket /> },
+    { title: 'Tarifas',                url: '/admin/tarifas',                icon: <CircleDollarSign /> },
     { title: 'Frecuentes',              url: '/admin/frecuentes',             icon: <Repeat /> },
-    // { title: 'Tipo de Estacionamiento', url: '/admin/parking-type',           icon: <ParkingCircle /> },
-    // Ojo con el orden: los no-admin reciben allNavItems.slice(-2), así que sólo pueden quedar
-    // «Varios» y «Volver» al final. Caja y turnos muestra el arqueo de cada operador.
-    { title: 'Historial de turnos',     url: '/admin/caja',                   icon: <Wallet /> },
-    { title: 'Varios',                  url: '/admin/other-payments',         icon: <Banknote /> },
+    { title: 'Caja',     url: '/admin/caja',                   icon: <Wallet /> },
     { title: 'Configuración', url: '/admin/configuracion', icon: <Settings /> },
     { title: 'Volver',                  url: '/tickets',                       icon: <ArrowLeft /> },
   ];
 
-  const navItems = (isSuperAdmin ? superAdminNavItems : isAdmin ? allNavItems : allNavItems.slice(-1)).filter(item => shiftsEnabled || item.url !== '/admin/caja');
+  const navItems = isAdmin ? allNavItems : allNavItems.slice(-1);
 
   return (
     <Sidebar

@@ -3,21 +3,21 @@
 import { useState, useTransition } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { CircleDollarSign, Plus } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 import { createCustomerAction } from '@/actions/customers/create-customer.action';
 import { customerSchema, CustomerSchemaType } from '@/schemas/customer.schema';
-import { RenterParkingType } from '@/types/renter-parking-type';
+import { SaldoInicial } from '@/types/cuenta.type';
 import { CustomerStepperShell } from '@/components/customer-stepper-shell';
-import { RenterPhase2 } from '@/components/renter-phase-2';
+import { CocherasInquilino, cocherasParaGuardar, precioValido, validarCocheras } from './cocheras-inquilino';
+import { EditorSaldoInicial, SALDO_AL_DIA, erroresSaldoInicial } from './cuenta/saldo-inicial';
 
-export function CreateRenterDialog({
-  renterParkingTypes,
-}: {
-  renterParkingTypes: RenterParkingType[];
-}) {
+export function CreateRenterDialog({ onCreado }: { onCreado?: () => void }) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // El saldo inicial va con el alta, en la misma transacción: no queda un inquilino a medio cargar.
+  const [saldo, setSaldo] = useState<SaldoInicial>(SALDO_AL_DIA);
 
   const form = useForm<CustomerSchemaType>({
     resolver: zodResolver(customerSchema),
@@ -41,6 +41,9 @@ export function CreateRenterDialog({
     name: 'parkingRenters',
   });
 
+  // El abono (suma de los precios de las cocheras) se propone en los meses adeudados.
+  const abono = (form.watch('parkingRenters') ?? []).reduce((s, r) => s + (precioValido(r?.amount) ? r.amount : 0), 0);
+
   const handleNext = (values: CustomerSchemaType) => {
     const n = values.numberOfVehicles;
     const current = form.getValues('parkingRenters') ?? [];
@@ -48,7 +51,6 @@ export function CreateRenterDialog({
       replace([
         ...current,
         ...Array.from({ length: n - current.length }, () => ({
-          owner: '',
           garageNumber: '',
           amount: 0,
         })),
@@ -59,16 +61,38 @@ export function CreateRenterDialog({
   };
 
   const handleConfirm = (values: CustomerSchemaType) => {
+    if (!validarCocheras(form)) {
+      toast.error('Falta el precio mensual de alguna cochera.');
+      return;
+    }
+    const error = erroresSaldoInicial(saldo);
+    if (error) {
+      toast.error(error);
+      return;
+    }
     startTransition(async () => {
-      const data = await createCustomerAction(values);
+      const data = await createCustomerAction({
+        ...values,
+        parkingRenters: cocherasParaGuardar(values.parkingRenters),
+        saldoInicial:
+          saldo.tipo === 'AL_DIA'
+            ? undefined
+            : {
+                ...saldo,
+                nota: saldo.nota?.trim() || undefined,
+                ...(saldo.modo === 'POR_MES' ? { importe: undefined, fecha: undefined } : { meses: undefined }),
+              },
+      });
       if (!data || data.error) {
         const msg =
           typeof data?.error === 'string' ? data.error : data?.error?.message;
         toast.error(msg ?? 'No se pudo crear el inquilino');
       } else {
-        toast.success('Inquilino creado exitosamente');
+        toast.success('Inquilino creado. Su cuenta corriente ya está abierta.');
         form.reset();
+        setSaldo(SALDO_AL_DIA);
         setOpen(false);
+        onCreado?.();
       }
     });
   };
@@ -78,7 +102,8 @@ export function CreateRenterDialog({
       open={open}
       setOpen={setOpen}
       trigger={
-        <Button size="sm">
+        <Button size="sm" className="gap-1.5">
+          <Plus className="size-4" />
           Nuevo inquilino
         </Button>
       }
@@ -88,19 +113,26 @@ export function CreateRenterDialog({
       entityLabel="inquilino"
       mode="create"
       vehiclesCount={fields.length}
-      vehiclesStepLabel="Cocheras"
+      vehiclesStepLabel="Cocheras y saldo"
       onNextFromCustomer={handleNext}
       onConfirm={handleConfirm}
+      sinDeudaLegacy
       vehiclesPhase={
-        <RenterPhase2
-          form={form}
-          // Al crear un inquilino nuevo solo se ofrecen los tipos dinámicos
-          // (Aznar/Fontela/etc.) — no cocheras reales de propietarios.
-          customersRenters={[]}
-          renterParkingTypes={renterParkingTypes}
-          fields={fields}
-          isPending={isPending}
-        />
+        <>
+          <CocherasInquilino form={form} fields={fields} isPending={isPending} />
+          <div className="rounded-xl border border-border bg-gm-surface-2/40 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <CircleDollarSign className="size-4 text-gm-yellow" />
+              <div>
+                <div className="text-sm font-semibold">¿Cómo está su cuenta hoy?</div>
+                <div className="text-xs text-muted-foreground">
+                  Si trae deuda o saldo a favor de antes, cargalo acá. Después se corrige con ajustes.
+                </div>
+              </div>
+            </div>
+            <EditorSaldoInicial valor={saldo} onChange={setSaldo} abono={abono} />
+          </div>
+        </>
       }
     />
   );

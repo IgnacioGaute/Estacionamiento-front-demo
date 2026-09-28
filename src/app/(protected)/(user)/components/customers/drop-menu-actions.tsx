@@ -15,7 +15,7 @@ import { CalendarPlus } from 'lucide-react';
 import GenerateReceiptsButton from '../receipts/all-receipts-button';
 import { ExportCustomersExcel } from './export-customers-excel';
 import { ExportGarageNumberExcel } from './export-garage-number-excel';
-import { findAllPendingReceipts } from '@/services/customers.service';
+import { findAllPendingReceipts, getCustomers, hasPendingReceiptsForMonth } from '@/services/customers.service';
 import {
   Select,
   SelectContent,
@@ -36,6 +36,9 @@ export function CustomerActionsBar({
   receipts: Receipt[];
 }) {
   const [openDialog, setOpenDialog] = useState(false);
+  const [exportData, setExportData] = useState<{ customers: Customer[]; receipts: Receipt[] } | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   const today = new Date();
   const nextMonth = today.getMonth() === 11 ? 0 : today.getMonth() + 1;
@@ -61,23 +64,13 @@ export function CustomerActionsBar({
     new Date(year, month + 1, 0).getDate();
 
   useEffect(() => {
-    const checkReceipts = async () => {
-      const data = await findAllPendingReceipts(type);
-      if (Array.isArray(data)) {
-        const exists = data.some((receipt: any) => {
-          const date = new Date(receipt.dateNow + 'T00:00:00');
-          return (
-            date.getFullYear() === selectedYear &&
-            date.getMonth() === selectedMonth
-          );
-        });
-        setAlreadyGenerated(exists);
-      } else {
-        setAlreadyGenerated(false);
-      }
-    };
-    checkReceipts();
-  }, [selectedMonth, selectedYear, selectedDay, type]);
+    if (!openDialog) return;
+    let current = true;
+    hasPendingReceiptsForMonth(type, selectedYear + '-' + String(selectedMonth + 1).padStart(2, '0'))
+      .then(exists => { if (current) setAlreadyGenerated(exists); })
+      .catch(() => { if (current) setAlreadyGenerated(false); });
+    return () => { current = false; };
+  }, [selectedMonth, selectedYear, type, openDialog]);
 
   const selectContentProps = {
     side: 'bottom' as const,
@@ -110,9 +103,17 @@ export function CustomerActionsBar({
           <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground mr-1">
             Excel
           </span>
-          <ExportCustomersExcel receipts={receipts} type={type} />
-          <ExportGarageNumberExcel customers={activeCustomers} />
-          <ExportReceiptsExcel receipts={receipts} type={type} />
+          {exportData ? <>
+            <ExportCustomersExcel receipts={exportData.receipts} type={type} />
+            <ExportGarageNumberExcel customers={exportData.customers.filter(c => !c.deletedAt)} />
+            <ExportReceiptsExcel receipts={exportData.receipts} type={type} />
+          </> : <Button size="sm" variant="outline" disabled={exportBusy} onClick={async () => {
+            setExportBusy(true); setExportError('');
+            try { const [allCustomers, allReceipts] = await Promise.all([getCustomers(type), findAllPendingReceipts(type)]); setExportData({ customers: allCustomers, receipts: allReceipts }); }
+            catch { setExportError('No se pudieron preparar las exportaciones. Reintentá.'); }
+            finally { setExportBusy(false); }
+          }}>{exportBusy ? 'Preparando…' : 'Preparar exportaciones'}</Button>}
+          {exportError && <span role="alert" className="text-xs text-destructive">{exportError}</span>}
         </div>
       </div>
 

@@ -15,11 +15,12 @@ import { CustomerPageTour } from '../../components/customer-page-tour';
 interface RentersTableProps {
   columns: (customersRenters: ParkingOwner[], renterParkingTypes: RenterParkingType[]) => ColumnDef<Customer>[];
   data: Customer[];
+  total?: number;
   customersRenters: ParkingOwner[];
   renterParkingTypes: RenterParkingType[];
 }
 
-export function RentersTable({ columns, data, customersRenters, renterParkingTypes }: RentersTableProps) {
+export function RentersTable({ columns, data, total, customersRenters, renterParkingTypes }: RentersTableProps) {
   const searchParams = useSearchParams();
   const lastNameQuery = searchParams.get('lastName') || '';
   const session = useSession();
@@ -28,6 +29,7 @@ export function RentersTable({ columns, data, customersRenters, renterParkingTyp
   return (
     <DataTableShell
       data={data}
+      serverTotal={total}
       columns={columns(customersRenters, renterParkingTypes)}
       filterColumn="lastName"
       filterPlaceholder="Filtrar por apellido..."
@@ -38,7 +40,7 @@ export function RentersTable({ columns, data, customersRenters, renterParkingTyp
           <CustomerPageTour entityLabel="inquilino" />
           {isAdmin && (
             <div data-tour="customer-create">
-              <CreateRenterDialog renterParkingTypes={renterParkingTypes} />
+              <CreateRenterDialog />
             </div>
           )}
         </div>

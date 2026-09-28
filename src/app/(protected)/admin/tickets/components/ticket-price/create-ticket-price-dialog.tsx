@@ -29,14 +29,14 @@ import { Loader2, Plus } from 'lucide-react';
 import { ticketPriceSchema, TicketPriceSchemaType } from '@/schemas/ticket-price.schema';
 import { createTicketPriceAction } from '@/actions/tickets/create-ticket-price.action';
 
-export function CreateTicketPriceDialog() {
+export function CreateTicketPriceDialog({ defaultVehicleType = 'AUTO' }: { defaultVehicleType?: string } = {}) {
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
 
   const form = useForm<TicketPriceSchemaType>({
     resolver: zodResolver(ticketPriceSchema),
     defaultValues: {
-      vehicleType: 'AUTO',
+      vehicleType: defaultVehicleType,
       ticketTimeType: 'SEMANA',
       ticketTimePrice: undefined,
     },
@@ -50,7 +50,7 @@ export function CreateTicketPriceDialog() {
         toast.error(errorMessage ?? 'Error desconocido');
       } else {
         toast.success('Tarifa creada exitosamente');
-        form.reset({ vehicleType: 'AUTO', ticketTimeType: 'SEMANA', ticketTimePrice: undefined });
+        form.reset({ vehicleType: defaultVehicleType, ticketTimeType: 'SEMANA', ticketTimePrice: undefined });
         setOpen(false);
       }
     });

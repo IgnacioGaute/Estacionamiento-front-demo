@@ -1,78 +1,31 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
-
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { PageHeader } from '@/components/page-header';
-import { PageTour, type PageTourStep } from '@/components/page-tour';
 import { CajaActions } from './components/caja-actions';
+import { PlanillaButton } from './components/planilla-button';
 import { getTicketSchedule } from '@/services/tickets.service';
+import { getExpenses } from '@/services/expenses.service';
+import { ExpenseTable } from '../other-payments/components/other-payment-table';
+import { expenseColumns } from '../other-payments/components/other-payment-columns';
 
-const TOUR_STEPS: PageTourStep[] = [
-  {
-    key: 'turno',
-    selector: '[data-tour="caja-turno"]',
-    title: 'El turno de ahora',
-    desc: 'Desde acá se abre y se cierra el turno de caja. Muestra el efectivo esperado según el fondo inicial más todo lo cobrado desde la apertura.',
-    radius: 10,
-  },
-  {
-    key: 'planilla',
-    selector: '[data-tour="caja-planilla"]',
-    title: 'Planilla diaria',
-    desc: 'La caja del día por fecha, con el detalle de los movimientos. Un turno que cruza la medianoche aparece en la planilla de cada día, con la parte del efectivo que le corresponde.',
-    radius: 8,
-  },
-  {
-    key: 'rangos',
-    selector: '[data-tour="caja-rangos"]',
-    title: 'Períodos rápidos',
-    desc: 'Hoy, ayer, los últimos 7 días o todo, según la fecha de cierre. Si empezó ayer y cerró hoy, aparece en Hoy.',
-    radius: 10,
-  },
-  {
-    key: 'fechas',
-    selector: '[data-tour="caja-fechas"]',
-    title: 'Cualquier fecha y cualquier operador',
-    desc: 'Abrí Más filtros para elegir fechas de cierre o el operador que abrió el turno.',
-    radius: 10,
-  },
-  {
-    key: 'totales',
-    selector: '[data-tour="caja-totales"]',
-    title: 'El resumen del período',
-    desc: 'Cantidad de cierres del período, cuántos tuvieron diferencias y cuántos no registraron conteo de efectivo.',
-    radius: 10,
-  },
-  {
-    key: 'tabla',
-    selector: '[data-tour="caja-tabla"]',
-    title: 'Turno por turno',
-    desc: 'Abrí una tarjeta para ver el efectivo inicial, esperado, contado, retirado y dejado para el siguiente turno, las observaciones y quién cerró. Se muestran cinco cierres por página.',
-    radius: 8,
-  },
-];
-
-export default async function CajaHistorialPage() {
-  // El arqueo de cada operador es información sensible entre compañeros: ocultar el ítem del
-  // menú no alcanza, la ruta se puede escribir a mano. El rol se normaliza igual que en
-  // AdminNavbarSidebar — llega con mayúsculas inconsistentes y comparar exacto rebota al admin.
+export default async function CajaPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await auth();
   if ((session?.user?.role ?? '').toUpperCase() !== 'ADMIN') redirect('/tickets');
+  const query = await searchParams;
   const schedule = await getTicketSchedule();
-  const shiftsEnabled = schedule?.shiftsEnabled !== false;
-
-  return (
-    <div className="container mx-auto max-w-7xl px-4 py-6 sm:p-8">
-      <PageHeader
-        breadcrumb={['Estacionamiento', 'Administración', 'Historial de turnos']}
-        title="Historial de turnos"
-        description="Revisá cuánto se contó, cuánto se retiró y cuánto quedó para el siguiente operador. La planilla diaria agrupa los movimientos por fecha."
-        actions={<PageTour steps={TOUR_STEPS.filter(step => shiftsEnabled || step.key !== 'turno')} />}
-      />
-      <div className="mt-2">
-        <CajaActions shiftsEnabled={shiftsEnabled} />
-      </div>
-    </div>
-  );
+  const shiftsEnabled = schedule?.shiftsEnabled === true;
+  if (query.tab === 'turnos' && !shiftsEnabled) redirect('/admin/caja');
+  const tab = query.tab === 'turnos' && shiftsEnabled ? 'turnos' : 'movimientos';
+  const params = Object.fromEntries(Object.entries(query).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[0] !== 'tab'));
+  const expenses = tab === 'movimientos' ? await getExpenses(undefined, params) : null;
+  return <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6 sm:p-8">
+    <PageHeader breadcrumb={['Estacionamiento', 'Administración', 'Caja']} title="Caja" description={shiftsEnabled ? 'Consultá la planilla diaria, registrá ingresos y gastos y revisá los turnos.' : 'Consultá la planilla diaria y registrá ingresos y gastos.'} actions={tab === 'movimientos' ? <PlanillaButton /> : undefined} />
+    <nav aria-label="Secciones de caja" className="flex flex-wrap gap-2 border-b border-border pb-3">
+      {[{ value: 'movimientos', label: 'Ingresos y gastos' }, ...(shiftsEnabled ? [{ value: 'turnos', label: 'Turnos e historial' }] : [])].map(item => <Link key={item.value} href={'/admin/caja?tab=' + item.value} aria-current={tab === item.value ? 'page' : undefined} className={'rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ' + (tab === item.value ? 'border-gm-yellow/40 bg-gm-yellow/10 text-gm-yellow' : 'border-border hover:bg-secondary/40')}>{item.label}</Link>)}
+    </nav>
+    {tab === 'turnos' ? schedule ? <CajaActions shiftsEnabled={schedule.shiftsEnabled === true} /> : <p role="alert" className="rounded-xl border border-destructive p-4">No se pudo consultar la configuración de turnos. Recargá para intentar nuevamente.</p> : <section className="space-y-4"><div><h2 className="text-lg font-semibold">Ingresos y gastos adicionales</h2><p className="mt-1 text-sm text-muted-foreground">Los movimientos que antes cargabas en «Varios». Los cobros de estacionamiento se consultan en la planilla diaria.</p></div>{expenses ? <ExpenseTable columns={expenseColumns} data={expenses.data || []} total={expenses.meta.totalItems || 0} /> : <p role="alert" className="rounded-xl border border-destructive p-4">No se pudieron cargar los movimientos. Recargá para intentar nuevamente.</p>}</section>}
+  </div>;
 }

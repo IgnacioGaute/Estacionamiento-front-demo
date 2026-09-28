@@ -4,7 +4,13 @@ import { cookies } from "next/headers";
 export type OperationalContext = {
   role?: "USER" | "ADMIN" | "SUPER_ADMIN";
   empresa: { id: string; nombre: string } | null;
-  playas: { id: string; nombre: string; empresaId: string }[];
+  playas: {
+    id: string;
+    nombre: string;
+    empresaId: string;
+    // Secciones opcionales que el super admin prendió en la playa.
+    modulos?: { inquilinos?: boolean };
+  }[];
 };
 export async function getOperationalContext(): Promise<OperationalContext> {
   const session = await auth();

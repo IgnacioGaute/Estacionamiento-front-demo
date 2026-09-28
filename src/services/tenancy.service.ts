@@ -28,15 +28,16 @@ async function leerError(
 }
 
 export async function getEmpresas(): Promise<EmpresaConDetalle[]> {
-  const response = await fetch(`${BASE_URL}/tenancy/empresas`, {
-    headers: await getAuthHeaders(),
-    cache: "no-store",
-  });
-  if (!response.ok)
-    throw new Error(
-      await leerError(response, "No se pudieron cargar las empresas."),
-    );
-  return response.json();
+  // Platform dashboard and tenant selectors need the full company summary,
+  // fetched in bounded pages rather than truncating global KPIs.
+  const empresas: EmpresaConDetalle[] = [];
+  let page = 1, pages = 1;
+  do {
+    const response = await fetch(`${BASE_URL}/tenancy/empresas?page=${page}&limit=100`, { headers: await getAuthHeaders(), cache: 'no-store' });
+    if (!response.ok) throw new Error(await leerError(response, 'No se pudieron cargar las empresas.'));
+    const result = await response.json(); empresas.push(...result.data); pages = result.meta.totalPages; page++;
+  } while (page <= pages);
+  return empresas;
 }
 
 export async function createEmpresa(
@@ -156,7 +157,7 @@ async function modificar(path: string, method: string, body?: unknown) {
 }
 export const updatePlaya = (
   id: string,
-  datos: { nombre: string; direccion?: string },
+  datos: { nombre?: string; direccion?: string; modulos?: { inquilinos?: boolean } },
 ) => modificar(`playas/${id}`, "PATCH", datos);
 export const saveUsuarioEmpresa = (
   empresaId: string,

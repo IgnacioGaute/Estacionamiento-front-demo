@@ -7,13 +7,14 @@ import { Customer } from '@/types/cutomer.type';
 import { restoredCustomerAction } from '@/actions/customers/restored-customer.action';
 import { RotateCcw } from 'lucide-react';
 
-export function RestoredRenterDialog({ customer }: { customer: Customer }) {
+export function RestoredRenterDialog({ customer, onHecho }: { customer: Customer; onHecho?: () => void }) {
   const handleRestore = async () => {
     const data = await restoredCustomerAction(customer.id);
     if (!data || data.error) {
       toast.error(data?.error);
     } else {
       toast.success(data.success);
+      onHecho?.();
     }
   };
 
@@ -36,7 +37,7 @@ export function RestoredRenterDialog({ customer }: { customer: Customer }) {
       <span className="font-semibold text-foreground">
         {customer.firstName} {customer.lastName}
       </span>{' '}
-      con sus datos históricos.
+      con sus cocheras y su cuenta: vuelve a recibir los abonos de cada mes.
     </ConfirmActionDialog>
   );
 }

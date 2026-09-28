@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { EmpresaConDetalle } from "@/types/tenancy.type";
 import { getEmpresasAction } from "@/actions/tenancy/tenancy.action";
 
@@ -97,13 +97,10 @@ export function PlatformBar() {
     return salida.slice(0, 8);
   }, [busqueda, empresas]);
 
-  const activas = empresas.filter((e) => e.estado === "ACTIVA").length;
-  const suspendidas = empresas.length - activas;
-  const sinPlaya = empresas.reduce(
-    (n, e) =>
-      n + e.usuarios.filter((u) => u.role === "USER" && !u.playaIds.length).length,
-    0,
-  );
+  const activas = empresas.filter((e) => e.estado === "ACTIVA");
+  const suspendidas = empresas.length - activas.length;
+  // Empresas activas que todavía no pueden operar porque no tienen ninguna playa.
+  const sinPlayas = activas.filter((e) => !e.playas.length).length;
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -137,7 +134,7 @@ export function PlatformBar() {
         )}
       </nav>
 
-      <div ref={caja} className="relative min-w-0 flex-1 md:max-w-md">
+      <div ref={caja} className="relative min-w-0 flex-1 md:min-w-[260px] md:max-w-md">
         <label className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-gm-surface-2 px-3">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <span className="sr-only">Buscar en la plataforma</span>
@@ -199,16 +196,42 @@ export function PlatformBar() {
 
       <Link
         href="/admin/empresas"
-        className="hidden shrink-0 items-center gap-2 rounded-xl border border-border/70 px-3 py-2 text-xs text-muted-foreground hover:text-foreground xl:flex"
+        aria-label="Estado de la plataforma"
+        className="ml-auto hidden h-9 shrink-0 items-center gap-3 rounded-full border border-border bg-gm-surface px-3.5 text-[12.5px] text-[#C9BFB1] transition-colors hover:border-gm-line-strong hover:text-foreground xl:flex"
       >
-        <span className="size-1.5 rounded-full bg-emerald-400" aria-hidden />
-        {activas} activas
+        <span className="flex items-center gap-1.5">
+          <span className="size-[7px] rounded-full bg-emerald-400" aria-hidden />
+          {activas.length} activas
+        </span>
         {suspendidas > 0 && (
-          <span className="text-gm-orange">· {suspendidas} suspendidas</span>
+          <>
+            <span aria-hidden className="text-[#53493C]">·</span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-[7px] rounded-full bg-[#FF7A4D]" aria-hidden />
+              {suspendidas} suspendida{suspendidas === 1 ? "" : "s"}
+            </span>
+          </>
         )}
-        {sinPlaya > 0 && (
-          <span className="text-gm-orange">· {sinPlaya} sin playa</span>
+        {sinPlayas > 0 && (
+          <>
+            <span aria-hidden className="text-[#53493C]">·</span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-[7px] rounded-full bg-[#8A8073]" aria-hidden />
+              {sinPlayas} sin playas
+            </span>
+          </>
         )}
+      </Link>
+
+      {/* Abre el alta en la pantalla de empresas, desde cualquier lugar de la plataforma. */}
+      <Link
+        href="/admin/empresas?nueva=1"
+        data-tour="empresas-crear"
+        aria-label="Nueva empresa"
+        className="flex h-10 shrink-0 items-center gap-2 rounded-xl bg-gm-yellow px-3 text-sm font-bold text-gm-ink transition-colors hover:bg-[#FFD23A] sm:px-4"
+      >
+        <Plus className="size-4" strokeWidth={2.5} />
+        <span className="hidden sm:inline">Nueva empresa</span>
       </Link>
     </div>
   );

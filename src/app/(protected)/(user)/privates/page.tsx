@@ -1,20 +1,24 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-import { getCustomers, getOwnersAvailableForRent, getRenterParkingTypes, findAllPendingReceipts } from '@/services/customers.service';
+import { getCustomersPage, getOwnersAvailableForRent, getRenterParkingTypes, findAllPendingReceipts } from '@/services/customers.service';
 import { privateColumns } from './components/private-columns';
 import { PrivatesTable } from './components/privates-table';
 import { CUSTOMER_TYPE } from '@/types/cutomer.type';
 import { PageHeader } from '@/components/page-header';
 import { CustomerActionsBar } from '../components/customers/drop-menu-actions';
 
-export default async function PrivatePage() {
-  const customers = await getCustomers(CUSTOMER_TYPE[2]);
+export default async function PrivatePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const query = await searchParams;
+  const params = Object.fromEntries(Object.entries(query).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+  if (params.lastName && !params.search) params.search = params.lastName;
+  const result = await getCustomersPage(CUSTOMER_TYPE[2], params);
+  const customers = result.data;
   const customersThirds = await getOwnersAvailableForRent();
   const renterParkingTypesData = await getRenterParkingTypes();
   const receiptsData = await findAllPendingReceipts(CUSTOMER_TYPE[2]);
   const receipts = Array.isArray(receiptsData) ? receiptsData : [];
-  const count = customers?.length ?? 0;
+  const count = result.meta.totalItems;
 
   return (
     <div className="container mx-auto px-4 py-6 sm:p-8 max-w-7xl">
@@ -39,6 +43,7 @@ export default async function PrivatePage() {
         <PrivatesTable
           columns={privateColumns}
           data={customers || []}
+          total={result.meta.totalItems}
           customersRenters={customersThirds || []}
           renterParkingTypes={renterParkingTypesData?.data || []}
         />

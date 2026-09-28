@@ -18,7 +18,16 @@ import { CloseRegistrationSchemaType } from "@/schemas/close-registration.schema
 import { FrequentCustomer } from "@/types/frequent-customer.type";
 import { TicketRegistrationForDay } from "@/types/ticket-registration-for-day.type";
 import { TicketRegistrationForDaySchemaType } from "@/schemas/ticket-registration-for-day.schema";
-
+export async function getFrequentCustomersPage(filters: FrequentCustomersFilters, authToken?: string) {
+  const url = new URL(`${BASE_URL}/tickets/registrations/frequent`);
+  for (const [key, value] of Object.entries(filters)) if (value !== undefined && value !== '') url.searchParams.set(key, String(value));
+  const response = await fetch(url.toString(), { headers: await getAuthHeaders(authToken), cache: 'no-store' });
+  if (!response.ok) throw new Error('No se pudieron consultar los clientes frecuentes.');
+  return response.json() as Promise<{ data: FrequentCustomer[]; meta: { totalItems: number } }>;
+}
+export async function getFrequentCustomers(filters: FrequentCustomersFilters, authToken?: string) {
+  return (await getFrequentCustomersPage(filters, authToken)).data;
+}
 export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean; shiftsEnabled?: boolean; pricingDayTypeBasis?: 'ENTRY' | 'EXIT'; pricingOptions?: PricingOptions | null; receiptDelivery?: ReceiptDeliverySettings };
 
 
@@ -277,29 +286,7 @@ export const deleteTicket = async (id: string, authToken?: string) => {
   }
 };
 
-export const getTicketRegistrations = async (authToken?: string) => {
-  try {
-    const response = await fetch(`${BASE_URL}/tickets/registrations`, {
-      headers: await getAuthHeaders(authToken),
-      next: {
-        tags: [getCacheTag('tickets', 'all')],
-      },
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      return data as TicketRegistration[];
-
-    } else {
-      console.error(data);
-      return [];
-    }
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
-};
+export const getTicketRegistrations = async (authToken?: string) => getOperationalRecords<TicketRegistration>('registrations', authToken);
 
   
   export const getTicketRegistrationById = async (id: string, authToken?: string) => {
@@ -567,56 +554,19 @@ export const closeRegistrationByPlate = async (
 };
 
 export type FrequentCustomersFilters = {
+  page?: number;
+  limit?: number;
+  search?: string;
   from?: string;
   to?: string;
   vehicleType?: string;
   minVisits?: number;
 };
 
-export const getFrequentCustomers = async (filters: FrequentCustomersFilters, authToken?: string) => {
-  try {
-    const url = new URL(`${BASE_URL}/tickets/registrations/frequent`);
-    if (filters.from) url.searchParams.set('from', filters.from);
-    if (filters.to) url.searchParams.set('to', filters.to);
-    if (filters.vehicleType) url.searchParams.set('vehicleType', filters.vehicleType);
-    if (filters.minVisits) url.searchParams.set('minVisits', String(filters.minVisits));
-
-    const response = await fetch(url.toString(), {
-      headers: await getAuthHeaders(authToken),
-      cache: 'no-store',
-    });
-    const data = await response.json();
-
-    if (response.ok) {
-      return data as FrequentCustomer[];
-    } else {
-      console.error(data);
-      return [];
-    }
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
-};
-
-export const getPlateHistory = async (plate: string, authToken?: string) => {
-  try {
-    const response = await fetch(`${BASE_URL}/tickets/registrations/frequent/${encodeURIComponent(plate)}`, {
-      headers: await getAuthHeaders(authToken),
-      cache: 'no-store',
-    });
-    const data = await response.json();
-
-    if (response.ok) {
-      return data as TicketRegistration[];
-    } else {
-      console.error(data);
-      return [];
-    }
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
+export const getPlateHistory = async (plate: string, authToken?: string, page = 1) => {
+  const response = await fetch(`${BASE_URL}/tickets/registrations/frequent/${encodeURIComponent(plate)}?page=${page}&limit=20`, { headers: await getAuthHeaders(authToken), cache: 'no-store' });
+  if (!response.ok) throw new Error('No se pudo consultar el historial.');
+  return response.json() as Promise<{ data: TicketRegistration[]; meta: { totalItems: number } }>;
 };
 
 export const createTicketRegistrationForDay = async (
@@ -644,27 +594,7 @@ export const createTicketRegistrationForDay = async (
   }
 };
 
-export const getTicketsRegistrationForDay = async (authToken?: string) => {
-  try {
-    const response = await fetch(`${BASE_URL}/tickets/registrationForDays`, {
-      headers: await getAuthHeaders(authToken),
-      next: {
-        tags: [getCacheTag('registrationForDays', 'all')],
-      },
-    });
-    const data = await response.json();
-
-    if (response.ok) {
-      return data as TicketRegistrationForDay[];
-    } else {
-      console.error(data);
-      return null;
-    }
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
-};
+export const getTicketsRegistrationForDay = async (authToken?: string) => getOperationalRecords<TicketRegistrationForDay>('registrationForDays', authToken);
 
 export const updateTicketStatus = async (
   id: string,
@@ -754,4 +684,21 @@ export async function previewTicketPrice(vehicleType: string, ticketDayType: str
   const data = await response.json();
   if (!response.ok) throw new Error(data.message ?? 'No se pudo calcular la tarifa.');
   return data as PricingPreviewResult;
+}
+/** Only active stays (+ latest hourly movement), not the historical ledger.
+ * The operation screen needs the complete active set to avoid hiding vehicles. */
+async function getOperationalRecords<T>(endpoint: string, authToken?: string): Promise<T[]> {
+  const headers = await getAuthHeaders(authToken);
+  const records: T[] = [];
+  let page = 1, pages = 1;
+  do {
+    const response = await fetch(`${BASE_URL}/tickets/${endpoint}?operation=true&limit=100&page=${page}`, { headers, cache: 'no-store' });
+    if (!response.ok) throw new Error('No se pudieron consultar los vehículos activos.');
+    const result = await response.json();
+    if (!Array.isArray(result.data) || !result.meta) throw new Error('Actualizá backend y frontend juntos.');
+    records.push(...result.data);
+    pages = result.meta.totalPages;
+    page++;
+  } while (page <= pages);
+  return records;
 }

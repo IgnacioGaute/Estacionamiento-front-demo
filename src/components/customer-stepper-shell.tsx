@@ -83,6 +83,11 @@ export interface CustomerStepperShellProps<TForm extends FieldValues> {
   onConfirm: (values: TForm) => void | Promise<void>;
   /** Number of vehicle items currently in the form — used for stepper label. */
   vehiclesCount: number;
+  /**
+   * Oculta crédito inicial y «Estado de cuenta» (deuda por meses). Los inquilinos cargan su saldo
+   * inicial con el editor de la cuenta corriente, en el paso de cocheras.
+   */
+  sinDeudaLegacy?: boolean;
 }
 
 const defaultNames = {
@@ -114,6 +119,7 @@ export function CustomerStepperShell<TForm extends FieldValues>(
     onNextFromCustomer,
     onConfirm,
     vehiclesCount,
+    sinDeudaLegacy = false,
   } = props;
 
   const [phase, setPhase] = useState<'customer' | 'vehicles'>('customer');
@@ -193,7 +199,7 @@ export function CustomerStepperShell<TForm extends FieldValues>(
             <StepperStep
               n={1}
               label="Identidad"
-              sub="Cliente · deuda · crédito"
+              sub={sinDeudaLegacy ? "Datos y contacto" : "Cliente · deuda · crédito"}
               active={phase === 'customer'}
               done={phase === 'vehicles'}
             />
@@ -212,7 +218,9 @@ export function CustomerStepperShell<TForm extends FieldValues>(
             onSubmit={form.handleSubmit(
               phase === 'customer' ? handlePhase1Submit : onConfirm,
             )}
-            className="flex max-h-[calc(92vh-200px)] flex-col"
+            // El cuerpo del Dialog ya mide como mucho 85dvh con su propio padding: si el
+            // formulario pide más, aparece un segundo scroll y el encabezado se va de vista.
+            className="flex max-h-[calc(85dvh-215px)] flex-col"
           >
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-7">
               {phase === 'customer' && (
@@ -281,9 +289,9 @@ export function CustomerStepperShell<TForm extends FieldValues>(
                   <Section
                     icon={<ParkingCircle className="size-3.5" />}
                     title="Configuración"
-                    hint="Cantidad de cocheras y crédito inicial."
+                    hint={sinDeudaLegacy ? 'Cantidad de cocheras.' : 'Cantidad de cocheras y crédito inicial.'}
                   >
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className={sinDeudaLegacy ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                       <FormField
                         control={form.control}
                         name={fieldNames!.numberOfVehicles}
@@ -302,7 +310,7 @@ export function CustomerStepperShell<TForm extends FieldValues>(
                           </FormItem>
                         )}
                       />
-                      <FormField
+                      {!sinDeudaLegacy && <FormField
                         control={form.control}
                         name={fieldNames!.credit}
                         render={({ field }) => (
@@ -332,10 +340,10 @@ export function CustomerStepperShell<TForm extends FieldValues>(
                             <FormMessage />
                           </FormItem>
                         )}
-                      />
+                      />}
                     </div>
 
-                    {credit > 0 && (
+                    {!sinDeudaLegacy && credit > 0 && (
                       <p className="-mt-1 text-[11.5px] text-muted-foreground">
                         Saldo a favor de {ars(credit)} — se aplicará al primer
                         cobro automáticamente.
@@ -343,7 +351,7 @@ export function CustomerStepperShell<TForm extends FieldValues>(
                     )}
                   </Section>
 
-                  <Section
+                  {!sinDeudaLegacy && <Section
                     icon={<CircleDollarSign className="size-3.5" />}
                     title="Estado de cuenta"
                     hint="¿El cliente arrastra deuda de meses anteriores?"
@@ -499,7 +507,7 @@ export function CustomerStepperShell<TForm extends FieldValues>(
                         )}
                       />
                     )}
-                  </Section>
+                  </Section>}
 
                   <Section
                     title="Notas internas"

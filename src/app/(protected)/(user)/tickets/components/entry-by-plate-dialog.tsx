@@ -75,8 +75,10 @@ export function EntryByPlateDialog({
 
   useEffect(() => {
     if (!open) return;
-    getFrequentCustomersAction({ minVisits: 2 }).then(setFrequentCustomers);
-  }, [open]);
+    let current = true;
+    const timer = setTimeout(() => { getFrequentCustomersAction({ minVisits: 2, search: frequentQuery, limit: 20 }).then(data => { if (current) setFrequentCustomers(data); }).catch(() => { if (current) setFrequentCustomers([]); }); }, 250);
+    return () => { current = false; clearTimeout(timer); };
+  }, [open, frequentQuery]);
 
   const filteredFrequent = useMemo(() => {
     const q = frequentQuery.trim();

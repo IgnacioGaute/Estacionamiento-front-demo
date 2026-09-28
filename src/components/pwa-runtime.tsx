@@ -5,7 +5,15 @@ import { setInstallPrompt, type InstallPrompt } from '@/lib/pwa-install';
 export function PwaRuntime() {
   const [offline, setOffline] = useState(false);
   useEffect(() => {
-    const update = () => setOffline(!navigator.onLine);
+    const update = () => {
+      setOffline(!navigator.onLine);
+      if (!navigator.onLine && window.location.pathname === '/tickets') {
+        const moduleUrl = '/offline-vault.js';
+        void import(/* webpackIgnore: true */ moduleUrl).then(async vault => {
+          if (!navigator.onLine && await vault.hasOperations()) window.location.replace('/offline.html');
+        }).catch(() => { /* Keep the recovery link if this device is not prepared. */ });
+      }
+    };
     update();
     window.addEventListener('online', update);
     window.addEventListener('offline', update);

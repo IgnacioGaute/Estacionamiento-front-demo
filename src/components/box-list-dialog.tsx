@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
+import * as DateDialog from '@radix-ui/react-dialog';
+import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { BoxList } from '@/types/box-list.type';
 import { findBoxByDate } from '@/services/box-lists.service';
@@ -17,8 +19,8 @@ import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { FileText, Printer } from 'lucide-react';
-import { es } from 'date-fns/locale';
+import { CalendarDays, ChevronLeft, ChevronRight, FileText, Printer, Wallet, Loader2, Info } from 'lucide-react';
+import { getShiftsEnabledAction } from '@/actions/turnos/shifts-enabled.action';
 import { CompactPagination } from '@/components/compact-pagination';
 
 dayjs.extend(utc);
@@ -38,15 +40,28 @@ const hora = (iso: string) =>
   dayjs(iso).tz('America/Argentina/Buenos_Aires').format('HH:mm');
 
 export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [boxData, setBoxData] = useState<BoxList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [shiftsEnabled, setShiftsEnabled] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [turnPage, setTurnPage] = useState(0);
   const turns = boxData?.turnosDelDia ?? [];
   const currentTurnPage = Math.min(turnPage, Math.max(0, Math.ceil(turns.length / 3) - 1));
   const requestId = useRef(0);
   const { data: session } = useSession();
+
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setShiftsEnabled(false);
+    getShiftsEnabledAction().then(enabled => {
+      if (active) setShiftsEnabled(enabled);
+    }).catch(() => { if (active) setShiftsEnabled(false); });
+    return () => { active = false; };
+  }, [open, session?.token]);
 
   const fetchData = async (date: Date) => {
     const id = ++requestId.current;
@@ -88,13 +103,20 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
       setError('No hay datos disponibles para generar el PDF.');
       return;
     }
+    setPrinting(true);
     try {
       await generateBoxList(boxData, session?.user.email || '');
     } catch (err) {
       console.error(err);
       setError('Error al generar o enviar el PDF.');
+    } finally {
+      setPrinting(false);
     }
   };
+
+  const dateKey = dayjs(selectedDate).format('YYYY-MM-DD');
+  const todayKey = dayjs().format('YYYY-MM-DD');
+  const dateLabel = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' }).format(selectedDate);
 
   const formattedSelectedDate = dayjs(selectedDate)
     .tz('America/Argentina/Buenos_Aires')
@@ -102,7 +124,7 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-md max-h-[90dvh] overflow-hidden">
+      <DialogContent className="max-w-3xl max-h-[90dvh] overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <span className="grid size-9 place-items-center rounded-md border border-gm-yellow/40 bg-gm-yellow/15 text-gm-yellow">
@@ -111,72 +133,87 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
             <div>
               <DialogTitle>Planilla diaria de caja</DialogTitle>
               <DialogDescription className="mt-0.5">
-                Consultá los movimientos de una fecha. Imprimir esta planilla no cierra ningún turno.
+                Resumen del efectivo registrado en la fecha que elijas.
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <Calendar
-            mode="single"
-            locale={es}
-            selected={selectedDate}
-            onSelect={(day) => { if (day && day <= new Date()) setSelectedDate(day); }}
-            disabled={(day) => day > new Date()}
-            modifiers={{ today: new Date() }}
-            modifiersClassNames={{
-              today:    'bg-gm-yellow/20 text-gm-yellow font-bold ring-1 ring-gm-yellow/40',
-              selected: 'bg-gm-yellow text-gm-ink font-bold',
-            }}
-            className="rounded-md border border-border bg-gm-surface-2 p-2 w-full"
-            classNames={{
-              months:   'w-full',
-              month:    'w-full space-y-2',
-              caption:  'flex justify-center relative items-center pb-1',
-              caption_label: 'text-[13px] font-bold capitalize',
-              nav_button_previous: 'absolute left-0',
-              nav_button_next: 'absolute right-0',
-              table:    'w-full border-collapse',
-              head_row: 'grid grid-cols-7',
-              head_cell: 'text-[11px] font-medium text-muted-foreground text-center py-1',
-              row:      'grid grid-cols-7 mt-0.5',
-              cell:     'text-center text-[12.5px] p-0 relative aspect-square flex items-center justify-center',
-              day:      'h-8 w-8 p-0 font-normal rounded-md hover:bg-white/[0.08] transition-colors mx-auto flex items-center justify-center',
-            }}
-          />
-
-          {/* Selected date indicator */}
-          <div className="flex items-center justify-between rounded-md border border-border bg-gm-surface-2 px-3 py-2">
-            <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-              Fecha seleccionada
-            </span>
-            <span className="gm-mono gm-tnum text-[13px] font-semibold text-foreground">
-              {formattedSelectedDate}
-            </span>
+        <div className="min-w-0 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-secondary/20 p-3">
+            <div className="flex items-center gap-2">
+              <Button size="icon" variant="ghost" aria-label="Día anterior" onClick={() => setSelectedDate(dayjs(selectedDate).subtract(1, 'day').toDate())}><ChevronLeft className="size-4" /></Button>
+              <DateDialog.Root open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <DateDialog.Trigger asChild>
+                  <Button variant="outline" aria-label={`Cambiar fecha: ${formattedSelectedDate}`} className="h-11 gap-3 rounded-xl bg-background px-4 font-semibold tabular-nums">
+                    <CalendarDays className="size-4 text-gm-yellow" />{formattedSelectedDate}
+                  </Button>
+                </DateDialog.Trigger>
+                <DateDialog.Portal>
+                  <DateDialog.Overlay className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm" />
+                  <DateDialog.Content aria-describedby={undefined} className="fixed left-1/2 top-1/2 z-[71] w-[292px] max-w-[calc(100vw-24px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-popover text-popover-foreground shadow-2xl focus:outline-none">
+                    <div className="flex items-center justify-between border-b border-border px-4 py-2"><DateDialog.Title className="text-sm font-semibold">Fecha de la planilla</DateDialog.Title><DateDialog.Close className="rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-secondary focus-visible:ring-2 focus-visible:ring-gm-yellow">Cerrar</DateDialog.Close></div>
+                  <Calendar
+                    mode="single" locale={es} weekStartsOn={1} initialFocus
+                    selected={selectedDate} defaultMonth={selectedDate} toMonth={new Date()}
+                    disabled={{ after: new Date() }}
+                    onSelect={date => { if (date) { setSelectedDate(dayjs(date).hour(12).toDate()); setDatePickerOpen(false); } }}
+                    className="p-3"
+                    classNames={{
+                      months: 'w-full', month: 'w-full space-y-1',
+                      caption: 'relative flex h-8 items-center justify-center',
+                      caption_label: 'text-sm font-semibold capitalize',
+                      nav_button: 'inline-flex size-8 items-center justify-center rounded-lg border border-border bg-secondary/30 text-foreground transition-colors hover:bg-gm-yellow/15 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-30',
+                      table: 'w-full border-collapse', head_row: 'grid grid-cols-7',
+                      head_cell: 'py-2 text-center text-[11px] font-semibold uppercase text-muted-foreground',
+                      row: 'grid grid-cols-7', cell: 'relative p-0 text-center',
+                      day: 'mx-auto flex h-[clamp(20px,calc((100dvh-180px)/6),36px)] w-9 items-center justify-center rounded-xl text-sm tabular-nums transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
+                      day_selected: '!bg-gm-yellow !text-gm-ink font-bold shadow-sm',
+                      day_today: 'font-bold text-gm-yellow ring-1 ring-inset ring-gm-yellow/40',
+                      day_outside: 'text-muted-foreground/40', day_disabled: 'pointer-events-none opacity-25',
+                    }}
+                  />
+                  <div className="flex items-center justify-between border-t border-border bg-secondary/20 px-4 py-2"><span className="text-xs text-muted-foreground">Hasta el día de hoy</span><Button size="sm" variant="ghost" className="text-gm-yellow" onClick={() => { setSelectedDate(new Date()); setDatePickerOpen(false); }}>Ir a hoy</Button></div>
+                  </DateDialog.Content>
+                </DateDialog.Portal>
+              </DateDialog.Root>
+              <Button size="icon" variant="ghost" aria-label="Día siguiente" disabled={dateKey >= todayKey} onClick={() => setSelectedDate(dayjs(selectedDate).add(1, 'day').toDate())}><ChevronRight className="size-4" /></Button>
+            </div>
+            <div className="flex gap-1 rounded-xl border border-border bg-background p-1">
+              {[{ label: 'Hoy', days: 0 }, { label: 'Ayer', days: 1 }].map(item => <Button key={item.label} size="sm" aria-pressed={dateKey === dayjs().subtract(item.days, 'day').format('YYYY-MM-DD')} variant={dateKey === dayjs().subtract(item.days, 'day').format('YYYY-MM-DD') ? 'default' : 'ghost'} className="rounded-lg px-5" onClick={() => setSelectedDate(dayjs().subtract(item.days, 'day').toDate())}>{item.label}</Button>)}
+            </div>
           </div>
-
+          <section className="min-w-0 space-y-4" aria-busy={loading} aria-label="Resumen de caja">
           {boxData && (
-            <div className="rounded-md border border-border bg-gm-surface-2 p-3">
-              <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                Efectivo neto del día
+            <div key={dateKey} className="overflow-hidden rounded-2xl border border-border bg-background/40 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
+                <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Resumen diario</p><h3 className="mt-1 text-base font-semibold capitalize">{dateLabel}</h3></div>
+                <span className="rounded-lg border border-border bg-secondary/30 px-3 py-1.5 font-mono text-xs text-muted-foreground">{formattedSelectedDate}</span>
               </div>
-              <div className="gm-display gm-tnum mt-1 text-[24px] font-bold text-gm-yellow leading-none">
-                {ars(boxData.totalPrice)}
+              <div className="relative overflow-hidden bg-gradient-to-br from-gm-yellow/10 via-transparent to-transparent px-5 py-7 sm:px-6 sm:py-9">
+                <Wallet aria-hidden className="pointer-events-none absolute -right-4 top-3 size-36 -rotate-12 text-gm-yellow/[0.04]" />
+                <div className="relative">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"><span className="size-2 rounded-full bg-gm-yellow" /> Efectivo neto del día</div>
+                  <p className="mt-4 break-words text-4xl font-bold tracking-tight text-foreground tabular-nums sm:text-5xl">{ars(boxData.totalPrice)}</p>
+                  <p className="mt-3 text-sm text-muted-foreground">Entradas menos salidas · Pesos argentinos</p>
+                </div>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">Entradas menos salidas de efectivo de este día. No incluye el fondo inicial ni los retiros al cerrar: no es el dinero disponible en el cajón.</p>
+              <div className="flex items-start gap-3 border-t border-dashed border-border bg-secondary/15 px-5 py-4 sm:px-6">
+                <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <p className="text-xs leading-relaxed text-muted-foreground">Este total resume el movimiento de efectivo de la fecha; no representa el saldo disponible en el cajón.{shiftsEnabled && ' No incluye el fondo inicial ni los retiros al cerrar el turno.'}</p>
+              </div>
             </div>
           )}
 
-          {boxData && boxData.turnosDelDia && boxData.turnosDelDia.length > 0 && (
-            <div className="rounded-md border border-border bg-gm-surface-2 p-3 space-y-2">
+          {shiftsEnabled && boxData && boxData.turnosDelDia && boxData.turnosDelDia.length > 0 && (
+            <div className="rounded-2xl border border-border bg-secondary/20 p-4 space-y-3">
               <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
                 Efectivo del día por turno
               </div>
               {turns.slice(currentTurnPage * 3, (currentTurnPage + 1) * 3).map((t) => (
-                <div key={t.turnoId ?? 'sin-turno'} className="flex items-start justify-between gap-3 border-t border-border/60 pt-2 first:border-0 first:pt-0">
+                <div key={t.turnoId ?? 'sin-turno'} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border/60 bg-background/40 p-3">
                   <div className="min-w-0">
-                    <div className="truncate text-[12.5px] font-semibold text-foreground">
+                    <div className="text-sm font-semibold text-foreground">
                       {t.turno
                         ? `${t.turno.nombre} · ${t.turno.usuarioApertura ? `${t.turno.usuarioApertura.firstName} ${t.turno.usuarioApertura.lastName}` : 'Operador no disponible'}`
                         : 'Sin turno asignado'}
@@ -193,24 +230,25 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
               ))}
               <CompactPagination page={currentTurnPage} total={turns.length} pageSize={3} onChange={setTurnPage} />
               <p className="border-t border-border/60 pt-2 text-[11px] leading-snug text-muted-foreground">
-                Un día puede incluir varios turnos, y un turno puede abarcar varios días. El administrador consulta los cierres en Historial de turnos.
+                Un día puede incluir varios turnos, y un turno puede abarcar varios días. El administrador consulta los cierres en Caja → Turnos e historial.
               </p>
             </div>
           )}
 
-          {loading && <p role="status" className="text-sm text-muted-foreground">Cargando movimientos del día…</p>}
+          {loading && <div role="status" className="flex min-h-40 items-center justify-center gap-3 rounded-2xl border border-dashed border-border text-sm text-muted-foreground"><Loader2 className="size-5 animate-spin motion-reduce:animate-none" /> Cargando planilla…</div>}
           {error && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-[#F08775]">
+            <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-[#F08775]">
               {error}
             </div>
           )}
+          </section>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-1 gap-2 border-t border-border pt-4">
           <Button variant="ghost" onClick={() => setOpen(false)}>Cerrar</Button>
-          <Button onClick={handlePrintPdf} disabled={!boxData || loading}>
-            <Printer className="size-4" />
-            Imprimir planilla
+          <Button onClick={handlePrintPdf} disabled={!boxData || loading || printing}>
+            {printing ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
+            {printing ? 'Preparando PDF…' : 'Imprimir planilla'}
           </Button>
         </DialogFooter>
       </DialogContent>

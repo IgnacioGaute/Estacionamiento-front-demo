@@ -123,22 +123,21 @@ export const createNote = async (
     }
   };
 
-  export const getTodayNotes = async (userId: string, authToken?: string): Promise<Note[]> => {
+  export const getTodayNotes = async (userId: string, authToken?: string, page = 1): Promise<{ data: Note[]; meta: { totalItems: number; totalPages: number } }> => {
     try {
-      const response = await fetch(`${BASE_URL}/notes/today/${userId}`, {
+      const response = await fetch(`${BASE_URL}/notes/today/${userId}?page=${page}`, {
         headers: await getAuthHeaders(authToken),
       });
       const data = await response.json();
   
-      if (response.ok && Array.isArray(data)) {
-        return data as Note[];
+      if (response.ok && Array.isArray(data.data)) {
+        return data;
       } else {
-        console.error('Error en la respuesta de getTodayNotes:', data);
-        return [];
+        throw new Error('No se pudieron consultar las notas.');
       }
     } catch (error) {
       console.error('Error en getTodayNotes:', error);
-      return []; 
+      throw error;
     }
   };
   

@@ -9,21 +9,24 @@ const TenantContext = createContext<{
   playaId: string;
   context: OperationalContext;
   shiftsEnabled: boolean;
-}>({ playaId: "", context: { empresa: null, playas: [] }, shiftsEnabled: true });
+  // La sección de inquilinos la prende el super admin por playa.
+  inquilinosEnabled: boolean;
+}>({ playaId: "", context: { empresa: null, playas: [] }, shiftsEnabled: false, inquilinosEnabled: false });
 export const useTenant = () => useContext(TenantContext);
 export function TenantProvider({
   context,
   playaId,
   children,
-  shiftsEnabled = true,
+  shiftsEnabled = false,
 }: {
   context: OperationalContext;
   playaId: string;
   children: React.ReactNode;
   shiftsEnabled?: boolean;
 }) {
+  const inquilinosEnabled = !!context.playas.find((p) => p.id === playaId)?.modulos?.inquilinos;
   return (
-    <TenantContext.Provider value={{ context, playaId, shiftsEnabled }}>
+    <TenantContext.Provider value={{ context, playaId, shiftsEnabled, inquilinosEnabled }}>
       {children}
     </TenantContext.Provider>
   );

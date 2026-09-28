@@ -1,5 +1,7 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
+
 import { ticketPriceSchema, TicketPriceSchemaType } from '@/schemas/ticket-price.schema';
 import { ticketSchema, TicketSchemaType } from '@/schemas/ticket.schema';
 import { createTicketPrice as createTicketPriceAPI } from '@/services/tickets.service';
@@ -27,6 +29,7 @@ export async function createTicketPriceAction(values: TicketPriceSchemaType) {
       return { error: handleTicketError(ticket.error as TicketError) };
     }
 
+    revalidatePath('/admin/tarifas');
     return { success: 'Precio ticket creado exitosamente' };
   }  catch (error: unknown) {
     console.error('Error desde el backend:', error);
