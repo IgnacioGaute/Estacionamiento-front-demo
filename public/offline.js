@@ -8,10 +8,10 @@ function addReceipt(next, op) {
   if (!receiptEnabled()) return;
   const vehicle = next.vehicles.find(v => v.id === op.registrationId);
   next.receipts ||= [];
-  next.receipts.push({ id: op.id, kind: op.kind, plate: vehicle.plate, vehicleType: vehicle.vehicleType, entry: vehicle.entry, occurredAt: op.occurredAt, price: op.expectedPrice, collected: op.expectedCollected, method: op.method, business: next.business, synced: false });
+  next.receipts.push({ id: op.id, kind: op.kind, plate: vehicle.plate, vehicleType: vehicle.vehicleType, entry: vehicle.entry, occurredAt: op.occurredAt, price: op.expectedPrice, collected: op.expectedCollected, method: op.method, operatorName: next.operatorName, business: next.business, synced: false });
 }
 function receiptLines(r) {
-  return [r.business?.name || 'Estacionamiento', r.business?.address || '', 'Comprobante de ' + (r.kind === 'ENTRY' ? 'entrada' : 'salida'), r.plate, r.vehicleType, 'Entrada: ' + new Date(r.entry).toLocaleString('es-AR'), ...(r.kind === 'EXIT' ? ['Salida: ' + new Date(r.occurredAt).toLocaleString('es-AR'), 'Tarifa total: ' + money(r.price), 'Anticipos: ' + money(r.collected), 'Cobrado: ' + money(r.price - r.collected), r.method === 'CASH' ? 'Efectivo' : 'Transferencia confirmada'] : []), r.synced ? 'Movimiento sincronizado' : 'Registro local · pendiente de sincronización', 'No válido como factura.', 'Referencia: ' + r.id];
+  return [r.business?.name || 'Estacionamiento', r.business?.address || '', 'Comprobante de ' + (r.kind === 'ENTRY' ? 'entrada' : 'salida'), r.plate, r.vehicleType, 'Entrada: ' + new Date(r.entry).toLocaleString('es-AR'), ...(r.kind === 'EXIT' ? ['Salida: ' + new Date(r.occurredAt).toLocaleString('es-AR'), 'Tarifa total: ' + money(r.price), 'Anticipos: ' + money(r.collected), 'Cobrado: ' + money(r.price - r.collected), r.method === 'CASH' ? 'Efectivo' : 'Transferencia confirmada'] : []), r.operatorName ? 'Operador: ' + r.operatorName : '', r.synced ? 'Movimiento sincronizado' : 'Registro local · pendiente de sincronización', 'No válido como factura.', 'Referencia: ' + r.id];
 }
 function showReceipt(r) {
   selectedReceipt = r;
