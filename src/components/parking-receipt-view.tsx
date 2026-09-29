@@ -68,6 +68,7 @@ export function ParkingReceiptView({ receipt }: { receipt: ParkingReceiptSnapsho
         <Row label="Entrada" value={dateTime(receipt.entryDay, receipt.entryTime)} />
         {exit && <Row label="Salida" value={dateTime(receipt.departureDay, receipt.departureTime)} />}
         {exit && stay && <Row label="Permanencia" value={stay} />}
+        <Row label="Operador" value={receipt.operatorName || 'No registrado'} />
       </dl>
 
       {exit && (

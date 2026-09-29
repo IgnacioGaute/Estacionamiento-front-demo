@@ -19,6 +19,7 @@ export type ParkingReceiptSnapshot = {
   departureTime: string | null;
   total: number | null;
   collected: number | null;
+  operatorName?: string | null;
 };
 export type IssuedParkingReceipt = {
   phoneCustomer: string | null;

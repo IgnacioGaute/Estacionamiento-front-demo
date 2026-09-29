@@ -29,7 +29,7 @@ export function DepartureHistory({ registrations, dailyRegistrations, onReceipt,
   const [selectedDate, setDate] = useState<string | null>(null);
   const date = selectedDate ?? today;
   const [page, setPage] = useState(0);
-  const [rows, setRows] = useState<{ id: string; identification: string; type: string; departed: boolean; time: string }[]>([]);
+  const [rows, setRows] = useState<{ id: string; identification: string; type: string; departed: boolean; time: string; entryOperatorName: string | null; exitOperatorName: string | null }[]>([]);
   const [total, setTotal] = useState(0);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -61,6 +61,7 @@ export function DepartureHistory({ registrations, dailyRegistrations, onReceipt,
         {rows.map(row => <div key={row.id} className="min-w-0 rounded-xl border border-border bg-secondary/40 p-3 transition-colors hover:border-gm-yellow/40 hover:bg-gm-yellow/5">
           <div className="flex min-w-0 items-start gap-2.5"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-gm-yellow/10 text-gm-yellow"><ReceiptText className="size-4" /></span><div className="min-w-0 flex-1"><p className="break-words text-base font-semibold leading-tight tracking-wide">{row.identification}</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{row.type}</p></div></div>
           <p className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] text-muted-foreground"><span>{row.departed ? 'Salida registrada' : 'En la playa'}</span>{row.time && <span className="tabular-nums">{row.time}</span>}</p>
+          <div className="mt-2 space-y-0.5 text-xs text-muted-foreground"><p>Entrada: {row.entryOperatorName || 'Operador no registrado'}</p>{row.departed && <p>Salida: {row.exitOperatorName || 'Operador no registrado'}</p>}</div>
           <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border pt-2">
             <Button variant="ghost" size="sm" className="min-h-10 w-full min-w-0 rounded-lg bg-background/40 text-xs text-gm-yellow hover:bg-gm-yellow/10" onClick={() => onReceipt(row.id, 'ENTRY')} aria-label={`Abrir comprobante de entrada de ${row.identification}`}>Entrada</Button>
             {row.departed && <Button variant="ghost" size="sm" className="min-h-10 w-full min-w-0 rounded-lg bg-background/40 text-xs text-gm-yellow hover:bg-gm-yellow/10" onClick={() => onReceipt(row.id, 'EXIT')} aria-label={`Abrir comprobante de salida de ${row.identification}`}>Salida</Button>}
