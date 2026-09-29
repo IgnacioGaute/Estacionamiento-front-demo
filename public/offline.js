@@ -28,7 +28,7 @@ function lock() { if (busy) return; state = null; password = ''; exit = null; cl
 async function persist(next) { revision = await saveOperations(next, password, revision); state = next; render(); }
 async function api(action, body) {
   let response;
-  try { response = await fetch('/api/offline/' + action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); }
+  try { response = await fetch('/api/offline/' + action, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parking-Offline': '1' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) }); }
   catch { throw new Error('Sin conexión con el servidor. Los movimientos siguen guardados en este equipo.'); }
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('Iniciá sesión con el mismo usuario y playa. Las operaciones siguen guardadas.');
   const data = await response.json();
@@ -154,7 +154,7 @@ window.addEventListener('online', () => { connection(); sync(); }); window.addEv
 setInterval(() => { if (state && state.pending.length) sync(); }, 30000);
 async function initialize() {
   try {
-    if (!(await hasOperations())) { message('Este equipo todavía no tiene vehículos y tarifas guardados. Con conexión, activá “Modo sin conexión” desde el sistema una vez.'); return; }
+    if (!(await hasOperations())) { message('Este dispositivo todavía no tiene vehículos y tarifas guardados. Al iniciar sesión con conexión, el sistema los prepara automáticamente. Volvé al sistema cuando recuperes internet.'); return; }
     const accessPassword = await getDeviceAccess();
     if (accessPassword) await openWorkspace(accessPassword);
     else $('unlock').hidden = false;

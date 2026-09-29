@@ -59,7 +59,7 @@ export async function getDeviceAccess() {
 }
 export async function openOperations(password) {
   const record = await access('readonly', store => store.get('operations'));
-  if (!record) throw new Error('Activá este equipo desde la pantalla de operación, con conexión, antes del primer corte.');
+  if (!record) throw new Error('Este dispositivo todavía no tiene datos guardados. Iniciá sesión con conexión para prepararlo automáticamente.');
   try {
     const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: record.iv }, await key(password, record.salt), record.encrypted);
     const state = JSON.parse(new TextDecoder().decode(decrypted));

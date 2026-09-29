@@ -23,7 +23,9 @@ export default async function middleware(req: NextRequest) {
   const isAuthRoute = authRoutes.includes(nextUrl.pathname as never);
 
   // 🔓 Permitir rutas públicas o de autenticación
-  if (isApiAuthRoute || isPublicApiRoute) return NextResponse.next();
+  // La API de contingencia valida la sesión y responde JSON por sí misma. Un redirect
+  // del middleware a login devolvía HTML y ocultaba el motivo real del fallo.
+  if (isApiAuthRoute || isPublicApiRoute || nextUrl.pathname.startsWith('/api/offline/')) return NextResponse.next();
 
   if (nextUrl.pathname === '/' && !isLoggedIn) return NextResponse.redirect(new URL('/auth/login', nextUrl));
 

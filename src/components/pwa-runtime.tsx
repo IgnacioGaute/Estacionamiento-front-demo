@@ -7,7 +7,8 @@ export function PwaRuntime() {
   useEffect(() => {
     const update = () => {
       setOffline(!navigator.onLine);
-      if (!navigator.onLine && window.location.pathname === '/tickets') {
+      const path = window.location.pathname;
+      if (!navigator.onLine && path !== '/offline.html' && !path.startsWith('/auth/')) {
         const moduleUrl = '/offline-vault.js';
         void import(/* webpackIgnore: true */ moduleUrl).then(async vault => {
           if (!navigator.onLine && await vault.hasOperations()) window.location.replace('/offline.html');

@@ -119,7 +119,7 @@ export default function CardTicket({
 }) {
   const [registrations, setRegistrations] =
     useState<TicketRegistration[]>(initialRegistrations);
-  const TURNO_BAR_ENABLED = schedule?.shiftsEnabled !== false;
+  const TURNO_BAR_ENABLED = schedule?.shiftsEnabled === true;
   const [isScanning, setIsScanning] = useState(false);
   const [receiptTarget, setReceiptTarget] = useState<{ id: string; kind: 'ENTRY' | 'EXIT' } | null>(null);
   const receiptDeliveryEnabled = !!(schedule?.receiptDelivery?.whatsapp || schedule?.receiptDelivery?.qr || schedule?.receiptDelivery?.print);

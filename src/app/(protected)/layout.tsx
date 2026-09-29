@@ -7,6 +7,7 @@ import {
   OperationalContext,
 } from "@/actions/tenancy/context.action";
 import { TenantProvider, NoPlaya } from "@/components/tenant-provider";
+import { OfflinePreparation } from "@/components/offline-preparation";
 export default async function ProtectedLayout({
   children,
 }: {
@@ -37,6 +38,7 @@ export default async function ProtectedLayout({
     <SessionProvider session={session}>
       <TenantProvider context={context} playaId={chosen} shiftsEnabled={schedule?.shiftsEnabled === true}>
         <div className="flex w-full flex-col overflow-hidden">
+          {!platform && chosen && <OfflinePreparation />}
           {platform || chosen ? children : <NoPlaya message={error} />}
         </div>
       </TenantProvider>
