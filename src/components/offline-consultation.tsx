@@ -31,14 +31,21 @@ export function OfflineConsultation({ revision }: { revision?: unknown }) {
             : `No se pudo preparar este teléfono (respuesta ${response.status}).`);
         }
         const snapshot = await response.json();
-        if (!response.ok) throw new Error(snapshot.message || 'No se pudo preparar el acceso sin conexión.');
+        if (!response.ok) {
+          if (response.status === 400 && typeof snapshot.message === 'string' && snapshot.message.includes('Abrí un turno de caja') && previous && !previous.state.pending.length) {
+            await vault.finishOperations(previous.revision);
+          }
+          throw new Error(snapshot.message || 'No se pudo preparar el acceso sin conexión.');
+        }
         if (stopped) return;
         const access = password || crypto.randomUUID() + crypto.randomUUID();
         if (!password) await vault.rememberDeviceAccess(access);
         const sameScope = previous?.state.userId === snapshot.userId && previous?.state.playaId === snapshot.playaId;
         await vault.saveOperations({ ...snapshot, deviceId, pending: [], syncedCount: 0, receipts: sameScope ? previous?.state.receipts || [] : [] }, access, previous?.revision || 0);
         setReady(true);
-        setStatus('Este teléfono está preparado para registrar entradas y salidas sin conexión.');
+        setStatus(snapshot.shift
+          ? `Modo sin conexión preparado para el turno ${snapshot.shift.name}. Sincronizá los cobros antes de cerrarlo.`
+          : 'Este teléfono está preparado para registrar entradas y salidas sin conexión.');
       } catch (error) { if (!stopped) { setReady(false); setStatus(error instanceof Error ? error.message : 'No se pudo preparar el acceso sin conexión.'); } }
       finally { busy = false; }
     }
@@ -49,8 +56,9 @@ export function OfflineConsultation({ revision }: { revision?: unknown }) {
     refresh();
     const interval = setInterval(refresh, 60000);
     window.addEventListener('online', refresh);
+    window.addEventListener('parking-shift-changed', refresh);
     document.addEventListener('visibilitychange', refresh);
-    return () => { stopped = true; clearInterval(interval); window.removeEventListener('online', refresh); document.removeEventListener('visibilitychange', refresh); };
+    return () => { stopped = true; clearInterval(interval); window.removeEventListener('online', refresh); window.removeEventListener('parking-shift-changed', refresh); document.removeEventListener('visibilitychange', refresh); };
   }, [revision, retry]);
   if (!status) return null;
   return <div role="status" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

@@ -41,7 +41,7 @@ function allowedTime() {
 function row(title, detail) { const el = document.createElement('div'); el.className = 'row'; const strong = document.createElement('strong'); strong.textContent = title; const p = document.createElement('p'); p.textContent = detail; el.append(strong, p); return el; }
 function render() {
   if (!state) return;
-  $('stamp').textContent = 'Datos preparados el ' + new Date(state.capturedAt).toLocaleString('es-AR') + '. Operaciones autorizadas hasta ' + new Date(state.expiresAt).toLocaleString('es-AR') + '.';
+  $('stamp').textContent = 'Datos preparados el ' + new Date(state.capturedAt).toLocaleString('es-AR') + '. Operaciones autorizadas hasta ' + new Date(state.expiresAt).toLocaleString('es-AR') + (state.shift ? '. Turno: ' + state.shift.name + '. Sincronizá los cobros antes de cerrarlo.' : '.');
   $('pending').textContent = state.pending.length + ' operaciones pendientes de sincronizar';
   const q = normalize($('search').value);
   const vehicles = state.vehicles.filter(v => !v.departed && (!q || normalize(v.plate).includes(q)));

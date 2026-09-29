@@ -69,7 +69,7 @@ export function TurnoBar({ onUpdated }: { onUpdated?: () => void } = {}) {
   const submitOpen = () => startTransition(async () => {
     const result = await openTurnoAction({ fondoInicial: Number(initial), nombre: (nombre ?? nombreUsuario).trim(), duracionPrevistaHoras: Number(hours), turnoAnteriorId: context?.pending?.id });
     if (result.error) toast.error(typeof result.error === 'string' ? result.error : result.error.message);
-    else { toast.success('Turno abierto.'); limpiar(); setOpen(false); onUpdated?.(); }
+    else { toast.success('Turno abierto.'); limpiar(); setOpen(false); onUpdated?.(); window.dispatchEvent(new Event('parking-shift-changed')); }
     await refresh();
   });
 
@@ -84,7 +84,7 @@ export function TurnoBar({ onUpdated }: { onUpdated?: () => void } = {}) {
         motivoCierreForzado: forzando ? forcedReason : undefined,
       });
       if (result.error) toast.error(typeof result.error === 'string' ? result.error : result.error.message);
-      else { toast.success('Turno cerrado. Quedan ' + money(retained) + ' para el siguiente turno.'); setOpen(false); onUpdated?.(); }
+      else { toast.success('Turno cerrado. Quedan ' + money(retained) + ' para el siguiente turno.'); setOpen(false); onUpdated?.(); window.dispatchEvent(new Event('parking-shift-changed')); }
       limpiar();
       await refresh();
     });
