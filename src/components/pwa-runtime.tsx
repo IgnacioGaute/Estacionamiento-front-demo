@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { setInstallPrompt, type InstallPrompt } from '@/lib/pwa-install';
+import { WifiOff } from 'lucide-react';
 
 export function PwaRuntime() {
   const [offline, setOffline] = useState(false);
@@ -30,5 +31,5 @@ export function PwaRuntime() {
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); window.removeEventListener('beforeinstallprompt', install); window.removeEventListener('appinstalled', installed); };
   }, []);
   if (!offline) return null;
-  return <div role="status" className="border-b border-gm-yellow/30 bg-gm-yellow/10 px-4 py-3 text-center text-sm">Sin conexión. Para seguir registrando en el equipo de contingencia: <a className="font-semibold text-gm-yellow underline" href="/offline.html">Abrir modo operativo</a></div>;
+  return <div role="status" className="px-4 py-2"><a className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-secondary/40 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground" href="/offline.html"><WifiOff className="size-3.5" />Abrir modo sin conexión</a></div>;
 }

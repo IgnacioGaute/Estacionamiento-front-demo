@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { WifiOff } from 'lucide-react';
 
 export function OfflineConsultation({ revision }: { revision?: unknown }) {
   const [status, setStatus] = useState('');
@@ -11,7 +12,6 @@ export function OfflineConsultation({ revision }: { revision?: unknown }) {
       if (busy || !navigator.onLine || document.hidden) return;
       busy = true;
       try {
-        setReady(false);
         if (!window.isSecureContext || !('serviceWorker' in navigator)) throw new Error('El acceso sin conexión requiere HTTPS.');
         await Promise.race([navigator.serviceWorker.ready, new Promise((_, reject) => setTimeout(() => reject(new Error('Preparando acceso sin conexión…')), 15000))]);
         const moduleUrl = '/offline-vault.js';
@@ -21,7 +21,7 @@ export function OfflineConsultation({ revision }: { revision?: unknown }) {
         const exists = await vault.hasOperations();
         if (exists && !password) throw new Error('Hay datos anteriores protegidos: abrilos una vez con tu frase para conservarlos.');
         const previous = exists ? await vault.openOperations(password) : null;
-        if (previous?.state.pending.length) { setStatus('Hay movimientos por sincronizar.'); return; }
+        if (previous?.state.pending.length) { setReady(true); setStatus(''); return; }
         let deviceId = localStorage.getItem('parking-contingency-device');
         if (!deviceId) { deviceId = crypto.randomUUID(); localStorage.setItem('parking-contingency-device', deviceId); }
         const response = await fetch('/api/offline/prepare', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parking-Offline': '1' }, body: JSON.stringify({ deviceId, refresh: true }), signal: AbortSignal.timeout(25000) });
@@ -32,20 +32,18 @@ export function OfflineConsultation({ revision }: { revision?: unknown }) {
         }
         const snapshot = await response.json();
         if (!response.ok) {
-          if (response.status === 400 && typeof snapshot.message === 'string' && snapshot.message.includes('Abrí un turno de caja') && previous && !previous.state.pending.length) {
-            await vault.finishOperations(previous.revision);
-          }
           throw new Error(snapshot.message || 'No se pudo preparar el acceso sin conexión.');
         }
         if (stopped) return;
         const access = password || crypto.randomUUID() + crypto.randomUUID();
         if (!password) await vault.rememberDeviceAccess(access);
         const sameScope = previous?.state.userId === snapshot.userId && previous?.state.playaId === snapshot.playaId;
-        await vault.saveOperations({ ...snapshot, deviceId, pending: [], syncedCount: 0, receipts: sameScope ? previous?.state.receipts || [] : [] }, access, previous?.revision || 0);
+        const freshReceipts = Array.isArray(snapshot.receipts) ? snapshot.receipts : [];
+        const freshKeys = new Set(freshReceipts.map((receipt: { registrationId: string; kind: string }) => `${receipt.registrationId}:${receipt.kind}`));
+        const keptReceipts = sameScope ? (previous?.state.receipts || []).filter((receipt: { registrationId?: string; kind: string }) => !receipt.registrationId || !freshKeys.has(`${receipt.registrationId}:${receipt.kind}`)).slice(-150) : [];
+        await vault.saveOperations({ ...snapshot, receiptBase: process.env.NEXT_PUBLIC_RECEIPTS_URL?.replace(/\/+$/, '') || '', deviceId, pending: [], syncedCount: 0, receipts: [...freshReceipts, ...keptReceipts] }, access, previous?.revision || 0);
         setReady(true);
-        setStatus(snapshot.shift
-          ? `Modo sin conexión preparado para el turno ${snapshot.shift.name}. Sincronizá los cobros antes de cerrarlo.`
-          : 'Este teléfono está preparado para registrar entradas y salidas sin conexión.');
+        setStatus('');
       } catch (error) { if (!stopped) { setReady(false); setStatus(error instanceof Error ? error.message : 'No se pudo preparar el acceso sin conexión.'); } }
       finally { busy = false; }
     }
@@ -60,9 +58,7 @@ export function OfflineConsultation({ revision }: { revision?: unknown }) {
     document.addEventListener('visibilitychange', refresh);
     return () => { stopped = true; clearInterval(interval); window.removeEventListener('online', refresh); window.removeEventListener('parking-shift-changed', refresh); document.removeEventListener('visibilitychange', refresh); };
   }, [revision, retry]);
+  if (ready) return <a href="/offline.html" className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border/70 bg-secondary/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gm-yellow/40 hover:bg-secondary/60 hover:text-foreground"><WifiOff className="size-3.5" />Abrir modo sin conexión</a>;
   if (!status) return null;
-  return <div role="status" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-    <span>{status}</span>
-    {ready ? <a href="/offline.html" className="underline">Abrir modo sin conexión</a> : <button type="button" className="underline" onClick={() => setRetry(value => value + 1)}>Reintentar</button>}
-  </div>;
+  return <div role="status" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{status}</span><button type="button" className="underline" onClick={() => setRetry(value => value + 1)}>Reintentar</button></div>;
 }

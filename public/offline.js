@@ -1,5 +1,6 @@
-import { openOperations, saveOperations, finishOperations, rememberDeviceAccess, getDeviceAccess, hasOperations } from './offline-vault.js';
+import { openOperations, saveOperations, rememberDeviceAccess, getDeviceAccess, hasOperations } from './offline-vault.js';
 import { calculateStayPrice, assertPricingCoverage } from './offline-stay-pricing.js';
+import { receiptQrSvg } from './offline-qr.js';
 const $ = id => document.getElementById(id);
 let state = null, revision = 0, password = '', busy = false, exit = null, timer;
 let selectedReceipt = null;
@@ -8,14 +9,27 @@ function addReceipt(next, op) {
   if (!receiptEnabled()) return;
   const vehicle = next.vehicles.find(v => v.id === op.registrationId);
   next.receipts ||= [];
-  next.receipts.push({ id: op.id, kind: op.kind, plate: vehicle.plate, vehicleType: vehicle.vehicleType, entry: vehicle.entry, occurredAt: op.occurredAt, price: op.expectedPrice, collected: op.expectedCollected, method: op.method, operatorName: next.operatorName, business: next.business, synced: false });
+  next.receipts.push({ id: op.id, registrationId: op.registrationId, kind: op.kind, plate: vehicle.plate, vehicleType: vehicle.vehicleType, entry: vehicle.entry, occurredAt: op.occurredAt, price: op.expectedPrice, collected: op.expectedCollected, method: op.method, operatorName: next.operatorName, business: next.business, synced: false });
 }
 function receiptLines(r) {
-  return [r.business?.name || 'Estacionamiento', r.business?.address || '', 'Comprobante de ' + (r.kind === 'ENTRY' ? 'entrada' : 'salida'), r.plate, r.vehicleType, 'Entrada: ' + new Date(r.entry).toLocaleString('es-AR'), ...(r.kind === 'EXIT' ? ['Salida: ' + new Date(r.occurredAt).toLocaleString('es-AR'), 'Tarifa total: ' + money(r.price), 'Anticipos: ' + money(r.collected), 'Cobrado: ' + money(r.price - r.collected), r.method === 'CASH' ? 'Efectivo' : 'Transferencia confirmada'] : []), r.operatorName ? 'Operador: ' + r.operatorName : '', r.synced ? 'Movimiento sincronizado' : 'Registro local · pendiente de sincronización', 'No válido como factura.', 'Referencia: ' + r.id];
+  const exitLines = r.kind !== 'EXIT' ? [] : r.historical
+    ? ['Salida: ' + new Date(r.occurredAt).toLocaleString('es-AR'), 'Tarifa total: ' + money(r.price)]
+    : ['Salida: ' + new Date(r.occurredAt).toLocaleString('es-AR'), 'Tarifa total: ' + money(r.price), 'Anticipos: ' + money(r.collected), 'Cobrado: ' + money(r.price - r.collected), r.method === 'CASH' ? 'Efectivo' : 'Transferencia confirmada'];
+  return [r.business?.name || 'Estacionamiento', r.business?.address || '', 'Comprobante de ' + (r.kind === 'ENTRY' ? 'entrada' : 'salida'), r.plate, r.vehicleType, 'Entrada: ' + new Date(r.entry).toLocaleString('es-AR'), ...exitLines, r.operatorName ? 'Operador: ' + r.operatorName : '', r.historical ? 'Copia local del registro anterior' : r.synced ? 'Movimiento sincronizado' : 'Registro local · pendiente de sincronización', 'No válido como factura.', 'Referencia: ' + r.id];
+}
+function receiptQrValue(r) {
+  return r.token && state.receiptBase
+    ? `${state.receiptBase}/c/${r.token}`
+    : receiptLines(r).filter(Boolean).join('\n');
 }
 function showReceipt(r) {
   selectedReceipt = r;
-  $('receipt-paper').replaceChildren(...receiptLines(r).filter(Boolean).map((line, i) => { const el = document.createElement(i === 0 ? 'h2' : 'p'); el.textContent = line; return el; }));
+  const lines = receiptLines(r).filter(Boolean).map((line, i) => { const el = document.createElement(i === 0 ? 'h2' : 'p'); el.textContent = line; return el; });
+  const qr = document.createElement('div'); qr.className = 'receipt-qr'; qr.innerHTML = receiptQrSvg(receiptQrValue(r));
+  const caption = document.createElement('small'); caption.textContent = r.token && state.receiptBase
+    ? 'QR del comprobante público. El teléfono que lo escanea necesita conexión.'
+    : 'QR local: muestra los datos del registro. El enlace público estará disponible después de sincronizar.';
+  $('receipt-paper').replaceChildren(...lines, qr, caption);
   $('receipt-print').hidden = !state.receiptDelivery?.print;
   if (!$('receipt-dialog').open) $('receipt-dialog').showModal();
 }
@@ -23,8 +37,8 @@ const money = n => new Intl.NumberFormat('es-AR', { style: 'currency', currency:
 const normalize = p => p.toUpperCase().replace(/[^A-Z0-9]/g, '');
 const timestamp = () => new Date(Math.floor(Date.now() / 1000) * 1000).toISOString();
 function message(text) { $('status').textContent = text; }
-function controls() { document.querySelectorAll('button').forEach(b => b.disabled = busy || b.dataset.ineligible === 'true'); if (state) $('finish').disabled = busy || state.pending.length > 0; }
-function lock() { if (busy) return; state = null; password = ''; exit = null; clearTimeout(timer); $('workspace').hidden = true; $('unlock').hidden = false; $('exit').hidden = true; for (const id of ['rows','queue','stamp','pending','amount']) $(id).replaceChildren(); $('plate').value = ''; }
+function controls() { document.querySelectorAll('button').forEach(b => b.disabled = busy || b.dataset.ineligible === 'true'); }
+function lock() { if (busy) return; state = null; password = ''; exit = null; clearTimeout(timer); $('workspace').hidden = true; $('unlock').hidden = false; $('exit').hidden = true; for (const id of ['rows','stamp','pending','amount']) $(id).replaceChildren(); $('plate').value = ''; }
 async function persist(next) { revision = await saveOperations(next, password, revision); state = next; render(); }
 async function api(action, body) {
   let response;
@@ -41,7 +55,7 @@ function allowedTime() {
 function row(title, detail) { const el = document.createElement('div'); el.className = 'row'; const strong = document.createElement('strong'); strong.textContent = title; const p = document.createElement('p'); p.textContent = detail; el.append(strong, p); return el; }
 function render() {
   if (!state) return;
-  $('stamp').textContent = 'Datos preparados el ' + new Date(state.capturedAt).toLocaleString('es-AR') + '. Operaciones autorizadas hasta ' + new Date(state.expiresAt).toLocaleString('es-AR') + (state.shift ? '. Turno: ' + state.shift.name + '. Sincronizá los cobros antes de cerrarlo.' : '.');
+  $('stamp').textContent = 'Datos preparados el ' + new Date(state.capturedAt).toLocaleString('es-AR') + '. Operaciones autorizadas hasta ' + new Date(state.expiresAt).toLocaleString('es-AR') + (state.shift ? '. Turno: ' + state.shift.name + '. Sincronizá los cobros antes de cerrarlo.' : state.shiftsEnabled ? '. Sin turno abierto: los cobros quedarán en la caja diaria sin turno asignado.' : '.');
   $('pending').textContent = state.pending.length + ' operaciones pendientes de sincronizar';
   const q = normalize($('search').value);
   const vehicles = state.vehicles.filter(v => !v.departed && (!q || normalize(v.plate).includes(q)));
@@ -67,12 +81,14 @@ function render() {
     return el;
   }));
   if (!vehicles.length) $('rows').textContent = 'No hay vehículos activos en esta búsqueda.';
-  $('queue').replaceChildren(...state.pending.map(op => row((op.kind === 'ENTRY' ? 'Entrada' : 'Salida') + ' · ' + (op.plate || state.vehicles.find(v => v.id === op.registrationId)?.plate || op.registrationId), new Date(op.occurredAt).toLocaleString('es-AR') + (op.kind === 'EXIT' ? ' · Cobrado: ' + money(op.expectedPrice - op.expectedCollected) : '') + (op.error ? ' · REVISAR: ' + op.error : ' · Pendiente'))));
-  $('receipts-section').hidden = !receiptEnabled();
-  $('receipts').replaceChildren(...(state.receipts || []).slice().reverse().map(r => {
+  const receiptQuery = normalize($('receipt-search').value);
+  const receipts = (state.receipts || []).filter(r => !receiptQuery || normalize(r.plate || '').includes(receiptQuery));
+  $('receipts-section').hidden = !receipts.length && !receiptEnabled();
+  $('receipts').replaceChildren(...receipts.slice().sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt)).map(r => {
     const el = row(r.plate, (r.kind === 'ENTRY' ? 'Entrada' : 'Salida') + ' · ' + new Date(r.occurredAt).toLocaleString('es-AR'));
     const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Ver comprobante'; button.onclick = () => showReceipt(r); el.append(button); return el;
   }));
+  if (!receipts.length) $('receipts').textContent = receiptQuery ? 'No hay comprobantes para esa patente.' : 'Todavía no hay comprobantes guardados en este dispositivo.';
   controls();
 }
 async function sync() {
@@ -141,14 +157,35 @@ $('confirm-exit').onclick = async () => {
   await sync();
 };
 $('cancel-exit').onclick = () => { exit = null; $('exit').hidden = true; };
-$('search').oninput = render; $('sync').onclick = sync; $('lock').onclick = lock;
-$('export').onclick = () => { if (!state) return; const url = URL.createObjectURL(new Blob([JSON.stringify({ sessionId: state.sessionId, playaId: state.playaId, userId: state.userId, pending: state.pending }, null, 2)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = 'operaciones-pendientes.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
-$('finish').onclick = async () => {
-  if (!state || busy || state.pending.length || !confirm('¿Finalizar la contingencia de este equipo? Todos los movimientos deben estar sincronizados.')) return;
-  busy = true; controls();
-  try { await api('finish', { sessionId: state.sessionId, deviceId: state.deviceId }); await finishOperations(revision); busy = false; lock(); message('Contingencia finalizada. Podés preparar una nueva jornada desde el sistema.'); }
-  catch (e) { message(e.message); } finally { busy = false; controls(); }
-};
+$('search').oninput = render; $('receipt-search').oninput = render; $('sync').onclick = sync; $('lock').onclick = lock;
+$('return-online').addEventListener('click', async event => {
+  event.preventDefault();
+  if (busy) return;
+  const link = $('return-online');
+  link.setAttribute('aria-busy', 'true');
+  message('Comprobando acceso al sistema…');
+  try {
+    // Un fetch normal no usa el fallback de navegación del service worker.
+    // Así evitamos volver a mostrar la pantalla offline bajo la URL /tickets.
+    const response = await fetch('/tickets', {
+      cache: 'no-store',
+      headers: { Accept: 'text/html', 'X-Parking-Online-Check': '1' },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) {
+      throw new Error('El sistema todavía no responde. Seguí trabajando acá y probá de nuevo en unos instantes.');
+    }
+    const destination = new URL(response.url, location.origin);
+    if (destination.origin !== location.origin) throw new Error('No se pudo comprobar el acceso al sistema.');
+    if (destination.pathname === '/offline.html') throw new Error('El sistema todavía no responde. Seguí trabajando acá y probá de nuevo en unos instantes.');
+    location.assign(destination.pathname.startsWith('/auth/') ? destination.pathname : '/tickets');
+  } catch (error) {
+    message(error instanceof Error && error.message.startsWith('El sistema todavía')
+      ? error.message
+      : 'No se pudo conectar con el sistema. Tus movimientos siguen guardados acá; probá de nuevo cuando vuelva la conexión.');
+    link.removeAttribute('aria-busy');
+  }
+});
 function connection() { $('connection').textContent = navigator.onLine ? 'Modo local · conexión disponible' : 'Sin conexión · guardado automático'; }
 window.addEventListener('online', () => { connection(); sync(); }); window.addEventListener('offline', connection); connection();
 setInterval(() => { if (state && state.pending.length) sync(); }, 30000);
@@ -167,8 +204,16 @@ $('receipt-image').onclick = () => {
   if (!selectedReceipt) return;
   const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
   const lines = receiptLines(selectedReceipt).filter(Boolean);
-  canvas.width = 800; canvas.height = 100 + lines.length * 48;
+  canvas.width = 800; canvas.height = 330 + lines.length * 48;
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#111'; ctx.font = '22px sans-serif';
   lines.forEach((line, i) => ctx.fillText(line, 36, 55 + i * 48, 728));
-  canvas.toBlob(blob => { if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'comprobante-' + selectedReceipt.plate + '-' + selectedReceipt.kind.toLowerCase() + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }, 'image/png');
+  const qrUrl = URL.createObjectURL(new Blob([receiptQrSvg(receiptQrValue(selectedReceipt))], { type: 'image/svg+xml' }));
+  const qrImage = new Image();
+  qrImage.onload = () => {
+    ctx.drawImage(qrImage, 300, 85 + lines.length * 48, 200, 200);
+    URL.revokeObjectURL(qrUrl);
+    canvas.toBlob(blob => { if (!blob) return; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'comprobante-' + selectedReceipt.plate + '-' + selectedReceipt.kind.toLowerCase() + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }, 'image/png');
+  };
+  qrImage.onerror = () => { URL.revokeObjectURL(qrUrl); message('No se pudo incluir el QR en la imagen. Probá imprimir o guardar el PDF.'); };
+  qrImage.src = qrUrl;
 };

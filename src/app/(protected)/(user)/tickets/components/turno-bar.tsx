@@ -27,8 +27,6 @@ export function TurnoBar({ onUpdated }: { onUpdated?: () => void } = {}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState('');
   const nombreUsuario = [session?.user?.firstName, session?.user?.lastName].filter(Boolean).join(' ').trim() || session?.user?.username || '';
-  const [nombre, setNombre] = useState<string | null>(null);
-  const [hours, setHours] = useState('24');
   const [initial, setInitial] = useState('0');
   const [modo, setModo] = useState<'justo' | 'otro'>('otro');
   const [counted, setCounted] = useState('');
@@ -67,7 +65,7 @@ export function TurnoBar({ onUpdated }: { onUpdated?: () => void } = {}) {
   const necesitaNota = hayMonto && difference !== 0;
 
   const submitOpen = () => startTransition(async () => {
-    const result = await openTurnoAction({ fondoInicial: Number(initial), nombre: (nombre ?? nombreUsuario).trim(), duracionPrevistaHoras: Number(hours), turnoAnteriorId: context?.pending?.id });
+    const result = await openTurnoAction({ fondoInicial: Number(initial), turnoAnteriorId: context?.pending?.id });
     if (result.error) toast.error(typeof result.error === 'string' ? result.error : result.error.message);
     else { toast.success('Turno abierto.'); limpiar(); setOpen(false); onUpdated?.(); window.dispatchEvent(new Event('parking-shift-changed')); }
     await refresh();
@@ -91,7 +89,7 @@ export function TurnoBar({ onUpdated }: { onUpdated?: () => void } = {}) {
   };
 
   return <>
-    <Button variant="outline" size="sm" onClick={() => { limpiar(); setNombre(null); setClosing(false); setOpen(true); startTransition(() => refresh()); }}>
+    <Button variant="outline" size="sm" onClick={() => { limpiar(); setClosing(false); setOpen(true); startTransition(() => refresh()); }}>
       <Wallet className="size-4" /> {active ? 'Turno actual' : 'Abrir turno'}
     </Button>
 
@@ -191,26 +189,15 @@ export function TurnoBar({ onUpdated }: { onUpdated?: () => void } = {}) {
             </form>
           ) : (
             <form onSubmit={e => { e.preventDefault(); submitOpen(); }} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="shift-name" className="text-sm normal-case tracking-normal">Nombre del turno</Label>
-                <Input id="shift-name" className="h-12 rounded-xl text-base" maxLength={80} required value={nombre ?? nombreUsuario} onChange={e => setNombre(e.target.value)} disabled={pending} />
+              <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3">
+                <p className="text-xs text-muted-foreground">Turno a cargo de</p>
+                <p className="mt-1 font-semibold">{nombreUsuario || 'Tu usuario'}</p>
               </div>
               {context.pending && <div className="rounded-xl border border-border bg-secondary/60 p-4">
-                <p className="text-sm text-muted-foreground">Recibís del turno anterior</p>
+                <p className="text-sm text-muted-foreground">Efectivo que dejó {context.pending.usuarioApertura ? `${context.pending.usuarioApertura.firstName} ${context.pending.usuarioApertura.lastName}`.trim() : context.pending.nombre || 'el turno anterior'}</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">{money(context.pending.efectivoParaSiguiente ?? 0)}</p>
-                <p className="mt-2 text-xs text-muted-foreground">Contá ese efectivo antes de empezar.</p>
+                <p className="mt-2 text-xs text-muted-foreground">Cerró el {context.pending.fechaCierre ? date(context.pending.fechaCierre) : 'día no registrado'}. Contá ese efectivo antes de empezar.</p>
               </div>}
-              <details className="rounded-xl border border-border p-4">
-                <summary className="cursor-pointer text-sm font-medium">Duración prevista · {hours || '—'} h</summary>
-              <div className="mt-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="shift-hours" className="text-sm normal-case tracking-normal">Horas del turno</Label>
-                  <Input id="shift-hours" className="gm-tnum h-11" type="number" inputMode="numeric" min="1" max="168" required
-                    value={hours} onChange={e => setHours(e.target.value)} disabled={pending} />
-                  <p className="text-xs text-muted-foreground">Es orientativa. El turno se cierra cuando lo confirmás, aunque cambie el día.</p>
-                </div>
-              </div>
-              </details>
               <div className="space-y-1.5">
                 <Label htmlFor="cash-initial" className="text-sm normal-case tracking-normal">¿Con cuánto efectivo empezás?</Label>
                 <Input id="cash-initial" className="gm-tnum h-12 text-lg" type="number" inputMode="numeric"
@@ -218,7 +205,8 @@ export function TurnoBar({ onUpdated }: { onUpdated?: () => void } = {}) {
                   onChange={e => setInitial(e.target.value)} disabled={pending} />
                 <p className="text-xs text-muted-foreground">Sumá lo recibido y el cambio que agregues.</p>
               </div>
-              <Button type="submit" className="h-12 w-full rounded-xl" disabled={pending || !(nombre ?? nombreUsuario).trim()}>{pending ? 'Abriendo…' : 'Abrir mi turno'}</Button>
+              <p className="text-xs text-muted-foreground">El turno permanece abierto hasta que cuentes el efectivo y confirmes el cierre.</p>
+              <Button type="submit" className="h-12 w-full rounded-xl" disabled={pending}>{pending ? 'Abriendo…' : 'Abrir mi turno'}</Button>
               <EnlaceHistorial visible={esAdmin} onCerrar={() => setOpen(false)} />
             </form>
           )}
@@ -242,11 +230,11 @@ function EnlaceHistorial({ visible, onCerrar }: { visible: boolean; onCerrar: ()
     // Navegar en el mismo tick que el cierre hace que React desmonte el árbol mientras Radix
     // todavía está sacando el nodo del portal, y los dos intentan removerlo: NotFoundError en
     // removeChild. Se espera a que termine la animación de salida antes de cambiar de ruta.
-    setTimeout(() => router.push('/admin/caja'), 200);
+    setTimeout(() => router.push('/admin/caja?tab=turnos'), 200);
   };
 
   return (
-    <Link href="/admin/caja" onClick={irAlHistorial}
+    <Link href="/admin/caja?tab=turnos" onClick={irAlHistorial}
       className="flex items-center justify-center gap-1.5 pt-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
       Ver historial de turnos
       <ArrowUpRight className="size-3.5" />

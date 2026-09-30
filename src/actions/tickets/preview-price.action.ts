@@ -19,3 +19,19 @@ export async function simulateStayAction(vehicleType: string, entryAt: string, e
     return { result: data };
   } catch { return { error: 'No se pudo calcular. Revisá la conexión e intentá nuevamente.' }; }
 }
+
+export async function previewPlannedStayAction(registrationId: string, minutes: number): Promise<{ price?: number; ticketDayType?: 'DAY' | 'NIGHT' | 'MIXED'; error?: string }> {
+  if (!/^[0-9a-f-]{36}$/i.test(registrationId) || !Number.isInteger(minutes) || minutes < 1 || minutes > 5256000) {
+    return { error: 'Elegí una duración válida.' };
+  }
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tickets/registrations/${registrationId}/planned-price?minutes=${minutes}`, {
+      headers: await getAuthHeaders(), cache: 'no-store',
+    });
+    const data = await response.json();
+    if (!response.ok) return { error: Array.isArray(data.message) ? data.message.join('. ') : data.message || 'No se pudo calcular la tarifa.' };
+    return { price: data.price, ticketDayType: data.ticketDayType };
+  } catch {
+    return { error: 'No se pudo calcular la tarifa. Revisá la conexión.' };
+  }
+}

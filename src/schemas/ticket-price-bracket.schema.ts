@@ -27,11 +27,12 @@ export const deleteTicketPriceBracketSchema = z.object({
 export type DeleteTicketPriceBracketSchemaType = z.infer<typeof deleteTicketPriceBracketSchema>;
 
 export const advancePaymentSchema = z.object({
+  chargeFullPlannedStay: z.boolean().optional(),
   adjustmentReason: z.string().optional(),
   advancePaidAmount: z.coerce.number().int().min(0, 'Debe ser mayor o igual a 0').optional(),
   metodo: z.enum(['CASH', 'TRANSFER']).optional(),
-  expectedBracketLabel: z.string().optional(),
-  expectedUptoMinutes: z.coerce.number().int().min(1).optional(),
+  expectedBracketLabel: z.string().nullable().optional(),
+  expectedUptoMinutes: z.number().int().min(1).nullable().optional(),
   firstNameCustomer: z.string().optional(),
   lastNameCustomer: z.string().optional(),
   vehiclePlateCustomer: z.string().optional(),

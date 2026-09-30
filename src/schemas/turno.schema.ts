@@ -1,8 +1,6 @@
 import { z } from 'zod';
 export const openTurnoSchema = z.object({
   fondoInicial: z.coerce.number().int().min(0, 'Debe ser mayor o igual a 0'),
-  nombre: z.string().max(80).optional(),
-  duracionPrevistaHoras: z.coerce.number().int().min(1).max(168).optional(),
   turnoAnteriorId: z.string().uuid().optional(),
 });
 export type OpenTurnoSchemaType = z.infer<typeof openTurnoSchema>;

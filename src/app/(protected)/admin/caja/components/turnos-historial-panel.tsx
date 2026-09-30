@@ -1,4 +1,5 @@
 'use client';
+
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -7,89 +8,88 @@ import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CompactPagination } from '@/components/compact-pagination';
 import { Turno } from '@/types/turno.type';
-import { getOperadoresAction, getTurnosAction } from '@/actions/turnos/cash-context.action';
-dayjs.extend(utc); dayjs.extend(timezone);
+import { getTurnosAction } from '@/actions/turnos/cash-context.action';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 const TZ = 'America/Argentina/Buenos_Aires';
+const PAGE_SIZE = 10;
 const money = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
 const date = (s: string) => dayjs(s).tz(TZ).format('DD/MM/YY · HH:mm');
-const nombre = (u: Turno['usuarioCierre']) => u ? `${u.firstName} ${u.lastName}` : 'Operador no disponible';
-type Rango = 'hoy' | 'ayer' | 'semana' | 'todo' | 'libre';
-function limites(rango: Rango, desde: string, hasta: string) {
-  const hoy = dayjs().tz(TZ);
-  if (rango === 'hoy') return { desde: hoy.format('YYYY-MM-DD'), hasta: hoy.format('YYYY-MM-DD') };
-  if (rango === 'ayer') return { desde: hoy.subtract(1, 'day').format('YYYY-MM-DD'), hasta: hoy.subtract(1, 'day').format('YYYY-MM-DD') };
-  if (rango === 'semana') return { desde: hoy.subtract(6, 'day').format('YYYY-MM-DD'), hasta: hoy.format('YYYY-MM-DD') };
-  return rango === 'libre' ? { desde: desde || undefined, hasta: hasta || undefined } : {};
-}
-const rangos: { id: Rango; label: string }[] = [{ id: 'hoy', label: 'Hoy' }, { id: 'ayer', label: 'Ayer' }, { id: 'semana', label: '7 días' }, { id: 'todo', label: 'Todo' }];
-const inputClass = 'h-11 w-full min-w-0 rounded-lg border border-border bg-gm-surface-2 px-3 text-sm [color-scheme:dark]';
+const operator = (user: Turno['usuarioCierre']) => user ? `${user.firstName} ${user.lastName}`.trim() : 'Operador no disponible';
+type Period = 'today' | 'week' | 'month' | 'all';
+const periods: { value: Period; label: string }[] = [
+  { value: 'today', label: 'Hoy' },
+  { value: 'week', label: '7 días' },
+  { value: 'month', label: '30 días' },
+  { value: 'all', label: 'Todos' },
+];
+
 export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {}) {
-  const [rango, setRango] = useState<Rango>('hoy');
-  const [desde, setDesde] = useState(''); const [hasta, setHasta] = useState('');
-  const [operador, setOperador] = useState('todos');
-  const [operadores, setOperadores] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
+  const [period, setPeriod] = useState<Period>('week');
+  const [page, setPage] = useState(0);
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState({ total: 0, diferencias: 0, sinConteo: 0 });
-  const [error, setError] = useState(''); const [pending, setPending] = useState(true);
-  const [soloDiferencias, setSoloDiferencias] = useState(false); const [page, setPage] = useState(0);
+  const [pending, setPending] = useState(true);
+  const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+
   useEffect(() => {
-    let vigente = true;
-    getOperadoresAction().then(r => { if (vigente && r.operadores) setOperadores(r.operadores); });
-    return () => { vigente = false; };
-  }, [revision]);
-  useEffect(() => {
-    let vigente = true;
-    setPending(true); setError('');
-    if (rango === 'libre' && desde && hasta && desde > hasta) { setError('Desde debe ser anterior o igual a Hasta.'); setPending(false); return; }
-    getTurnosAction({ ...limites(rango, desde, hasta), usuarioId: operador === 'todos' ? undefined : operador, estado: 'CERRADO', fechaPor: 'CIERRE', page: page + 1, limit: 5, soloDiferencias }).then(r => {
-      if (!vigente) return;
-      setTurnos(r.result?.data ?? []); setTotal(r.result?.meta.totalItems ?? 0); setSummary(r.result?.summary ?? { total: 0, diferencias: 0, sinConteo: 0 }); setError(r.error ?? ''); setPending(false);
-    });
-    return () => { vigente = false; };
-  }, [rango, desde, hasta, operador, revision, retry, page, soloDiferencias]);
-  useEffect(() => { setPage(0); }, [rango, desde, hasta, operador, soloDiferencias, revision]);
-  const visibles = turnos;
-  const pagina = page;
-  const hoy = dayjs().tz(TZ).format('YYYY-MM-DD');
+    let current = true;
+    const today = dayjs().tz(TZ);
+    const from = period === 'today' ? today : period === 'week' ? today.subtract(6, 'day') : period === 'month' ? today.subtract(29, 'day') : null;
+    setPending(true);
+    getTurnosAction({ desde: from?.format('YYYY-MM-DD'), hasta: from ? today.format('YYYY-MM-DD') : undefined, estado: 'CERRADO', fechaPor: 'CIERRE', page: page + 1, limit: PAGE_SIZE }).then(result => {
+      if (!current) return;
+      setTurnos(result.result?.data ?? []);
+      setTotal(result.result?.meta.totalItems ?? 0);
+      setError(result.error ?? '');
+    }).finally(() => { if (current) setPending(false); });
+    return () => { current = false; };
+  }, [period, page, revision, retry]);
+
   return <section className="min-w-0 space-y-4">
-    <div><h2 className="text-lg font-semibold">Turnos cerrados</h2><p className="text-sm text-muted-foreground">Buscá por el día en que se cerró el turno.</p></div>
-    <div className="space-y-3 rounded-xl border border-border p-3 sm:p-4">
-      <div data-tour="caja-rangos" className="flex flex-wrap gap-2">{rangos.map(r => <Button key={r.id} aria-pressed={rango === r.id} size="sm" variant={rango === r.id ? 'default' : 'outline'} onClick={() => { setRango(r.id); setDesde(''); setHasta(''); }}>{r.label}</Button>)}</div>
-      <details data-tour="caja-fechas"><summary className="flex min-h-10 cursor-pointer items-center text-sm font-medium">Más filtros{(rango === 'libre' || operador !== 'todos') && <span className="ml-2 text-gm-yellow">· activos</span>}</summary>
-        <div className="grid gap-3 pt-3 sm:grid-cols-3">
-          <label className="min-w-0 space-y-1 text-sm">Desde<input type="date" className={inputClass} value={desde} max={hasta || hoy} onChange={e => { setDesde(e.target.value); setRango('libre'); }} /></label>
-          <label className="min-w-0 space-y-1 text-sm">Hasta<input type="date" className={inputClass} value={hasta} min={desde || undefined} max={hoy} onChange={e => { setHasta(e.target.value); setRango('libre'); }} /></label>
-          <label className="min-w-0 space-y-1 text-sm">Abierto por<select className={inputClass} value={operador} onChange={e => setOperador(e.target.value)}><option value="todos">Todos los operadores</option>{operadores.map(o => <option key={o.id} value={o.id}>{o.firstName} {o.lastName}</option>)}</select></label>
-        </div>
-        <Button variant="ghost" size="sm" className="mt-2" onClick={() => { setRango('hoy'); setDesde(''); setHasta(''); setOperador('todos'); setSoloDiferencias(false); }}>Restablecer filtros</Button>
-      </details>
-      <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-yellow-400" checked={soloDiferencias} onChange={e => { setSoloDiferencias(e.target.checked); setPage(0); }} /> Solo con diferencias de efectivo</label>
+    <div>
+      <h2 className="text-lg font-semibold">Historial de turnos</h2>
+      <p className="text-sm text-muted-foreground">Revisá los cierres y el efectivo entregado al siguiente operador.</p>
     </div>
-    <div aria-live="polite" aria-busy={pending}>{pending ? <p className="py-8 text-center text-muted-foreground">Cargando cierres…</p> : error ? <div role="alert"><p>{error}</p><Button variant="outline" onClick={() => setRetry(v => v + 1)}>Reintentar</Button></div> : <>
-      <div data-tour="caja-totales" className="mb-4 flex flex-wrap gap-x-5 gap-y-2 rounded-lg bg-gm-surface-2 p-3 text-sm"><span><strong>{summary.total}</strong> cierres en el período</span><span><strong>{summary.diferencias}</strong> con diferencias</span><span className="text-muted-foreground"><strong>{summary.sinConteo}</strong> sin conteo</span></div>
-      <div data-tour="caja-tabla" className="space-y-3">{visibles.length === 0 ? <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{soloDiferencias ? 'No hay cierres con diferencias en este período.' : 'No hay turnos cerrados en este período. Probá con otra fecha.'}</p> : visibles.map(t => <Ficha key={t.id} turno={t} />)}<CompactPagination page={pagina} total={total} pageSize={5} onChange={setPage} /></div>
-    </>}</div>
+    <div data-tour="caja-rangos" className="flex flex-wrap items-center gap-2">
+      {periods.map(item => <Button key={item.value} size="sm" variant={period === item.value ? 'default' : 'outline'} aria-pressed={period === item.value} onClick={() => { setPeriod(item.value); setPage(0); }}>{item.label}</Button>)}
+      {!pending && !error && <span className="ml-auto text-xs text-muted-foreground">{total} {total === 1 ? 'cierre' : 'cierres'}</span>}
+    </div>
+    <div aria-live="polite" aria-busy={pending} data-tour="caja-tabla">
+      {pending ? <p className="rounded-xl border border-border p-6 text-center text-sm text-muted-foreground">Cargando turnos…</p>
+        : error ? <div role="alert" className="space-y-2 rounded-xl border border-destructive/50 p-4 text-sm"><p>{error}</p><Button variant="outline" size="sm" onClick={() => setRetry(value => value + 1)}>Reintentar</Button></div>
+          : turnos.length === 0 ? <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No hay turnos cerrados en este período.</p>
+            : <div className="space-y-2">{turnos.map(turno => <ShiftCard key={turno.id} turno={turno} />)}<CompactPagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} /></div>}
+    </div>
   </section>;
 }
-function Ficha({ turno: t }: { turno: Turno }) {
-  const d = t.diferencia; const sinConteo = t.efectivoContado == null;
-  const verificado = !sinConteo && d != null;
-  const estado = sinConteo ? 'Sin conteo' : !verificado ? 'Sin comparación registrada' : d === 0 ? 'Sin diferencias' : d! > 0 ? `Faltaron ${money(d!)}` : `Sobraron ${money(-d!)}`;
-  const color = !verificado ? 'border-border text-muted-foreground' : d === 0 ? 'border-emerald-500/30 text-emerald-400' : 'border-amber-500/40 text-amber-400';
-  const valores: [string, number | null][] = [['Efectivo al abrir', t.fondoInicial], ['Esperado al cerrar', t.efectivoTeorico], ['Efectivo contado', t.efectivoContado], ['Efectivo retirado', t.efectivoRetirado], ['Para el siguiente turno', t.efectivoParaSiguiente]];
+
+function ShiftCard({ turno }: { turno: Turno }) {
+  const difference = turno.diferencia;
+  const status = difference == null ? 'Sin arqueo' : difference === 0 ? 'Caja correcta' : difference > 0 ? `Faltaron ${money(difference)}` : `Sobraron ${money(-difference)}`;
+  const statusColor = difference == null ? 'text-muted-foreground' : difference === 0 ? 'text-emerald-400' : 'text-amber-400';
+  const closedBy = operator(turno.usuarioCierre);
+  const openedBy = operator(turno.usuarioApertura);
   return <details className="group overflow-hidden rounded-xl border border-border bg-gm-surface-2/40">
     <summary className="cursor-pointer list-none p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gm-yellow [&::-webkit-details-marker]:hidden">
-      <div className="flex flex-wrap items-start justify-between gap-2"><p className="min-w-0 break-words font-semibold">{nombre(t.usuarioApertura)}</p><span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${color}`}>{estado}</span></div>
-      <div className="mt-3 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2"><span>Abrió: {date(t.fechaApertura)}</span><span>Cerró: {t.fechaCierre ? date(t.fechaCierre) : 'Fecha no registrada'}</span></div>
-      <div className="mt-3 flex items-center gap-2 text-xs font-medium text-gm-yellow"><span className="group-open:hidden">Ver detalle del cierre</span><span className="hidden group-open:inline">Ocultar detalle</span><ChevronDown className="ml-auto size-4 transition-transform group-open:rotate-180" /></div>
+      <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="break-words font-semibold">{openedBy}</p><p className="mt-1 text-xs text-muted-foreground">{turno.fechaCierre ? `Cerró ${date(turno.fechaCierre)}` : 'Cierre sin fecha'}</p></div><span className={`text-sm font-semibold ${statusColor}`}>{status}</span></div>
+      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground"><span>Contó {turno.efectivoContado == null ? 'sin registro' : money(turno.efectivoContado)} · Entregó {turno.efectivoParaSiguiente == null ? 'sin registro' : money(turno.efectivoParaSiguiente)}</span><ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" /></div>
     </summary>
-    <div className="space-y-4 border-t border-border p-4"><dl className="grid gap-3 sm:grid-cols-2">{valores.map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words text-lg font-semibold tabular-nums">{value == null ? 'No registrado' : money(value)}</dd></div>)}</dl>
-      {sinConteo && <p className="text-sm text-muted-foreground">No se registró un conteo de efectivo. No se puede confirmar si la caja coincidió.</p>}
-      <div className="space-y-1 text-sm text-muted-foreground"><p>Turno: {t.nombre || 'Sin nombre'}</p><p>Cerrado por: {nombre(t.usuarioCierre)}</p></div>
-      {t.observaciones && <p className="whitespace-pre-wrap break-words text-sm"><strong>Observaciones:</strong> {t.observaciones}</p>}
-      {t.cierreForzado && <p className="break-words text-sm text-amber-400"><strong>Cierre por un administrador:</strong> {t.motivoCierreForzado || 'Sin motivo registrado'}</p>}
+    <div className="border-t border-border px-4 py-4 text-sm">
+      <dl className="grid gap-3 sm:grid-cols-3">
+        <Amount label="Abrió con" value={turno.fondoInicial} />
+        <Amount label="Esperado al cerrar" value={turno.efectivoTeorico} />
+        <Amount label="Efectivo retirado" value={turno.efectivoRetirado} />
+      </dl>
+      <p className="mt-4 text-xs text-muted-foreground">Abrió {date(turno.fechaApertura)}{closedBy !== openedBy ? ` · Cerrado por ${closedBy}` : ''}</p>
+      {turno.observaciones && <p className="mt-3 whitespace-pre-wrap break-words text-xs"><strong>Nota:</strong> {turno.observaciones}</p>}
+      {turno.cierreForzado && <p className="mt-3 break-words text-xs text-amber-400"><strong>Cierre por administrador:</strong> {turno.motivoCierreForzado || 'Sin motivo registrado'}</p>}
     </div>
   </details>;
+}
+
+function Amount({ label, value }: { label: string; value: number | null }) {
+  return <div><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 font-semibold tabular-nums">{value == null ? 'No registrado' : money(value)}</dd></div>;
 }
