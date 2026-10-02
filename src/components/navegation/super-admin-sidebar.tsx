@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Building2, LayoutDashboard } from 'lucide-react';
+import { Building2, CreditCard, LayoutDashboard } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -73,6 +73,19 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
       Icono: Building2,
       activo: pathname.startsWith('/admin/empresas'),
       cuenta: empresas.length || undefined,
+    },
+    {
+      titulo: 'Planes y cobros',
+      url: '/admin/planes',
+      Icono: CreditCard,
+      activo: pathname.startsWith('/admin/planes'),
+      // Las que vencieron o están suspendidas por falta de pago: lo que hay que cobrar.
+      cuenta:
+        empresas.filter(
+          (e) =>
+            e.suscripcion?.estado === 'VENCIDA' ||
+            (e.suscripcion?.estado === 'SUSPENDIDA' && e.suscripcion.motivoSuspension === 'FALTA_DE_PAGO'),
+        ).length || undefined,
     },
   ];
 

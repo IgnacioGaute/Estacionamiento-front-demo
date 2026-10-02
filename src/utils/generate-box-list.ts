@@ -1,6 +1,6 @@
 // src/utils/generate-box-list.ts
 import { ticketBoxRows } from "./ticket-box-rows"
-import type { BoxList } from "@/types/box-list.type"
+import type { BoxList, CobroInquilinoDia } from "@/types/box-list.type"
 import type { OtherPayment } from "@/types/other-payment.type"
 import type { ReceiptPayment } from "@/types/receipt.type"
 import type { TicketRegistrationForDay } from "@/types/ticket-registration-for-day.type"
@@ -802,6 +802,88 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       ]
     })
 
+    // ======================================================
+    // INQUILINOS: los cobros de la cuenta corriente, solo si la sección está habilitada en la
+    // playa. Cada medio en su fila y, al pie, cuánto entró por cada uno. El efectivo entra (o
+    // sale, si es una devolución o la anulación de un cobro de otro día) de la caja;
+    // transferencia y MercadoPago no tocan el cajón, así que van en entradas y salidas por igual
+    // (neto 0), el mismo criterio que en "varios".
+    // ======================================================
+    const MEDIOS_INQUILINOS: Record<string, { badge: string; nombre: string }> = {
+      CASH: { badge: "EF", nombre: "Efectivo" },
+      TRANSFER: { badge: "TR", nombre: "Transferencia" },
+      MERCADOPAGO: { badge: "MP", nombre: "MercadoPago" },
+      CHECK: { badge: "CH", nombre: "Cheque" },
+    }
+
+    const addSeccionInquilinos = (items: CobroInquilinoDia[]) => {
+      yPosition -= 14
+      drawSectionHeaderRow("inquilinos")
+
+      let entradas = 0
+      let salidas = 0
+      const porMedio = new Map<string, number>()
+
+      if (items.length > 0) {
+        drawTableHeader()
+        items.forEach((cobro) => {
+          ensureSpace(50)
+          const medio = MEDIOS_INQUILINOS[cobro.metodo] ?? { badge: cobro.metodo, nombre: cobro.metodo }
+          const detalle =
+            cobro.tipo === "PAGO"
+              ? `Recibo de pago N° ${cobro.numero ?? "—"}`
+              : cobro.tipo === "DEVOLUCION"
+                ? "Devolución de saldo a favor"
+                : cobro.tipoOriginal === "DEVOLUCION"
+                  ? "Anulación de una devolución de otro día"
+                  : `Anulación del recibo N° ${cobro.numero ?? "—"}, cobrado otro día`
+
+          const rowY = yPosition
+          page.drawText(formatDateA(String(date).slice(0, 10)), { x: colFechaX, y: rowY, size: 9, font, color: mutedText2 })
+          page.drawText(cobro.cliente, { x: colDescTextX, y: rowY, size: 9.5, font, color: inkColor })
+          drawBadge(medio.badge, colDescTextX + font.widthOfTextAtSize(cobro.cliente, 9.5) + 6, rowY - 1)
+          page.drawText(detalle, { x: colDescTextX, y: rowY - 12, size: 8, font, color: mutedColor })
+
+          const monto = Math.abs(cobro.monto)
+          if (cobro.metodo === "CASH") {
+            if (cobro.monto >= 0) {
+              entradas += monto
+              drawRightText(formatNumber(monto), entradasRightX, rowY, font, 9.5)
+              drawRightText("—", salidasRightX, rowY, font, 9.5, dashColor)
+            } else {
+              salidas += monto
+              drawRightText("—", entradasRightX, rowY, font, 9.5, dashColor)
+              drawRightText(`- ${formatNumber(monto)}`, salidasRightX, rowY, font, 9.5, negativeColor)
+            }
+          } else {
+            entradas += monto
+            salidas += monto
+            drawRightText(formatNumber(monto), entradasRightX, rowY, font, 9.5)
+            drawRightText(`- ${formatNumber(monto)}`, salidasRightX, rowY, font, 9.5, negativeColor)
+          }
+          porMedio.set(cobro.metodo, (porMedio.get(cobro.metodo) ?? 0) + cobro.monto)
+
+          yPosition -= 30
+          drawRowSeparator()
+        })
+
+        // Cuánto entró por cada medio (lo que se le cobró a los inquilinos en el día).
+        const partes = [...porMedio]
+          .filter(([, total]) => total !== 0)
+          .map(([metodo, total]) => `${(MEDIOS_INQUILINOS[metodo] ?? { nombre: metodo }).nombre} ${total < 0 ? "- " : ""}$ ${formatNumber(Math.abs(total))}`)
+        if (partes.length) {
+          ensureSpace(40)
+          page.drawText(`Por medio de pago:   ${partes.join("   ·   ")}`, { x: colDescTextX, y: yPosition, size: 8.5, font: fontBold, color: mutedText2 })
+          yPosition -= 16
+        }
+      } else {
+        drawDashedEmptyBox(yPosition, 22)
+        yPosition -= 34
+      }
+
+      drawSubtotalRow("inquilinos", "inquilinos", entradas, salidas)
+    }
+
     addDataSection("tickets_dia", "Ticket x día/semana", ticketDays, (ticket: TicketRegistrationForDay) => {
       const subtitleParts = [
         ticket.vehiclePlateCustomer ? `Patente: ${ticket.vehiclePlateCustomer}` : undefined,
@@ -817,6 +899,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
         subtitleParts.join("   ·   "),
       ]
     })
+
+    if (Array.isArray(boxList.cobrosInquilinos)) addSeccionInquilinos(boxList.cobrosInquilinos)
 
     // addDataSectionReceipt("alquiler", "alquiler", combinedRentersSorted, (receiptPayment) => {
     //   const receipt = receiptPayment.receipt

@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
@@ -181,7 +182,7 @@ function ScopedAssistant() {
             <RobotAvatar />
             <div className="ai-bubble"><span className="sr-only">Asistente: </span><AnimatedText text={parcial} animate={false} /></div>
           </div>}
-          {pending && <div role="status" aria-label="El asistente está pensando" className="ai-thinking"><RobotAvatar thinking /><div className="ai-thinking-bubble"><span className="ai-thinking-label">Pensando</span><span className="ai-dots" aria-hidden="true"><span /><span /><span /></span></div></div>}
+          {pending && <div className="ai-thinking"><RobotAvatar thinking /><div className="ai-thinking-bubble space-y-2"><LatticeLoader label="Pensando…" showTimer={false} fontSize={12} cellSize={4} gap={1.5} /></div></div>}
           {error && <p role="alert" className="ai-error">
             {error}
             {/* La pregunta quedó escrita en el campo: el botón la reenvía sin que

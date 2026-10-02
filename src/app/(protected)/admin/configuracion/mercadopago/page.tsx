@@ -1,3 +1,4 @@
+import { DataLoading } from '@/components/ui/data-loading';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
@@ -45,9 +46,7 @@ export default async function MercadoPagoPage() {
         // de toda la pagina.
         <Suspense
           fallback={
-            <div role="status" className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
-              Cargando…
-            </div>
+            <DataLoading label="Cargando MercadoPago…" />
           }
         >
           <ConexionMercadoPago inicial={estado} />

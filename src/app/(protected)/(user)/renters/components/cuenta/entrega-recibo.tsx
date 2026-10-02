@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 // Entregar el recibo de un pago por los mismos canales que los comprobantes de los tickets. QR e
 // impresora térmica, según lo que la playa tenga prendido en Configuración → Comprobantes.
@@ -8,7 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, ExternalLink, Loader2, MessageCircle, PhoneOff, Printer } from 'lucide-react';
+import { Copy, ExternalLink, MessageCircle, PhoneOff, Printer } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { emitirReciboPagoAction } from '@/actions/cuentas/cuentas.action';
 import { ReciboEntregable, ResultadoPago } from '@/types/cuenta.type';
@@ -84,7 +85,7 @@ export function EntregaRecibo({
   if (!recibo)
     return (
       <p className="flex items-center gap-2 rounded-2xl border border-border p-4 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Preparando el recibo para entregar…
+        <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} /> Preparando el recibo para entregar…
       </p>
     );
 

@@ -1,4 +1,5 @@
 'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 
 import { useEffect, useState } from 'react';
 import { getRecurringPriceReferences } from '@/actions/tickets/recurring-price-reference.action';
@@ -14,7 +15,7 @@ export function RecurringPriceExplanation({ vehicle, day, unitMinutes, price, de
     getRecurringPriceReferences().then(data => { if (alive) setRows(data); }).catch(() => {}).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, []);
-  if (loading) return <p role="status" className="text-sm text-muted-foreground">Buscando las tarifas para mostrarte la cuenta…</p>;
+  if (loading) return <DataLoading label="Cargando tarifas…" />;
   if (!rows) return <p role="alert" className="text-sm text-destructive">No pudimos cargar las tarifas. Cerrá y volvé a abrir esta ventana para ver el cálculo.</p>;
   if (!Number.isFinite(unitMinutes) || unitMinutes <= 0) return <p className="text-sm text-muted-foreground">Ingresá una duración mayor a cero.</p>;
   return <div className="space-y-3 rounded-xl border border-gm-yellow/30 bg-gm-yellow/5 p-4" aria-live="polite">

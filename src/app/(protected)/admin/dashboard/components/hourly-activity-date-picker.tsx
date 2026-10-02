@@ -9,7 +9,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { AppCalendarDialog, appCalendarClassNames } from '@/components/app-date-picker';
 import { MONO_BADGE } from './mono-style';
 
 dayjs.extend(utc);
@@ -34,14 +34,12 @@ export function HourlyActivityDatePicker({ date }: { date: string }) {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button type="button" className={`${MONO_BADGE} gap-1 gm-tnum`}>
+    <AppCalendarDialog open={open} onOpenChange={setOpen} title="Fecha de actividad" trigger={
+        <button type="button" aria-label="Elegir fecha de actividad" className={`${MONO_BADGE} gap-1 gm-tnum`}>
           <CalendarIcon className="size-2.5" />
           {isToday ? 'Hoy' : dayjs(date).format('DD/MM/YYYY')}
         </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      } footer={<><span className="text-xs text-muted-foreground">Hasta el día de hoy</span><button type="button" className="text-sm font-medium text-gm-yellow" onClick={() => apply(new Date())}>Ir a hoy</button></>}>
         <Calendar
           mode="single"
           locale={es}
@@ -49,9 +47,9 @@ export function HourlyActivityDatePicker({ date }: { date: string }) {
           onSelect={apply}
           defaultMonth={dayjs(date).toDate()}
           disabled={(day) => day > new Date()}
-          className="bg-gm-surface-2"
+          className="p-3"
+          classNames={appCalendarClassNames}
         />
-      </PopoverContent>
-    </Popover>
+    </AppCalendarDialog>
   );
 }

@@ -1,3 +1,5 @@
+import type { ResumenCuenta } from './suscripcion.type';
+
 export type PlayaResumen = {
   id: string;
   empresaId: string;
@@ -29,6 +31,8 @@ export type EmpresaConDetalle = {
     estado: 'ACTIVA' | 'DESCONECTADA' | 'ERROR';
     conectadaEl: string | null;
   } | null;
+  // Plan, vencimiento y estado de la cuenta con la plataforma.
+  suscripcion?: ResumenCuenta | null;
   createdAt: string;
   updatedAt: string;
 };

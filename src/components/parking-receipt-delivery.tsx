@@ -31,7 +31,7 @@ export function ParkingReceiptDelivery({ registrationId, kind, onDismiss, showDi
   const receiptsBase = process.env.NEXT_PUBLIC_RECEIPTS_URL?.replace(/\/+$/, '') ?? '';
   const url = receipt && receiptsBase ? `${receiptsBase}/c/${receipt.token}` : '';
   return <Dialog open={!!registrationId && (!!receipt || !!error)} onOpenChange={open => { if (!open) onDismiss(); }}>
-    <DialogContent className="max-h-[90dvh] overflow-hidden sm:max-w-md [&_a]:h-auto [&_a]:min-h-10 [&_a]:whitespace-normal [&_a]:text-center [&_svg]:shrink-0">
+    <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md [&_a]:h-auto [&_a]:min-h-10 [&_a]:whitespace-normal [&_a]:text-center [&_svg]:shrink-0">
       <DialogHeader><DialogTitle>Entregar comprobante</DialogTitle><DialogDescription>La {kind === 'ENTRY' ? 'entrada' : 'salida'} ya está registrada.</DialogDescription></DialogHeader>
       {error ? <div className="space-y-3"><p role="alert">{error}</p><Button onClick={() => setAttempt(value => value + 1)}>Reintentar comprobante</Button></div> : receipt && <>
         {/* Fondo blanco fijo: el operador ve exactamente el papel que recibe el cliente, no una

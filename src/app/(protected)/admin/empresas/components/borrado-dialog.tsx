@@ -1,4 +1,5 @@
 "use client";
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 // Borrar una empresa o una playa no es un botón más: el backend lo rechaza mientras queden
 // playas, usuarios o registros de operación, y antes ese rechazo aparecía recién después de
@@ -6,7 +7,7 @@
 // de verdad se puede borrar, se pide escribir el nombre.
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Check, Loader2, X } from "lucide-react";
+import { AlertTriangle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -155,7 +156,7 @@ export function BorradoDialog({
             role="status"
             className="flex items-center gap-2 text-sm text-muted-foreground"
           >
-            <Loader2 className="size-4 animate-spin" />
+            <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />
             Revisando qué queda asociado…
           </p>
         )}

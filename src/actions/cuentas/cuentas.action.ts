@@ -3,6 +3,7 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
 import {
+  CuentaMostrador,
   EstadoCuenta,
   ListadoAnulaciones,
   MetodoCobro,
@@ -51,6 +52,11 @@ export async function getResumenCuentasAction() {
 
 export async function getEstadoCuentaAction(customerId: string) {
   return pedir<EstadoCuenta>(encodeURIComponent(customerId));
+}
+
+// Lo que ve el mostrador (y lo que necesita el cobro): deudas y pagos, sin movimientos.
+export async function getCuentaMostradorAction(customerId: string) {
+  return pedir<CuentaMostrador>(`${encodeURIComponent(customerId)}/mostrador`);
 }
 
 // `solicitudId` se genera al abrir el cobro y se repite en cada reintento: si el primer intento

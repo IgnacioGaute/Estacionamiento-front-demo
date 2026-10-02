@@ -1,4 +1,5 @@
 'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
@@ -58,7 +59,7 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
       {!pending && !error && <span className="ml-auto text-xs text-muted-foreground">{total} {total === 1 ? 'cierre' : 'cierres'}</span>}
     </div>
     <div aria-live="polite" aria-busy={pending} data-tour="caja-tabla">
-      {pending ? <p className="rounded-xl border border-border p-6 text-center text-sm text-muted-foreground">Cargando turnos…</p>
+      {pending ? <DataLoading label="Cargando turnos…" />
         : error ? <div role="alert" className="space-y-2 rounded-xl border border-destructive/50 p-4 text-sm"><p>{error}</p><Button variant="outline" size="sm" onClick={() => setRetry(value => value + 1)}>Reintentar</Button></div>
           : turnos.length === 0 ? <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">No hay turnos cerrados en este período.</p>
             : <div className="space-y-2">{turnos.map(turno => <ShiftCard key={turno.id} turno={turno} />)}<CompactPagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} /></div>}

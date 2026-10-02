@@ -20,6 +20,23 @@ export type BoxList = {
     // parte del efectivo que cayó en ese día. `turno: null` es el efectivo registrado antes
     // de adoptar la caja por turnos; va en su propia fila para que el total siga cuadrando.
     turnosDelDia?: TurnoDelDia[];
+    // Cobros a inquilinos del día (cuenta corriente), cada medio en su fila; null si la sección no
+    // está habilitada en la playa.
+    cobrosInquilinos?: CobroInquilinoDia[] | null;
+}
+
+export type CobroInquilinoDia = {
+    id: string;
+    // ANULACION: la de un pago o devolución de otro día (las del mismo día no vienen: se compensan).
+    tipo: 'PAGO' | 'DEVOLUCION' | 'ANULACION';
+    tipoOriginal: 'PAGO' | 'DEVOLUCION' | null;
+    metodo: 'CASH' | 'TRANSFER' | 'CHECK' | 'MERCADOPAGO';
+    // Positivo: entra. Negativo: sale (devolución, o anulación de un pago).
+    monto: number;
+    numero: string | null;
+    cliente: string;
+    aFavor: number;
+    hora: string;
 }
 
 export type TurnoDelDia = {

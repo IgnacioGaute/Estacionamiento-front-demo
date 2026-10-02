@@ -8,6 +8,7 @@ import { PlatformBar } from './platform-bar';
 import { ParkingMark } from '@/components/brand/logo';
 import { AssistantWidget } from '@/components/assistant/assistant-widget';
 import { OfflinePreparation } from '@/components/offline-preparation';
+import { AvisoCuenta } from '@/components/aviso-cuenta';
 
 interface AppNavbarProps {
   children: ReactNode;
@@ -72,6 +73,7 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
           </div>
         </header>
 
+        {user?.role !== 'SUPER_ADMIN' && <AvisoCuenta />}
         {user?.role !== 'SUPER_ADMIN' && <OfflinePreparation />}
         {children}
         <AssistantWidget />

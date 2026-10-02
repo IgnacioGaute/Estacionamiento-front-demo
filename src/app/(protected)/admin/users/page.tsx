@@ -3,9 +3,9 @@ export const fetchCache = 'force-no-store';
 
 import { getUsers } from '@/services/users.service';
 import { UsersTable } from './components/users-table';
-import { userColumns } from './components/user-columns';
 import { PageHeader } from '@/components/page-header';
 import { PageTour } from '@/components/page-tour';
+import { operatorAssignmentsAction } from '@/actions/tenancy/context.action';
 
 const TOUR_STEPS = [
   {
@@ -32,7 +32,7 @@ const TOUR_STEPS = [
 ];
 
 export default async function UserPage() {
-  const users = await getUsers();
+  const [users, assignments] = await Promise.all([getUsers(), operatorAssignmentsAction()]);
   const total = users?.data?.length ?? 0;
 
   return (
@@ -47,7 +47,8 @@ export default async function UserPage() {
         }
         actions={<PageTour steps={TOUR_STEPS} />}
       />
-      <UsersTable columns={userColumns} data={users?.data || []} />
+      {!assignments && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">No se pudieron consultar las playas asignadas. Actualizá la página para volver a intentarlo.</p>}
+      <UsersTable assignments={assignments} data={users?.data || []} />
     </div>
   );
 }

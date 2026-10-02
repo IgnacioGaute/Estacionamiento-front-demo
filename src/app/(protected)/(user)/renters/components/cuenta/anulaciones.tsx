@@ -1,11 +1,12 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
+import { DataLoading } from '@/components/ui/data-loading';
 
 // Las anulaciones de la playa en un mes. En la cuenta de cada inquilino quedan ocultas (suman
 // cero y confunden); este es el lugar donde el dueño controla quién anuló qué, cuándo y por qué.
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { plata } from '@/components/plataforma/formato';
 import { EJE, Pastilla, Selector } from '@/components/plataforma/mono';
@@ -76,7 +77,7 @@ export function AnulacionesDialog({ open, onOpenChange }: { open: boolean; onOpe
             })}
             onChange={setMes}
           />
-          {cargando && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+          {cargando && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
         </div>
 
         {t && (
@@ -94,6 +95,7 @@ export function AnulacionesDialog({ open, onOpenChange }: { open: boolean; onOpe
           </div>
         )}
 
+        {cargando && !t && <DataLoading label="Cargando anulaciones…" />}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {t && datos && !datos.lista.length && (
           <p className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">

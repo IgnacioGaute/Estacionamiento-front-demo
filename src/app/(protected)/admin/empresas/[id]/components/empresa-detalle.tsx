@@ -1,4 +1,5 @@
 "use client";
+import { DataLoading } from '@/components/ui/data-loading';
 
 // La ficha de una empresa en su propia página. Antes era un desplegable dentro del listado: los
 // botones para agregar playas y usuarios quedaban escondidos detrás de dos clics y no había
@@ -13,6 +14,7 @@ import {
   ArrowLeft,
   CalendarDays,
   Check,
+  CreditCard,
   Lock,
   MapPin,
   Pencil,
@@ -76,9 +78,11 @@ import {
 import { Editor, EditorDialog } from "../../components/editor-dialog";
 import { Borrado, BorradoDialog } from "../../components/borrado-dialog";
 import { ActividadDeEmpresa, cuandoFue, describirActividad } from "./actividad-empresa";
+import { PlanDeEmpresa } from "./plan-empresa";
+import { EstadoCuentaPill, diaAR, hoyAR, textoVencimiento } from "@/components/plataforma/cuenta";
 
-type Tab = "resumen" | "playas" | "usuarios" | "actividad";
-const TABS: Tab[] = ["resumen", "playas", "usuarios", "actividad"];
+type Tab = "resumen" | "plan" | "playas" | "usuarios" | "actividad";
+const TABS: Tab[] = ["resumen", "plan", "playas", "usuarios", "actividad"];
 
 // Tonos para repartir las estadías abiertas entre playas: de la más clara a la más apagada.
 const TONOS_PLAYA = [CREMA, "#A59B8D", "#6E6457", "#4A4034"];
@@ -174,9 +178,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
     );
   if (!empresa)
     return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Cargando la empresa…
-      </p>
+      <DataLoading label="Cargando la empresa…" />
     );
 
   const metricasDe = (playaId: string): PlayaMetrics | undefined =>
@@ -216,8 +218,27 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
   const mp = empresa.mercadoPago ?? null;
   const digitales = playas.filter((p) => p.m?.comprobantes?.whatsapp || p.m?.comprobantes?.qr);
 
+  const cuenta = empresa.suscripcion ?? null;
+  const planDe = (playaId: string) => cuenta?.planes.find((l) => l.playaId === playaId) ?? null;
+  const playasSinPlan = playas.filter((p) => !planDe(p.id));
+
   // Puesta en marcha: lo que tiene que estar para que la empresa opere, y lo que conviene.
   const puntos = [
+    {
+      id: "plan",
+      titulo: "Plan y vencimiento",
+      ok:
+        !!cuenta &&
+        !playasSinPlan.length &&
+        ["PRUEBA", "AL_DIA", "BONIFICADA"].includes(cuenta.estado),
+      bloquea: cuenta?.estado === "VENCIDA" || cuenta?.estado === "SUSPENDIDA",
+      detalle: !cuenta
+        ? "Sin datos de la cuenta"
+        : playasSinPlan.length && playas.length
+          ? `${plural(playasSinPlan.length, "playa", "playas")} sin plan · ${textoVencimiento(cuenta)}`
+          : textoVencimiento(cuenta),
+      accion: { label: "Ver", hacer: () => setTab("plan") },
+    },
     {
       id: "tarifas",
       titulo: "Tarifas cargadas",
@@ -324,7 +345,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
     if (r.error) toast.error(r.error);
     else {
       toast.success(
-        activa ? "Empresa suspendida. Sus usuarios no pueden iniciar sesión." : "Empresa reactivada.",
+        activa ? "Empresa suspendida: solo puede registrar salidas y cerrar el turno." : "Empresa reactivada.",
       );
       await refrescar();
     }
@@ -337,6 +358,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
   const sinVer = abrioActividad ? 0 : actividad.filter((a) => !visto || a.fecha > visto).length;
   const tabs: { id: Tab; label: string; aviso?: number }[] = [
     { id: "resumen", label: "Resumen" },
+    { id: "plan", label: "Plan" },
     { id: "playas", label: `Playas · ${empresa.playas.length}` },
     { id: "usuarios", label: `Usuarios · ${empresa.usuarios.length}` },
     { id: "actividad", label: "Actividad", aviso: sinVer },
@@ -370,6 +392,12 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   {empresa.nombre}
                 </h1>
                 <EstadoEmpresa estado={empresa.estado} />
+                {/* Suspendida o de baja ya lo dice el estado de la empresa: no se repite. */}
+                {cuenta && empresa.estado === "ACTIVA" && (
+                  <button type="button" onClick={() => setTab("plan")} title="Ver el plan">
+                    <EstadoCuentaPill cuenta={cuenta} />
+                  </button>
+                )}
                 {mp?.estado === "ACTIVA" && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7E86F0]/[0.14] px-2.5 py-1 text-xs font-bold text-[#A9AFFF]">
                     <Check aria-hidden className="size-[13px]" strokeWidth={2.5} />
@@ -386,7 +414,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
               <div className="mt-3 flex flex-wrap items-center gap-x-[18px] gap-y-1.5 text-[13px] text-muted-foreground">
                 <span className="flex items-center gap-[7px]">
                   <CalendarDays aria-hidden className="size-3.5" />
-                  Alta {fechaCorta(empresa.createdAt)}
+                  Alta {cuenta ? diaAR(cuenta.alta) : fechaCorta(empresa.createdAt)}
                 </span>
                 <span className={`flex items-center gap-[7px] ${minutosUltima !== null && minutosUltima <= 15 ? "text-foreground" : ""}`}>
                   {minutosUltima !== null && minutosUltima <= 15 && <PuntoVivo className="size-[7px]" />}
@@ -396,6 +424,15 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   <MapPin aria-hidden className="size-3.5" />
                   {plural(empresa.playas.length, "playa", "playas")}
                 </span>
+                {cuenta && cuenta.mensual > 0 && (
+                  <span className="flex items-center gap-[7px]">
+                    <CreditCard aria-hidden className="size-3.5" />
+                    {plata(cuenta.mensual)}/mes
+                    {cuenta.proximoVencimiento && cuenta.estado !== "BONIFICADA"
+                      ? ` · vence ${diaAR(cuenta.proximoVencimiento, false)}`
+                      : ""}
+                  </span>
+                )}
                 <span className="flex items-center gap-[7px]">
                   <Users aria-hidden className="size-3.5" />
                   {plural(empresa.usuarios.length, "usuario", "usuarios")}
@@ -888,16 +925,25 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                       <span role="cell">
                         <label
                           className="flex cursor-pointer items-center gap-2 text-[12.5px]"
-                          title="Muestra la sección Inquilinos (cuenta corriente, recibos y cobros) en esta playa"
+                          title={
+                            planDe(p.id)
+                              ? `Lo define el plan ${planDe(p.id)?.plan}: cambialo en la solapa Plan`
+                              : "Muestra la sección Inquilinos (cuenta corriente, recibos y cobros) en esta playa"
+                          }
                         >
                           <Switch
                             checked={!!p.modulos?.inquilinos}
-                            disabled={cambiandoModulo === p.id}
+                            disabled={cambiandoModulo === p.id || !!planDe(p.id)}
                             onCheckedChange={(v) => void alternarInquilinos(p.id, v)}
                             className="h-5 w-9 data-[state=checked]:bg-gm-yellow [&>span]:size-4 [&>span]:data-[state=checked]:translate-x-4"
                           />
                           <span className={p.modulos?.inquilinos ? "font-semibold" : "text-muted-foreground"}>
                             Inquilinos
+                            {planDe(p.id) && (
+                              <span className="block text-[10.5px] font-normal" style={{ color: EJE }}>
+                                según el plan
+                              </span>
+                            )}
                           </span>
                         </label>
                       </span>
@@ -1071,6 +1117,8 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
         </section>
       )}
 
+      {tab === "plan" && <PlanDeEmpresa empresa={empresa} alCambiar={() => void refrescar()} />}
+
       {tab === "actividad" && <ActividadDeEmpresa actividad={actividad} desdeQue={visto} />}
 
       <section className="overflow-hidden rounded-[22px] border border-[#FF7A4D]/35 bg-[#1A1410]">
@@ -1084,8 +1132,10 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
               <div className="text-sm font-bold">{activa ? "Suspender la empresa" : "Reactivar la empresa"}</div>
               <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
                 {activa
-                  ? `Corta el acceso de ${empresa.usuarios.length === 1 ? "su único usuario" : `sus ${empresa.usuarios.length} usuarios`} y conserva todos los datos. Se puede revertir.`
-                  : "Vuelve a habilitar el acceso de sus usuarios."}
+                  ? "Sus usuarios solo van a poder ver el aviso, cobrar las salidas de los autos que quedaron adentro y cerrar el turno. Conserva todos los datos y se puede revertir."
+                  : cuenta?.motivoSuspension === "FALTA_DE_PAGO" && !!cuenta.suspendeEl && cuenta.suspendeEl <= hoyAR()
+                    ? "Está suspendida por falta de pago: si la reactivás sin registrar el pago ni darle una prórroga, la revisión diaria la vuelve a suspender."
+                    : "Vuelve a habilitar el acceso de sus usuarios."}
               </p>
             </div>
             <button

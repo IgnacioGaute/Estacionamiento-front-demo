@@ -30,9 +30,9 @@ export async function getEmpresasAction() {
   }
 }
 
-export async function createEmpresaAction(nombre: string) {
+export async function createEmpresaAction(nombre: string, diasPrueba?: number) {
   try {
-    return { empresa: await createEmpresa(nombre) };
+    return { empresa: await createEmpresa(nombre, diasPrueba) };
   } catch (error) {
     return { error: mensaje(error, "No se pudo crear la empresa.") };
   }

@@ -1,6 +1,7 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -69,7 +70,7 @@ export function ConfirmDeleteDialog({
             onClick={() => onConfirm()}
             disabled={isPending}
           >
-            {isPending && <Loader2 className="size-4 animate-spin" />}
+            {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
             {confirmLabel}
           </Button>
         </DialogFooter>

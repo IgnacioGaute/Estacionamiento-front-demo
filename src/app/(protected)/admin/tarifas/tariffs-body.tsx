@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Pencil, Save, X } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
+import { DataLoading } from '@/components/ui/data-loading';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useVehicleTypes } from '@/components/vehicle-type-options';
@@ -116,10 +117,10 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
           {!draft && <div className="flex flex-wrap items-center gap-3"><Button onClick={edit} disabled={pending}><Pencil className="mr-2 size-4" aria-hidden="true" />{hasPrices ? 'Editar tarifas' : 'Configurar mis tarifas'}</Button><p className="text-sm text-muted-foreground">Podés probar los cambios antes de aplicarlos.</p></div>}
           {draft && <section aria-labelledby="tariff-draft-heading" className="space-y-5 rounded-2xl border border-amber-500/40 p-4 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3"><div><span className="text-xs font-semibold uppercase tracking-wide text-amber-500">Borrador · todavía no se cobra</span><h2 id="tariff-draft-heading" className="mt-1 text-xl font-semibold">Editar tarifas</h2><p className="mt-1 text-sm text-muted-foreground">Todos los cambios se aplican juntos al finalizar.</p></div><Button type="button" variant="ghost" disabled={pending} onClick={discard}><X className="mr-1 size-4" aria-hidden="true" />{dirty ? 'Descartar cambios' : 'Cancelar'}</Button></div>
-            <fieldset disabled={pending || loading || !!vehicleError} className="min-w-0"><TariffEditor draft={draft} onChange={next => { setDraft(next); setError(''); }} vehicles={vehicles} /></fieldset>
+            {loading ? <DataLoading label="Cargando tipos de vehículo…" /> : <fieldset disabled={pending || !!vehicleError} className="min-w-0"><TariffEditor draft={draft} onChange={next => { setDraft(next); setError(''); }} vehicles={vehicles} /></fieldset>}
             {errors.length > 0 && <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm" role="status"><p className="font-medium">Para poder aplicar el borrador:</p><ul className="mt-2 list-disc space-y-1 pl-5">{errors.map(message => <li key={message}>{message}</li>)}</ul></div>}
           </section>}
-          <TariffSimulator draft={draft} revision={current.revision} invalid={loading || !!vehicleError || retiredMethod} vehicles={vehicles} />
+          {loading ? !draft && <DataLoading label="Cargando tarifas…" /> : <TariffSimulator draft={draft} revision={current.revision} invalid={!!vehicleError || retiredMethod} vehicles={vehicles} />}
           {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
           {conflict && draft && <div role="alert" className="space-y-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm"><p className="font-semibold">Las tarifas o los vehículos cambiaron mientras editabas.</p><p>Tu borrador se conserva. Revisá la configuración vigente de arriba y comparala con tu borrador antes de continuar.</p>
             {current.revision !== baseRevision ? <Button type="button" variant="outline" disabled={pending} onClick={() => { setBaseRevision(current.revision); setDraft(previous => previous ? { ...previous, brackets: previous.brackets.map(row => { if (!row.id || current.brackets.some(saved => saved.id === row.id)) return row; const { id: _obsoleteId, ...fields } = row; return fields; }) } : previous); setBaseDraft(JSON.stringify(copyDraft(current))); setConflict(false); setError(''); }}>Revisé la versión vigente: conservar mi borrador</Button> : <Button variant="outline" disabled={pending} onClick={reload}>Cargar la versión vigente</Button>}

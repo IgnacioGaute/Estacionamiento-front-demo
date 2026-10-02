@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { VehicleTypeOptions } from '@/components/vehicle-type-options';
 
@@ -25,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/lib/toast';
-import { Loader2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ticketPriceSchema, TicketPriceSchemaType } from '@/schemas/ticket-price.schema';
 import { createTicketPriceAction } from '@/actions/tickets/create-ticket-price.action';
 
@@ -147,7 +148,7 @@ export function CreateTicketPriceDialog({ defaultVehicleType = 'AUTO' }: { defau
             />
 
             <Button className="w-full" type="submit" disabled={isPending}>
-              {isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+              {isPending ? <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} /> : <Plus className="size-4" />}
               Crear tarifa
             </Button>
           </form>

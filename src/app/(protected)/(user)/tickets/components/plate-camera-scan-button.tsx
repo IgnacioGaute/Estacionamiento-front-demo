@@ -1,7 +1,8 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useRef, useState } from 'react';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { sanitizePlateInput } from '@/utils/plate.utils';
@@ -71,7 +72,7 @@ export function PlateCameraScanButton({
       >
         {isScanning ? (
           <>
-            <Loader2 className="size-4 animate-spin" />
+            <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />
             Reconociendo patente…
           </>
         ) : (

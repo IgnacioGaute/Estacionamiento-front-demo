@@ -1,5 +1,5 @@
 import { plata } from '@/components/plataforma/formato';
-import { CargoCuenta, ResultadoPago, Tramo, nombreMetodo } from '@/types/cuenta.type';
+import { DeudaCuenta, ResultadoPago, Tramo, nombreMetodo } from '@/types/cuenta.type';
 
 // «2026-10-02» → «02/10/2026». Sin pasar por Date: un «AAAA-MM-DD» se lee como medianoche UTC y
 // en Argentina mostraría el día anterior.
@@ -88,13 +88,13 @@ export const TRAMOS: Record<Tramo, { label: string; corto: string; color: string
 
 // La misma imputación que hace el backend (elegidos primero, después del más viejo al más
 // nuevo), para mostrar antes de confirmar qué cubre el cobro.
-export function simularImputacion(pendientes: CargoCuenta[], elegidos: string[], total: number) {
+export function simularImputacion(pendientes: DeudaCuenta[], elegidos: string[], total: number) {
   const orden = [
-    ...elegidos.map((id) => pendientes.find((r) => r.id === id)).filter((r): r is CargoCuenta => !!r),
+    ...elegidos.map((id) => pendientes.find((r) => r.id === id)).filter((r): r is DeudaCuenta => !!r),
     ...pendientes.filter((r) => !elegidos.includes(r.id)),
   ];
   let resta = total;
-  const lineas: { recibo: CargoCuenta; aplicado: number; queda: number }[] = [];
+  const lineas: { recibo: DeudaCuenta; aplicado: number; queda: number }[] = [];
   for (const r of orden) {
     if (resta <= 0) break;
     const aplicado = Math.min(r.saldo, resta);

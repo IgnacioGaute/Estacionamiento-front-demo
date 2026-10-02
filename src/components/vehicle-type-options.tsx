@@ -1,5 +1,6 @@
  'use client';
 import { useEffect, useState } from 'react';
+import LatticeLoader from '@/components/ui/lattice-loader';
 import { getVehicleTypesAction, VehicleTypeItem } from '@/actions/tickets/vehicle-types.action';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 export function useVehicleTypes() {
@@ -16,12 +17,13 @@ export function useVehicleTypes() {
 }
 export function VehicleTypeOptions() {
   const { types, error, loading } = useVehicleTypes();
-  return <>{types.filter(t => t.enabled).map(t => <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>)}{(loading || error) && <SelectItem disabled value="__status">{error || 'Cargando…'}</SelectItem>}</>;
+  return <>{types.filter(t => t.enabled).map(t => <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>)}{(loading || error) && <SelectItem disabled value="__status">{error || <LatticeLoader label="Cargando vehículos…" showTimer={false} cellSize={4} gap={1} fontSize={12} />}</SelectItem>}</>;
 }
 export function VehicleTypePicker({ value, onChange, disabled }: { value: string; onChange: (value: string) => void; disabled?: boolean }) {
   const { types, error, loading } = useVehicleTypes();
   const active = types.filter(t => t.enabled);
   const selected = active.find(t => t.code === value);
   const placeholder = loading ? 'Cargando vehículos…' : error ? 'No se pudieron cargar' : active.length ? 'Elegir vehículo' : 'No hay vehículos habilitados';
+  if (loading && !active.length) return <div aria-label="Cargando tipos de vehículo" className="space-y-2"><LatticeLoader label="Cargando vehículos…" showTimer={false} cellSize={4} gap={1} fontSize={12} /></div>;
   return <Select key={loading ? 'loading' : 'ready'} value={value} onValueChange={onChange} disabled={disabled || loading || !!error || !active.length}><SelectTrigger aria-label="Tipo de vehículo"><SelectValue placeholder={placeholder}>{selected?.name ?? placeholder}</SelectValue></SelectTrigger><SelectContent>{active.map(t => <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>)}</SelectContent></Select>;
 }

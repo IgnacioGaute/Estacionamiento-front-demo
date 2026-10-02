@@ -1,4 +1,5 @@
 "use client";
+import { DataLoading } from '@/components/ui/data-loading';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -428,7 +429,7 @@ export default function CardTicket({
           ) : (
             <section ref={selectedDetailRef} className="scroll-mt-5 overflow-hidden rounded-2xl border border-border bg-card">
               <div className="border-b border-border px-4 py-2 sm:px-5"><button type="button" onClick={clearPreview} className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" />Volver al último movimiento</button></div>
-              {previewLoading || !previewSummary ? <p role="status" className="p-8 text-center text-sm text-muted-foreground">Consultando vehículo e importe…</p> : (
+              {previewLoading || !previewSummary ? <DataLoading label="Cargando vehículo e importe…" className="p-4" /> : (
                 <div className="space-y-5 p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">{selectedTarget.kind === "BARCODE" ? "Ticket seleccionado" : "Vehículo seleccionado"}</p><h2 className="break-words text-3xl font-semibold tracking-tight">{selectedTarget.kind === "BARCODE" ? selectedTarget.codeBar : previewSummary.registration.licensePlateOriginal || previewSummary.registration.lastNameCustomer || "Sin patente"}</h2></div><Badge variant={isOverdue(previewSummary.registration, now) ? "red" : "green"}>{isOverdue(previewSummary.registration, now) ? "Tiempo avisado superado" : "En la playa"}</Badge></div>
                   <div className="grid grid-cols-2 gap-4 border-y border-border py-4 text-sm"><div><p className="text-xs text-muted-foreground">Entrada</p><p className="mt-1 font-medium">{previewSummary.registration.entryTime}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(previewSummary.registration.entryDay)}</p></div><div><p className="text-xs text-muted-foreground">Tiempo estacionado</p><p className="mt-1 font-medium">{formatElapsed(previewSummary.elapsedMinutes)}</p></div><div className="col-span-2"><p className="text-xs text-muted-foreground">Tipo de vehículo</p><p className="mt-1 break-words">{(selectedTarget.vehicleType || previewSummary.registration.vehicleType || "Sin especificar").replaceAll("_", " ")}</p></div></div>

@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
@@ -25,7 +26,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, StickyNote } from 'lucide-react';
+import { StickyNote } from 'lucide-react';
 
 import { noteSchema, NoteSchemaType } from '@/schemas/note.schema';
 import { createNoteAction } from '@/actions/notes/create-note.action';
@@ -114,7 +115,7 @@ export function CreateNoteDialog() {
                 Cancelar
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="size-4 animate-spin" />}
+                {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
                 Crear aviso
               </Button>
             </DialogFooter>

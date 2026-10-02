@@ -1,3 +1,4 @@
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { VehicleTypeOptions } from '@/components/vehicle-type-options';
 import Link from 'next/link';
@@ -24,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { CalendarPlus, Loader2, ArrowUpRight, ChevronRight } from "lucide-react";
+import { CalendarPlus, ArrowUpRight, ChevronRight } from "lucide-react";
 import { ticketRegistrationForDaySchema, TicketRegistrationForDaySchemaType } from "@/schemas/ticket-registration-for-day.schema";
 import { createTicketRegistrationForDayAction } from "@/actions/tickets/create-ticket-registration-for-day.action";
 
@@ -352,7 +353,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
               )}
 
               <Button className="w-full" type="submit" disabled={isPending || (isPaid && !form.watch('paymentMetodo'))}>
-                {isPending && <Loader2 className="mr-1.5 size-4 animate-spin" />}
+                {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
                 Crear ticket
               </Button>
             </form>

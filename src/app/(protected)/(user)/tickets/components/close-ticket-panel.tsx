@@ -1,4 +1,5 @@
 'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 
 import { PricingBreakdown, formatPrice } from '@/components/pricing-breakdown';
 import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
@@ -91,7 +92,6 @@ export function CloseTicketPanel({
       // vehículos activos en vez de esperar a que se escriba algo.
       handleSearchChange('');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialRegistrationId]);
 
   const loadSummary = (id: string) => {
@@ -158,9 +158,7 @@ export function CloseTicketPanel({
           // Al entrar desde un vehículo ya elegido no hay nada que buscar: mostrar el buscador
           // mientras carga el resumen hacía aparecer una pantalla intermedia que nadie pidió y
           // que se iba sola.
-          <p role="status" className="py-10 text-center text-sm text-muted-foreground">
-            Cargando la estadía…
-          </p>
+          <DataLoading label="Cargando la estadía…" />
         ) : !summary ? (
           <div className="space-y-3">
             <div className="relative">
@@ -210,9 +208,9 @@ export function CloseTicketPanel({
                   </button>
                 );
               })}
-              {results.length === 0 && (
+              {results.length === 0 && (isPending ? <DataLoading label="Buscando vehículos…" /> :
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  {isPending ? 'Buscando vehículos…' : query.trim() ? (barcodeTicketsEnabled ? 'No encontramos ese vehículo. Revisá la patente o el número de ticket.' : 'No encontramos ese vehículo. Revisá la patente o el apellido.') : 'No hay vehículos adentro.'}
+                  {query.trim() ? (barcodeTicketsEnabled ? 'No encontramos ese vehículo. Revisá la patente o el número de ticket.' : 'No encontramos ese vehículo. Revisá la patente o el apellido.') : 'No hay vehículos adentro.'}
                 </p>
               )}
             </div>

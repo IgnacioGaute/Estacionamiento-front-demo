@@ -10,6 +10,7 @@ import {
   Users,
   Wallet,
   Settings,
+  CreditCard,
 } from 'lucide-react';
 
 import {
@@ -47,6 +48,7 @@ export function AdminNavbarSidebar({
     { title: 'Frecuentes',              url: '/admin/frecuentes',             icon: <Repeat /> },
     { title: 'Caja',     url: '/admin/caja',                   icon: <Wallet /> },
     { title: 'Configuración', url: '/admin/configuracion', icon: <Settings /> },
+    { title: 'Mi plan', url: '/admin/plan', icon: <CreditCard /> },
     { title: 'Volver',                  url: '/tickets',                       icon: <ArrowLeft /> },
   ];
 

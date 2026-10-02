@@ -1,4 +1,6 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
+import { DataLoading } from '@/components/ui/data-loading';
 import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
@@ -9,17 +11,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
+import { appCalendarClassNames } from '@/components/app-date-picker';
 import * as DateDialog from '@radix-ui/react-dialog';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { BoxList } from '@/types/box-list.type';
+import { BoxList, CobroInquilinoDia } from '@/types/box-list.type';
 import { findBoxByDate } from '@/services/box-lists.service';
 import generateBoxList from '@/utils/generate-box-list';
 import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { CalendarDays, ChevronLeft, ChevronRight, FileText, Printer, Wallet, Loader2, Info } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, FileText, Printer, Wallet, Info } from 'lucide-react';
 import { getShiftsEnabledAction } from '@/actions/turnos/shifts-enabled.action';
 import { CompactPagination } from '@/components/compact-pagination';
 
@@ -38,6 +41,42 @@ const ars = (n: number) =>
 
 const hora = (iso: string) =>
   dayjs(iso).tz('America/Argentina/Buenos_Aires').format('HH:mm');
+
+// Lo cobrado a inquilinos en el día, por medio de pago (solo con la sección habilitada). El
+// efectivo ya está sumado en el total de arriba; transferencia y MercadoPago no pasan por el cajón.
+const MEDIOS_INQUILINOS: { id: CobroInquilinoDia['metodo']; label: string }[] = [
+  { id: 'CASH', label: 'Efectivo' },
+  { id: 'TRANSFER', label: 'Transferencia' },
+  { id: 'MERCADOPAGO', label: 'MercadoPago' },
+  { id: 'CHECK', label: 'Cheque' },
+];
+
+function CobrosInquilinosDelDia({ cobros }: { cobros: CobroInquilinoDia[] }) {
+  const porMedio = MEDIOS_INQUILINOS.map((m) => ({
+    ...m,
+    total: cobros.filter((c) => c.metodo === m.id).reduce((s, c) => s + c.monto, 0),
+  })).filter((m) => m.total !== 0 || m.id === 'CASH' || m.id === 'TRANSFER');
+  const recibos = new Set(cobros.filter((c) => c.tipo === 'PAGO').map((c) => c.numero ?? c.id)).size;
+  const total = cobros.reduce((s, c) => s + c.monto, 0);
+  return (
+    <div className="space-y-3 rounded-2xl border border-border bg-secondary/20 p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Cobros a inquilinos</div>
+        <div className="text-[11px] text-muted-foreground">
+          {recibos ? `${recibos} ${recibos === 1 ? 'recibo' : 'recibos'} · ${ars(total)}` : 'Sin cobros en el día'}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {porMedio.map((m) => (
+          <div key={m.id} className="rounded-xl border border-border/60 bg-background/40 px-3 py-2.5">
+            <div className="text-[11px] text-muted-foreground">{m.label}</div>
+            <div className="gm-mono gm-tnum mt-0.5 text-[14px] font-semibold text-foreground">{ars(m.total)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -159,19 +198,7 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
                     disabled={{ after: new Date() }}
                     onSelect={date => { if (date) { setSelectedDate(dayjs(date).hour(12).toDate()); setDatePickerOpen(false); } }}
                     className="p-3"
-                    classNames={{
-                      months: 'w-full', month: 'w-full space-y-1',
-                      caption: 'relative flex h-8 items-center justify-center',
-                      caption_label: 'text-sm font-semibold capitalize',
-                      nav_button: 'inline-flex size-8 items-center justify-center rounded-lg border border-border bg-secondary/30 text-foreground transition-colors hover:bg-gm-yellow/15 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-30',
-                      table: 'w-full border-collapse', head_row: 'grid grid-cols-7',
-                      head_cell: 'py-2 text-center text-[11px] font-semibold uppercase text-muted-foreground',
-                      row: 'grid grid-cols-7', cell: 'relative p-0 text-center',
-                      day: 'mx-auto flex h-[clamp(20px,calc((100dvh-180px)/6),36px)] w-9 items-center justify-center rounded-xl text-sm tabular-nums transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
-                      day_selected: '!bg-gm-yellow !text-gm-ink font-bold shadow-sm',
-                      day_today: 'font-bold text-gm-yellow ring-1 ring-inset ring-gm-yellow/40',
-                      day_outside: 'text-muted-foreground/40', day_disabled: 'pointer-events-none opacity-25',
-                    }}
+                    classNames={appCalendarClassNames}
                   />
                   <div className="flex items-center justify-between border-t border-border bg-secondary/20 px-4 py-2"><span className="text-xs text-muted-foreground">Hasta el día de hoy</span><Button size="sm" variant="ghost" className="text-gm-yellow" onClick={() => { setSelectedDate(new Date()); setDatePickerOpen(false); }}>Ir a hoy</Button></div>
                   </DateDialog.Content>
@@ -205,6 +232,10 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
             </div>
           )}
 
+          {boxData && Array.isArray(boxData.cobrosInquilinos) && (
+            <CobrosInquilinosDelDia cobros={boxData.cobrosInquilinos} />
+          )}
+
           {shiftsEnabled && boxData && boxData.turnosDelDia && boxData.turnosDelDia.length > 0 && (
             <div className="rounded-2xl border border-border bg-secondary/20 p-4 space-y-3">
               <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
@@ -235,7 +266,7 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
             </div>
           )}
 
-          {loading && <div role="status" className="flex min-h-40 items-center justify-center gap-3 rounded-2xl border border-dashed border-border text-sm text-muted-foreground"><Loader2 className="size-5 animate-spin motion-reduce:animate-none" /> Cargando planilla…</div>}
+          {loading && <DataLoading label="Cargando planilla…" />}
           {error && (
             <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-[#F08775]">
               {error}
@@ -247,7 +278,7 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
         <DialogFooter className="mt-1 gap-2 border-t border-border pt-4">
           <Button variant="ghost" onClick={() => setOpen(false)}>Cerrar</Button>
           <Button onClick={handlePrintPdf} disabled={!boxData || loading || printing}>
-            {printing ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
+            {printing ? <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} /> : <Printer className="size-4" />}
             {printing ? 'Preparando PDF…' : 'Imprimir planilla'}
           </Button>
         </DialogFooter>

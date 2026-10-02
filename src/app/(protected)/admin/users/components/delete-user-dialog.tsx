@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -24,7 +25,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { AlertTriangle, Loader2, Trash } from 'lucide-react';
+import { AlertTriangle, Trash } from 'lucide-react';
 
 import {
   DeleteUserSchemaType,
@@ -163,7 +164,7 @@ export function DeleteUserDialog({ user }: { user: User }) {
                 variant="destructive"
                 disabled={isPending}
               >
-                {isPending && <Loader2 className="size-4 animate-spin" />}
+                {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
                 Eliminar definitivamente
               </Button>
             </DialogFooter>

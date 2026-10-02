@@ -1,4 +1,5 @@
 'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 
 import { useEffect, useState } from 'react';
 import { getCashContextAction } from '@/actions/turnos/cash-context.action';
@@ -30,7 +31,7 @@ export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean
     <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gm-yellow/30 bg-gm-yellow/5 p-4">
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-wide text-gm-yellow">Turno actual</p>
-        {error ? <p role="alert" className="mt-2 text-sm">{error}</p> : !context ? <p className="mt-2 text-sm">Cargando turno…</p> : context.active ? <>
+        {error ? <p role="alert" className="mt-2 text-sm">{error}</p> : !context ? <DataLoading label="Cargando turno…" className="mt-2" /> : context.active ? <>
           <p className="mt-1 break-words font-semibold">{context.active.usuarioApertura ? `${context.active.usuarioApertura.firstName} ${context.active.usuarioApertura.lastName}` : 'Operador no disponible'} · En curso</p>
           <p className="mt-1 text-sm text-muted-foreground">Abierto el {new Date(context.active.fechaApertura).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'short' })}</p>
         </> : <p className="mt-1 text-sm">No hay un turno abierto.</p>}

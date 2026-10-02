@@ -1,4 +1,5 @@
 "use client";
+import { DataLoading } from '@/components/ui/data-loading';
 
 // Métricas de toda la plataforma. El período (7/30/90 días) y la empresa recalculan todo: KPIs,
 // curva, medios de pago, mapa de calor, ranking y comparativa salen de la misma consulta, así que
@@ -375,6 +376,8 @@ export function MetricasPanel() {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
+  if (cargando && !detalle && !error) return <DataLoading label="Cargando métricas…" className="p-4" />;
+
   return (
     <div className="space-y-5">
       {/* Si no entran en una línea, los controles bajan enteros: partir el título se ve peor. */}
@@ -418,9 +421,7 @@ export function MetricasPanel() {
             Exportar CSV
           </button>
           {cargando && (
-            <span role="status" className="text-sm text-muted-foreground">
-              Actualizando…
-            </span>
+            <DataLoading label="Actualizando métricas…" className="w-auto" />
           )}
         </div>
       </div>

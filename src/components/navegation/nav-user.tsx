@@ -34,6 +34,7 @@ import { useNotifications } from '@/hooks/use-notification';
 import { cn } from '@/lib/utils';
 import { InstallAppMenuItem } from './install-app-menu-item';
 import { HojaDeRama, Rama as RamaMenu } from './branched-menu';
+import DesktopBranchedMenu, { type BranchedMenuItem } from './desktop-branched-menu';
 
 type RamaId = 'operacion' | 'clientes' | 'admin';
 
@@ -53,6 +54,7 @@ const SECCIONES_ADMIN = [
   // { label: 'Tipos de cochera', url: '/admin/parking-type' },
   { label: 'Caja', url: '/admin/caja' },
   { label: 'Configuración', url: '/admin/configuracion' },
+  { label: 'Mi plan', url: '/admin/plan' },
 ];
 
 function OperationalNavUser({
@@ -92,6 +94,22 @@ function OperationalNavUser({
     else setRama('operacion');
   }, [isOpen, pathname]);
 
+  const desktopItems: BranchedMenuItem[] = [
+    {
+      label: 'Operación',
+      children: [
+        { value: '/tickets', label: 'Tickets', icon: <TicketIcon /> },
+        ...(inquilinosEnabled ? [{ value: '/renters', label: 'Inquilinos', icon: <Users /> }] : []),
+        { value: '/notes', label: 'Avisos', icon: hasNewNoteAlert ? <BellDot className="text-gm-orange" /> : <AlertCircle /> },
+      ],
+    },
+    ...(esAdmin ? [{ label: 'Administración', children: SECCIONES_ADMIN.map(section => ({ value: section.url, label: section.label })) }] : []),
+  ];
+  const desktopActive = desktopItems.flatMap(section => section.children ?? []).find(item =>
+    pathname === item.value || pathname.startsWith(item.value + '/')
+  )?.value ?? pathname;
+  const desktopSection = desktopItems.findIndex(section => section.children?.some(item => item.value === desktopActive));
+
   const initials = userNav.name
     .split(' ')
     .filter(Boolean)
@@ -106,20 +124,20 @@ function OperationalNavUser({
         <DropdownMenuTrigger asChild>
           <button
             className={cn(
-              'group relative flex items-center gap-3 rounded-2xl border border-transparent bg-white/[0.04] px-2.5 py-2 text-left text-sm transition-all duration-200',
+              'group relative flex items-center gap-2 rounded-2xl lg:w-[248px] lg:shrink-0 border border-transparent bg-white/[0.04] px-2 py-2 text-left text-sm transition-all duration-200',
               'hover:bg-white/[0.08]',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               isOpen && 'bg-white/[0.08] border-border/60',
             )}
           >
-            <Avatar className="h-10 w-10 rounded-xl border border-border/60">
+            <Avatar className="h-10 w-10 shrink-0 rounded-xl border border-border/60">
               <AvatarImage src={userNav.avatar} alt={userNav.name} />
               <AvatarFallback className="rounded-xl bg-gm-orange text-white font-display font-bold text-sm tracking-wider">
                 {initials}
               </AvatarFallback>
             </Avatar>
 
-            <div className="hidden lg:flex flex-col leading-tight">
+            <div className="hidden lg:flex min-w-0 flex-1 flex-col leading-tight">
               <span className="text-sm font-medium text-foreground truncate max-w-[160px]">
                 {userNav.name.trim() || 'Usuario'}
               </span>
@@ -134,7 +152,7 @@ function OperationalNavUser({
 
             <span
               className={cn(
-                'hidden lg:flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-white/5 text-muted-foreground transition-transform duration-200',
+                'hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/60 bg-white/5 text-muted-foreground transition-transform duration-200',
                 isOpen && 'rotate-180',
               )}
             >
@@ -146,10 +164,10 @@ function OperationalNavUser({
         <DropdownMenuContent
           align="end"
           sideOffset={8}
-          className="w-56 rounded-xl border border-border/70 bg-card/95 p-1.5 shadow-[0_28px_90px_-35px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+          className="max-h-[calc(100dvh-110px)] w-[min(304px,calc(100vw-24px))] overflow-y-auto rounded-xl border border-border/70 bg-card/95 p-1.5 shadow-[0_28px_90px_-35px_rgba(0,0,0,0.65)] backdrop-blur-xl lg:w-[248px] lg:max-w-[calc(100vw-24px)] lg:p-2"
         >
           {/* User info header */}
-          <div className="flex items-center gap-2.5 rounded-lg bg-white/[0.04] px-2.5 py-2 mb-1">
+          <div className="mb-1 flex items-center gap-2.5 rounded-lg bg-white/[0.04] px-2.5 py-2 lg:mb-0.5 lg:px-2 lg:py-1.5">
             <Avatar className="h-7 w-7 rounded-md border border-border/60">
               <AvatarImage src={userNav.avatar} alt={userNav.name} />
               <AvatarFallback className="rounded-md bg-gm-orange text-white font-display font-bold text-[10px] tracking-wider">
@@ -169,26 +187,28 @@ function OperationalNavUser({
             </span>
           </div>
 
-          {/* Operación: lo que se usa todo el día */}
+          <div className="hidden w-full lg:block">
+            <DesktopBranchedMenu
+              items={desktopItems}
+              defaultOpen={desktopSection >= 0 ? desktopSection : 0}
+              defaultActive={desktopActive}
+              onSelect={value => {
+                if (value === '/notes') clearNoteAlert();
+                setIsOpen(false);
+              }}
+            />
+          </div>
+          <div className="lg:hidden">
           <RamaMenu
             label="Operación"
             abierta={rama === 'operacion'}
+            activa={pathname === '/tickets' || pathname.startsWith('/renters') || pathname === '/notes'}
             onAlternar={() => alternarRama('operacion')}
           >
             <Link href="/tickets">
               <HojaDeRama activa={pathname === '/tickets'}>
                 <TicketIcon className="size-3.5" />
                 Tickets
-              </HojaDeRama>
-            </Link>
-
-            <Link href="/notes">
-              <HojaDeRama activa={pathname === '/notes'} onSelect={clearNoteAlert}>
-                <AlertCircle className="size-3.5" />
-                Avisos
-                {hasNewNoteAlert && (
-                  <BellDot className="ml-auto size-3.5 text-gm-orange" />
-                )}
               </HojaDeRama>
             </Link>
 
@@ -201,6 +221,16 @@ function OperationalNavUser({
                 </HojaDeRama>
               </Link>
             )}
+
+            <Link href="/notes">
+              <HojaDeRama activa={pathname === '/notes'} onSelect={clearNoteAlert}>
+                <AlertCircle className="size-3.5" />
+                Avisos
+                {hasNewNoteAlert && (
+                  <BellDot className="ml-auto size-3.5 text-gm-orange" />
+                )}
+              </HojaDeRama>
+            </Link>
           </RamaMenu>
 
           {/* Clientes y Administración son de encargado: el operador no las ve */}
@@ -224,6 +254,7 @@ function OperationalNavUser({
             <RamaMenu
               label="Administración"
               abierta={rama === 'admin'}
+              activa={pathname.startsWith('/admin')}
               onAlternar={() => alternarRama('admin')}
             >
               {SECCIONES_ADMIN.map((seccion) => (
@@ -236,14 +267,16 @@ function OperationalNavUser({
             </RamaMenu>
           )}
 
-          <DropdownMenuSeparator className="bg-border/40 -mx-1.5 my-1" />
+          </div>
+
+          <DropdownMenuSeparator className="bg-border/40 -mx-1.5 my-1 lg:my-0.5" />
 
           {/* Hojas sueltas, sin codo: son acciones, no destinos. Las ramas llevan a una
               pantalla; esto abre algo encima de donde ya estás, así que colgarlo de un codo
               haría que el árbol mienta sobre lo que es. */}
           <DropdownMenuItem
             onClick={() => setOpenBoxDialog(true)}
-            className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]"
+            className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]"
           >
             <Box className="size-3.5 text-muted-foreground" />
             Planilla de caja
@@ -252,7 +285,7 @@ function OperationalNavUser({
           <InstallAppMenuItem />
 
           {!esAdmin && (
-              <DropdownMenuItem onSelect={() => { setIsOpen(false); setOpenPaymentsDialog(true); }} className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]">
+              <DropdownMenuItem onSelect={() => { setIsOpen(false); setOpenPaymentsDialog(true); }} className="min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-0 lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]">
                 <Banknote className="size-3.5 text-muted-foreground" />
                 Gastos e ingresos
               </DropdownMenuItem>
@@ -263,7 +296,7 @@ function OperationalNavUser({
           {/* Logout */}
           <DropdownMenuItem
             onClick={() => signOut()}
-            className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-[#F08775] transition-colors duration-150 hover:bg-destructive/15 focus:bg-destructive/15"
+            className="desktop-user-action desktop-user-action--danger min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-[#F08775] transition-colors duration-150 hover:bg-destructive/15 focus:bg-destructive/15 lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]"
           >
             <LogOut className="size-3.5" />
             Cerrar sesión

@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useState, useTransition, useMemo } from 'react';
 import {
@@ -42,7 +43,6 @@ import {
   Car,
   CheckCircle2,
   CircleDollarSign,
-  Loader2,
   ParkingCircle,
   Plus,
   Trash2,
@@ -595,7 +595,7 @@ export function CreateOwnerDialog({ ownerParkingTypes }: { ownerParkingTypes: Ow
                   </Button>
                 )}
                 <Button type="submit" disabled={isPending}>
-                  {isPending && <Loader2 className="size-4 animate-spin" />}
+                  {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
                   {phase === 'customer' ? (
                     <>
                       Siguiente <ArrowRight className="size-4" />

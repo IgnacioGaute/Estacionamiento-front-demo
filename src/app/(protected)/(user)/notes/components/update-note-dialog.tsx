@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
@@ -24,7 +25,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Edit3, Loader2 } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 
 import { Note } from '@/types/note.type';
 import {
@@ -105,7 +106,7 @@ export function UpdateNoteDialog({ note }: { note: Note }) {
                 Cancelar
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="size-4 animate-spin" />}
+                {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
                 Guardar
               </Button>
             </DialogFooter>

@@ -1,4 +1,5 @@
 'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 
 // La cuenta de un inquilino, en tres vistas:
 //   · Resumen: el estado de cuenta (cargos, pagos y ajustes con su saldo acumulado).
@@ -20,7 +21,7 @@ import {
   Eye,
   EyeOff,
   HandCoins,
-  Loader2,
+
   MoreHorizontal,
   Phone,
   Printer,
@@ -131,9 +132,7 @@ export function CuentaCorriente({
     );
   if (!estado)
     return (
-      <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Cargando la cuenta…
-      </p>
+      <DataLoading label="Cargando la cuenta…" />
     );
 
   const c = estado.cliente;
@@ -354,7 +353,7 @@ export function CuentaCorriente({
           onChange={setTab}
         />
         <div className="flex items-center gap-3">
-          {cargando && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+          {cargando && <DataLoading label="Actualizando cuenta…" className="w-auto" />}
           {esAdmin && ocultos > 0 && tab !== 'cargos' && (
             <button
               type="button"

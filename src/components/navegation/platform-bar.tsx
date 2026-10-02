@@ -21,6 +21,7 @@ type Resultado = {
 const TITULOS: Record<string, string> = {
   empresas: "Empresas",
   metricas: "Métricas",
+  planes: "Planes y cobros",
 };
 
 export function PlatformBar() {

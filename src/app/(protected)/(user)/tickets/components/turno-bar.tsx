@@ -1,4 +1,5 @@
 'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 
 import { useEffect, useState, useTransition } from 'react';
 import { useSession } from 'next-auth/react';
@@ -101,7 +102,7 @@ export function TurnoBar({ onUpdated }: { onUpdated?: () => void } = {}) {
 
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
-        {!context ? <p className="text-sm text-muted-foreground">{error ? 'Cerrá esta ventana y volvé a intentar.' : 'Cargando caja…'}</p> : <>
+        {!context ? error ? <p className="text-sm text-muted-foreground">Cerrá esta ventana y volvé a intentar.</p> : <DataLoading label="Cargando caja…" /> : <>
           {active && !closing ? (
             <div className="space-y-5">
               <div className="rounded-lg border border-border bg-gm-surface-2 p-4 space-y-2">

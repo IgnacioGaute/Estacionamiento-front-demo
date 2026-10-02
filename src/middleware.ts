@@ -33,7 +33,7 @@ export default async function middleware(req: NextRequest) {
   // nueva de administración de la plataforma exige sumarla acá, o el super admin rebota a su
   // pantalla inicial.
   const platformHome = "/admin/empresas";
-  const platformRoutes = [platformHome, "/admin/metricas"];
+  const platformRoutes = [platformHome, "/admin/metricas", "/admin/planes"];
   const enPlataforma = platformRoutes.some(
     (ruta) =>
       nextUrl.pathname === ruta || nextUrl.pathname.startsWith(ruta + "/"),

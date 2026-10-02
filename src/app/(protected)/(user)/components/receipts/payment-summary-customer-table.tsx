@@ -1,4 +1,5 @@
 ﻿'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useState, useTransition, useEffect, ReactNode } from 'react';
 import {
@@ -36,7 +37,6 @@ import {
   ChevronRight,
   Clock,
   CreditCard,
-  Loader2,
   MessageCircle,
   MoreHorizontal,
   Phone,
@@ -494,7 +494,7 @@ export function PaymentSummaryTable({ customer, children, autoOpen }: PaymentSum
                         : `VENCE EN ${dueInfo.days} DÍA${dueInfo.days !== 1 ? 'S' : ''}`}
                     </Badge>
                   )}
-                  {isPending && <Loader2 className="size-3.5 animate-spin text-muted-foreground ml-1" />}
+                  {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
                 </div>
 
                 <div className="flex items-center gap-4 mt-2 flex-wrap">

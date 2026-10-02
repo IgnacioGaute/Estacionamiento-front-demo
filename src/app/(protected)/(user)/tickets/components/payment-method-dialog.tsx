@@ -1,7 +1,8 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useEffect, useState, useTransition } from 'react';
-import { Banknote, Landmark, Loader2, QrCode } from 'lucide-react';
+import { Banknote, Landmark, QrCode } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -171,7 +172,7 @@ export function PaymentMethodDialog({
 
         {isPending && (
           <div className="flex items-center justify-center gap-1.5 text-[12px] text-muted-foreground">
-            <Loader2 className="size-3.5 animate-spin" />
+            <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />
             Guardando…
           </div>
         )}

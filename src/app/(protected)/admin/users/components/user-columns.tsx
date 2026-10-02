@@ -31,7 +31,7 @@ function avatarPalette(seed: string) {
   return colors[h % colors.length];
 }
 
-export const userColumns: ColumnDef<User>[] = [
+export const userColumns = (assignments: Record<string, { id: string; nombre: string } | null> | null): ColumnDef<User>[] => [
   {
     accessorKey: "username",
     header: ({ column }) => (
@@ -95,8 +95,10 @@ export const userColumns: ColumnDef<User>[] = [
     id: "playa",
     header: "Playa del operador",
     cell: ({ row }) =>
-      row.original.role === "USER" ? (
-        <AssignPlayaDialog user={row.original} />
+      row.original.role === "USER" && !assignments ? (
+        <span className="text-xs text-muted-foreground">No disponible</span>
+      ) : row.original.role === "USER" ? (
+        <AssignPlayaDialog user={row.original} assigned={assignments?.[row.original.id] ?? null} />
       ) : (
         <span className="text-xs text-muted-foreground">
           Administra la empresa

@@ -1,6 +1,8 @@
 "use server";
 import { auth } from "@/auth";
 import { cookies } from "next/headers";
+import { revalidateTag } from "next/cache";
+import type { SituacionCuenta } from "@/types/suscripcion.type";
 export type OperationalContext = {
   role?: "USER" | "ADMIN" | "SUPER_ADMIN";
   empresa: { id: string; nombre: string } | null;
@@ -11,6 +13,8 @@ export type OperationalContext = {
     // Secciones opcionales que el super admin prendió en la playa.
     modulos?: { inquilinos?: boolean };
   }[];
+  // Estado de la cuenta con la plataforma (prueba, vencida, suspendida), para los avisos.
+  cuenta?: SituacionCuenta | null;
 };
 export async function getOperationalContext(): Promise<OperationalContext> {
   const session = await auth();
@@ -70,8 +74,23 @@ export async function operatorPlayaAction(
     const result = await response.json();
     if (!response.ok)
       return { error: result.message || "No se pudo guardar la asignación." };
+    if (playaId) revalidateTag('users');
     return result;
   } catch {
     return { error: "No se pudo conectar. Intentá nuevamente." };
+  }
+}
+
+export async function operatorAssignmentsAction(): Promise<Record<string, { id: string; nombre: string } | null> | null> {
+  const session = await auth();
+  if (!session?.token) return null;
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tenant/operators/assignments`, {
+      headers: { Authorization: `Bearer ${session.token}` },
+      cache: 'no-store',
+    });
+    return response.ok ? await response.json() : null;
+  } catch {
+    return null;
   }
 }

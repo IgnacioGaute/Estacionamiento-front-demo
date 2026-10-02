@@ -1,20 +1,20 @@
 'use client';
 
-import { ColumnDef } from '@tanstack/react-table';
 import { User } from '@/types/user.type';
 import { DataTableShell } from '@/components/data-table-shell';
 import { CreateUserDialog } from './create-user-dialog';
+import { userColumns } from './user-columns';
 
 interface UsersTableProps {
-  columns: ColumnDef<User>[];
+  assignments: Record<string, { id: string; nombre: string } | null> | null;
   data: User[];
 }
 
-export function UsersTable({ columns, data }: UsersTableProps) {
+export function UsersTable({ assignments, data }: UsersTableProps) {
   return (
     <DataTableShell
       data={data}
-      columns={columns}
+      columns={userColumns(assignments)}
       filterColumn="email"
       filterPlaceholder="Filtrar por email..."
       pageSize={20}

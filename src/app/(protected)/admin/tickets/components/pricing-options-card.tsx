@@ -1,4 +1,5 @@
- 'use client';
+'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 import { useState, useTransition, ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { toast } from '@/lib/toast';
@@ -68,6 +69,7 @@ export function PricingOptionsCard({ schedule, onSaved }: { schedule: TicketSche
     if (result.error) toast.error(result.error);
     else { setSaved(safeOptions); setOptions(safeOptions); onSaved?.(safeOptions); toast.success('Guardado. Se usará desde los próximos ingresos.'); window.dispatchEvent(new Event('pricing-options-updated')); }
   });
+  if (loading && !types.length) return <DataLoading label="Cargando opciones de cobro…" />;
   return <div className="space-y-6">
     <div className="rounded-xl bg-muted/50 p-4 space-y-1"><h2 className="text-lg font-semibold">Elegí cómo querés cobrar</h2><p className="text-sm">1. Activá las opciones que necesitás. 2. Probá un ejemplo abajo. 3. Guardá cuando el importe sea el esperado.</p><p className="text-sm text-muted-foreground">No hace falta activar todo. Los vehículos que ya están adentro conservan las tarifas con las que ingresaron.</p></div>
     <form onSubmit={e => { e.preventDefault(); save(); }} className="space-y-4">

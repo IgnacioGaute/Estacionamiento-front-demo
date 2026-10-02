@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { ReactNode, useMemo, useState } from 'react';
 import {
@@ -33,7 +34,6 @@ import {
   ArrowRight,
   CheckCircle2,
   CircleDollarSign,
-  Loader2,
   ParkingCircle,
   Trash2,
   User,
@@ -559,7 +559,7 @@ export function CustomerStepperShell<TForm extends FieldValues>(
                   </Button>
                 )}
                 <Button type="submit" disabled={isPending}>
-                  {isPending && <Loader2 className="size-4 animate-spin" />}
+                  {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
                   {phase === 'customer' ? (
                     <>
                       Siguiente <ArrowRight className="size-4" />

@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useState, useTransition, ReactNode } from 'react';
 import {
@@ -13,7 +14,7 @@ import {
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, Loader2, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type Tone = 'danger' | 'warning' | 'info' | 'success';
@@ -167,7 +168,7 @@ export function ConfirmActionDialog({
             onClick={handleConfirm}
             disabled={isPending || (!!confirmText && text !== confirmText)}
           >
-            {isPending && <Loader2 className="size-4 animate-spin" />}
+            {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
             {actionLabel}
           </Button>
         </DialogFooter>

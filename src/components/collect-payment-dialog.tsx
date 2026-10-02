@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { Dispatch, SetStateAction, useState } from 'react';
 import {
@@ -12,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CreditCard, Loader2, Receipt } from 'lucide-react';
+import { CreditCard, Receipt } from 'lucide-react';
 
 interface CollectPaymentDialogProps {
   open: boolean;
@@ -145,7 +146,7 @@ export function CollectPaymentDialog({
             onClick={() => onConfirm({ method, reference, amount: paid })}
             disabled={isPending || paid < amount}
           >
-            {isPending ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
+            {isPending ? <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} /> : <CreditCard className="size-4" />}
             Registrar pago
           </Button>
         </DialogFooter>

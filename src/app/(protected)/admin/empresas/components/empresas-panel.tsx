@@ -1,4 +1,5 @@
 "use client";
+import { DataLoading } from '@/components/ui/data-loading';
 
 // El listado de empresas: dónde está el volumen, qué hay que resolver y la tabla con estado,
 // playas, usuarios, cobrado, última operación y MercadoPago de cada una.
@@ -67,8 +68,13 @@ import {
   empresasConAlertas,
 } from "@/components/plataforma/alertas";
 import { Editor, EditorDialog } from "./editor-dialog";
+import {
+  EstadoCuentaPill,
+  cuentaConAlerta,
+  diaAR,
+} from "@/components/plataforma/cuenta";
 
-type Filtro = "todas" | "activas" | "alertas" | "suspendidas";
+type Filtro = "todas" | "activas" | "alertas" | "cobro" | "suspendidas";
 type Orden = "cobrado" | "caida" | "ultima" | "nombre" | "alta";
 const POR_PAGINA = 20;
 
@@ -91,7 +97,11 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [filtro, setFiltro] = useState<Filtro>(
-    params.get("filtro") === "alertas" ? "alertas" : "todas",
+    params.get("filtro") === "alertas"
+      ? "alertas"
+      : params.get("filtro") === "cobro"
+        ? "cobro"
+        : "todas",
   );
   const [orden, setOrden] = useState<Orden>("cobrado");
   const [pagina, setPagina] = useState(1);
@@ -185,7 +195,9 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
           ? e.estado !== "ACTIVA"
           : filtro === "alertas"
             ? conAlertas.has(e.id)
-            : true,
+            : filtro === "cobro"
+              ? cuentaConAlerta(e.suscripcion)
+              : true,
     )
     .filter(
       (e) =>
@@ -234,10 +246,13 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
 
   function exportar() {
     const filas = [
-      ["Empresa", "Estado", "Playas", "Usuarios", "Cobrado 30 días", "Período anterior", "Última operación", "MercadoPago"],
+      ["Empresa", "Estado", "Cuenta", "Paga por mes", "Vence", "Playas", "Usuarios", "Cobrado 30 días", "Período anterior", "Última operación", "MercadoPago"],
       ...filtradas.map((e) => [
         e.nombre,
         e.estado,
+        e.suscripcion?.estado ?? "",
+        String(e.suscripcion?.mensual ?? 0),
+        e.suscripcion?.proximoVencimiento ?? "",
         String(e.playas.length),
         String(e.usuarios.length),
         String(cobros.get(e.id)?.cobrado ?? 0),
@@ -261,6 +276,8 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
     setFiltro(f);
     setPagina(1);
   };
+
+  if (cargando && !empresas.length && !error) return <DataLoading label="Cargando empresas…" className="p-4" />;
 
   return (
     <div className="space-y-5">
@@ -497,6 +514,8 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               { id: "todas" as Filtro, label: "Todas", cuenta: empresas.length },
               { id: "activas" as Filtro, label: "Activas", cuenta: activas.length },
               { id: "alertas" as Filtro, label: "Con alertas", cuenta: conAlertas.size },
+              // Vence en 3 días o menos, vencida o suspendida: lo que hay que cobrar.
+              { id: "cobro" as Filtro, label: "Cobro", cuenta: empresas.filter((e) => cuentaConAlerta(e.suscripcion)).length },
               { id: "suspendidas" as Filtro, label: "Suspendidas", cuenta: suspendidas },
             ]}
             valor={filtro}
@@ -535,14 +554,15 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
 
       <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
         <div className="overflow-x-auto">
-          <div role="table" aria-label="Empresas" className="min-w-[1080px]">
+          <div role="table" aria-label="Empresas" className="min-w-[1290px]">
             <div
               role="row"
-              className="grid h-11 grid-cols-[minmax(0,1fr)_116px_104px_112px_176px_100px_132px_112px_48px] items-center bg-[#19140F] pl-5 pr-4 font-mono text-[10.5px] tracking-[0.1em]"
+              className="grid h-11 grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center bg-[#19140F] pl-5 pr-4 font-mono text-[10.5px] tracking-[0.1em]"
               style={{ color: EJE }}
             >
               <span role="columnheader">EMPRESA</span>
               <span role="columnheader">ESTADO</span>
+              <span role="columnheader">PLAN</span>
               <span role="columnheader">PLAYAS</span>
               <span role="columnheader">USUARIOS</span>
               <span role="columnheader">COBRADO 30 D</span>
@@ -554,9 +574,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               </span>
             </div>
             {cargando && !empresas.length && (
-              <p role="status" className="border-t border-[#2A241D] px-5 py-12 text-center text-sm text-muted-foreground">
-                Actualizando plataforma…
-              </p>
+              <DataLoading label="Cargando empresas…" className="border-t border-[#2A241D] p-4" />
             )}
             {!cargando && !filtradas.length && (
               <p className="border-t border-[#2A241D] px-5 py-12 text-center text-sm text-muted-foreground">
@@ -580,7 +598,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                   key={e.id}
                   role="row"
                   data-tour={i === 0 ? "empresas-ficha" : undefined}
-                  className="grid h-[68px] grid-cols-[minmax(0,1fr)_116px_104px_112px_176px_100px_132px_112px_48px] items-center border-t border-[#2A241D] pl-5 pr-4 text-[13.5px] transition-colors hover:bg-[#201A15]"
+                  className="grid h-[68px] grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center border-t border-[#2A241D] pl-5 pr-4 text-[13.5px] transition-colors hover:bg-[#201A15]"
                 >
                   <span role="cell" className="flex min-w-0 items-center gap-3">
                     <Avatar texto={iniciales(e.nombre)} fondo={colorAvatar(e.id)} />
@@ -606,6 +624,33 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                           className="size-[15px] text-[#FF7A4D]"
                         />
                       </span>
+                    )}
+                  </span>
+                  <span role="cell" className="flex min-w-0 flex-col gap-[4px]">
+                    {e.suscripcion ? (
+                      <>
+                        <span className="truncate text-[12.5px] font-semibold">
+                          {e.suscripcion.planes.length === 1
+                            ? e.suscripcion.planes[0].plan
+                            : e.suscripcion.planes.length
+                              ? `${e.suscripcion.planes.length} playas con plan`
+                              : "Sin plan elegido"}
+                          {e.suscripcion.mensual > 0 && (
+                            <span className="font-normal text-muted-foreground"> · {corto(e.suscripcion.mensual)}</span>
+                          )}
+                        </span>
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <EstadoCuentaPill cuenta={e.suscripcion} className="px-2 py-0.5 text-[10.5px]" />
+                          {e.suscripcion.proximoVencimiento &&
+                            ["PRUEBA", "AL_DIA"].includes(e.suscripcion.estado) && (
+                              <span className="truncate text-[11px]" style={{ color: cuentaConAlerta(e.suscripcion) ? "#FF7A4D" : EJE }}>
+                                {e.suscripcion.estado === "PRUEBA" ? "factura" : "vence"} {diaAR(e.suscripcion.proximoVencimiento, false)}
+                              </span>
+                            )}
+                        </span>
+                      </>
+                    ) : (
+                      <span style={{ color: EJE }}>—</span>
                     )}
                   </span>
                   <span role="cell" className="flex flex-col gap-[5px]">

@@ -1,4 +1,6 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
+import { DataLoading } from '@/components/ui/data-loading';
 
 // Cobrarle a un inquilino, en el orden en que se piensa en el mostrador:
 //   1. Qué paga: los cargos pendientes, arriba y ya marcados. El total sale de lo marcado.
@@ -10,14 +12,14 @@
 // La frase que importa —«Recibís $X. Quedan pendientes $Y»— va en el pie, junto al botón.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Loader2, Pencil, QrCode } from 'lucide-react';
+import { Check, Pencil, QrCode } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { plata } from '@/components/plataforma/formato';
 import { useTenant } from '@/components/tenant-provider';
-import { getEstadoCuentaAction, registrarPagoAction } from '@/actions/cuentas/cuentas.action';
+import { getCuentaMostradorAction, registrarPagoAction } from '@/actions/cuentas/cuentas.action';
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
-import { CargoCuenta, ResultadoPago, nombreMetodo } from '@/types/cuenta.type';
+import { DeudaCuenta, ResultadoPago, nombreMetodo } from '@/types/cuenta.type';
 import { CobroMercadoPago } from '@/types/mercadopago.type';
 import { CobroQrMercadoPago } from '@/app/(protected)/(user)/tickets/components/cobro-qr-mercadopago';
 import { CampoImporte } from './campo-importe';
@@ -34,7 +36,7 @@ const MODOS: { id: Modo; label: string }[] = [
 
 const titulo = 'mb-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground';
 
-const sumaDe = (ids: string[], lista: CargoCuenta[]) =>
+const sumaDe = (ids: string[], lista: DeudaCuenta[]) =>
   lista.filter((r) => ids.includes(r.id)).reduce((s, r) => s + r.saldo, 0);
 
 export function CobrarDialog({
@@ -55,7 +57,7 @@ export function CobrarDialog({
 }) {
   const { context, playaId } = useTenant();
   const [cargando, setCargando] = useState(false);
-  const [pendientes, setPendientes] = useState<CargoCuenta[]>([]);
+  const [pendientes, setPendientes] = useState<DeudaCuenta[]>([]);
   const [saldo, setSaldo] = useState(0);
   const [vencido, setVencido] = useState(0);
   const [elegidos, setElegidos] = useState<string[]>([]);
@@ -84,14 +86,15 @@ export function CobrarDialog({
     setEditandoTotal(false);
     setSolicitud(nuevoId());
     setCargando(true);
-    void getEstadoCuentaAction(customerId).then((r) => {
+    // Lo mismo que ve el operador: deudas y saldo, sin el libro.
+    void getCuentaMostradorAction(customerId).then((r) => {
       setCargando(false);
       if (!r.data) {
         setError(r.error ?? 'No se pudo cargar la cuenta.');
         return;
       }
-      const lista = r.data.recibos
-        .filter((x) => x.estado === 'PENDING' && x.saldo > 0)
+      const lista = r.data.deudas
+        .filter((x) => x.saldo > 0)
         .sort((a, b) => a.fecha.localeCompare(b.fecha));
       setPendientes(lista);
       setSaldo(r.data.saldo);
@@ -244,9 +247,7 @@ export function CobrarDialog({
         </DialogHeader>
 
         {cargando && (
-          <p className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Cargando la cuenta…
-          </p>
+          <DataLoading label="Cargando la cuenta…" />
         )}
         {error && <p className="py-4 text-sm text-destructive">{error}</p>}
 
@@ -490,7 +491,7 @@ export function CobrarDialog({
                   onClick={() => void confirmar()}
                   className="flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-sm font-bold text-gm-ink hover:bg-[#FFD23A] disabled:opacity-50"
                 >
-                  {enviando ? <Loader2 className="size-4 animate-spin" /> : modo === 'QR' && <QrCode className="size-4" />}
+                  {enviando ? <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} /> : modo === 'QR' && <QrCode className="size-4" />}
                   {modo === 'QR' ? 'Generar QR' : total ? `Cobrar ${plata(total)}` : 'Cobrar'}
                 </button>
               </div>

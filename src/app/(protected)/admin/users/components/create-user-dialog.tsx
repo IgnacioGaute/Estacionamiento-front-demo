@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
@@ -29,7 +30,6 @@ import {
   Eye,
   EyeOff,
   KeyRound,
-  Loader2,
   Mail,
   UserPlus,
 } from 'lucide-react';
@@ -252,7 +252,7 @@ export function CreateUserDialog() {
                 Cancelar
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="size-4 animate-spin" />}
+                {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
                 Crear usuario
               </Button>
             </DialogFooter>

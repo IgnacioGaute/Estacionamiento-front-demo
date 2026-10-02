@@ -1,9 +1,10 @@
 'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 
 import { useEffect, useState } from 'react';
 import { CompactPagination } from '@/components/compact-pagination';
 import dayjs from 'dayjs';
-import { History, Loader2 } from 'lucide-react';
+import { History } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -72,10 +73,7 @@ export function PlateHistoryDialog({ licensePlateNormalized, licensePlateOrigina
         </DialogHeader>
 
         {loading && (
-          <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground text-[13px]">
-            <Loader2 className="size-4 animate-spin" />
-            Cargando historial...
-          </div>
+          <DataLoading label="Cargando historial…" />
         )}
 
         {!loading && visits && visits.length === 0 && (

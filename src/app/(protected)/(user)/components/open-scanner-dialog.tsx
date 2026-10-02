@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -23,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Loader2, Plus, ScanLine, Trash2, User, Wallet } from 'lucide-react';
+import { CheckCircle2, Plus, ScanLine, Trash2, User, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { receiptSchema, ReceiptSchemaType } from '@/schemas/receipt.schema';
@@ -289,7 +290,7 @@ export function OpenScannerDialog({
                 Cancelar
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? <Loader2 className="size-4 animate-spin"/> : <CheckCircle2 className="size-4"/>}
+                {isPending ? <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} /> : <CheckCircle2 className="size-4"/>}
                 {isPending ? 'Procesando…' : 'Confirmar pago'}
               </Button>
             </DialogFooter>

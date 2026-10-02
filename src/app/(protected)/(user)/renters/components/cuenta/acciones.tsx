@@ -1,11 +1,13 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
+import { DataLoading } from '@/components/ui/data-loading';
 
 // Las acciones de administración sobre la cuenta: ajustes, devoluciones, anulaciones y la carga
 // de los abonos del mes. Todas piden motivo o confirmación: tocan plata y quedan en el libro con
 // nombre y fecha.
 
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, ArrowRight, Ban, CheckCircle2, Loader2, MoreHorizontal } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Ban, CheckCircle2, MoreHorizontal } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -173,7 +175,7 @@ export function AjusteDialog({
             onClick={() => void guardar()}
             className={primario}
           >
-            {enviando && <Loader2 className="size-4 animate-spin" />}
+            {enviando && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
             {tipo === 'BONIFICACION' ? 'Aplicar descuento' : 'Cargar recargo'}
             {importe ? ` ${plata(importe)}` : ''}
           </button>
@@ -278,7 +280,7 @@ export function DevolucionDialog({
               onClick={() => void guardar()}
               className={primario}
             >
-              {enviando && <Loader2 className="size-4 animate-spin" />}
+              {enviando && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
               Devolver {importe ? plata(importe) : ''}
             </button>
           )}
@@ -386,7 +388,7 @@ export function AnularDialog({
             onClick={() => void anular()}
             className="flex h-11 items-center gap-2 rounded-xl border border-[#FF7A4D]/60 px-5 text-sm font-bold text-[#FF7A4D] hover:bg-[#FF7A4D]/10 disabled:opacity-50"
           >
-            {enviando && <Loader2 className="size-4 animate-spin" />}
+            {enviando && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
             Anular {movimiento ? plata(movimiento.importe) : ''}
           </button>
         </div>
@@ -540,9 +542,7 @@ export function CargarAbonosDialog({
         {!diaOk && <p className="text-xs text-destructive">Elegí un día del 1 al 28 (todos los meses lo tienen).</p>}
 
         {cargando && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Revisando qué falta cargar…
-          </p>
+          <DataLoading label="Revisando abonos…" />
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -618,7 +618,7 @@ export function CargarAbonosDialog({
             onClick={() => void cargar()}
             className={primario}
           >
-            {enviando && <Loader2 className="size-4 animate-spin" />}
+            {enviando && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
             {plan?.aCargar.length
               ? `Cargar ${plan.aCargar.length} ${plan.aCargar.length === 1 ? 'abono' : 'abonos'} · ${plata(plan.total)}`
               : 'Nada para cargar'}

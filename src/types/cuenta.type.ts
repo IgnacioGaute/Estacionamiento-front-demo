@@ -36,6 +36,7 @@ export type InquilinoResumen = {
 };
 
 export type ResumenCuentas = {
+  // null para el operador: los números de la playa son de la administración.
   kpis: {
     activos: number;
     bajas: number;
@@ -50,7 +51,7 @@ export type ResumenCuentas = {
     abonoMes: { cargado: number; pendiente: number; cantidad: number };
     abonoMensual: number;
     anulacionesMes: number;
-  };
+  } | null;
   inquilinos: InquilinoResumen[];
 };
 
@@ -101,6 +102,9 @@ export type CargoCuenta = {
   origen: { id: string; importe: number; anulable: Anulable } | null;
   pagos: { fecha: string | null; tipo: string; importe: number; cuentaMovimientoId: string | null }[];
 };
+
+// Un cargo tal como lo ve el mostrador: sin su asiento de origen ni sus imputaciones.
+export type DeudaCuenta = Omit<CargoCuenta, 'origen' | 'pagos'>;
 
 export type PagoCuenta = {
   id: string;
@@ -160,6 +164,34 @@ export type ResultadoPago = {
   nota: string | null;
   // true si era el reintento de un cobro ya registrado: no se cobró de nuevo.
   repetido?: boolean;
+};
+
+// Lo que ve el operador de un inquilino: lo que debe y lo que pagó, sin el libro (movimientos,
+// ajustes, anulaciones) ni nada que se pueda anular o corregir.
+export type CuentaMostrador = {
+  cliente: {
+    id: string;
+    nombre: string;
+    apellido: string;
+    baja: string | null;
+    abono: number;
+    cocheras: { numero: string | null; importe: number }[];
+  };
+  saldo: number;
+  vencido: number;
+  deudas: DeudaCuenta[];
+  pagos: {
+    id: string;
+    numero: string | null;
+    fecha: string;
+    total: number;
+    medios: { metodo: MedioRegistrado | null; importe: number }[];
+    nota: string | null;
+    // Cómo quedó la cuenta al cobrar; null en cobros migrados.
+    saldoDespues: number | null;
+    // Qué cubrió y cuánto quedó de cada cargo: lo que lleva su recibo.
+    aplicado: { concepto: string; importe: number; queda: number }[];
+  }[];
 };
 
 export type PlanAbonos = {

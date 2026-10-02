@@ -1,4 +1,5 @@
 'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { ColumnDef } from '@tanstack/react-table';
@@ -55,7 +56,7 @@ export function NotesTable({ data }: { columns: ColumnDef<Note>[]; data: Note[] 
     </div>
     <label data-tour="avisos-filtro" className="block space-y-2 text-sm"><span>Buscar un aviso</span><input className="h-11 w-full rounded-lg border border-border bg-background px-3" placeholder="Escribí una palabra o una fecha…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} /></label>
     {error && <p role="alert" className="text-sm text-destructive">{error} <Button variant="ghost" onClick={() => setRevision(v => v + 1)}>Reintentar</Button></p>}
-    {loading ? <p className="py-8 text-center text-muted-foreground">Cargando avisos…</p> : <div data-tour="avisos-tabla" className="grid items-start gap-4 md:grid-cols-2">
+    {loading ? <DataLoading label="Cargando avisos…" /> : <div data-tour="avisos-tabla" className="grid items-start gap-4 md:grid-cols-2">
       {notes.map(note => {
         const own = note.user?.id === session?.user?.id;
         const unread = !own && unreadIds.includes(note.id);

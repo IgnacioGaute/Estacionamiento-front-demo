@@ -8,11 +8,13 @@ import { PageHeader } from '@/components/page-header';
 import { PageTour, type PageTourStep } from '@/components/page-tour';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { DataLoading } from '@/components/ui/data-loading';
 import { getFrequentCustomersPageAction } from '@/actions/tickets/get-frequent-customers.action';
 import type { FrequentCustomer } from '@/types/frequent-customer.type';
 import { formatElapsed } from '@/utils/ticket-registration.utils';
 import { PlateHistoryDialog } from './plate-history-dialog';
 import { TariffSelect } from '../../tarifas/tariff-select';
+import { AppDatePicker } from '@/components/app-date-picker';
 
 const TOUR_STEPS: PageTourStep[] = [
   {
@@ -110,8 +112,8 @@ export function FrequentCustomersBody({ initialCustomers, initialTotal }: { init
     <form data-tour="frecuentes-filtros" onSubmit={event => { event.preventDefault(); load(draft); }} className="space-y-4 rounded-2xl border bg-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-semibold"><Filter className="size-4 text-amber-400" aria-hidden="true" />Filtrar clientes</h2><div className="flex flex-wrap gap-2">{[[null,'Todo el historial'],[7,'Últimos 7 días'],[30,'Últimos 30 días']] .map(([days,label]) => <Button key={String(label)} type="button" variant="outline" size="sm" disabled={isPending} onClick={() => period(days as number | null)}>{label}</Button>)}</div></div>
       <fieldset disabled={isPending} className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <label className="min-w-0 space-y-2 text-sm font-medium"><span className="block">Desde</span><Input aria-label="Desde" type="date" max={draft.to || undefined} value={draft.from} onChange={event => update({from:event.target.value})} className="h-11 min-w-0" /></label>
-        <label className="min-w-0 space-y-2 text-sm font-medium"><span className="block">Hasta</span><Input aria-label="Hasta" type="date" min={draft.from || undefined} value={draft.to} onChange={event => update({to:event.target.value})} className="h-11 min-w-0" /></label>
+        <div className="min-w-0 space-y-2 text-sm font-medium"><span className="block">Desde</span><AppDatePicker title="Desde" value={draft.from} max={draft.to || undefined} clearable onChange={from => update({from})} trigger={<Button type="button" variant="outline" aria-label="Elegir fecha desde" className="h-11 w-full justify-start gap-2 rounded-xl font-normal"><CalendarDays className="size-4 shrink-0 text-gm-yellow" />{draft.from ? date(draft.from) : 'Elegir fecha'}</Button>} /></div>
+        <div className="min-w-0 space-y-2 text-sm font-medium"><span className="block">Hasta</span><AppDatePicker title="Hasta" value={draft.to} min={draft.from || undefined} clearable onChange={to => update({to})} trigger={<Button type="button" variant="outline" aria-label="Elegir fecha hasta" className="h-11 w-full justify-start gap-2 rounded-xl font-normal"><CalendarDays className="size-4 shrink-0 text-gm-yellow" />{draft.to ? date(draft.to) : 'Elegir fecha'}</Button>} /></div>
         <label data-tour="frecuentes-tipo" className="min-w-0 space-y-2 text-sm font-medium"><span className="block">Tipo de vehículo</span><TariffSelect disabled={isPending} name="Tipo de vehículo" value={draft.vehicleType} onValueChange={vehicleType => update({vehicleType})} options={[{value:'ALL',label:'Todos los vehículos'}, ...vehicleOptions.map(code => ({value:code,label:vehicleName(code)}))]} /></label>
         <label data-tour="frecuentes-visitas" className="min-w-0 space-y-2 text-sm font-medium"><span className="block">Mínimo de visitas</span><Input aria-label="Mínimo de visitas" type="number" min={1} step={1} required value={draft.minVisits} onChange={event => update({minVisits:event.target.value})} className="h-11" /></label>
       </fieldset>
@@ -126,7 +128,7 @@ export function FrequentCustomersBody({ initialCustomers, initialTotal }: { init
       <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Clientes <span className="ml-1 text-sm font-normal text-muted-foreground">{total.toLocaleString('es-AR')}</span></h2><p role="status" className="text-xs text-muted-foreground">{isPending ? 'Actualizando resultados…' : 'Ordenados por cantidad de visitas'}</p></div><div className="flex flex-wrap gap-2">{chips.map(chip => <span key={chip} className="rounded-full border bg-background/40 px-3 py-1 text-xs text-muted-foreground">{chip}</span>)}</div></div>
       <div className={'space-y-2 transition-opacity ' + (isPending ? 'opacity-50' : '')}>
         <div className="hidden grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_140px] gap-4 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground xl:grid"><span>Cliente y vehículo</span><span>Visitas</span><span>Última visita</span><span>Gasto registrado</span><span className="text-right">Historial</span></div>
-        {!customers.length ? <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center"><Inbox className="size-8 text-muted-foreground" aria-hidden="true" /><h3 className="font-semibold">No encontramos clientes</h3><p className="text-sm text-muted-foreground">Probá ampliar el período o reducir el mínimo de visitas.</p></div> : customers.map(customer => {
+        {isPending ? <DataLoading label="Cargando clientes..." /> : !customers.length ? <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center"><Inbox className="size-8 text-muted-foreground" aria-hidden="true" /><h3 className="font-semibold">No encontramos clientes</h3><p className="text-sm text-muted-foreground">Probá ampliar el período o reducir el mínimo de visitas.</p></div> : customers.map(customer => {
           const open = expanded === customer.licensePlateNormalized;
           const detailsId = 'frequent-details-' + encodeURIComponent(customer.licensePlateNormalized);
           return <article key={customer.licensePlateNormalized} className="overflow-hidden rounded-xl border bg-background/40 transition-colors hover:border-neutral-500/50">

@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { Clock3, CreditCard, Wallet } from 'lucide-react';
@@ -153,7 +154,7 @@ export function AdvancePaymentDialog({
               {selectedChoice && <section className="rounded-2xl border border-gm-line-strong bg-gm-surface-2 p-4 sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tarifa de {selectedChoice.label}</p><p className="mt-1 text-sm text-muted-foreground">{preview?.ticketDayType === 'NIGHT' ? 'Horario nocturno' : preview?.ticketDayType === 'DAY' ? 'Horario diurno' : preview?.ticketDayType === 'MIXED' ? 'Día y noche' : 'Según el horario del ticket'}</p></div>
-                  <p className="text-2xl font-bold tabular-nums text-gm-yellow">{previewLoading ? 'Calculando…' : preview ? money(preview.price) : '—'}</p>
+                  <p className="text-2xl font-bold tabular-nums text-gm-yellow">{previewLoading ? <span className="inline-flex items-center gap-2"><LatticeLoader compact label="Calculando…" showTimer={false} cellSize={4} gap={1} /></span> : preview ? money(preview.price) : '—'}</p>
                 </div>
                 {previewError && <p className="mt-3 text-sm text-red-400" role="alert">{previewError}</p>}
                 {collected > 0 && <p className="mt-3 border-t border-gm-line-strong pt-3 text-sm text-muted-foreground">Ya cobrado: {money(collected)}{dueNow !== null ? ` · Falta para esta tarifa: ${money(dueNow)}` : ''}</p>}

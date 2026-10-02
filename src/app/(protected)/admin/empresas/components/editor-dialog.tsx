@@ -66,6 +66,9 @@ export function EditorDialog({
   const [playaIds, setPlayaIds] = useState(
     editor.tipo === "accesos" ? editor.usuario.playaIds : [],
   );
+  // La prueba gratis es una opción del alta: se puede destildar y darla después desde la ficha.
+  const [conPrueba, setConPrueba] = useState(true);
+  const [diasPrueba, setDiasPrueba] = useState(7);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const titulo =
@@ -84,7 +87,7 @@ export function EditorDialog({
           ? await updateEmpresaAction(editor.empresa.id, {
               nombre: nombre.trim(),
             })
-          : await createEmpresaAction(nombre.trim());
+          : await createEmpresaAction(nombre.trim(), conPrueba ? diasPrueba : undefined);
       else if (editor.tipo === "playa")
         r = editor.playa
           ? await updatePlayaAction(editor.playa.id, {
@@ -163,6 +166,38 @@ export function EditorDialog({
         <form className="space-y-4" onSubmit={guardar}>
           {(editor.tipo === "empresa" || editor.tipo === "playa") &&
             campo("nombre", "Nombre", nombre, setNombre)}
+          {editor.tipo === "empresa" && !editor.empresa && (
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <label className="flex cursor-pointer items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={conPrueba}
+                  disabled={pending}
+                  onChange={(e) => setConPrueba(e.target.checked)}
+                  className="size-4 accent-yellow-400"
+                />
+                <span className="font-medium">Darle prueba gratis</span>
+                <select
+                  aria-label="Días de prueba"
+                  className="ml-auto h-9 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50"
+                  value={diasPrueba}
+                  disabled={pending || !conPrueba}
+                  onChange={(e) => setDiasPrueba(Number(e.target.value))}
+                >
+                  {[3, 5, 7, 10, 14, 21, 30].map((n) => (
+                    <option key={n} value={n}>
+                      {n} días
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-xs text-muted-foreground">
+                {conPrueba
+                  ? "Arranca hoy. No hace falta plan: lo elegís en la solapa Plan antes de que termine."
+                  : "Queda sin plan ni vencimiento. La prueba se la podés dar después desde la solapa Plan."}
+              </p>
+            </div>
+          )}
           {editor.tipo === "playa" &&
             campo(
               "direccion",

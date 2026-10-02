@@ -1,7 +1,9 @@
 'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 
 // La sección de inquilinos: a quién buscar, cuánto tiene pendiente (y si ya venció) y cobrarle
-// desde la lista. El detalle de cada uno está en su cuenta.
+// desde la lista. El detalle de cada uno está en su cuenta. El operador ve solo la lista y cobra:
+// sin los totales de la playa, y en vez de la cuenta, un diálogo con lo que debe y lo que pagó.
 //
 // Los indicadores no mezclan cosas distintas: lo cobrado en el mes (de cualquier período) va por
 // un lado y lo que falta del abono del mes, por otro. Un porcentaje «cobrado / cargado» podía
@@ -10,13 +12,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { AlertTriangle, Ban, CalendarPlus, ChevronRight, Loader2, Search, Wallet } from 'lucide-react';
+import { AlertTriangle, Ban, CalendarPlus, ChevronRight, Search, Wallet } from 'lucide-react';
 import { getResumenCuentasAction } from '@/actions/cuentas/cuentas.action';
 import { InquilinoResumen, ResumenCuentas, Tramo } from '@/types/cuenta.type';
 import { Avatar, EJE, Leyenda, Rotulo, Segmentos, Selector, Tarjeta } from '@/components/plataforma/mono';
 import { colorAvatar, corto, iniciales, numero, plata } from '@/components/plataforma/formato';
 import { CreateRenterDialog } from '../create-renter-dialog';
 import { CobrarDialog } from './cobrar-dialog';
+import { CuentaMostradorDialog } from './cuenta-mostrador';
 import { CargarAbonosDialog } from './acciones';
 import { AnulacionesDialog } from './anulaciones';
 import { TRAMOS, fechaAR, mesActual, nombreMes } from './util';
@@ -55,6 +58,7 @@ function PastillaSaldo({ i }: { i: InquilinoResumen }) {
 export function InquilinosPanel() {
   const { data: session } = useSession();
   const esAdmin = session?.user?.role === 'ADMIN';
+  const esOperador = session?.user?.role === 'USER';
   const [resumen, setResumen] = useState<ResumenCuentas | null>(null);
   const [error, setError] = useState<{ mensaje: string; code?: string } | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -62,6 +66,8 @@ export function InquilinosPanel() {
   const [filtro, setFiltro] = useState<Filtro>('todos');
   const [orden, setOrden] = useState<Orden>('saldo');
   const [cobrando, setCobrando] = useState<InquilinoResumen | null>(null);
+  // El operador no entra a la cuenta: ve lo que debe y lo que pagó en un diálogo.
+  const [viendo, setViendo] = useState<InquilinoResumen | null>(null);
   const [cargandoAbonos, setCargandoAbonos] = useState(false);
   const [viendoAnulaciones, setViendoAnulaciones] = useState(false);
 
@@ -140,6 +146,9 @@ export function InquilinosPanel() {
     n: visibles.filter((i) => i.tramo === t).length,
   }));
   const hayDeuda = porTramo.some((t) => t.n > 0);
+  // Los números de la playa los manda el backend solo a la administración; mientras carga, se
+  // decide por el rol para no mostrarle al operador tarjetas vacías.
+  const conTotales = resumen ? !!resumen.kpis : !esOperador;
 
   return (
     <div className="space-y-5">
@@ -149,7 +158,7 @@ export function InquilinosPanel() {
           <h1 className="mt-2 font-display text-[34px] font-semibold leading-none sm:text-[40px]">Inquilinos</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          {cargando && resumen && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+          {cargando && resumen && <DataLoading label="Actualizando cuentas…" className="w-auto" />}
           {esAdmin && (
             <>
               <button
@@ -191,6 +200,7 @@ export function InquilinosPanel() {
         </div>
       )}
 
+      {conTotales && (
       <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
         <Tarjeta className="min-h-[124px] justify-between gap-3 pt-4 sm:min-h-[148px]">
           <div className="flex items-center justify-between">
@@ -249,8 +259,9 @@ export function InquilinosPanel() {
           <span className="text-xs text-muted-foreground sm:text-[12.5px]">Se descuentan solos de los próximos cargos</span>
         </Tarjeta>
       </div>
+      )}
 
-      {hayDeuda && (
+      {conTotales && hayDeuda && (
         <Tarjeta className="gap-3 py-4">
           <div className="flex items-center justify-between gap-3">
             <Rotulo>Saldo pendiente por vencimiento</Rotulo>
@@ -352,9 +363,19 @@ export function InquilinosPanel() {
                 <span role="cell" className="flex min-w-0 items-center gap-3">
                   <Avatar texto={iniciales(nombreDe(i))} fondo={colorAvatar(i.id)} />
                   <span className="min-w-0">
-                    <Link href={`/renters/${i.id}`} className="block truncate font-semibold text-foreground hover:text-gm-yellow">
-                      {nombreDe(i)}
-                    </Link>
+                    {esOperador ? (
+                      <button
+                        type="button"
+                        onClick={() => setViendo(i)}
+                        className="block max-w-full truncate text-left font-semibold text-foreground hover:text-gm-yellow"
+                      >
+                        {nombreDe(i)}
+                      </button>
+                    ) : (
+                      <Link href={`/renters/${i.id}`} className="block truncate font-semibold text-foreground hover:text-gm-yellow">
+                        {nombreDe(i)}
+                      </Link>
+                    )}
                     <span className="block truncate text-xs" style={{ color: EJE }}>
                       {i.baja ? `Dado de baja el ${fechaAR(i.baja)}` : i.telefono || 'Sin teléfono'}
                       {i.patentes.length ? ` · ${i.patentes.join(', ')}` : ''}
@@ -378,13 +399,24 @@ export function InquilinosPanel() {
                   >
                     Cobrar
                   </button>
-                  <Link
-                    href={`/renters/${i.id}`}
-                    className="flex h-9 items-center gap-1 rounded-[10px] border border-border px-3 text-[13px] font-semibold hover:bg-gm-surface-2"
-                  >
-                    Ver cuenta
-                    <ChevronRight className="size-3.5" />
-                  </Link>
+                  {esOperador ? (
+                    <button
+                      type="button"
+                      onClick={() => setViendo(i)}
+                      className="flex h-9 items-center gap-1 rounded-[10px] border border-border px-3 text-[13px] font-semibold hover:bg-gm-surface-2"
+                    >
+                      Ver cuenta
+                      <ChevronRight className="size-3.5" />
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/renters/${i.id}`}
+                      className="flex h-9 items-center gap-1 rounded-[10px] border border-border px-3 text-[13px] font-semibold hover:bg-gm-surface-2"
+                    >
+                      Ver cuenta
+                      <ChevronRight className="size-3.5" />
+                    </Link>
+                  )}
                 </span>
               </div>
             ))}
@@ -399,12 +431,22 @@ export function InquilinosPanel() {
                 <Avatar texto={iniciales(nombreDe(i))} fondo={colorAvatar(i.id)} />
                 <span className="min-w-0 flex-1 space-y-1.5">
                   <span className="block">
-                    <Link
-                      href={`/renters/${i.id}`}
-                      className="line-clamp-2 font-semibold leading-snug text-foreground [overflow-wrap:anywhere]"
-                    >
-                      {nombreDe(i)}
-                    </Link>
+                    {esOperador ? (
+                      <button
+                        type="button"
+                        onClick={() => setViendo(i)}
+                        className="line-clamp-2 text-left font-semibold leading-snug text-foreground [overflow-wrap:anywhere]"
+                      >
+                        {nombreDe(i)}
+                      </button>
+                    ) : (
+                      <Link
+                        href={`/renters/${i.id}`}
+                        className="line-clamp-2 font-semibold leading-snug text-foreground [overflow-wrap:anywhere]"
+                      >
+                        {nombreDe(i)}
+                      </Link>
+                    )}
                     <span className="block truncate text-xs" style={{ color: EJE }}>
                       {[i.cocheras.length ? `Cochera ${i.cocheras.join(', ')}` : null, i.baja ? 'De baja' : i.abono ? `${plata(i.abono)}/mes` : null]
                         .filter(Boolean)
@@ -422,22 +464,31 @@ export function InquilinosPanel() {
                 >
                   Cobrar
                 </button>
-                <Link
-                  href={`/renters/${i.id}`}
-                  className="flex h-10 flex-1 items-center justify-center gap-1 rounded-[10px] border border-border text-[13px] font-semibold hover:bg-gm-surface-2"
-                >
-                  Ver cuenta
-                  <ChevronRight className="size-3.5" />
-                </Link>
+                {esOperador ? (
+                  <button
+                    type="button"
+                    onClick={() => setViendo(i)}
+                    className="flex h-10 flex-1 items-center justify-center gap-1 rounded-[10px] border border-border text-[13px] font-semibold hover:bg-gm-surface-2"
+                  >
+                    Ver cuenta
+                    <ChevronRight className="size-3.5" />
+                  </button>
+                ) : (
+                  <Link
+                    href={`/renters/${i.id}`}
+                    className="flex h-10 flex-1 items-center justify-center gap-1 rounded-[10px] border border-border text-[13px] font-semibold hover:bg-gm-surface-2"
+                  >
+                    Ver cuenta
+                    <ChevronRight className="size-3.5" />
+                  </Link>
+                )}
               </div>
             </li>
           ))}
         </ul>
 
         {cargando && !resumen && (
-          <p role="status" className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground md:border-t md:border-[#2A241D]">
-            <Loader2 className="size-4 animate-spin" /> Cargando cuentas…
-          </p>
+          <DataLoading label="Cargando cuentas…" className="p-4" />
         )}
         {resumen && !lista.length && (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground md:border-t md:border-[#2A241D]">
@@ -449,13 +500,27 @@ export function InquilinosPanel() {
             <span>
               {lista.length} de {numero(filtro === 'bajas' ? cuenta.bajas : visibles.length)} inquilinos
             </span>
-            <span className="tabular-nums">
-              Pendiente del listado: <strong className="text-foreground">{plata(lista.reduce((s, i) => s + Math.max(0, i.saldo), 0))}</strong>
-            </span>
+            {conTotales && (
+              <span className="tabular-nums">
+                Pendiente del listado: <strong className="text-foreground">{plata(lista.reduce((s, i) => s + Math.max(0, i.saldo), 0))}</strong>
+              </span>
+            )}
           </div>
         )}
       </section>
 
+      {viendo && (
+        <CuentaMostradorDialog
+          customerId={viendo.id}
+          nombre={nombreDe(viendo)}
+          open={!!viendo}
+          onOpenChange={(v) => !v && setViendo(null)}
+          onCobrar={() => {
+            setCobrando(viendo);
+            setViendo(null);
+          }}
+        />
+      )}
       {cobrando && (
         <CobrarDialog
           customerId={cobrando.id}

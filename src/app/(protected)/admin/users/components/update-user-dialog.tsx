@@ -1,4 +1,5 @@
 'use client';
+import { DataLoading } from '@/components/ui/data-loading';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -79,7 +80,7 @@ export function UpdateUserDailog({ user }: { user: User }) {
   }
 
   if (session.status === 'loading') {
-    return <div>Cargando...</div>;
+    return <DataLoading label="Cargando usuario…" />;
   }
 
   const checkUsername = async (username: string) => {

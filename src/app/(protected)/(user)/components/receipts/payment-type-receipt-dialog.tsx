@@ -1,4 +1,5 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -25,7 +26,6 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle2,
-  Loader2,
   Plus,
   Receipt as ReceiptIcon,
   Trash2,
@@ -392,7 +392,7 @@ export function PaymentTypeReceiptDialog({
               </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
+                  <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />
                 ) : (
                   <CheckCircle2 className="size-4" />
                 )}

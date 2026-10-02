@@ -42,6 +42,8 @@ export async function getEmpresas(): Promise<EmpresaConDetalle[]> {
 
 export async function createEmpresa(
   nombre: string,
+  // Días de prueba gratis desde hoy; sin esto la empresa queda sin plan ni vencimiento.
+  diasPrueba?: number,
 ): Promise<EmpresaConDetalle> {
   const response = await fetch(`${BASE_URL}/tenancy/empresas`, {
     method: "POST",
@@ -49,7 +51,7 @@ export async function createEmpresa(
       ...(await getAuthHeaders()),
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ nombre }),
+    body: JSON.stringify({ nombre, ...(diasPrueba ? { diasPrueba } : {}) }),
   });
   if (!response.ok)
     throw new Error(await leerError(response, "No se pudo crear la empresa."));

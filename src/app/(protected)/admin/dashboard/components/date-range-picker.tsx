@@ -11,7 +11,7 @@ import timezone from 'dayjs/plugin/timezone';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { AppCalendarDialog, appCalendarClassNames } from '@/components/app-date-picker';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -45,25 +45,23 @@ export function DashboardDateRangePicker({ from, to }: DateRangePickerProps) {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <AppCalendarDialog open={open} onOpenChange={setOpen} title="Período del panel" trigger={
         <Button variant="outline" className="gm-mono gm-tnum">
           <CalendarIcon className="size-4" />
           {dayjs(from).format('DD/MM/YYYY')} – {dayjs(to).format('DD/MM/YYYY')}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end">
+      } footer={<span className="text-xs text-muted-foreground">Elegí el inicio y el final del período</span>}>
         <Calendar
           mode="range"
           locale={es}
           selected={range}
           onSelect={apply}
           defaultMonth={range?.from}
-          numberOfMonths={2}
+          numberOfMonths={1}
           disabled={(day) => day > new Date()}
-          className="bg-gm-surface-2"
+          className="p-3"
+          classNames={appCalendarClassNames}
         />
-      </PopoverContent>
-    </Popover>
+    </AppCalendarDialog>
   );
 }

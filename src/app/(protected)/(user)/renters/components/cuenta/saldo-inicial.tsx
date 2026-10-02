@@ -1,11 +1,13 @@
 'use client';
+import LatticeLoader from '@/components/ui/lattice-loader';
 
 // Cómo está la cuenta de un inquilino cuando se empieza a llevar en el sistema. Antes era un
 // tilde de «tiene deuda» con los últimos 12 meses y un número de crédito suelto; ahora se elige
 // entre tres situaciones y la deuda se carga como total a una fecha o mes por mes, sin límite.
 
 import { useState } from 'react';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { CalendarDays, Plus, Trash2 } from 'lucide-react';
+import { AppDatePicker } from '@/components/app-date-picker';
 import { toast } from '@/lib/toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { plata } from '@/components/plataforma/formato';
@@ -197,16 +199,10 @@ export function EditorSaldoInicial({
                   onTexto={(t) => onChange({ ...valor, importe: escribir('importe', t) || undefined })}
                 />
               </label>
-              <label className="block">
+              <div className="block">
                 <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">Al día</span>
-                <input
-                  type="date"
-                  max={hoyAR()}
-                  value={valor.fecha ?? ''}
-                  onChange={(e) => onChange({ ...valor, fecha: e.target.value })}
-                  className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm [color-scheme:dark]"
-                />
-              </label>
+                <AppDatePicker title="Fecha de corte" value={valor.fecha ?? ''} max={hoyAR()} onChange={fecha => onChange({ ...valor, fecha })} trigger={<button type="button" className="flex h-11 w-full items-center gap-2 rounded-xl border border-border bg-background px-3 text-left text-sm hover:border-gm-yellow/50"><CalendarDays className="size-4 text-gm-yellow" />{valor.fecha ? new Intl.DateTimeFormat('es-AR').format(new Date(`${valor.fecha}T12:00:00`)) : 'Elegir fecha'}</button>} />
+              </div>
               <p className="text-xs text-muted-foreground sm:col-span-2">
                 Queda como un solo cargo «Saldo inicial», vencido desde esa fecha. Sirve cuando se sabe cuánto debe
                 pero no de qué meses.
@@ -299,7 +295,7 @@ export function SaldoInicialDialog({
             title={error ?? undefined}
             className="flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-sm font-bold text-gm-ink hover:bg-[#FFD23A] disabled:opacity-50"
           >
-            {enviando && <Loader2 className="size-4 animate-spin" />}
+            {enviando && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
             Guardar saldo inicial
           </button>
         </div>
