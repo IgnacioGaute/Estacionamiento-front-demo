@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 import { InstallAppMenuItem } from './install-app-menu-item';
 import { HojaDeRama, Rama as RamaMenu } from './branched-menu';
 import DesktopBranchedMenu, { type BranchedMenuItem } from './desktop-branched-menu';
+import { ParkingMark } from '@/components/brand/logo';
 
 type RamaId = 'operacion' | 'clientes' | 'admin';
 
@@ -280,6 +281,13 @@ function OperationalNavUser({
           >
             <Box className="size-3.5 text-muted-foreground" />
             Planilla de caja
+          </DropdownMenuItem>
+
+          <DropdownMenuItem asChild className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]">
+            <a href="https://estacionamiento-demo-landing.vercel.app/aprender" target="_blank" rel="noopener noreferrer" aria-label="Centro de aprendizaje (se abre en una pestaña nueva)">
+              <ParkingMark size="sm" className="size-3.5 shrink-0" />
+              Centro de aprendizaje
+            </a>
           </DropdownMenuItem>
 
           <InstallAppMenuItem />

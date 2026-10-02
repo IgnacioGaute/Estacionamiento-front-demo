@@ -4008,3 +4008,6 @@
  POST /admin/plan 200 in 138ms
  POST /admin/tarifas 200 in 147ms
  POST /admin/tarifas 200 in 124ms
+ POST /admin/tarifas 200 in 167ms
+ POST /admin/plan 200 in 191ms
+ POST /admin/tarifas 200 in 138ms
