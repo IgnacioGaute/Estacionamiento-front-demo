@@ -3586,3 +3586,10 @@ Import trace for requested module:
  ⨯ [Error: aborted] { code: 'ECONNRESET', digest: '3419021255' }
  ⨯ [Error: aborted] { code: 'ECONNRESET', digest: '3419021255' }
  ⚠ Server is approaching the used memory threshold, restarting...
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+{
+  message: 'Abrí el siguiente turno antes de registrar efectivo en caja.',
+  error: 'Bad Request',
+  statusCode: 400
+}

@@ -3685,3 +3685,326 @@
  ✓ Compiled /middleware in 1150ms (388 modules)
  ○ Compiling /tickets ...
  ✓ Compiled /tickets in 22.9s (4888 modules)
+ POST /tickets 200 in 17561ms
+ ✓ Compiled in 4.8s (2006 modules)
+ GET /tickets 200 in 28502ms
+ GET /tickets 200 in 28511ms
+ POST /tickets 200 in 134ms
+ POST /tickets 200 in 141ms
+ GET /tickets 200 in 1248ms
+ POST /tickets 200 in 129ms
+ POST /tickets 200 in 136ms
+ POST /tickets 200 in 140ms
+ POST /tickets 200 in 156ms
+ POST /tickets 200 in 120ms
+ POST /tickets 200 in 120ms
+ GET /tickets 200 in 1115ms
+ POST /tickets 200 in 89ms
+ POST /tickets 200 in 122ms
+ ○ Compiling /admin/tarifas ...
+ ✓ Compiled /admin/tarifas in 8.7s (5007 modules)
+ GET /admin/tarifas 200 in 9606ms
+ ○ Compiling /manifest.webmanifest ...
+ GET /tickets 200 in 5033ms
+ GET /tickets 200 in 5035ms
+ ✓ Compiled /manifest.webmanifest in 8.7s (5017 modules)
+ GET /manifest.webmanifest 200 in 10316ms
+ POST /admin/tarifas 200 in 5512ms
+ POST /tickets 200 in 5552ms
+ POST /tickets 200 in 5604ms
+ GET /tickets 200 in 7448ms
+ POST /tickets 200 in 753ms
+ POST /tickets 200 in 762ms
+ POST /tickets 200 in 93ms
+ POST /tickets 200 in 140ms
+ GET /admin/tarifas 200 in 283ms
+ GET /manifest.webmanifest 200 in 41ms
+ POST /admin/tarifas 200 in 138ms
+ POST /admin/tarifas 200 in 112ms
+ POST /admin/tarifas 200 in 131ms
+ POST /admin/tarifas 200 in 120ms
+ POST /tickets 200 in 197ms
+ POST /tickets 200 in 202ms
+ POST /admin/tarifas 200 in 120ms
+ GET /tickets 200 in 1084ms
+ POST /tickets 200 in 125ms
+ POST /tickets 200 in 198ms
+ POST /tickets 200 in 242ms
+ POST /tickets 200 in 220ms
+ GET /manifest.webmanifest 200 in 94ms
+ GET /admin/tarifas 200 in 319ms
+ POST /admin/tarifas 200 in 160ms
+ POST /admin/tarifas 200 in 209ms
+ POST /admin/tarifas 200 in 102ms
+ POST /admin/tarifas 200 in 127ms
+ POST /tickets 200 in 201ms
+ POST /tickets 200 in 204ms
+ POST /admin/tarifas 200 in 115ms
+ GET /tickets 200 in 964ms
+ POST /tickets 200 in 123ms
+ POST /tickets 200 in 130ms
+ GET /manifest.webmanifest 200 in 100ms
+ GET /admin/tarifas 200 in 301ms
+ POST /admin/tarifas 200 in 117ms
+ POST /admin/tarifas 200 in 128ms
+ POST /admin/tarifas 200 in 138ms
+ POST /admin/tarifas 200 in 124ms
+ POST /tickets 200 in 175ms
+ POST /tickets 200 in 158ms
+ POST /admin/tarifas 200 in 171ms
+ ○ Compiling /auth/login ...
+ GET /tickets 200 in 2810ms
+ GET /tickets 200 in 2800ms
+ GET /admin/tarifas 200 in 2808ms
+ ✓ Compiled /auth/login in 10.5s (5436 modules)
+ GET /manifest.webmanifest 200 in 5778ms
+ GET /auth/login 200 in 8760ms
+ GET /tickets 200 in 1396ms
+ GET /tickets 200 in 1396ms
+ GET /admin/tarifas 200 in 1404ms
+ GET /manifest.webmanifest 200 in 41ms
+ POST /tickets 200 in 364ms
+ POST /tickets 200 in 364ms
+ GET /auth/login 200 in 271ms
+ POST /admin/tarifas 200 in 121ms
+ ○ Compiling /prueba-carga ...
+ ✓ Compiled /prueba-carga in 1724ms (5050 modules)
+ GET /prueba-carga 200 in 2622ms
+ POST /tickets 200 in 439ms
+ POST /tickets 200 in 421ms
+ GET /prueba-carga 200 in 460ms
+ POST /admin/tarifas 200 in 181ms
+ POST /tickets 200 in 185ms
+ POST /tickets 200 in 189ms
+ POST /admin/tarifas 200 in 118ms
+ ✓ Compiled in 8.1s (5055 modules)
+ GET /admin/tarifas 200 in 1843ms
+ GET /tickets 200 in 1845ms
+ GET /tickets 200 in 1847ms
+ ○ Compiling /manifest.webmanifest ...
+ ✓ Compiled /manifest.webmanifest in 1425ms (2987 modules)
+ GET /manifest.webmanifest 200 in 2533ms
+ POST /tickets 200 in 2535ms
+ POST /tickets 200 in 2538ms
+ GET /prueba-carga 200 in 569ms
+ POST /admin/tarifas 200 in 179ms
+ ✓ Compiled in 3.7s (5450 modules)
+ GET /admin/tarifas 200 in 4916ms
+ GET /tickets 200 in 4943ms
+ GET /tickets 200 in 4937ms
+ GET /tickets 200 in 1401ms
+ GET /tickets 200 in 1401ms
+ GET /admin/tarifas 200 in 1407ms
+ GET /manifest.webmanifest 200 in 79ms
+ POST /tickets 200 in 344ms
+ POST /tickets 200 in 377ms
+ POST /admin/tarifas 200 in 114ms
+ POST /tickets 200 in 233ms
+ POST /tickets 200 in 237ms
+ POST /admin/tarifas 200 in 110ms
+ POST /tickets 200 in 158ms
+ POST /tickets 200 in 180ms
+ POST /admin/tarifas 200 in 131ms
+ POST /tickets 200 in 171ms
+ POST /tickets 200 in 171ms
+ POST /admin/tarifas 200 in 113ms
+ GET /tickets 200 in 1940ms
+ POST /tickets 200 in 139ms
+ ○ Compiling /api/offline/[action] ...
+ ✓ Compiled /api/offline/[action] in 7.1s (5061 modules)
+ POST /tickets 200 in 4345ms
+ POST /tickets 200 in 4349ms
+ POST /tickets 200 in 7245ms
+ GET /admin/tarifas 200 in 1400ms
+ POST /tickets 200 in 840ms
+ POST /api/offline/prepare 201 in 10035ms
+ GET /tickets 200 in 1484ms
+ GET /tickets 200 in 1500ms
+ ○ Compiling /manifest.webmanifest ...
+ ✓ Compiled /manifest.webmanifest in 1061ms (2988 modules)
+ GET /manifest.webmanifest 200 in 2789ms
+ GET /tickets 200 in 3544ms
+ GET /manifest.webmanifest 200 in 90ms
+ POST /admin/tarifas 200 in 425ms
+ POST /api/offline/prepare 201 in 241ms
+ POST /tickets 200 in 182ms
+ ○ Compiling /renters ...
+ ✓ Compiled /renters in 11s (5133 modules)
+ GET /renters 200 in 11583ms
+ POST /tickets 200 in 1016ms
+ POST /tickets 200 in 1015ms
+ POST /renters 200 in 191ms
+ GET /manifest.webmanifest 200 in 113ms
+ POST /api/offline/prepare 201 in 323ms
+ POST /renters 200 in 184ms
+ POST /renters 200 in 387ms
+ POST /admin/tarifas 200 in 183ms
+ ○ Compiling /renters/[id] ...
+ ✓ Compiled /renters/[id] in 3.3s (5179 modules)
+ GET /renters/5290d2d8-ab8f-4e49-9cda-972812534152 200 in 5378ms
+ GET /manifest.webmanifest 200 in 94ms
+ POST /renters/5290d2d8-ab8f-4e49-9cda-972812534152 200 in 421ms
+ POST /renters/5290d2d8-ab8f-4e49-9cda-972812534152 200 in 183ms
+ POST /renters/5290d2d8-ab8f-4e49-9cda-972812534152 200 in 171ms
+ ○ Compiling /admin/plan ...
+ ✓ Compiled /admin/plan in 5.6s (5205 modules)
+ POST /tickets 200 in 4713ms
+ POST /tickets 200 in 4721ms
+ GET /admin/plan 200 in 7926ms
+ GET /admin/tarifas 200 in 1837ms
+ GET /manifest.webmanifest 200 in 164ms
+ GET /tickets 200 in 1584ms
+ GET /tickets 200 in 1580ms
+ GET /admin/plan 200 in 1978ms
+ GET /manifest.webmanifest 200 in 119ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ POST /admin/plan 200 in 1517ms
+ ✓ Compiled /api/auth/[...nextauth] in 7s (5193 modules)
+ POST /admin/tarifas 200 in 6502ms
+ POST /admin/plan 200 in 7263ms
+ POST /api/offline/prepare 201 in 9588ms
+ POST /admin/plan 200 in 239ms
+ GET /api/auth/session 200 in 12036ms
+ GET /api/auth/session 200 in 113ms
+ GET /admin/plan 200 in 1848ms
+ POST /admin/plan 200 in 115ms
+ POST /api/offline/prepare 201 in 259ms
+ ○ Compiling /admin/caja ...
+ ✓ Compiled /admin/caja in 14.5s (5281 modules)
+ POST /tickets 200 in 14161ms
+ POST /admin/tarifas 200 in 3807ms
+ POST /tickets 200 in 14560ms
+ GET /admin/caja 200 in 17718ms
+ GET /admin/caja 200 in 1759ms
+ GET /tickets 200 in 1692ms
+ GET /tickets 200 in 1639ms
+ GET /admin/tarifas 200 in 1645ms
+ GET /manifest.webmanifest 200 in 156ms
+ GET /manifest.webmanifest 200 in 81ms
+ GET /admin/caja?tab=turnos 200 in 240ms
+ GET /manifest.webmanifest 200 in 74ms
+ POST /admin/caja?tab=turnos 200 in 157ms
+ POST /admin/caja?tab=turnos 200 in 139ms
+ POST /admin/caja?tab=turnos 200 in 162ms
+ POST /admin/caja?tab=turnos 200 in 137ms
+ POST /admin/caja?tab=turnos 200 in 183ms
+ POST /admin/caja?tab=turnos 200 in 141ms
+ POST /admin/caja?tab=turnos 200 in 137ms
+ POST /admin/caja?tab=turnos 200 in 219ms
+ POST /admin/caja?tab=turnos 200 in 137ms
+ POST /admin/caja?tab=turnos 200 in 165ms
+ POST /tickets 200 in 351ms
+ POST /tickets 200 in 355ms
+ GET /manifest.webmanifest 200 in 120ms
+ GET /tickets 200 in 727ms
+ POST /tickets 200 in 156ms
+ POST /tickets 200 in 182ms
+ POST /tickets 200 in 326ms
+ POST /api/offline/prepare 201 in 391ms
+ POST /admin/tarifas 200 in 231ms
+ POST /tickets 200 in 240ms
+ POST /tickets 200 in 192ms
+ POST /tickets 200 in 284ms
+ POST /api/offline/prepare 201 in 496ms
+ POST /tickets 200 in 1639ms
+ GET /tickets 200 in 868ms
+ GET /manifest.webmanifest 200 in 61ms
+ POST /api/offline/prepare 201 in 240ms
+ POST /tickets 200 in 193ms
+ POST /tickets 200 in 209ms
+ POST /tickets 200 in 165ms
+ POST /tickets 200 in 206ms
+ POST /tickets 200 in 442ms
+ POST /tickets 200 in 203ms
+ POST /api/offline/prepare 201 in 416ms
+ POST /tickets 200 in 1741ms
+ GET /tickets 200 in 869ms
+ POST /tickets 200 in 367ms
+ POST /tickets 200 in 158ms
+ GET /manifest.webmanifest 200 in 160ms
+ POST /admin/tarifas 200 in 1236ms
+ POST /api/offline/prepare 201 in 918ms
+ GET /tickets 200 in 675ms
+ GET /manifest.webmanifest 200 in 72ms
+ POST /api/offline/prepare 201 in 358ms
+ POST /tickets 200 in 176ms
+ POST /tickets 200 in 163ms
+ ○ Compiling /api/assistant/chat ...
+ ✓ Compiled /api/assistant/chat in 5.8s (5262 modules)
+ POST /api/assistant/chat 200 in 7728ms
+ GET /tickets 200 in 1930ms
+ GET /tickets 200 in 1944ms
+ GET /tickets 200 in 1966ms
+ GET /admin/tarifas 200 in 1956ms
+ POST /tickets 200 in 466ms
+ GET /manifest.webmanifest 200 in 96ms
+ GET /manifest.webmanifest 200 in 113ms
+ POST /admin/tarifas 200 in 229ms
+ POST /api/offline/prepare 201 in 384ms
+ POST /tickets 200 in 199ms
+ POST /tickets 200 in 202ms
+ POST /tickets 200 in 142ms
+ POST /admin/tarifas 200 in 182ms
+ POST /tickets 200 in 177ms
+ POST /tickets 200 in 180ms
+ POST /tickets 200 in 167ms
+ POST /admin/tarifas 200 in 171ms
+ POST /api/offline/prepare 201 in 328ms
+ POST /tickets 200 in 202ms
+ GET /admin/plan 200 in 671ms
+ GET /manifest.webmanifest 200 in 168ms
+ POST /admin/plan 200 in 244ms
+ POST /api/offline/prepare 201 in 375ms
+ POST /admin/plan 200 in 208ms
+ POST /tickets 200 in 212ms
+ POST /tickets 200 in 174ms
+ POST /admin/tarifas 200 in 139ms
+ POST /admin/plan 200 in 154ms
+ POST /tickets 200 in 171ms
+ POST /tickets 200 in 171ms
+ POST /admin/tarifas 200 in 146ms
+ ○ Compiling /admin/plan/pagar ...
+ ✓ Compiled /admin/plan/pagar in 16.7s (5280 modules)
+ POST /api/offline/prepare 201 in 6343ms
+ GET /admin/plan/pagar 200 in 19113ms
+ POST /admin/plan/pagar 200 in 1819ms
+ GET /tickets 200 in 2190ms
+ GET /tickets 200 in 2239ms
+ GET /admin/tarifas 200 in 2183ms
+ POST /tickets 200 in 633ms
+ POST /tickets 200 in 638ms
+ GET /manifest.webmanifest 200 in 284ms
+ GET /admin/plan/pagar 200 in 843ms
+ GET /manifest.webmanifest 200 in 197ms
+ POST /admin/tarifas 200 in 145ms
+ POST /admin/plan/pagar 200 in 157ms
+ POST /tickets 200 in 199ms
+ POST /tickets 200 in 203ms
+ POST /admin/tarifas 200 in 187ms
+ GET /admin/plan 200 in 488ms
+ GET /manifest.webmanifest 200 in 59ms
+ POST /admin/plan 200 in 211ms
+ POST /api/offline/prepare 201 in 291ms
+ GET /admin/plan/pagar 200 in 296ms
+ GET /manifest.webmanifest 200 in 59ms
+ POST /tickets 200 in 223ms
+ POST /tickets 200 in 237ms
+ POST /admin/tarifas 200 in 136ms
+ GET /admin/plan 200 in 380ms
+ GET /manifest.webmanifest 200 in 51ms
+ POST /admin/plan 200 in 152ms
+ POST /tickets 200 in 198ms
+ POST /tickets 200 in 231ms
+ POST /admin/tarifas 200 in 116ms
+ POST /admin/plan 200 in 213ms
+ POST /api/offline/prepare 201 in 315ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 3s (3057 modules)
+ GET /api/auth/session 200 in 3458ms
+ GET /api/auth/session 200 in 172ms
+ POST /admin/tarifas 200 in 459ms
+ POST /admin/plan 200 in 181ms
+ POST /admin/tarifas 200 in 219ms
+ POST /admin/plan 200 in 138ms
+ POST /admin/tarifas 200 in 147ms
+ POST /admin/tarifas 200 in 124ms
