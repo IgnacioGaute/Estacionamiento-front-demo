@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { ArrowRight, X } from "lucide-react";
 import { useTenant } from "@/components/tenant-provider";
-import { cuentaConAlerta, diaAR, pesos } from "@/components/plataforma/cuenta";
+import { cadaPeriodo, cuentaConAlerta, diaAR, pesos } from "@/components/plataforma/cuenta";
 import type { SituacionCuenta } from "@/types/suscripcion.type";
 
 const AMARILLO = "#F5C219";
@@ -37,15 +37,17 @@ function avisoDe(c: SituacionCuenta): Aviso | null {
   if (!cuentaConAlerta(c)) return null;
   const importe = c.aPagar ? pesos(c.aPagar) : null;
   const corte = c.suspendeEl ? ` · se suspende el ${diaAR(c.suspendeEl, false)}` : "";
+  // Con pago trimestral o anual, lo que paga es por ese período.
+  const cada = cadaPeriodo(c.periodoMeses ?? 1);
   switch (c.estado) {
     case "PRUEBA":
       return {
         acento: AMARILLO,
         titulo: `La prueba gratis termina ${cuandoEs((c.diasParaVencer ?? 1) - 1)}`,
         detalle: c.conDebito
-          ? `después se cobra solo de tu tarjeta${importe ? `, ${importe} por mes` : ""}`
+          ? `después se cobra solo de tu tarjeta${importe ? `, ${importe} ${cada}` : ""}`
           : importe
-            ? `después, ${importe} por mes`
+            ? `después, ${importe} ${cada}`
             : "elegí tu plan para seguir",
         accion: "Ver planes",
         destino: "/admin/plan",

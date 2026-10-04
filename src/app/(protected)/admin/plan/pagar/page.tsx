@@ -84,14 +84,14 @@ export default async function PagarPage({ searchParams }: { searchParams: Promis
   );
 }
 
-// Qué hay para pagar ahora: lo vencido o, si está al día, el mes que viene (mismo criterio que el
+// Qué hay para pagar ahora: lo vencido o, si está al día, su próximo período (mismo criterio que el
 // backend). Con débito activo y nada vencido, eso es el próximo débito, no algo para pagar.
 function aPagarDe(plan: MiPlan) {
   const { cuenta } = plan;
   const hoy = hoyAR();
   const pendiente = cuenta.facturaPendiente && cuenta.facturaPendiente.desde <= hoy ? cuenta.facturaPendiente : null;
-  const adelanto = !pendiente && ['PRUEBA', 'AL_DIA'].includes(cuenta.estado) && cuenta.mensual > 0;
-  const importe = pendiente?.importe ?? (adelanto ? cuenta.mensual : 0);
+  const adelanto = !pendiente && ['PRUEBA', 'AL_DIA'].includes(cuenta.estado) && cuenta.importePeriodo > 0;
+  const importe = pendiente?.importe ?? (adelanto ? cuenta.importePeriodo : 0);
   const debe = !!pendiente || cuenta.estado === 'VENCIDA' || cuenta.estado === 'SUSPENDIDA';
   const debitara = cuenta.debito?.estado === 'authorized' && !debe;
   return { pendiente, importe, debe, debitara };
@@ -103,9 +103,10 @@ function subtituloDe(plan: MiPlan) {
   if (plan.cuenta.estado === 'SUSPENDIDA') return 'Pagá y tu cuenta vuelve a la normalidad apenas se acredita.';
   if (debe) return 'Tenés un pago pendiente. Pagalo y todo sigue como siempre.';
   if (debitara) return 'Tu plan se cobra solo con el débito automático.';
+  const proximo = plan.cuenta.periodo.meses === 1 ? 'tu próximo mes' : 'tu próximo período';
   return plan.mercadoPago
-    ? 'Dejá el débito automático listo o adelantá tu próximo mes.'
-    : 'Podés pagar por adelantado tu próximo mes.';
+    ? `Dejá el débito automático listo o adelantá ${proximo}.`
+    : `Podés pagar por adelantado ${proximo}.`;
 }
 
 // «Playa mediana + alquileres» → «Playa mediana · con alquileres».
@@ -116,8 +117,11 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
   const { cuenta } = plan;
   const { pendiente, importe, debe, debitara } = aPagarDe(plan);
   const desde = pendiente?.desde ?? cuenta.proximoVencimiento;
-  // Por adelantado, el mes que sigue a lo cubierto (mismo cálculo que el backend).
-  const hasta = pendiente?.hasta ?? (cuenta.venceEl ? sumarMesesAR(cuenta.venceEl, 1) : null);
+  // Lo que cubre: el período de lo vencido o, por adelantado, el que sigue a lo cubierto (mismo
+  // cálculo que el backend). Con sus meses y su descuento.
+  const meses = pendiente?.meses ?? cuenta.periodo.meses;
+  const descuento = pendiente?.descuento ?? cuenta.periodo.descuento;
+  const hasta = pendiente?.hasta ?? (cuenta.venceEl ? sumarMesesAR(cuenta.venceEl, meses) : null);
   const ultimoDia = cuenta.suspendeEl ? sumarDiasAR(cuenta.suspendeEl, -1) : null;
   const whatsapp = plan.contacto
     ? `https://wa.me/${plan.contacto.replace(/\D/g, '')}?text=${encodeURIComponent(
@@ -139,7 +143,7 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
               : cuenta.estado === 'SIN_ACTIVAR'
                 ? 'Tu cuenta todavía no arrancó, así que no hay nada para pagar.'
                 : cuenta.proximoVencimiento
-                  ? `No tenés nada para pagar por ahora. Tu próximo mes arranca el ${fechaLarga(cuenta.proximoVencimiento)}.`
+                  ? `No tenés nada para pagar por ahora. Tu próximo ${cuenta.periodo.meses === 1 ? 'mes' : 'período'} arranca el ${fechaLarga(cuenta.proximoVencimiento)}.`
                   : 'No tenés nada para pagar por ahora.'}
           </p>
         </div>
@@ -153,11 +157,21 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
     : plan.playas
         .filter((p) => p.plan)
         .map((p) => ({ id: p.playaId, nombre: p.nombre, plan: p.plan!.plan, precio: p.plan!.precio }));
-  const concepto = !cuenta.pagadoHasta
-    ? 'Tu primer mes'
-    : pendiente && cuenta.diasDeAtraso
-      ? 'Tu último mes'
-      : 'Tu próximo mes';
+  const concepto =
+    meses === 1
+      ? !cuenta.pagadoHasta
+        ? 'Tu primer mes'
+        : pendiente && cuenta.diasDeAtraso
+          ? 'Tu último mes'
+          : 'Tu próximo mes'
+      : !cuenta.pagadoHasta
+        ? `Tus primeros ${meses} meses`
+        : pendiente && cuenta.diasDeAtraso
+          ? `Tus últimos ${meses} meses`
+          : `Tus próximos ${meses} meses`;
+  // Con un período largo: lo de lista por los meses, y el descuento aparte para que se vea el ahorro.
+  const lista = lineas.reduce((n, l) => n + l.precio, 0) * meses;
+  const ahorro = meses > 1 && descuento > 0 ? lista - importe : 0;
   const nota =
     cuenta.estado === 'SUSPENDIDA'
       ? 'Apenas se acredita el pago, vuelve todo a la normalidad. No perdés nada.'
@@ -198,13 +212,34 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
                     <div className="text-[15px] font-semibold text-[#F6F0E6]">{l.nombre}</div>
                     <div className="mt-0.5 text-[13px] text-[#8F8676]">{descripcionPlan(l.plan)}</div>
                   </div>
-                  <div className="font-mono text-[15px] font-bold text-[#F6F0E6]">{pesos(l.precio)}</div>
+                  <div className="text-right font-mono text-[15px] font-bold text-[#F6F0E6]">
+                    {pesos(l.precio)}
+                    {meses > 1 && <span className="block text-[11.5px] font-medium text-[#8F8676]">por mes</span>}
+                  </div>
                 </li>
               ))}
+              {meses > 1 && (
+                <li className="flex flex-col gap-2 border-t border-[#2B2620] pt-3 text-sm">
+                  <span className="flex justify-between gap-3 text-[#A79E8F]">
+                    <span>× {meses} meses</span>
+                    <span className="font-mono">{pesos(lista)}</span>
+                  </span>
+                  {ahorro > 0 && (
+                    <span className="flex justify-between gap-3 font-semibold text-[#4ADE9B]">
+                      <span>
+                        Pago {cuenta.periodo.nombre.toLowerCase()} −{descuento}%
+                      </span>
+                      <span className="font-mono">−{pesos(ahorro)}</span>
+                    </span>
+                  )}
+                </li>
+              )}
             </ul>
           )}
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-[15px] font-semibold text-[#E3DBCE]">{debitara ? 'Por mes' : 'A pagar'}</span>
+            <span className="text-[15px] font-semibold text-[#E3DBCE]">
+              {debitara ? (meses === 1 ? 'Por mes' : meses === 12 ? 'Por año' : `Cada ${meses} meses`) : 'A pagar'}
+            </span>
             <span
               className="font-mono text-[34px] font-bold tracking-[-0.02em]"
               style={{ color: debe ? '#F5C219' : '#F6F0E6' }}

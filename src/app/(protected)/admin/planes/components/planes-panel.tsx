@@ -9,15 +9,17 @@ import LatticeLoader from '@/components/ui/lattice-loader';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Pencil, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { EmpresaConDetalle } from "@/types/tenancy.type";
-import { EstadoCuenta, PagoPlataforma, Plan, ResumenCuenta } from "@/types/suscripcion.type";
+import { EstadoCuenta, PagoPlataforma, PeriodoPago, Plan, ResumenCuenta } from "@/types/suscripcion.type";
 import { getEmpresasAction } from "@/actions/tenancy/tenancy.action";
 import {
+  editarPeriodoAction,
   editarPlanAction,
   getPagosPlataformaAction,
+  getPeriodosAction,
   getPlanesAction,
   revisarVencimientosAction,
 } from "@/actions/suscripciones/suscripciones.action";
@@ -35,7 +37,12 @@ import {
   diasEntreAR,
   hoyAR,
   pesos,
+  sufijoPeriodo,
 } from "@/components/plataforma/cuenta";
+import { GrillaPlanes, Selector, porPeriodo, precioEnPeriodo } from "@/components/plataforma/planes-landing";
+
+// Lo que entra por mes de una cuenta: con un período largo, su importe repartido en los meses.
+const porMes = (c: ResumenCuenta) => Math.round(c.importePeriodo / Math.max(1, c.periodo.meses));
 
 const MESES = [
   "enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -69,6 +76,7 @@ function urgencia(c: ResumenCuenta) {
 export function PlanesPanel() {
   const [empresas, setEmpresas] = useState<EmpresaConDetalle[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
+  const [periodos, setPeriodos] = useState<PeriodoPago[]>([]);
   const [pagos, setPagos] = useState<PagoPlataforma[]>([]);
   const hoy = hoyAR();
   const mesActual = hoy.slice(0, 7);
@@ -82,15 +90,17 @@ export function PlanesPanel() {
     setCargando(true);
     // Seis meses de pagos alcanzan para el gráfico y para navegar los últimos meses.
     const desde = `${moverMes(mesActual, -5)}-01`;
-    const [e, p, pg] = await Promise.all([
+    const [e, p, pg, pe] = await Promise.all([
       getEmpresasAction(),
       getPlanesAction(),
       getPagosPlataformaAction(desde, hoy),
+      getPeriodosAction(),
     ]);
     if (e.empresas) setEmpresas(e.empresas);
     if (p.data) setPlanes(p.data);
     if (pg.data) setPagos(pg.data);
-    setError(e.error ?? p.error ?? pg.error ?? "");
+    if (pe.data) setPeriodos(pe.data);
+    setError(e.error ?? p.error ?? pg.error ?? pe.error ?? "");
     setCargando(false);
   }, [mesActual, hoy]);
 
@@ -105,9 +115,9 @@ export function PlanesPanel() {
   const pagan = cuentas.filter((c) => c.cuenta.estado === "AL_DIA" || c.cuenta.estado === "VENCIDA");
   const enPrueba = cuentas.filter((c) => c.cuenta.estado === "PRUEBA");
   const morosas = cuentas.filter((c) => FILTROS.cobrar(c.cuenta));
-  const mensual = pagan.reduce((n, c) => n + c.cuenta.mensual, 0);
-  const potencial = enPrueba.reduce((n, c) => n + c.cuenta.mensual, 0);
-  const adeudado = morosas.reduce((n, c) => n + (c.cuenta.facturaPendiente?.importe ?? c.cuenta.mensual), 0);
+  const mensual = pagan.reduce((n, c) => n + porMes(c.cuenta), 0);
+  const potencial = enPrueba.reduce((n, c) => n + porMes(c.cuenta), 0);
+  const adeudado = morosas.reduce((n, c) => n + (c.cuenta.facturaPendiente?.importe ?? c.cuenta.importePeriodo), 0);
   const terminanSemana = enPrueba.filter((c) => (c.cuenta.diasParaVencer ?? 99) <= 7).length;
 
   const meses = Array.from({ length: 6 }, (_, i) => moverMes(mesActual, i - 5));
@@ -251,7 +261,7 @@ export function PlanesPanel() {
       </div>
 
       <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2820] px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2A23] px-5 py-4">
           <div>
             <h2 className="font-display text-[22px] font-semibold">Cuentas</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
@@ -279,34 +289,34 @@ export function PlanesPanel() {
           <div role="table" aria-label="Cuentas" className="min-w-[1040px]">
             <div
               role="row"
-              className="grid h-11 grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_150px_minmax(0,1.2fr)_120px_120px_48px] items-center gap-3 bg-[#19140F] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+              className="grid h-11 grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_150px_minmax(0,1.2fr)_120px_120px_48px] items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
               style={{ color: EJE }}
             >
               <span role="columnheader">EMPRESA</span>
               <span role="columnheader">PLAN</span>
               <span role="columnheader">ESTADO</span>
               <span role="columnheader">VENCIMIENTO</span>
-              <span role="columnheader">PAGA / MES</span>
+              <span role="columnheader">PAGA</span>
               <span role="columnheader">DEBE</span>
               <span role="columnheader" className="sr-only">
                 Abrir
               </span>
             </div>
             {cargando && !cuentas.length && (
-              <DataLoading label="Cargando cuentas…" className="border-t border-[#2A241D] p-4" />
+              <DataLoading label="Cargando cuentas…" className="border-t border-[#2B2620] p-4" />
             )}
             {!cargando && !filtradas.length && (
-              <p className="border-t border-[#2A241D] px-5 py-12 text-center text-sm text-muted-foreground">
+              <p className="border-t border-[#2B2620] px-5 py-12 text-center text-sm text-muted-foreground">
                 No hay cuentas en este estado.
               </p>
             )}
             {filtradas.map(({ empresa, cuenta }) => {
-              const debe = FILTROS.cobrar(cuenta) ? (cuenta.facturaPendiente?.importe ?? cuenta.mensual) : 0;
+              const debe = FILTROS.cobrar(cuenta) ? (cuenta.facturaPendiente?.importe ?? cuenta.importePeriodo) : 0;
               return (
                 <div
                   key={empresa.id}
                   role="row"
-                  className="grid min-h-[66px] grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_150px_minmax(0,1.2fr)_120px_120px_48px] items-center gap-3 border-t border-[#2A241D] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#201A15]"
+                  className="grid min-h-[66px] grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_150px_minmax(0,1.2fr)_120px_120px_48px] items-center gap-3 border-t border-[#2B2620] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
                 >
                   <span role="cell" className="flex min-w-0 items-center gap-3">
                     <Avatar texto={iniciales(empresa.nombre)} fondo={colorAvatar(empresa.id)} />
@@ -343,7 +353,14 @@ export function PlanesPanel() {
                     <Vencimiento cuenta={cuenta} hoy={hoy} />
                   </span>
                   <span role="cell" className="font-mono tabular-nums">
-                    {cuenta.mensual ? pesos(cuenta.mensual) : "—"}
+                    {cuenta.importePeriodo ? (
+                      <>
+                        {pesos(cuenta.importePeriodo)}
+                        <span className="text-[11px] text-muted-foreground">{sufijoPeriodo(cuenta.periodo.meses)}</span>
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </span>
                   <span role="cell" className={`font-mono font-semibold tabular-nums ${debe ? "text-[#FF7A4D]" : ""}`}>
                     {debe ? pesos(debe) : "—"}
@@ -364,10 +381,10 @@ export function PlanesPanel() {
         </div>
       </section>
 
-      <ListaDePrecios planes={planes} alGuardar={setPlanes} />
+      <ListaDePrecios planes={planes} periodos={periodos} alGuardarPlanes={setPlanes} alGuardarPeriodos={setPeriodos} />
 
       <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2820] px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2A23] px-5 py-4">
           <div>
             <h2 className="font-display text-[22px] font-semibold">Pagos recibidos</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">Por fecha en que entró la plata. Los anulados quedan tachados.</p>
@@ -403,7 +420,7 @@ export function PlanesPanel() {
             <div role="table" aria-label="Pagos recibidos" className="min-w-[860px]">
               <div
                 role="row"
-                className="grid h-[42px] grid-cols-[90px_minmax(0,1fr)_130px_130px_200px_minmax(0,1fr)] items-center gap-3 bg-[#19140F] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+                className="grid h-[42px] grid-cols-[90px_minmax(0,1fr)_130px_130px_200px_minmax(0,1fr)] items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
                 style={{ color: EJE }}
               >
                 <span role="columnheader">FECHA</span>
@@ -417,7 +434,7 @@ export function PlanesPanel() {
                 <div
                   key={p.id}
                   role="row"
-                  className={`grid min-h-[52px] grid-cols-[90px_minmax(0,1fr)_130px_130px_200px_minmax(0,1fr)] items-center gap-3 border-t border-[#2A241D] px-5 py-2 text-[13.5px] ${p.estado === "ANULADA" ? "opacity-50" : ""}`}
+                  className={`grid min-h-[52px] grid-cols-[90px_minmax(0,1fr)_130px_130px_200px_minmax(0,1fr)] items-center gap-3 border-t border-[#2B2620] px-5 py-2 text-[13.5px] ${p.estado === "ANULADA" ? "opacity-50" : ""}`}
                 >
                   <span role="cell" className="tabular-nums">
                     {diaAR(p.pagadaEl, false)}
@@ -476,7 +493,7 @@ function Kpi({
       <span className="font-display text-[36px] font-semibold leading-none tabular-nums" style={{ color }}>
         {valor}
       </span>
-      <span className="border-t border-[#2E2820] pt-2 font-mono text-[11px]" style={{ color: EJE }}>
+      <span className="border-t border-[#2E2A23] pt-2 font-mono text-[11px]" style={{ color: EJE }}>
         {pie}
       </span>
     </Tarjeta>
@@ -525,7 +542,7 @@ function Barras({
 }) {
   const maximo = Math.max(1, ...valores);
   return (
-    <div className="mt-4 flex flex-1 items-end gap-3 rounded-2xl border border-[#262019] bg-background px-4 pb-3 pt-6">
+    <div className="mt-4 flex flex-1 items-end gap-3 rounded-2xl border border-[#26221C] bg-background px-4 pb-3 pt-6">
       {meses.map((m, i) => {
         const activo = m === seleccionado;
         return (
@@ -544,7 +561,7 @@ function Barras({
               className="w-full max-w-[56px] rounded-t-lg transition-colors"
               style={{
                 height: `${Math.max(4, (valores[i] / maximo) * 150)}px`,
-                background: activo ? "#F5C219" : valores[i] ? "#E9E1D4" : "#2E2820",
+                background: activo ? "#F5C219" : valores[i] ? "#E9E1D4" : "#2E2A23",
                 opacity: activo ? 1 : 0.85,
               }}
             />
@@ -558,169 +575,353 @@ function Barras({
   );
 }
 
-// La lista de precios con las tarjetas de la landing. «Editar» abre los precios y el rango de
-// cada tamaño. Cambiar un precio no toca lo que cada playa ya tiene pactado.
-function ListaDePrecios({ planes, alGuardar }: { planes: Plan[]; alGuardar: (p: Plan[]) => void }) {
+// ─── Lista de precios ───────────────────────────────────────────────────────
+
+const entero = (v: string) => v.replace(/\D/g, "");
+const inputMono =
+  "h-11 min-w-0 rounded-[10px] border border-[#3A342B] bg-[#14110D] px-3 font-mono text-[18px] font-medium text-[#F6F0E6] focus-visible:border-gm-yellow focus-visible:ring-0";
+
+// La lista de precios con las tarjetas de la landing, editable en el lugar: el tamaño, el precio
+// solo tickets y el precio con cocheras de cada tamaño, y el descuento de cada período. Es lo que
+// publica la landing (GET /public/planes) y lo que se ofrece a las playas nuevas; lo que cada playa
+// ya tiene pactado no cambia. Se guarda todo junto; «Se ofrece» se aplica en el momento.
+function ListaDePrecios({
+  planes,
+  periodos,
+  alGuardarPlanes,
+  alGuardarPeriodos,
+}: {
+  planes: Plan[];
+  periodos: PeriodoPago[];
+  alGuardarPlanes: (p: Plan[]) => void;
+  alGuardarPeriodos: (p: PeriodoPago[]) => void;
+}) {
   const grupos = useMemo(() => agruparPlanes(planes), [planes]);
-  return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="font-display text-[22px] font-semibold">Lista de precios</h2>
-          <p className="mt-1 max-w-3xl text-[13px] text-muted-foreground">
-            Igual que en la landing. Cambiar un precio rige para las asignaciones nuevas: lo que cada
-            playa ya tiene pactado no cambia (para subirle a un cliente, cambiá su precio en su ficha).
-            Las playas adicionales de una empresa pagan 30% menos.
-          </p>
-        </div>
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {grupos.map((g) => (
-          <TarjetaEditable key={g.tamano} grupo={g} alGuardar={alGuardar} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function TarjetaEditable({ grupo, alGuardar }: { grupo: GrupoPlan; alGuardar: (p: Plan[]) => void }) {
-  const [editando, setEditando] = useState(false);
-  const [guardando, setGuardando] = useState(false);
-  const variantes = [
-    { plan: grupo.base, texto: "Solo tickets / rotación" },
-    { plan: grupo.alquileres, texto: "+ Módulo alquileres mensuales" },
-  ].filter((v): v is { plan: Plan; texto: string } => !!v.plan);
+  const [cocheras, setCocheras] = useState(false);
+  const [vista, setVista] = useState("MENSUAL");
+  // Lo que se está editando, todavía sin guardar.
   const [precios, setPrecios] = useState<Record<string, string>>({});
-  const [maximo, setMaximo] = useState(grupo.maxActivos === null ? "" : String(grupo.maxActivos));
-  const enUso = variantes.reduce((n, v) => n + (v.plan.playas ?? 0), 0);
+  const [maximos, setMaximos] = useState<Record<string, string>>({});
+  const [descuentos, setDescuentos] = useState<Record<string, string>>({});
+  const [guardando, setGuardando] = useState(false);
 
-  function abrir() {
-    setPrecios(Object.fromEntries(variantes.map((v) => [v.plan.id, String(v.plan.precioMensual)])));
-    setMaximo(grupo.maxActivos === null ? "" : String(grupo.maxActivos));
-    setEditando(true);
+  const periodoVista = periodos.find((p) => p.codigo === vista) ?? { meses: 1, descuento: 0 };
+  const precioDe = (p: Plan) => precios[p.id] ?? String(p.precioMensual);
+  const maximoDe = (g: GrupoPlan) => maximos[g.tamano] ?? (g.maxActivos === null ? "" : String(g.maxActivos));
+  const descuentoDe = (p: PeriodoPago) => descuentos[p.codigo] ?? String(p.descuento);
+
+  // Lo que cambió, plan por plan y período por período.
+  const cambiosPlanes = grupos.flatMap((g) =>
+    [g.base, g.alquileres]
+      .filter((p): p is Plan => !!p)
+      .map((p) => {
+        const cambios: { precioMensual?: number; maxActivos?: number | null } = {};
+        const precio = Number(precioDe(p));
+        const maximo = maximoDe(g).trim() ? Number(maximoDe(g)) : null;
+        if (precio !== p.precioMensual) cambios.precioMensual = precio;
+        if (maximo !== p.maxActivos) cambios.maxActivos = maximo;
+        return { plan: p, cambios };
+      })
+      .filter((c) => Object.keys(c.cambios).length),
+  );
+  const cambiosPeriodos = periodos
+    .filter((p) => p.meses > 1 && Number(descuentoDe(p)) !== p.descuento)
+    .map((p) => ({ periodo: p, descuento: Number(descuentoDe(p)) }));
+  const hayCambios = cambiosPlanes.length > 0 || cambiosPeriodos.length > 0;
+
+  function descartar() {
+    setPrecios({});
+    setMaximos({});
+    setDescuentos({});
   }
 
   async function guardar() {
+    if (cambiosPlanes.some((c) => c.cambios.precioMensual !== undefined && !(c.cambios.precioMensual > 0)))
+      return toast.error("Cada precio tiene que ser mayor a cero, en pesos enteros.");
+    if (cambiosPeriodos.some((c) => c.descuento > 50)) return toast.error("El descuento va de 0 a 50%.");
     setGuardando(true);
-    let ultimo: Plan[] | undefined;
-    for (const v of variantes) {
-      const precio = Number(precios[v.plan.id]);
-      const max = maximo.trim() ? Number(maximo) : null;
-      const cambios: { precioMensual?: number; maxActivos?: number | null } = {};
-      if (Number.isInteger(precio) && precio !== v.plan.precioMensual) cambios.precioMensual = precio;
-      if (max !== v.plan.maxActivos) cambios.maxActivos = max;
-      if (!Object.keys(cambios).length) continue;
-      const r = await editarPlanAction(v.plan.id, cambios);
+    let planesNuevos: Plan[] | undefined;
+    let periodosNuevos: PeriodoPago[] | undefined;
+    for (const c of cambiosPlanes) {
+      const r = await editarPlanAction(c.plan.id, c.cambios);
       if (r.error) {
         setGuardando(false);
         return toast.error(r.error);
       }
-      ultimo = r.data;
+      planesNuevos = r.data;
+    }
+    for (const c of cambiosPeriodos) {
+      const r = await editarPeriodoAction(c.periodo.codigo, { descuento: c.descuento });
+      if (r.error) {
+        setGuardando(false);
+        return toast.error(r.error);
+      }
+      periodosNuevos = r.data;
     }
     setGuardando(false);
-    setEditando(false);
-    if (ultimo) {
-      alGuardar(ultimo);
-      toast.success("Precios guardados. Rigen para las asignaciones nuevas.");
-    }
+    if (planesNuevos) alGuardarPlanes(planesNuevos);
+    if (periodosNuevos) alGuardarPeriodos(periodosNuevos);
+    descartar();
+    toast.success("Guardado. La landing lo muestra en unos minutos; lo pactado no cambia.");
   }
 
-  async function alternar(plan: Plan, activo: boolean) {
-    const r = await editarPlanAction(plan.id, { activo });
-    if (r.error) return toast.error(r.error);
-    if (r.data) alGuardar(r.data);
-    toast.success(activo ? "Vuelve a ofrecerse." : "Retirado: ya no se ofrece, quien lo tiene lo conserva.");
+  // Un tamaño se ofrece o no con sus dos variantes juntas, como lo muestra la landing.
+  async function ofrecerTamano(g: GrupoPlan, activo: boolean) {
+    let ultimo: Plan[] | undefined;
+    for (const p of [g.base, g.alquileres].filter((p): p is Plan => !!p)) {
+      const r = await editarPlanAction(p.id, { activo });
+      if (r.error) return toast.error(r.error);
+      ultimo = r.data;
+    }
+    if (ultimo) alGuardarPlanes(ultimo);
+    toast.success(activo ? "Vuelve a ofrecerse en la landing." : "Retirado: no se ofrece; quien lo tiene lo conserva.");
   }
+
+  async function ofrecerPeriodo(p: PeriodoPago, activo: boolean) {
+    const r = await editarPeriodoAction(p.codigo, { activo });
+    if (r.error) return toast.error(r.error);
+    if (r.data) alGuardarPeriodos(r.data);
+    toast.success(activo ? "Vuelve a ofrecerse." : "Retirado: no se ofrece; quien lo tiene lo conserva.");
+  }
+
+  const ejemplo = planes.find((p) => p.codigo === "MEDIANA") ?? planes.find((p) => !p.incluyeCocheras) ?? null;
+  const switchClase =
+    "data-[state=checked]:bg-gm-yellow data-[state=unchecked]:bg-[#2E2A23]";
 
   return (
-    <article className="relative flex flex-col rounded-[18px] border border-[#39352c] bg-[#1b1915] px-6 pb-5 pt-7">
-      <span className="absolute -top-[11px] right-5 rounded-full border border-[#53493C] bg-[#1b1915] px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.1em] text-[#C9BFB1]">
-        {enUso ? plural(enUso, "playa", "playas") : "Sin uso"}
-      </span>
-      <p className="font-display text-[26px] font-bold uppercase leading-none tracking-[-0.01em]">{grupo.nombre}</p>
-      {editando ? (
-        <label className="mt-3 flex items-center gap-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[#8e8778]">
-          Hasta
-          <Input
-            inputMode="numeric"
-            value={maximo}
-            placeholder="sin límite"
-            onChange={(e) => setMaximo(e.target.value.replace(/\D/g, ""))}
-            className="h-8 w-24 font-mono text-[12px]"
-          />
-          vehículos a la vez
-        </label>
-      ) : (
-        <p className="mt-2.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-[#8e8778]">{grupo.rango}</p>
-      )}
-      <div className="mt-5 flex flex-1 flex-col gap-3">
-        {variantes.map(({ plan, texto }) => (
-          <div key={plan.id} className={plan.activo === false ? "opacity-50" : ""}>
-            <div className="flex items-center justify-between gap-2 text-[12.5px] font-medium">
-              {texto}
-              {editando && (
-                <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground" title="Si está apagado, no se ofrece a nuevas playas">
-                  Vigente
-                  <Switch
-                    checked={plan.activo !== false}
-                    onCheckedChange={(v) => void alternar(plan, v)}
-                    className="h-4 w-7 data-[state=checked]:bg-gm-yellow [&>span]:size-3 [&>span]:data-[state=checked]:translate-x-3"
-                  />
-                </label>
+    <section className="space-y-7">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div className="max-w-3xl space-y-1.5">
+          <h2 className="font-display text-[22px] font-semibold">Lista de precios</h2>
+          <p className="text-[14px] leading-relaxed text-muted-foreground">
+            Lo que cargues acá es lo que muestra la landing y lo que se ofrece a las playas nuevas. Lo que cada playa
+            ya tiene pactado no cambia (para subirle a un cliente, cambiá su precio en su ficha). Las playas
+            adicionales de una empresa pagan 30% menos.
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-2 rounded-xl border border-[#2E2A23] bg-[#1B1915] px-4 py-3 text-[13px] text-[#BDB4A6]">
+          <span aria-hidden className="size-[7px] rounded-full bg-[#4ADE9B]" />
+          La landing toma estos precios: los cambios se ven ahí en unos minutos
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-x-8 gap-y-[18px]">
+        <Selector
+          etiqueta="Vista previa · qué incluye"
+          opciones={[
+            { valor: false, etiqueta: "Tickets y rotación" },
+            { valor: true, etiqueta: "+ Cocheras mensuales" },
+          ]}
+          valor={cocheras}
+          onChange={setCocheras}
+        />
+        <Selector
+          etiqueta="Vista previa · período"
+          opciones={periodos
+            .filter((p) => p.activo !== false)
+            .map((p) => ({ valor: p.codigo, etiqueta: p.nombre, descuento: Number(descuentoDe(p)) || undefined }))}
+          valor={vista}
+          onChange={setVista}
+        />
+      </div>
+
+      <GrillaPlanes>
+        {grupos.map((g) => {
+          const variantes = [
+            { plan: g.base, etiqueta: "Tickets y rotación" },
+            { plan: g.alquileres, etiqueta: "+ Cocheras mensuales" },
+          ].filter((v): v is { plan: Plan; etiqueta: string } => !!v.plan);
+          const mostrada = (cocheras ? g.alquileres : g.base) ?? g.base ?? g.alquileres;
+          const vistaPrecio = mostrada
+            ? precioEnPeriodo(Number(precioDe(mostrada)) || 0, {
+                meses: periodoVista.meses,
+                descuento: Number(periodos.find((p) => p.codigo === vista) ? descuentoDe(periodos.find((p) => p.codigo === vista)!) : 0),
+              })
+            : null;
+          const enUso = variantes.reduce((n, v) => n + (v.plan.playas ?? 0), 0);
+          const ofrecido = variantes.some((v) => v.plan.activo !== false);
+          const destacado = g.tamano === "MEDIANA";
+          const maximo = maximoDe(g);
+          return (
+            <article
+              key={g.tamano}
+              className={`relative flex flex-col gap-[18px] rounded-2xl bg-[#1B1915] px-7 pb-[22px] pt-7 ${destacado ? "border-[1.5px] border-[#F6F0E6]" : "border border-[#2E2A23]"} ${ofrecido ? "" : "opacity-60"}`}
+            >
+              {destacado && (
+                <span className="absolute -top-3 left-7 rounded-full bg-gm-yellow px-2.5 py-1 text-xs font-bold text-[#12100D]">
+                  Más elegido
+                </span>
               )}
-            </div>
-            {editando ? (
-              <div className="mt-1.5 flex items-center gap-1.5">
-                <span className="font-mono text-[20px] font-bold">$</span>
-                <Input
-                  inputMode="numeric"
-                  value={precios[plan.id] ?? ""}
-                  onChange={(e) => setPrecios((p) => ({ ...p, [plan.id]: e.target.value.replace(/\D/g, "") }))}
-                  className="h-11 font-mono text-[20px] font-bold"
-                  aria-label={`Precio de ${plan.nombre}`}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <h3 className="text-lg font-semibold text-[#F6F0E6]">{g.nombre}</h3>
+                  <label className="flex flex-wrap items-center gap-2 text-sm text-[#BDB4A6]">
+                    Hasta
+                    <Input
+                      inputMode="numeric"
+                      value={maximo}
+                      placeholder="sin límite"
+                      aria-label={`Vehículos a la vez de ${g.nombre}`}
+                      onChange={(e) => setMaximos((m) => ({ ...m, [g.tamano]: entero(e.target.value) }))}
+                      className="h-8 w-[84px] rounded-lg border-[#3A342B] bg-[#14110D] px-2.5 font-mono text-sm"
+                    />
+                    {maximo ? "vehículos a la vez" : "· sin límite"}
+                  </label>
+                </div>
+                <span className="flex-none rounded-full border border-[#3A342B] px-2.5 py-1 text-xs text-[#A79E8F]">
+                  {enUso ? plural(enUso, "playa", "playas") : "Sin uso"}
+                </span>
+              </div>
+
+              {vistaPrecio && (
+                <div className="flex flex-col gap-1 rounded-xl bg-[#14110D] px-[18px] py-4">
+                  <span className="text-xs text-[#8F8676]">Así se ve en la landing</span>
+                  <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="whitespace-nowrap font-mono text-[34px] font-medium leading-[1.1] tracking-[-0.035em]">
+                      {pesos(vistaPrecio.porMes)}
+                    </span>
+                    <span className="text-sm text-[#8F8676]">por mes</span>
+                  </p>
+                  <span className="min-h-[18px] text-[12.5px] text-[#BDB4A6]">
+                    {periodoVista.meses > 1 && (
+                      <>
+                        <strong className="font-semibold text-[#F6F0E6]">
+                          {pesos(vistaPrecio.total)} {porPeriodo(periodoVista.meses)}
+                        </strong>
+                        {vistaPrecio.ahorro > 0 && ` · Ahorrás ${pesos(vistaPrecio.ahorro)}`}
+                      </>
+                    )}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3">
+                {variantes.map(({ plan, etiqueta }) => (
+                  <label key={plan.id} className="flex flex-col gap-1.5 text-[13px] font-semibold text-[#E3DBCE]">
+                    {etiqueta}
+                    <span className="flex items-center gap-2">
+                      <span className="font-mono text-base text-[#8F8676]">$</span>
+                      <Input
+                        inputMode="numeric"
+                        value={precioDe(plan)}
+                        aria-label={`Precio de ${plan.nombre}`}
+                        onChange={(e) => setPrecios((p) => ({ ...p, [plan.id]: entero(e.target.value) }))}
+                        className={`${inputMono} flex-1`}
+                      />
+                      <span className="text-[13px] font-medium text-[#8F8676]">/mes</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="mt-auto flex items-center justify-between gap-3 border-t border-[#2B2620] pt-4">
+                <span className="text-sm text-[#BDB4A6]">Se ofrece en la landing</span>
+                <Switch
+                  checked={ofrecido}
+                  onCheckedChange={(v) => void ofrecerTamano(g, v)}
+                  aria-label={`${g.nombre} se ofrece en la landing`}
+                  className={switchClase}
                 />
               </div>
-            ) : (
-              <p className="mt-0.5 whitespace-nowrap font-mono text-[30px] font-bold leading-tight tracking-[-0.02em]">
-                {pesos(plan.precioMensual)}
-                <span className="ml-0.5 text-[12px] font-medium opacity-65">/mes</span>
-              </p>
-            )}
-          </div>
-        ))}
+            </article>
+          );
+        })}
+      </GrillaPlanes>
+
+      <div className="space-y-4 pt-2">
+        <div className="space-y-1.5">
+          <h3 className="text-[19px] font-semibold">Períodos de pago</h3>
+          <p className="text-[14px] leading-relaxed text-muted-foreground">
+            El descuento por pagar el período completo: el «−10%» y el «−15%» de los botones de la landing. El de cada
+            empresa se elige en su ficha y queda fijo aunque después lo cambies acá.
+          </p>
+        </div>
+        <GrillaPlanes>
+          {periodos.map((p) => {
+            const base = p.meses === 1;
+            const descuento = Number(descuentoDe(p)) || 0;
+            const lista = ejemplo ? ejemplo.precioMensual * p.meses : 0;
+            const total = Math.round((lista * (100 - descuento)) / 100);
+            return (
+              <article
+                key={p.codigo}
+                className={`flex flex-col gap-3.5 rounded-2xl border border-[#2E2A23] bg-[#1B1915] px-7 pb-5 pt-6 ${p.activo === false ? "opacity-60" : ""}`}
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <h4 className="text-lg font-semibold text-[#F6F0E6]">{p.nombre}</h4>
+                  <span className="text-[13px] text-[#8F8676]">
+                    {base ? "Un pago por mes" : p.meses === 12 ? "Un pago por año" : `Un pago cada ${p.meses} meses`}
+                  </span>
+                </div>
+                {base ? (
+                  <p className="font-mono text-[26px] font-medium tracking-[-0.02em] text-[#BDB4A6]">Sin descuento</p>
+                ) : (
+                  <label className="flex items-center gap-2 text-sm text-[#BDB4A6]">
+                    Descuento
+                    <span className="flex items-center gap-1.5 font-mono text-[22px] text-[#F6F0E6]">
+                      −
+                      <Input
+                        inputMode="numeric"
+                        value={descuentoDe(p)}
+                        aria-label={`Descuento ${p.nombre.toLowerCase()}`}
+                        onChange={(e) => setDescuentos((d) => ({ ...d, [p.codigo]: entero(e.target.value) }))}
+                        className={`${inputMono} w-16 text-center text-[22px]`}
+                      />
+                      %
+                    </span>
+                  </label>
+                )}
+                {ejemplo && (
+                  <p className="text-[13px] leading-relaxed text-[#8F8676]">
+                    {base
+                      ? `${ejemplo.nombre}: ${pesos(ejemplo.precioMensual)} por mes. Es la base de los otros.`
+                      : `${ejemplo.nombre}: ${pesos(total)} ${porPeriodo(p.meses)}${total < lista ? ` · ahorra ${pesos(lista - total)}` : ""}`}
+                  </p>
+                )}
+                <div className="mt-auto flex items-center justify-between gap-3 border-t border-[#2B2620] pt-3.5 text-[13px] text-[#8F8676]">
+                  <span>{p.empresas ? plural(p.empresas, "empresa", "empresas") : "Sin uso"}</span>
+                  {base ? (
+                    <span>Siempre se ofrece</span>
+                  ) : (
+                    <Switch
+                      checked={p.activo !== false}
+                      onCheckedChange={(v) => void ofrecerPeriodo(p, v)}
+                      aria-label={`${p.nombre} se ofrece`}
+                      className={switchClase}
+                    />
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </GrillaPlanes>
       </div>
-      <div className="mt-5 flex justify-end gap-2 border-t border-[#2E2820] pt-4">
-        {editando ? (
-          <>
-            <button
-              type="button"
-              disabled={guardando}
-              onClick={() => setEditando(false)}
-              className="h-9 rounded-[10px] border border-border px-3 text-[12.5px] font-semibold hover:bg-gm-surface-2"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              disabled={guardando}
-              onClick={() => void guardar()}
-              className="h-9 rounded-[10px] bg-gm-yellow px-4 text-[12.5px] font-bold text-gm-ink hover:bg-[#FFD23A] disabled:opacity-50"
-            >
-              {guardando ? "Guardando…" : "Guardar"}
-            </button>
-          </>
-        ) : (
+
+      <div className="flex flex-wrap items-center justify-between gap-3.5 rounded-[14px] border border-[#2E2A23] bg-[#1B1915] px-[22px] py-[18px]">
+        <p className="text-sm leading-relaxed text-[#BDB4A6]">
+          {hayCambios
+            ? "Tenés cambios sin guardar. Rigen para las playas nuevas y se publican en la landing; a quien ya tiene plan no le cambia nada."
+            : "Rige para las playas nuevas y se publica en la landing. A quien ya tiene plan no le cambia nada."}
+        </p>
+        <div className="flex gap-2.5">
           <button
             type="button"
-            onClick={abrir}
-            className="flex h-9 items-center gap-1.5 rounded-[10px] border border-border px-3 text-[12.5px] font-semibold hover:border-gm-line-strong hover:bg-gm-surface-2"
+            disabled={!hayCambios || guardando}
+            onClick={descartar}
+            className="h-11 rounded-[10px] border border-[#3A342B] px-4 text-sm font-semibold text-[#F6F0E6] transition-colors hover:border-[#F6F0E6] disabled:opacity-40"
           >
-            <Pencil aria-hidden className="size-3.5" />
-            Editar
+            Descartar
           </button>
-        )}
+          <button
+            type="button"
+            disabled={!hayCambios || guardando}
+            onClick={() => void guardar()}
+            className="h-11 rounded-[10px] bg-[#F6F0E6] px-[18px] text-sm font-semibold text-[#12100D] transition-colors hover:bg-white disabled:opacity-40"
+          >
+            {guardando ? "Guardando…" : "Guardar y publicar"}
+          </button>
+        </div>
       </div>
-    </article>
+    </section>
   );
 }
-

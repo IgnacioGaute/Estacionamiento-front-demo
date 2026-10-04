@@ -186,7 +186,7 @@ export function Escenario({ children, className }: { children: ReactNode; classN
   return (
     <div
       className={cn(
-        "mt-3.5 flex-1 rounded-2xl border border-[#262019] bg-background",
+        "mt-3.5 flex-1 rounded-2xl border border-[#26221C] bg-background",
         className,
       )}
     >

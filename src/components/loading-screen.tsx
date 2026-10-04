@@ -42,15 +42,15 @@ export function LoadingScreen() {
               <path d="M30 23.4C35 17 41 12.3 50 11.2L74 11C81 11 86 13.8 91 19L95 22.4C80 21 50 21 30 23.4Z" fill="url(#gm-auto-brillo)" />
               <path d="M6.6 32.2H115.4V34.5C115.4 35.4 114.8 36 114 36H8C7.2 36 6.6 35.4 6.6 34.5Z" fill="#b83a14" opacity="0.45" />
               <path d="M14 26.6L109 27.2" stroke="#fff3c4" strokeOpacity="0.5" strokeWidth="0.8" strokeLinecap="round" />
-              <path d="M38.5 23L48 15.2C50 13.9 52.2 13.4 55 13.4H62V23Z" fill="#2a241d" />
-              <path d="M65 13.4H74C79 13.4 82.8 15.4 86 19L89.4 23H65Z" fill="#2a241d" />
+              <path d="M38.5 23L48 15.2C50 13.9 52.2 13.4 55 13.4H62V23Z" fill="#2B2620" />
+              <path d="M65 13.4H74C79 13.4 82.8 15.4 86 19L89.4 23H65Z" fill="#2B2620" />
               <rect x="108.5" y="27" width="6" height="3" rx="1.5" fill="#fff1b8" />
               <rect x="6.5" y="27.5" width="4" height="3" rx="1.5" fill="#a32a10" />
               {/* Los pasarruedas son círculos del color del fondo: «recortan» la carrocería. */}
               <circle cx="31" cy="36" r="9.5" fill="#15120f" />
               <circle cx="91" cy="36" r="9.5" fill="#15120f" />
-              <circle cx="31" cy="36" r="7" fill="#2a241d" stroke="#53493c" strokeWidth="2" />
-              <circle cx="91" cy="36" r="7" fill="#2a241d" stroke="#53493c" strokeWidth="2" />
+              <circle cx="31" cy="36" r="7" fill="#2B2620" stroke="#53493c" strokeWidth="2" />
+              <circle cx="91" cy="36" r="7" fill="#2B2620" stroke="#53493c" strokeWidth="2" />
               <circle cx="31" cy="36" r="2" fill="#a59b8d" />
               <circle cx="91" cy="36" r="2" fill="#a59b8d" />
             </svg>

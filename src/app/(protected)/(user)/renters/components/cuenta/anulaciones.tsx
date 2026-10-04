@@ -104,7 +104,7 @@ export function AnulacionesDialog({ open, onOpenChange }: { open: boolean; onOpe
         )}
 
         {t && datos && datos.lista.length > 0 && (
-          <ul className="divide-y divide-[#2A241D] rounded-2xl border border-border">
+          <ul className="divide-y divide-[#2B2620] rounded-2xl border border-border">
             {datos.lista.map((a) => (
               <li key={a.id} className="flex flex-wrap items-start gap-x-4 gap-y-1.5 px-4 py-3">
                 <div className="min-w-0 flex-1">

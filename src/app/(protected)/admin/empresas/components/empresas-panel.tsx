@@ -557,7 +557,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
           <div role="table" aria-label="Empresas" className="min-w-[1290px]">
             <div
               role="row"
-              className="grid h-11 grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center bg-[#19140F] pl-5 pr-4 font-mono text-[10.5px] tracking-[0.1em]"
+              className="grid h-11 grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center bg-[#15120E] pl-5 pr-4 font-mono text-[10.5px] tracking-[0.1em]"
               style={{ color: EJE }}
             >
               <span role="columnheader">EMPRESA</span>
@@ -574,10 +574,10 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               </span>
             </div>
             {cargando && !empresas.length && (
-              <DataLoading label="Cargando empresas…" className="border-t border-[#2A241D] p-4" />
+              <DataLoading label="Cargando empresas…" className="border-t border-[#2B2620] p-4" />
             )}
             {!cargando && !filtradas.length && (
-              <p className="border-t border-[#2A241D] px-5 py-12 text-center text-sm text-muted-foreground">
+              <p className="border-t border-[#2B2620] px-5 py-12 text-center text-sm text-muted-foreground">
                 {empresas.length
                   ? "No hay empresas que coincidan con la búsqueda."
                   : "Creá tu primera empresa. Después agregá sus playas y usuarios."}
@@ -598,7 +598,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                   key={e.id}
                   role="row"
                   data-tour={i === 0 ? "empresas-ficha" : undefined}
-                  className="grid h-[68px] grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center border-t border-[#2A241D] pl-5 pr-4 text-[13.5px] transition-colors hover:bg-[#201A15]"
+                  className="grid h-[68px] grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center border-t border-[#2B2620] pl-5 pr-4 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
                 >
                   <span role="cell" className="flex min-w-0 items-center gap-3">
                     <Avatar texto={iniciales(e.nombre)} fondo={colorAvatar(e.id)} />
@@ -684,7 +684,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                       ancho={64}
                       alto={24}
                       relleno={false}
-                      color={cambio === null ? "#3A3228" : cambio >= 0 ? CREMA : "#FF7A4D"}
+                      color={cambio === null ? "#3A342B" : cambio >= 0 ? CREMA : "#FF7A4D"}
                     />
                   </span>
                   <span role="cell">
@@ -729,7 +729,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
             })}
           </div>
         </div>
-        <div className="flex h-14 items-center justify-between gap-3 border-t border-[#2A241D] bg-[#19140F] px-5 text-[12.5px] text-muted-foreground">
+        <div className="flex h-14 items-center justify-between gap-3 border-t border-[#2B2620] bg-[#15120E] px-5 text-[12.5px] text-muted-foreground">
           <span>
             {filtradas.length
               ? `Mostrando ${(paginaActual - 1) * POR_PAGINA + 1}–${(paginaActual - 1) * POR_PAGINA + visibles.length} de ${filtradas.length} empresas`
@@ -740,7 +740,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               type="button"
               disabled={paginaActual <= 1}
               onClick={() => setPagina(paginaActual - 1)}
-              className="h-8 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold text-foreground transition-colors hover:bg-gm-surface-2 disabled:border-[#2E2820] disabled:text-[#53493C] disabled:hover:bg-transparent"
+              className="h-8 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold text-foreground transition-colors hover:bg-gm-surface-2 disabled:border-[#2E2A23] disabled:text-[#53493C] disabled:hover:bg-transparent"
             >
               Anterior
             </button>
@@ -751,7 +751,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               type="button"
               disabled={paginaActual >= paginas}
               onClick={() => setPagina(paginaActual + 1)}
-              className="h-8 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold text-foreground transition-colors hover:bg-gm-surface-2 disabled:border-[#2E2820] disabled:text-[#53493C] disabled:hover:bg-transparent"
+              className="h-8 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold text-foreground transition-colors hover:bg-gm-surface-2 disabled:border-[#2E2A23] disabled:text-[#53493C] disabled:hover:bg-transparent"
             >
               Siguiente
             </button>
@@ -811,7 +811,7 @@ function BarraEstado({
           />
         ))
       ) : (
-        <span className="h-2 flex-1 rounded-full bg-[#231D17]" />
+        <span className="h-2 flex-1 rounded-full bg-[#221F1A]" />
       )}
     </div>
   );
@@ -820,10 +820,10 @@ function BarraEstado({
 function FilaAlerta({ alerta }: { alerta: Alerta }) {
   const Icono = ICONOS[alerta.tipo];
   return (
-    <div className="flex items-center gap-3 rounded-[14px] border border-[#262019] bg-background px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-[14px] border border-[#26221C] bg-background px-3 py-2.5">
       <span
         className={`flex size-[34px] shrink-0 items-center justify-center rounded-[10px] ${
-          alerta.grave ? "bg-[#FF7A4D]/[0.14]" : "bg-[#2A241D]"
+          alerta.grave ? "bg-[#FF7A4D]/[0.14]" : "bg-[#2B2620]"
         }`}
       >
         <Icono aria-hidden className={`size-4 ${alerta.grave ? "text-[#FF7A4D]" : "text-[#C9BFB1]"}`} />

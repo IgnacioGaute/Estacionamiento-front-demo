@@ -276,7 +276,7 @@ function ActivarDebito({
         <div className="overflow-hidden rounded-2xl border border-[#2E2A23] bg-[#14110D]">
           <FormularioTarjeta
             clavePublica={clavePublica}
-            importe={cuenta.mensual}
+            importe={cuenta.importePeriodo}
             email={email}
             alConfirmar={activarConTarjeta}
           />
@@ -388,14 +388,15 @@ function DebitoActivo({ cuenta, debe }: { cuenta: ResumenCuenta; debe: boolean }
         </span>
       </div>
       <p className="m-0 text-[15px] leading-relaxed text-[#BDB4A6]">
-        Cada mes, el día que vence, se cobra solo de tu tarjeta. No tenés que hacer nada.
+        {cuenta.periodo.meses === 1 ? 'Cada mes' : cuenta.periodo.meses === 12 ? 'Cada año' : `Cada ${cuenta.periodo.meses} meses`}, el día
+        que vence, se cobra solo de tu tarjeta. No tenés que hacer nada.
       </p>
       <dl className="m-0 grid gap-2.5 rounded-xl border border-[#2E2A23] bg-[#14110D] p-4 text-sm">
         {cuenta.proximoVencimiento && (
           <div className="flex justify-between gap-3">
             <dt className="text-[#A79E8F]">Próximo débito</dt>
             <dd className="m-0 text-right font-semibold text-[#F6F0E6]">
-              {fechaLarga(cuenta.proximoVencimiento)} · <span className="font-mono">{pesos(cuenta.mensual)}</span>
+              {fechaLarga(cuenta.proximoVencimiento)} · <span className="font-mono">{pesos(cuenta.importePeriodo)}</span>
             </dd>
           </div>
         )}

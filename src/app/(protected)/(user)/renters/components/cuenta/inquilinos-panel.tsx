@@ -41,7 +41,7 @@ function PastillaSaldo({ i }: { i: InquilinoResumen }) {
             ? 'bg-[#FF7A4D]/[0.14] text-[#FF7A4D]'
             : i.saldo < 0
               ? 'bg-emerald-400/[0.12] text-emerald-400'
-              : 'bg-[#231D17] text-muted-foreground'
+              : 'bg-[#221F1A] text-muted-foreground'
         }`}
       >
         {i.saldo > 0 ? `Pendiente ${plata(i.saldo)}` : i.saldo < 0 ? `A favor ${plata(-i.saldo)}` : 'Al día'}
@@ -232,7 +232,7 @@ export function InquilinosPanel() {
                 <span className="text-xs text-muted-foreground">saldado</span>
               </span>
               <div className="space-y-1.5">
-                <div className="h-2 rounded-full bg-[#231D17]">
+                <div className="h-2 rounded-full bg-[#221F1A]">
                   <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${abonoSaldado}%` }} />
                 </div>
                 <span className="block text-xs text-muted-foreground">
@@ -343,7 +343,7 @@ export function InquilinosPanel() {
           <div role="table" aria-label="Inquilinos" className="min-w-[860px]">
             <div
               role="row"
-              className="grid h-11 grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center bg-[#19140F] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+              className="grid h-11 grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
               style={{ color: EJE }}
             >
               <span role="columnheader">INQUILINO</span>
@@ -358,7 +358,7 @@ export function InquilinosPanel() {
               <div
                 key={i.id}
                 role="row"
-                className="grid min-h-[68px] grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center border-t border-[#2A241D] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#201A15]"
+                className="grid min-h-[68px] grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center border-t border-[#2B2620] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
               >
                 <span role="cell" className="flex min-w-0 items-center gap-3">
                   <Avatar texto={iniciales(nombreDe(i))} fondo={colorAvatar(i.id)} />
@@ -423,7 +423,7 @@ export function InquilinosPanel() {
           </div>
         </div>
 
-        <ul aria-label="Inquilinos" className="divide-y divide-[#2A241D] md:hidden">
+        <ul aria-label="Inquilinos" className="divide-y divide-[#2B2620] md:hidden">
           {lista.map((i) => (
             <li key={i.id} className="space-y-3 px-4 py-3.5">
               {/* El saldo va debajo del nombre, no al costado: al lado le quitaba el ancho y cortaba el nombre. */}
@@ -491,12 +491,12 @@ export function InquilinosPanel() {
           <DataLoading label="Cargando cuentas…" className="p-4" />
         )}
         {resumen && !lista.length && (
-          <p className="px-5 py-12 text-center text-sm text-muted-foreground md:border-t md:border-[#2A241D]">
+          <p className="px-5 py-12 text-center text-sm text-muted-foreground md:border-t md:border-[#2B2620]">
             {inquilinos.length ? 'Nadie coincide con esa búsqueda o filtro.' : 'Todavía no hay inquilinos. Creá el primero con «Nuevo inquilino».'}
           </p>
         )}
         {resumen && (
-          <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[#2A241D] bg-[#19140F] px-5 py-2.5 text-[12.5px] text-muted-foreground">
+          <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[#2B2620] bg-[#15120E] px-5 py-2.5 text-[12.5px] text-muted-foreground">
             <span>
               {lista.length} de {numero(filtro === 'bajas' ? cuenta.bajas : visibles.length)} inquilinos
             </span>

@@ -79,7 +79,7 @@ import { Editor, EditorDialog } from "../../components/editor-dialog";
 import { Borrado, BorradoDialog } from "../../components/borrado-dialog";
 import { ActividadDeEmpresa, cuandoFue, describirActividad } from "./actividad-empresa";
 import { PlanDeEmpresa } from "./plan-empresa";
-import { EstadoCuentaPill, diaAR, hoyAR, textoVencimiento } from "@/components/plataforma/cuenta";
+import { EstadoCuentaPill, diaAR, hoyAR, sufijoPeriodo, textoVencimiento } from "@/components/plataforma/cuenta";
 
 type Tab = "resumen" | "plan" | "playas" | "usuarios" | "actividad";
 const TABS: Tab[] = ["resumen", "plan", "playas", "usuarios", "actividad"];
@@ -427,7 +427,8 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                 {cuenta && cuenta.mensual > 0 && (
                   <span className="flex items-center gap-[7px]">
                     <CreditCard aria-hidden className="size-3.5" />
-                    {plata(cuenta.mensual)}/mes
+                    {plata(cuenta.importePeriodo)}
+                    {sufijoPeriodo(cuenta.periodo.meses)}
                     {cuenta.proximoVencimiento && cuenta.estado !== "BONIFICADA"
                       ? ` · vence ${diaAR(cuenta.proximoVencimiento, false)}`
                       : ""}
@@ -457,7 +458,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
         </div>
       </section>
 
-      <div role="tablist" aria-label="Secciones de la empresa" className="flex gap-1 overflow-x-auto border-b border-[#2E2820]">
+      <div role="tablist" aria-label="Secciones de la empresa" className="flex gap-1 overflow-x-auto border-b border-[#2E2A23]">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -538,7 +539,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
             <Tarjeta className="min-h-[150px] justify-between gap-3 pt-4">
               <Rotulo>Turnos en curso</Rotulo>
               <span className="font-display text-[34px] font-semibold leading-none">{turnos}</span>
-              <span className="truncate border-t border-[#2E2820] pt-2 font-mono text-[11px]" style={{ color: EJE }}>
+              <span className="truncate border-t border-[#2E2A23] pt-2 font-mono text-[11px]" style={{ color: EJE }}>
                 {turnosPorPlaya.length
                   ? turnosPorPlaya.map((p) => `${p.nombre} ${p.m?.turnosAbiertos}`).join(" · ")
                   : "Ninguna caja abierta"}
@@ -549,7 +550,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
               <span className="font-display text-[34px] font-semibold leading-none">
                 {eliminacion === null ? "—" : numero(eliminacion.registros)}
               </span>
-              <span className="border-t border-[#2E2820] pt-2 font-mono text-[11px]" style={{ color: EJE }}>
+              <span className="border-t border-[#2E2A23] pt-2 font-mono text-[11px]" style={{ color: EJE }}>
                 {eliminacion?.registros ? "Bloquean el borrado de la empresa" : "Tickets, movimientos y turnos"}
               </span>
             </Tarjeta>
@@ -631,7 +632,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                     role="img"
                     aria-label={`Configuración completa en ${completos} de ${puntos.length} puntos`}
                   >
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#231D17" strokeWidth={11} />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#221F1A" strokeWidth={11} />
                     {completos > 0 && (
                       <circle
                         cx="50"
@@ -660,7 +661,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   <li
                     key={p.id}
                     className={`flex items-center gap-3 rounded-[14px] border bg-background px-3 py-2.5 ${
-                      p.ok || p.bloquea ? "border-[#262019]" : "border-dashed border-gm-line-strong"
+                      p.ok || p.bloquea ? "border-[#26221C]" : "border-dashed border-gm-line-strong"
                     }`}
                   >
                     {p.ok ? (
@@ -737,7 +738,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                       {playas.map((p, i) => (
                         <div
                           key={p.id}
-                          className="grid h-14 grid-cols-[minmax(0,1fr)_100px_80px_80px_230px] items-center gap-3 rounded-[14px] border border-[#262019] bg-background px-3.5"
+                          className="grid h-14 grid-cols-[minmax(0,1fr)_100px_80px_80px_230px] items-center gap-3 rounded-[14px] border border-[#26221C] bg-background px-3.5"
                         >
                           <div className="min-w-0">
                             <div className="truncate text-[13.5px] font-semibold">{p.nombre}</div>
@@ -749,7 +750,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                           <span className="font-display text-lg font-semibold">{p.m?.estadiasAbiertas ?? 0}</span>
                           <span className="font-display text-lg font-semibold">{p.m?.turnosAbiertos ?? 0}</span>
                           <div className="flex items-center gap-2.5">
-                            <div className="h-2 flex-1 rounded-full bg-[#231D17]">
+                            <div className="h-2 flex-1 rounded-full bg-[#221F1A]">
                               <div
                                 className="h-2 rounded-full"
                                 style={{
@@ -828,7 +829,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
 
       {tab === "playas" && (
         <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2820] px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2A23] px-5 py-4">
             <div>
               <h2 className="font-display text-[22px] font-semibold">
                 {empresa.playas.length} {empresa.playas.length === 1 ? "playa" : "playas"}
@@ -851,7 +852,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
               <div role="table" aria-label="Playas de la empresa" className="min-w-[1180px]">
                 <div
                   role="row"
-                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_130px_160px] items-center gap-3 bg-[#19140F] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_130px_160px] items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
                   style={{ color: EJE }}
                 >
                   <span role="columnheader">PLAYA</span>
@@ -876,7 +877,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                     <div
                       key={p.id}
                       role="row"
-                      className="grid h-[76px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_130px_160px] items-center gap-3 border-t border-[#2A241D] px-5 text-[13.5px] transition-colors hover:bg-[#201A15]"
+                      className="grid h-[76px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_130px_160px] items-center gap-3 border-t border-[#2B2620] px-5 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
                     >
                       <span role="cell" className="min-w-0">
                         <span className="block truncate font-semibold">{p.nombre}</span>
@@ -894,7 +895,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                       </span>
                       <span role="cell" className="flex flex-col gap-1.5">
                         <span className="font-semibold tabular-nums">{corto(p.m?.cobrado ?? 0)}</span>
-                        <span className="h-[5px] rounded-full bg-[#231D17]">
+                        <span className="h-[5px] rounded-full bg-[#221F1A]">
                           <span
                             className="block h-[5px] rounded-full"
                             style={{
@@ -910,7 +911,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                             <span
                               key={c}
                               className={`rounded-full px-2 py-[3px] text-[11px] font-semibold ${
-                                c === "Impresión" ? "bg-[#231D17] text-muted-foreground" : "bg-gm-yellow/[0.12] text-gm-yellow"
+                                c === "Impresión" ? "bg-[#221F1A] text-muted-foreground" : "bg-gm-yellow/[0.12] text-gm-yellow"
                               }`}
                             >
                               {c}
@@ -981,7 +982,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
 
       {tab === "usuarios" && (
         <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2820] px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2A23] px-5 py-4">
             <div>
               <h2 className="font-display text-[22px] font-semibold">
                 {empresa.usuarios.length} {empresa.usuarios.length === 1 ? "usuario" : "usuarios"}
@@ -1012,7 +1013,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
               <div role="table" aria-label="Usuarios de la empresa" className="min-w-[900px]">
                 <div
                   role="row"
-                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_290px] items-center gap-3 bg-[#19140F] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_290px] items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
                   style={{ color: EJE }}
                 >
                   <span role="columnheader">USUARIO</span>
@@ -1029,13 +1030,13 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                     <div
                       key={u.id}
                       role="row"
-                      className="grid min-h-[62px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_290px] items-center gap-3 border-t border-[#2A241D] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#201A15]"
+                      className="grid min-h-[62px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_290px] items-center gap-3 border-t border-[#2B2620] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
                     >
                       <span role="cell" className="flex min-w-0 items-center gap-3">
                         <span
                           aria-hidden
                           className={`flex size-[34px] shrink-0 items-center justify-center rounded-full font-display text-[13px] font-semibold ${
-                            admin ? "bg-gm-yellow text-gm-ink" : "bg-[#2A241D] text-[#E9E1D4]"
+                            admin ? "bg-gm-yellow text-gm-ink" : "bg-[#2B2620] text-[#E9E1D4]"
                           }`}
                         >
                           {`${u.firstName[0] ?? ""}${u.lastName[0] ?? ""}`.toUpperCase()}
@@ -1052,7 +1053,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                       <span role="cell">
                         <span
                           className={`rounded-full px-2.5 py-[3px] text-[11.5px] font-bold ${
-                            admin ? "bg-gm-yellow/[0.14] text-gm-yellow" : "bg-[#231D17] text-[#C9BFB1]"
+                            admin ? "bg-gm-yellow/[0.14] text-gm-yellow" : "bg-[#221F1A] text-[#C9BFB1]"
                           }`}
                         >
                           {admin ? "Admin" : "Operador"}
@@ -1121,7 +1122,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
 
       {tab === "actividad" && <ActividadDeEmpresa actividad={actividad} desdeQue={visto} />}
 
-      <section className="overflow-hidden rounded-[22px] border border-[#FF7A4D]/35 bg-[#1A1410]">
+      <section className="overflow-hidden rounded-[22px] border border-[#FF7A4D]/35 bg-[#17140F]">
         <div className="flex items-center gap-2 border-b border-[#FF7A4D]/20 px-5 py-3 text-[11px] font-bold tracking-[0.12em] text-[#FF7A4D]">
           <AlertTriangle aria-hidden className="size-3.5" />
           ACCIONES SENSIBLES
@@ -1173,7 +1174,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   ejecutar: () => deleteEmpresaAction(empresa.id),
                 })
               }
-              className="h-[38px] shrink-0 rounded-[10px] border border-[#FF7A4D]/50 px-3.5 text-[13px] font-bold text-[#FF7A4D] transition-colors hover:bg-[#FF7A4D]/10 disabled:cursor-not-allowed disabled:border-[#2E2820] disabled:text-[#6E6457] disabled:hover:bg-transparent"
+              className="h-[38px] shrink-0 rounded-[10px] border border-[#FF7A4D]/50 px-3.5 text-[13px] font-bold text-[#FF7A4D] transition-colors hover:bg-[#FF7A4D]/10 disabled:cursor-not-allowed disabled:border-[#2E2A23] disabled:text-[#6E6457] disabled:hover:bg-transparent"
             >
               Eliminar
             </button>
