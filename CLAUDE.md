@@ -8,24 +8,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm dev          # dev server on localhost:3000
 pnpm build        # production build
 pnpm lint         # ESLint via next lint
+pnpm typecheck    # tsc --noEmit — the build does NOT do this
+pnpm test         # Jest (test:watch, test:ci with coverage)
 pnpm doctor       # npx react-doctor (see .agents/skills/react-doctor)
-pnpm exec tsc --noEmit --incremental false     # typecheck — the build does NOT do this
-node --test test/*.cjs                          # the test suite (no runner, no build step)
 ```
 
 `next.config.ts` sets `eslint.ignoreDuringBuilds` and `typescript.ignoreBuildErrors`, so **a green
-`pnpm build` proves nothing about types or lint** — run `tsc --noEmit` and `pnpm lint` yourself.
+`pnpm build` proves nothing about types or lint** — run `pnpm typecheck` and `pnpm lint` yourself.
 
-Tests are plain `node:test` files in `test/` that transpile the TypeScript source in-process with the
-`typescript` package (no Jest, no build):
+Tests are Jest (`jest.config.mjs`, via `next/jest`: SWC, same transform as Next), colocated as
+`src/**/*.test.ts(x)`. Run one file with `pnpm test <name>`, one case with `-t "<name>"`.
 
-- `test/auth-session.test.cjs` — the NextAuth `jwt`/`session` callbacks in `src/auth.ts`.
-- `test/platform-access.test.cjs` — the role and route rules in `src/middleware.ts`.
-- `test/ticket-box-rows.test.cjs` — the caja planilla math in `src/utils/ticket-box-rows.ts`.
+- Default environment is `node`. Component tests start with the docblock `/** @jest-environment jsdom */`
+  and use Testing Library (`jest-dom` matchers are loaded in `jest.setup.ts`); see
+  `src/components/confirm-delete-dialog.test.tsx`.
+- `customExportConditions` is pinned to Node's so jsdom does not pick the ESM "browser" builds of
+  lucide-react, jose, etc. ESM-only packages (`next-auth/jwt`) still need a `jest.mock`.
+- `jest.mock` factories may only read variables prefixed `mock`, and imports are hoisted above `let`s:
+  import a module whose load calls a mock that writes such a variable in `beforeAll`
+  (`await import('./auth')`), as `src/auth.test.ts` does.
+- `next/jest` loads `.env`: tests must set any env var they depend on.
 
-The **backend repo** (`../estacionamiento-back-demo`) also runs a puppeteer test that reads files from *this*
-repo (`test/receipt-mobile-layout.test.cjs` → `src/components/ui/dialog.tsx` and
-`src/components/parking-receipt-delivery.tsx`), so renaming those breaks a test over there.
+CI: `.github/workflows/ci.yml` runs typecheck, lint, `test:ci` and build on every push to `main` and every PR.
+Railway deploys `main`; with «Wait for CI» on, it only deploys a green commit.
+
+The **backend repo** (`../estacionamiento-back-demo`) also runs puppeteer/transpile tests that read files from
+*this* repo (`src/components/ui/dialog.tsx`, `src/components/parking-receipt-delivery.tsx`,
+`src/utils/tariff-plan.utils.ts`, `public/`…), so renaming those breaks a test over there.
 
 ## Architecture
 
