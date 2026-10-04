@@ -4,6 +4,7 @@ import {
   DatosPago,
   anularPago,
   asignarPlan,
+  editarPeriodo,
   editarPlan,
   editarSuscripcion,
   activarCuenta,
@@ -14,6 +15,7 @@ import {
   pagarConMercadoPago,
   verificarPagos,
   getPagosPlataforma,
+  getPeriodos,
   getPlanes,
   getSuscripcion,
   registrarPago,
@@ -39,6 +41,13 @@ export const editarPlanAction = async (
   cambios: { nombre?: string; precioMensual?: number; maxActivos?: number | null; activo?: boolean },
 ) => intentar(() => editarPlan(id, cambios), 'No se pudo guardar el plan.');
 
+export const getPeriodosAction = async () => intentar(getPeriodos, 'No se pudieron cargar los períodos de pago.');
+
+export const editarPeriodoAction = async (
+  codigo: string,
+  cambios: { nombre?: string; descuento?: number; activo?: boolean },
+) => intentar(() => editarPeriodo(codigo, cambios), 'No se pudo guardar el período.');
+
 export const getPagosPlataformaAction = async (desde: string, hasta: string) =>
   intentar(() => getPagosPlataforma(desde, hasta), 'No se pudieron cargar los pagos.');
 
@@ -57,7 +66,7 @@ export const asignarPlanAction = async (
 
 export const editarSuscripcionAction = async (
   empresaId: string,
-  cambios: { alta?: string; pagadoHasta?: string; bonificada?: boolean; notas?: string | null },
+  cambios: { alta?: string; pagadoHasta?: string; bonificada?: boolean; notas?: string | null; periodo?: string },
 ) => intentar(() => editarSuscripcion(empresaId, cambios), 'No se pudo guardar.');
 
 export const activarCuentaAction = async (empresaId: string, alta: string, diasPrueba: number) =>

@@ -20,16 +20,16 @@ import {
 } from 'lucide-react';
 import { currentUser } from '@/lib/auth';
 import { getMiPlanAction } from '@/actions/suscripciones/suscripciones.action';
-import { TarjetasPlan } from '@/components/plataforma/tarjetas-plan';
+import { PlanesDeLaEmpresa } from './planes-empresa';
 import {
   DIAS_DE_GRACIA,
   MEDIOS_PAGO,
-  agruparPlanes,
   diaMesCorto,
   diasEntreAR,
   fechaLarga,
   hoyAR,
   pesos,
+  sufijoPeriodo,
   sumarDiasAR,
   sumarMesesAR,
 } from '@/components/plataforma/cuenta';
@@ -102,8 +102,11 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
   const proximo = cuenta.proximoVencimiento;
   const ultimoDia = cuenta.suspendeEl ? sumarDiasAR(cuenta.suspendeEl, -1) : null;
   const pendiente = cuenta.facturaPendiente && cuenta.facturaPendiente.desde <= hoy ? cuenta.facturaPendiente : null;
-  const aPagar = pendiente?.importe ?? cuenta.mensual;
+  const aPagar = pendiente?.importe ?? cuenta.importePeriodo;
   const atraso = cuenta.diasDeAtraso;
+  // Con pago trimestral o anual se habla de períodos, no de meses.
+  const meses = cuenta.periodo.meses;
+  const mes = meses === 1 ? 'mes' : 'período';
   // Con débito automático son 10: MercadoPago reintenta la tarjeta varios días.
   const gracia = cuenta.diasDeGracia ?? DIAS_DE_GRACIA;
   const debito = cuenta.debito?.estado === 'authorized';
@@ -123,8 +126,8 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
         titulo: total === 7 ? 'Estás en tu semana de prueba' : 'Estás en tu prueba gratis',
         texto:
           quedan <= 0
-            ? `Hoy es tu último día de prueba. Tu primer mes arranca mañana, ${fechaLarga(proximo)}.`
-            : `Usá todo el sistema con tranquilidad: te ${quedan === 1 ? 'queda 1 día' : `quedan ${quedan} días`}. Tu primer mes recién arranca el ${fechaLarga(proximo)}.`,
+            ? `Hoy es tu último día de prueba. Tu primer ${mes} arranca mañana, ${fechaLarga(proximo)}.`
+            : `Usá todo el sistema con tranquilidad: te ${quedan === 1 ? 'queda 1 día' : `quedan ${quedan} días`}. Tu primer ${mes} recién arranca el ${fechaLarga(proximo)}.`,
         barra: {
           titulo: `Día ${dia} de ${total}`,
           fraccion: dia / total,
@@ -132,7 +135,12 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
           hasta: fechaLarga(cuenta.pruebaHasta),
         },
         monto: cuenta.mensual
-          ? { etiqueta: `Tu plan desde el ${fechaLarga(proximo)}`, valor: pesos(cuenta.mensual), sufijo: '/mes', detalle: plan }
+          ? {
+              etiqueta: `Tu plan desde el ${fechaLarga(proximo)}`,
+              valor: pesos(cuenta.importePeriodo),
+              sufijo: sufijoPeriodo(meses),
+              detalle: plan,
+            }
           : undefined,
         boton: cuenta.mensual ? verFormas : undefined,
         nota: !cuenta.mensual
@@ -146,7 +154,7 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
     }
     case 'VENCIDA': {
       const monto = {
-        etiqueta: atraso ? 'A pagar' : nuncaPago ? 'Tu primer mes' : 'Tu próximo mes',
+        etiqueta: atraso ? 'A pagar' : nuncaPago ? `Tu primer ${mes}` : `Tu próximo ${mes}`,
         valor: pesos(aPagar),
         detalle: pendiente ? `Del ${fechaLarga(pendiente.desde)} al ${fechaLarga(pendiente.hasta)}` : plan,
       };
@@ -155,12 +163,12 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
           acento: AMARILLO,
           Icono: CalendarCheck,
           pastilla: nuncaPago ? 'Terminó la prueba' : 'Vence hoy',
-          titulo: nuncaPago ? 'Terminó tu prueba gratis' : 'Hoy vence tu próximo mes',
+          titulo: nuncaPago ? 'Terminó tu prueba gratis' : `Hoy vence tu próximo ${mes}`,
           texto: debito
             ? `${nuncaPago ? 'Ojalá te haya servido. ' : ''}Hoy se cobra solo de tu tarjeta. Apenas MercadoPago nos confirme, tu cuenta queda al día.`
             : nuncaPago
-              ? 'Ojalá te haya servido. Para seguir usando el sistema sin cortes, hoy vence tu primer mes.'
-              : 'Para seguir sin cortes, hoy vence el próximo mes de tu plan.',
+              ? `Ojalá te haya servido. Para seguir usando el sistema sin cortes, hoy vence tu primer ${mes}.`
+              : `Para seguir sin cortes, hoy vence el próximo ${mes} de tu plan.`,
           barra: {
             titulo: debito
               ? `Si no se puede cobrar hoy, hay ${gracia} días de margen`
@@ -178,7 +186,7 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
         Icono: Clock,
         pastilla: 'Pago pendiente',
         titulo: 'Tenés un pago pendiente',
-        texto: `${nuncaPago ? 'Tu primer mes' : 'Tu último mes'} venció el ${fechaLarga(proximo)}.${
+        texto: `${nuncaPago ? `Tu primer ${mes}` : `Tu último ${mes}`} venció el ${fechaLarga(proximo)}.${
           debito ? ' MercadoPago todavía no pudo cobrarlo de tu tarjeta y lo vuelve a intentar estos días.' : ''
         } ${
           cuenta.debeSuspenderse
@@ -200,7 +208,8 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
     }
     case 'AL_DIA': {
       const pagado = cuenta.pagadoHasta ?? hoy;
-      const inicio = sumarDiasAR(sumarMesesAR(pagado, -1), 1);
+      // Lo que cubrió el último pago: un mes, o tres si paga trimestral.
+      const inicio = sumarDiasAR(sumarMesesAR(pagado, -meses), 1);
       const total = diasEntreAR(inicio, pagado) + 1;
       const transcurridos = Math.min(total, Math.max(0, diasEntreAR(inicio, hoy) + 1));
       const faltan = diasEntreAR(hoy, proximo ?? hoy);
@@ -213,14 +222,14 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
           ? `Tu plan está pago hasta el ${fechaLarga(cuenta.pagadoHasta)}. El ${fechaLarga(proximo)} se cobra solo de tu tarjeta, con el débito automático. Gracias por confiarnos tu playa.`
           : `Tu plan está pago hasta el ${fechaLarga(cuenta.pagadoHasta)}. Gracias por confiarnos tu playa.`,
         barra: {
-          titulo: faltan <= 1 ? 'Mañana arranca tu próximo mes' : `Faltan ${faltan} días para tu próximo mes`,
+          titulo: faltan <= 1 ? `Mañana arranca tu próximo ${mes}` : `Faltan ${faltan} días para tu próximo ${mes}`,
           fraccion: transcurridos / total,
           desde: fechaLarga(inicio),
           hasta: fechaLarga(cuenta.pagadoHasta),
         },
         monto: {
-          etiqueta: debito ? 'Próximo débito' : 'Tu próximo mes',
-          valor: pesos(cuenta.mensual),
+          etiqueta: debito ? 'Próximo débito' : `Tu próximo ${mes}`,
+          valor: pesos(cuenta.importePeriodo),
           detalle: conPlan(fechaLarga(proximo)),
         },
         boton: verFormas,
@@ -247,7 +256,7 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
               etiqueta: 'Para volver a la normalidad',
               valor: pesos(aPagar),
               detalle: pendiente
-                ? `${nuncaPago ? 'Primer mes' : 'Último mes'} · venció el ${fechaLarga(pendiente.desde)}`
+                ? `${nuncaPago ? `Primer ${mes}` : `Último ${mes}`} · venció el ${fechaLarga(pendiente.desde)}`
                 : plan,
             },
             boton: { texto: 'Pagar y reactivar', href: '/admin/plan/pagar', principal: true },
@@ -274,7 +283,6 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
 
 function Contenido({ plan }: { plan: MiPlan }) {
   const { cuenta } = plan;
-  const grupos = agruparPlanes(plan.catalogo);
   const conPlan = plan.playas.filter((p) => p.plan);
   const variasPlayas = plan.playas.length > 1;
   const nombrePlan =
@@ -284,6 +292,7 @@ function Contenido({ plan }: { plan: MiPlan }) {
         ? `${conPlan.length} playas`
         : null;
   const r = relatoDe(cuenta, nombrePlan, plan.mercadoPago);
+  // Una tarjeta por tamaño necesita el ancho entero; lo que incluye y la forma de pago van abajo.
   const whatsapp = plan.contacto
     ? `https://wa.me/${plan.contacto.replace(/\D/g, '')}?text=${encodeURIComponent('Hola, te escribo por el plan del sistema de estacionamiento.')}`
     : null;
@@ -294,7 +303,6 @@ function Contenido({ plan }: { plan: MiPlan }) {
     .filter(Boolean)
     .join(' · ');
   const conFormaDePago = !['BONIFICADA', 'SIN_ACTIVAR', 'BAJA'].includes(cuenta.estado);
-  const modalidad = (cocheras: boolean) => (cocheras ? 'Con alquileres mensuales' : 'Solo tickets · rotación');
   const incluido = conPlan.some((p) => p.plan!.incluyeCocheras) ? [...INCLUIDO, INCLUIDO_COCHERAS] : INCLUIDO;
 
   return (
@@ -313,33 +321,18 @@ function Contenido({ plan }: { plan: MiPlan }) {
       <Estado r={r} />
 
       {cuenta.estado !== 'SIN_ACTIVAR' && (
+        <section className="flex flex-col gap-6">
+          <h2 className="m-0 text-[24px] font-semibold tracking-[-0.01em] text-[#F6F0E6]">
+            {variasPlayas ? 'Tus planes' : 'Tu plan'}
+          </h2>
+          <PlanesDeLaEmpresa plan={plan} />
+        </section>
+      )}
+
+      {cuenta.estado !== 'SIN_ACTIVAR' && (
         <div className="flex flex-wrap items-start gap-6">
           <section className={`flex min-w-0 flex-[1_1_560px] flex-col gap-6 p-[22px] sm:p-8 ${tarjeta}`}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="m-0 text-[21px] font-semibold text-[#F6F0E6]">{variasPlayas ? 'Tus planes' : 'Tu plan'}</h2>
-              {!variasPlayas && conPlan[0] && <Modalidad texto={modalidad(conPlan[0].plan!.incluyeCocheras)} />}
-            </div>
-            {plan.playas.map((p) => (
-              <div key={p.playaId} className="flex flex-col gap-3">
-                {variasPlayas && (
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <span className="text-[14.5px] font-semibold text-[#C9BFB1]">{p.nombre}</span>
-                    {p.plan && <Modalidad texto={modalidad(p.plan.incluyeCocheras)} />}
-                  </div>
-                )}
-                <div className="pt-3">
-                  <TarjetasPlan
-                    grupos={grupos}
-                    actual={p.plan?.planId ?? null}
-                    precioActual={p.plan?.precio ?? null}
-                    etiquetaActual="Tu plan"
-                    variante={p.plan ? (p.plan.incluyeCocheras ? 'alquileres' : 'base') : undefined}
-                    etiquetaPrecio={(precio) => `Vos pagás ${precio}/mes`}
-                  />
-                </div>
-              </div>
-            ))}
-            <div className="flex flex-col gap-4 border-t border-[#2B2620] pt-[22px]">
+            <div className="flex flex-col gap-4">
               <div className={rotulo}>Incluido en tu plan</div>
               <ul className="m-0 grid list-none gap-x-7 gap-y-3 p-0 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
                 {incluido.map((texto) => (
@@ -378,14 +371,6 @@ function Contenido({ plan }: { plan: MiPlan }) {
 
       <Pagos facturas={plan.facturas} />
     </>
-  );
-}
-
-function Modalidad({ texto }: { texto: string }) {
-  return (
-    <span className="rounded-full border border-[#3A342B] px-3 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#C9BFB1]">
-      {texto}
-    </span>
   );
 }
 
@@ -541,7 +526,10 @@ function FormaDePago({ plan, whatsapp }: { plan: MiPlan; whatsapp: string | null
             )}
             <div className="flex justify-between gap-3">
               <dt className="text-[#8F8676]">Importe</dt>
-              <dd className="m-0 text-right font-mono font-bold text-[#F6F0E6]">{pesos(cuenta.mensual)}</dd>
+              <dd className="m-0 text-right font-mono font-bold text-[#F6F0E6]">
+                {pesos(cuenta.importePeriodo)}
+                <span className="font-sans text-xs font-medium text-[#8F8676]">{sufijoPeriodo(cuenta.periodo.meses)}</span>
+              </dd>
             </div>
             {debito.email && (
               <div className="flex justify-between gap-3">

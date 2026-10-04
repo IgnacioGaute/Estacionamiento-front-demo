@@ -92,17 +92,17 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const nombre = `${session?.user?.firstName ?? ''} ${session?.user?.lastName ?? ''}`.trim();
 
   return (
-    <Sidebar collapsible="icon" className="group/sidebar border-r border-[#2E2820] bg-[#1A1511]" {...props}>
+    <Sidebar collapsible="icon" className="group/sidebar border-r border-[#2E2A23] bg-[#17140F]" {...props}>
       {/* Continúa la franja de la barra superior. */}
       <div className="gm-stripes h-[3px] w-full shrink-0" aria-hidden />
 
-      <SidebarHeader className="h-[75px] shrink-0 flex-row items-center justify-between gap-2 border-b border-[#2E2820] bg-[#1A1511] px-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
+      <SidebarHeader className="h-[75px] shrink-0 flex-row items-center justify-between gap-2 border-b border-[#2E2A23] bg-[#17140F] px-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
         <Link
           href="/admin/metricas"
           onClick={cerrarEnMovil}
           className="flex min-w-0 items-center gap-3 group-data-[collapsible=icon]:hidden"
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-[#362F26] bg-gm-surface-2">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-[#34302A] bg-gm-surface-2">
             <ParkingMark size="sm" />
           </span>
           <span className="flex min-w-0 flex-col gap-1">
@@ -117,7 +117,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <SidebarTrigger className="h-8 w-8 shrink-0 rounded-md hover:bg-gm-surface-2 hover:text-foreground" />
       </SidebarHeader>
 
-      <SidebarContent className="gap-7 bg-[#1A1511] px-2 py-5">
+      <SidebarContent className="gap-7 bg-[#17140F] px-2 py-5">
         <SidebarGroup className="p-0">
           <span className={ROTULO}>PLATAFORMA</span>
           <SidebarMenu className="gap-1">
@@ -127,7 +127,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   asChild
                   tooltip={titulo}
                   isActive={activo}
-                  className="h-11 gap-3 rounded-xl px-3 text-sm font-medium text-[#C9BFB1] hover:bg-[#231D17] hover:text-foreground data-[active=true]:bg-[#2A231B] data-[active=true]:font-semibold data-[active=true]:text-foreground [&[data-active=true]>svg]:text-gm-yellow"
+                  className="h-11 gap-3 rounded-xl px-3 text-sm font-medium text-[#C9BFB1] hover:bg-[#221F1A] hover:text-foreground data-[active=true]:bg-[#2B2620] data-[active=true]:font-semibold data-[active=true]:text-foreground [&[data-active=true]>svg]:text-gm-yellow"
                 >
                   <Link href={url} onClick={cerrarEnMovil} aria-current={activo ? 'page' : undefined}>
                     <Icono className="size-[18px]" />
@@ -137,7 +137,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
                         className={`rounded-full px-[7px] py-0.5 font-mono text-[11px] ${
                           activo
                             ? 'bg-gm-yellow font-semibold text-gm-ink'
-                            : 'border border-[#362F26] text-muted-foreground'
+                            : 'border border-[#34302A] text-muted-foreground'
                         }`}
                       >
                         {cuenta}
@@ -165,14 +165,14 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       href={`/admin/empresas/${e.id}`}
                       onClick={cerrarEnMovil}
                       aria-current={actual ? 'page' : undefined}
-                      className={`flex h-10 items-center gap-2.5 rounded-[10px] px-3 text-[13px] transition-colors hover:bg-[#231D17] ${
-                        actual ? 'bg-[#231D17] font-semibold text-foreground' : 'text-[#C9BFB1]'
+                      className={`flex h-10 items-center gap-2.5 rounded-[10px] px-3 text-[13px] transition-colors hover:bg-[#221F1A] ${
+                        actual ? 'bg-[#221F1A] font-semibold text-foreground' : 'text-[#C9BFB1]'
                       }`}
                     >
                       <span
                         aria-hidden
                         className={`flex size-6 shrink-0 items-center justify-center rounded-[7px] font-display text-[11px] font-semibold ${
-                          actual ? 'bg-gm-yellow text-gm-ink' : 'bg-[#2A241D] text-[#E9E1D4]'
+                          actual ? 'bg-gm-yellow text-gm-ink' : 'bg-[#2B2620] text-[#E9E1D4]'
                         }`}
                       >
                         {iniciales(e.nombre)}
@@ -201,7 +201,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-[#2E2820] bg-[#1A1511] p-3 group-data-[collapsible=icon]:p-1.5">
+      <SidebarFooter className="border-t border-[#2E2A23] bg-[#17140F] p-3 group-data-[collapsible=icon]:p-1.5">
         <div className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
           <span
             title={nombre || 'Super admin'}

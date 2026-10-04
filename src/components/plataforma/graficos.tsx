@@ -188,7 +188,7 @@ export function Curva({
                 <stop offset="1" stopColor={AMARILLO} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <path d={grilla} fill="none" stroke="#2E2820" strokeWidth={1} strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
+            <path d={grilla} fill="none" stroke="#2E2A23" strokeWidth={1} strokeDasharray="3 5" vectorEffect="non-scaling-stroke" />
             <path d={`${linea} L${W},${alto - abajo} L0,${alto - abajo} Z`} fill={`url(#${id})`} />
             {lineaComparacion && (
               <path
@@ -318,7 +318,7 @@ export function Espejo({
         style={{ height: alto }}
         onPointerLeave={() => setHi(null)}
       >
-        <span aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-[#2E2820]" />
+        <span aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-[#2E2A23]" />
         {arriba.map((v, i) => (
           <div
             key={i}
@@ -428,7 +428,7 @@ export function Anillo({
   return (
     <div className="relative shrink-0" style={{ width: tamano, height: tamano }}>
       <svg width={tamano} height={tamano} viewBox="0 0 180 180" role="img" aria-label={ariaLabel}>
-        <circle cx="90" cy="90" r={R} fill="none" stroke="#231D17" strokeWidth={GROSOR} />
+        <circle cx="90" cy="90" r={R} fill="none" stroke="#221F1A" strokeWidth={GROSOR} />
         {total > 0 &&
           visibles.map((s) => {
             const largo = (s.valor / total) * C;
@@ -486,7 +486,7 @@ export function Anillos({
         const f = Math.min(1, Math.max(0, a.fraccion));
         return (
           <g key={i}>
-            <circle cx="80" cy="80" r={r} fill="none" stroke="#231D17" strokeWidth={12} />
+            <circle cx="80" cy="80" r={r} fill="none" stroke="#221F1A" strokeWidth={12} />
             {f > 0 && (
               <circle
                 cx="80"
@@ -532,7 +532,7 @@ export function Medidor({
   return (
     <div className="relative h-[136px] w-[220px] shrink-0">
       <svg width="220" height="136" viewBox="0 0 220 136" role="img" aria-label={ariaLabel}>
-        <path d={arco(110, 90, 76, 150, 390)} fill="none" stroke="#231D17" strokeWidth={16} strokeLinecap="round" />
+        <path d={arco(110, 90, 76, 150, 390)} fill="none" stroke="#221F1A" strokeWidth={16} strokeLinecap="round" />
         {f > 0 && (
           <path
             d={arco(110, 90, 76, 150, 150 + 240 * Math.max(f, 0.004))}
@@ -551,7 +551,7 @@ export function Medidor({
 }
 
 const NIVELES = [
-  "#231D17",
+  "#221F1A",
   "rgba(245,194,25,0.2)",
   "rgba(245,194,25,0.42)",
   "rgba(245,194,25,0.68)",
@@ -643,7 +643,7 @@ export function Pilares({
               className="w-[13px] rounded-full"
               style={{ height: altura(c.actual), background: c.destacado ? AMARILLO : CREMA }}
             />
-            <div className="w-[13px] rounded-full bg-[#3A3228]" style={{ height: altura(c.anterior) }} />
+            <div className="w-[13px] rounded-full bg-[#3A342B]" style={{ height: altura(c.anterior) }} />
           </div>
           <span
             className="font-mono text-[10.5px]"
@@ -740,7 +740,7 @@ export function Mosaicos({ items, alto = 240 }: { items: Mosaico[]; alto?: numbe
                 grande ? "px-3.5 py-3" : "px-2 py-2",
                 claro ? "text-gm-ink" : "text-foreground",
               )}
-              style={{ background: FONDOS[rango] ?? "#3A3228" }}
+              style={{ background: FONDOS[rango] ?? "#3A342B" }}
             >
               <span
                 className={cn(

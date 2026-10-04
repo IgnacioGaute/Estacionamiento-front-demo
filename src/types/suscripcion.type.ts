@@ -60,10 +60,24 @@ export type SituacionCuenta = {
   enPrueba: boolean;
   debeSuspenderse: boolean;
   motivoSuspension: MotivoSuspension | null;
-  // Solo en el contexto del menú: lo que debe (factura pendiente) o lo que paga por mes.
+  // Solo en el contexto del menú: lo que debe (factura pendiente) o lo que paga por período.
   aPagar?: number;
   // Solo en el contexto del menú: tiene débito automático confirmado.
   conDebito?: boolean;
+  // Solo en el contexto del menú: cada cuántos meses paga (para decir «por mes» o «cada 3 meses»).
+  periodoMeses?: number;
+};
+
+// Cada cuánto paga una empresa: mensual, trimestral, anual. `descuento` es un porcentaje entero.
+export type PeriodoPago = {
+  codigo: string;
+  nombre: string;
+  meses: number;
+  descuento: number;
+  // Solo en la lista del super admin.
+  activo?: boolean;
+  orden?: number;
+  empresas?: number;
 };
 
 // El débito automático de MercadoPago. `pending`: lo pidió pero todavía no cargó la tarjeta
@@ -82,8 +96,19 @@ export type ResumenCuenta = SituacionCuenta & {
   bonificada: boolean;
   suspendidaEl: string | null;
   mensual: number;
+  // Cada cuánto paga, con los meses y el descuento congelados al asignárselo.
+  periodo: PeriodoPago;
+  // Lo que paga cada período: lo mensual por los meses, con el descuento.
+  importePeriodo: number;
   planes: LineaPlan[];
-  facturaPendiente: { id: string; importe: number; desde: string; hasta: string } | null;
+  facturaPendiente: {
+    id: string;
+    importe: number;
+    desde: string;
+    hasta: string;
+    meses: number;
+    descuento: number;
+  } | null;
   ultimoPago: { fecha: string; importe: number; medio: MedioPagoSaas | null } | null;
   debito: DebitoAutomatico | null;
 };
@@ -94,6 +119,8 @@ export type FacturaSaas = {
   hasta: string;
   meses: number;
   importe: number;
+  // Descuento por período con que se calculó (porcentaje entero).
+  descuento: number;
   detalle: { playaId: string; playa: string; planId: string; plan: string; precio: number }[];
   estado: 'PENDIENTE' | 'PAGADA' | 'ANULADA';
   pagadaEl: string | null;
@@ -139,6 +166,8 @@ export type MiPlan = {
   playas: { playaId: string; nombre: string; plan: LineaPlan | null }[];
   // La lista de planes, para mostrarle dónde está parado.
   catalogo: Plan[];
+  // Los períodos de pago que se ofrecen, para mostrarle cuánto ahorraría.
+  periodos: PeriodoPago[];
   facturas: FacturaSaas[];
   // Datos de transferencia y WhatsApp de la plataforma, si están configurados.
   comoPagar: string | null;

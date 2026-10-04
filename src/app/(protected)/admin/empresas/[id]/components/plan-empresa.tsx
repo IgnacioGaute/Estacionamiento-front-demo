@@ -38,6 +38,7 @@ import {
   DetalleSuscripcion,
   FacturaSaas,
   MedioPagoSaas,
+  PeriodoPago,
   Plan,
   ResumenCuenta,
   UsoPlaya,
@@ -48,13 +49,14 @@ import {
   asignarPlanAction,
   darDiasExtraAction,
   editarSuscripcionAction,
+  getPeriodosAction,
   getPlanesAction,
   getSuscripcionAction,
   registrarPagoAction,
 } from "@/actions/suscripciones/suscripciones.action";
-import { EJE, Pastilla, Rotulo, Segmentos, Tarjeta } from "@/components/plataforma/mono";
+import { EJE, Pastilla, Rotulo, Tarjeta } from "@/components/plataforma/mono";
 import { numero, plural } from "@/components/plataforma/formato";
-import { TarjetasPlan } from "@/components/plataforma/tarjetas-plan";
+import { GrillaPlanes, Selector, TarjetaPlan, botonPlan } from "@/components/plataforma/planes-landing";
 import {
   COLORES_CUENTA,
   DESCUENTO_PLAYA_ADICIONAL,
@@ -65,6 +67,7 @@ import {
   diaAR,
   diasEntreAR,
   hoyAR,
+  cadaPeriodo,
   pesos,
   sumarDiasAR,
   sumarMesesAR,
@@ -84,7 +87,15 @@ type Accion =
   | { tipo: "diasExtra" }
   | { tipo: "pago" }
   | { tipo: "pagadoHasta" }
-  | { tipo: "anular"; factura: FacturaSaas };
+  | { tipo: "anular"; factura: FacturaSaas }
+  | { tipo: "periodo"; periodo: PeriodoPago };
+
+// Lo que paga por un período: lo mensual por los meses, con el descuento (como el backend).
+const importeDelPeriodo = (mensual: number, p: Pick<PeriodoPago, "meses" | "descuento">) =>
+  Math.round((mensual * p.meses * (100 - p.descuento)) / 100);
+// «el primer mes» / «los primeros 3 meses».
+const losMeses = (meses: number, primero: boolean) =>
+  meses === 1 ? (primero ? "el primer mes" : "el mes siguiente") : primero ? `los primeros ${meses} meses` : `los ${meses} meses siguientes`;
 
 const enDias = (n: number) => (n === 1 ? "1 día" : `${n} días`);
 
@@ -97,16 +108,18 @@ export function PlanDeEmpresa({
 }) {
   const [detalle, setDetalle] = useState<DetalleSuscripcion | null>(null);
   const [planes, setPlanes] = useState<Plan[]>([]);
+  const [periodos, setPeriodos] = useState<PeriodoPago[]>([]);
   const [error, setError] = useState("");
   const [accion, setAccion] = useState<Accion | null>(null);
 
   const cargar = useCallback(async () => {
-    const [d, p] = await Promise.all([getSuscripcionAction(empresa.id), getPlanesAction()]);
+    const [d, p, pe] = await Promise.all([getSuscripcionAction(empresa.id), getPlanesAction(), getPeriodosAction()]);
     if (d.data) {
       setDetalle(d.data);
       setError("");
     } else setError(d.error ?? "No se pudo cargar el plan de la empresa.");
     setPlanes(p.data ?? []);
+    setPeriodos(pe.data ?? []);
   }, [empresa.id]);
 
   useEffect(() => {
@@ -144,17 +157,20 @@ export function PlanDeEmpresa({
     <div className="space-y-5">
       <EstadoDeCuenta cuenta={cuenta} sinPlan={detalle.playas.filter((p) => !p.plan).length} accion={setAccion} />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <PlanesDePlayas
-          empresaId={empresa.id}
-          playas={detalle.playas}
-          planes={planes}
-          alGuardar={(d) => aplicar(d, "Plan guardado.")}
-        />
-        <div className="flex flex-col gap-5">
-          <UsoDePlayas playas={detalle.playas} />
-          <Ajustes empresaId={empresa.id} detalle={detalle} accion={setAccion} aplicar={aplicar} />
-        </div>
+      {/* Las tarjetas de la landing necesitan el ancho entero: el uso y los ajustes van abajo. */}
+      <PlanesDePlayas
+        empresaId={empresa.id}
+        cuenta={cuenta}
+        playas={detalle.playas}
+        planes={planes}
+        periodos={periodos}
+        accion={setAccion}
+        alGuardar={(d) => aplicar(d, "Plan guardado.")}
+      />
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <UsoDePlayas playas={detalle.playas} />
+        <Ajustes empresaId={empresa.id} detalle={detalle} accion={setAccion} aplicar={aplicar} />
       </div>
 
       <Facturas
@@ -193,7 +209,8 @@ function EstadoDeCuenta({
   accion: (a: Accion) => void;
 }) {
   const hoy = hoyAR();
-  const debe = cuenta.facturaPendiente?.importe ?? cuenta.mensual;
+  const debe = cuenta.facturaPendiente?.importe ?? cuenta.importePeriodo;
+  const meses = cuenta.periodo.meses;
   const color = COLORES_CUENTA[cuenta.estado];
   const ultimoDia = cuenta.suspendeEl ? sumarDiasAR(cuenta.suspendeEl, -1) : null;
   // El débito automático lo activa la empresa desde Mi plan; acá solo se ve en qué está.
@@ -212,15 +229,15 @@ function EstadoDeCuenta({
         const quedan = diasEntreAR(hoy, cuenta.pruebaHasta ?? hoy);
         return {
           titular: "Prueba gratis",
-          bajada: `Termina el ${diaAR(cuenta.pruebaHasta)} (${quedan <= 0 ? "hoy" : `quedan ${enDias(quedan)}`}). El ${diaAR(cuenta.proximoVencimiento)} se factura el primer mes${cuenta.mensual ? ` por ${pesos(cuenta.mensual)}` : ""} y desde ese día se cuentan los días de atraso.${conDebito ? " Tiene débito automático: ese día MercadoPago lo cobra de su tarjeta." : ""}${sinPlan ? " Todavía falta elegir el plan." : ""}`,
+          bajada: `Termina el ${diaAR(cuenta.pruebaHasta)} (${quedan <= 0 ? "hoy" : `quedan ${enDias(quedan)}`}). El ${diaAR(cuenta.proximoVencimiento)} se factura ${losMeses(meses, true)}${cuenta.importePeriodo ? ` por ${pesos(cuenta.importePeriodo)}` : ""} y desde ese día se cuentan los días de atraso.${conDebito ? " Tiene débito automático: ese día MercadoPago lo cobra de su tarjeta." : ""}${sinPlan ? " Todavía falta elegir el plan." : ""}`,
         };
       }
       case "AL_DIA":
         return {
           titular: "Al día",
           bajada: conDebito
-            ? `Pagado hasta el ${diaAR(cuenta.pagadoHasta)}. El ${diaAR(cuenta.proximoVencimiento)} MercadoPago debita el mes siguiente (${pesos(cuenta.mensual)}) de su tarjeta.`
-            : `Pagado hasta el ${diaAR(cuenta.pagadoHasta)}. El ${diaAR(cuenta.proximoVencimiento)} se factura el mes siguiente por ${pesos(cuenta.mensual)}.`,
+            ? `Pagado hasta el ${diaAR(cuenta.pagadoHasta)}. El ${diaAR(cuenta.proximoVencimiento)} MercadoPago debita ${losMeses(meses, false)} (${pesos(cuenta.importePeriodo)}) de su tarjeta.`
+            : `Pagado hasta el ${diaAR(cuenta.pagadoHasta)}. El ${diaAR(cuenta.proximoVencimiento)} se factura ${losMeses(meses, false)} por ${pesos(cuenta.importePeriodo)}.`,
         };
       case "VENCIDA":
         return {
@@ -268,12 +285,14 @@ function EstadoDeCuenta({
         </div>
         <div className="flex flex-col gap-3 lg:items-end">
           <div className="lg:text-right">
-            <Rotulo>Paga por mes</Rotulo>
+            <Rotulo>Paga {cadaPeriodo(meses)}</Rotulo>
             <div className="mt-1 font-mono text-[34px] font-bold leading-none text-gm-yellow">
-              {pesos(cuenta.mensual)}
+              {pesos(cuenta.importePeriodo)}
             </div>
             <div className="mt-1 text-[12px]" style={{ color: EJE }}>
               {cuenta.planes.length ? plural(cuenta.planes.length, "playa con plan", "playas con plan") : "Sin plan elegido"}
+              {meses > 1 &&
+                ` · ${cuenta.periodo.nombre.toLowerCase()}${cuenta.periodo.descuento ? ` −${cuenta.periodo.descuento}%` : ""} (${pesos(cuenta.mensual)}/mes de lista)`}
             </div>
             {cuenta.debito && (
               <div
@@ -325,7 +344,7 @@ function EstadoDeCuenta({
         </div>
       </div>
       {cuenta.estado !== "SIN_ACTIVAR" && (
-        <div className="border-t border-[#2E2820] bg-[#19140F] px-5 py-5 sm:px-6">
+        <div className="border-t border-[#2E2A23] bg-[#15120E] px-5 py-5 sm:px-6">
           <Ciclo cuenta={cuenta} editarAlta={() => accion({ tipo: "fechaAlta" })} />
         </div>
       )}
@@ -369,7 +388,7 @@ function Ciclo({ cuenta, editarAlta }: { cuenta: ResumenCuenta; editarAlta: () =
       titulo: cuenta.pagadoHasta ? "Vencimiento" : "Primera factura",
       fecha: cuenta.proximoVencimiento,
       detalle: cuenta.mensual
-        ? `${pesos(cuenta.facturaPendiente?.importe ?? cuenta.mensual)}${cuenta.diasDeAtraso ? ` · ${enDias(cuenta.diasDeAtraso)} de atraso` : ""}`
+        ? `${pesos(cuenta.facturaPendiente?.importe ?? cuenta.importePeriodo)}${cuenta.diasDeAtraso ? ` · ${enDias(cuenta.diasDeAtraso)} de atraso` : ""}`
         : "Sin plan elegido",
       tono: cuenta.diasDeAtraso ? "alerta" : undefined,
     });
@@ -415,7 +434,7 @@ function Ciclo({ cuenta, editarAlta }: { cuenta: ResumenCuenta; editarAlta: () =
                   className="absolute left-[7px] right-0 top-[7px] h-0.5"
                   style={{
                     background: nodos[i + 1].fecha <= hoy ? "#8A8073" : "transparent",
-                    borderTop: nodos[i + 1].fecha <= hoy ? undefined : "2px dashed #3A3228",
+                    borderTop: nodos[i + 1].fecha <= hoy ? undefined : "2px dashed #3A342B",
                   }}
                 />
               )}
@@ -424,7 +443,7 @@ function Ciclo({ cuenta, editarAlta }: { cuenta: ResumenCuenta; editarAlta: () =
                 className={`relative z-10 block size-4 rounded-full border-2 ${n.tono === "hoy" ? "ring-4 ring-gm-yellow/25" : ""}`}
                 style={{
                   borderColor: colorPunto,
-                  background: pasado || esHoy || n.tono === "alerta" ? colorPunto : "#19140F",
+                  background: pasado || esHoy || n.tono === "alerta" ? colorPunto : "#15120E",
                 }}
               />
               <div className="mt-3">
@@ -464,17 +483,25 @@ function Ciclo({ cuenta, editarAlta }: { cuenta: ResumenCuenta; editarAlta: () =
 
 // ─── Planes de las playas ───────────────────────────────────────────────────
 
-// El plan de cada playa con las tarjetas de la landing: se elige con un clic y se guarda con el
-// precio pactado, que propone el de lista (30% menos si es una playa adicional).
+// El plan de cada playa con las tarjetas de la landing. Arriba, qué incluye (solo tickets o con
+// cocheras) y el período de pago de la empresa; abajo, una tarjeta por tamaño, con los precios del
+// período. Elegir una abre el precio pactado, que propone el de lista (30% menos si es una playa
+// adicional). Cambiar el período pide confirmación (AccionDialog «periodo»).
 function PlanesDePlayas({
   empresaId,
+  cuenta,
   playas,
   planes,
+  periodos,
+  accion,
   alGuardar,
 }: {
   empresaId: string;
+  cuenta: ResumenCuenta;
   playas: UsoPlaya[];
   planes: Plan[];
+  periodos: PeriodoPago[];
+  accion: (a: Accion) => void;
   alGuardar: (d: DetalleSuscripcion) => void;
 }) {
   const [playaId, setPlayaId] = useState(playas[0]?.playaId ?? "");
@@ -482,6 +509,7 @@ function PlanesDePlayas({
   const [precio, setPrecio] = useState("");
   const [guardando, setGuardando] = useState(false);
   const playa = playas.find((p) => p.playaId === playaId) ?? playas[0];
+  const [cocheras, setCocheras] = useState(!!playa?.plan?.incluyeCocheras);
   const grupos = useMemo(
     () => agruparPlanes(planes.filter((p) => p.activo !== false || p.id === playa?.plan?.planId)),
     [planes, playa?.plan?.planId],
@@ -505,6 +533,11 @@ function PlanesDePlayas({
   function cambiarPlaya(id: string) {
     setPlayaId(id);
     setElegido(null);
+    setCocheras(!!playas.find((p) => p.playaId === id)?.plan?.incluyeCocheras);
+  }
+  function elegirPeriodo(codigo: string) {
+    const p = periodos.find((x) => x.codigo === codigo);
+    if (p && codigo !== cuenta.periodo.codigo) accion({ tipo: "periodo", periodo: p });
   }
   async function guardar() {
     if (!elegido) return;
@@ -522,38 +555,87 @@ function PlanesDePlayas({
   const lista = planElegido?.precioMensual ?? 0;
   const cambio = !!elegido && (elegido !== playa.plan?.planId || Number(precio) !== playa.plan?.precio);
 
+  // Los que se ofrecen y el suyo, aunque se haya retirado.
+  const opcionesPeriodo = periodos.filter((p) => p.activo !== false || p.codigo === cuenta.periodo.codigo);
+
   return (
-    <Tarjeta className="gap-4 pb-5 pt-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Rotulo>Plan contratado</Rotulo>
-          <p className="mt-1.5 text-[13px] text-muted-foreground">
+    <section className="flex flex-col gap-7 rounded-3xl border border-border bg-gm-surface p-5 sm:p-7">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div className="flex min-w-0 flex-col gap-2">
+          <Rotulo>Plan de la playa</Rotulo>
+          <h2 className="m-0 text-[28px] font-semibold leading-tight tracking-[-0.01em] sm:text-[32px]">{playa.nombre}</h2>
+          <p className="m-0 text-[14.5px] text-muted-foreground">
             {playa.plan
-              ? `${playa.nombre}: ${playa.plan.plan} · ${pesos(playa.plan.precio)}/mes desde el ${diaAR(playa.plan.desde)}`
-              : `${playa.nombre} todavía no tiene plan. Elegí uno haciendo clic en su precio.`}
+              ? `${playa.plan.plan} desde el ${diaAR(playa.plan.desde)} · ${pesos(playa.plan.precio)}/mes pactado`
+              : "Todavía no tiene plan. Elegí uno con «Asignar a esta playa»."}
           </p>
         </div>
         {playas.length > 1 && (
-          <Segmentos
+          <Selector
             etiqueta="Playa"
-            redondo
-            opciones={playas.map((p) => ({ id: p.playaId, label: `${p.nombre}${p.plan ? "" : " ·"}` }))}
+            opciones={playas.map((p) => ({ valor: p.playaId, etiqueta: p.plan ? p.nombre : `${p.nombre} · sin plan` }))}
             valor={playa.playaId}
             onChange={cambiarPlaya}
           />
         )}
       </div>
 
-      <div className="pt-3">
-        <TarjetasPlan
-          grupos={grupos}
-          actual={playa.plan?.planId ?? null}
-          elegido={elegido}
-          onElegir={elegir}
-          precioActual={playa.plan?.precio ?? null}
-          etiquetaActual="Plan actual"
+      <div className="flex flex-wrap items-end gap-x-8 gap-y-[18px]">
+        <Selector
+          etiqueta="Qué incluye"
+          opciones={[
+            { valor: false, etiqueta: "Tickets y rotación" },
+            { valor: true, etiqueta: "+ Cocheras mensuales" },
+          ]}
+          valor={cocheras}
+          onChange={setCocheras}
         />
+        {opcionesPeriodo.length > 1 && (
+          <Selector
+            etiqueta="Período de pago de la empresa"
+            opciones={opcionesPeriodo.map((p) => ({ valor: p.codigo, etiqueta: p.nombre, descuento: p.descuento }))}
+            valor={cuenta.periodo.codigo}
+            onChange={elegirPeriodo}
+          />
+        )}
       </div>
+
+      <GrillaPlanes>
+        {grupos.map((g) => {
+          const plan = cocheras ? g.alquileres : g.base;
+          if (!plan) return null;
+          const actual = plan.id === playa.plan?.planId;
+          const marcado = plan.id === elegido;
+          // Sin plan ni elección, la mediana va destacada como en la landing.
+          const destacada = actual || marcado || (!playa.plan && !elegido && g.tamano === "MEDIANA");
+          return (
+            <TarjetaPlan
+              key={plan.id}
+              nombre={g.nombre}
+              tamano={g.rango}
+              // El plan actual con lo que paga esta playa; los demás, con el precio de lista.
+              mensual={actual ? playa.plan!.precio : plan.precioMensual}
+              periodo={cuenta.periodo}
+              cocheras={cocheras}
+              distintivo={actual ? "Plan actual" : marcado ? "Elegido" : destacada ? "Más elegido" : undefined}
+              destacada={destacada}
+              extra={
+                actual && playa.plan!.precio !== plan.precioMensual ? (
+                  <p className="m-0 mt-1 text-[13px] text-[#8F8676]">
+                    Precio pactado · lista <span className="font-mono text-[#E3DBCE]">{pesos(plan.precioMensual)}</span>/mes
+                  </p>
+                ) : plan.activo === false ? (
+                  <p className="m-0 mt-1 text-[13px] text-[#8F8676]">Ya no se ofrece a playas nuevas</p>
+                ) : undefined
+              }
+            >
+              <button type="button" className={botonPlan(destacada && !actual)} onClick={() => elegir(plan.id)}>
+                {actual ? "Cambiar el precio pactado" : playa.plan ? "Cambiar a este plan" : "Asignar a esta playa"}
+              </button>
+            </TarjetaPlan>
+          );
+        })}
+      </GrillaPlanes>
 
       {elegido ? (
         <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-gm-yellow/40 bg-gm-yellow/[0.06] p-4">
@@ -591,17 +673,12 @@ function PlanesDePlayas({
           </div>
         </div>
       ) : (
-        playa.plan && (
-          <button
-            type="button"
-            onClick={() => elegir(playa.plan!.planId)}
-            className="w-fit text-[12.5px] font-semibold text-gm-yellow hover:text-[#FFD84D]"
-          >
-            Cambiar el precio pactado →
-          </button>
-        )
+        <p className="m-0 text-[13px] leading-relaxed text-muted-foreground">
+          Los precios muestran el equivalente mensual. El período es de toda la empresa: cambiarlo recalcula la
+          próxima factura y, si tiene débito automático, la empresa lo tiene que volver a activar.
+        </p>
       )}
-    </Tarjeta>
+    </section>
   );
 }
 
@@ -640,7 +717,7 @@ function UsoDePlayas({ playas }: { playas: UsoPlaya[] }) {
               </div>
             </div>
             {limite !== null && (
-              <div className="h-1.5 rounded-full bg-[#231D17]">
+              <div className="h-1.5 rounded-full bg-[#221F1A]">
                 <div
                   className="h-1.5 rounded-full"
                   style={{ width: `${Math.max(2, fraccion * 100)}%`, background: fraccion >= 1 ? "#FF7A4D" : "#F5C219" }}
@@ -675,7 +752,7 @@ function PicoDelMes({ uso, limite }: { uso: UsoPlaya; limite: number | null }) {
   const tope = Math.max(1, limite ?? 0, ...dias.map((d) => d.pico));
   return (
     <div
-      className="flex h-10 items-end gap-[2px] rounded-xl border border-[#262019] bg-background px-2 pb-1.5 pt-2"
+      className="flex h-10 items-end gap-[2px] rounded-xl border border-[#26221C] bg-background px-2 pb-1.5 pt-2"
       role="img"
       aria-label={`Pico diario de estadías a la vez en los últimos 30 días, máximo ${uso.pico}`}
     >
@@ -686,7 +763,7 @@ function PicoDelMes({ uso, limite }: { uso: UsoPlaya; limite: number | null }) {
           className="flex-1 rounded-[1px]"
           style={{
             height: `${Math.max(8, (d.pico / tope) * 100)}%`,
-            background: limite !== null && d.pico > limite ? "#FF7A4D" : d.pico ? "#A59B8D" : "#2E2820",
+            background: limite !== null && d.pico > limite ? "#FF7A4D" : d.pico ? "#A59B8D" : "#2E2A23",
           }}
         />
       ))}
@@ -785,7 +862,7 @@ function EstadoFactura({ factura }: { factura: FacturaSaas }) {
   if (factura.estado === "PAGADA")
     return <span className="rounded-full bg-emerald-400/[0.12] px-2.5 py-[3px] text-[11.5px] font-bold text-emerald-400">Pagada</span>;
   if (factura.estado === "ANULADA")
-    return <span className="rounded-full bg-[#231D17] px-2.5 py-[3px] text-[11.5px] font-bold text-muted-foreground">Anulada</span>;
+    return <span className="rounded-full bg-[#221F1A] px-2.5 py-[3px] text-[11.5px] font-bold text-muted-foreground">Anulada</span>;
   const atraso = diasEntreAR(factura.desde, hoy);
   return (
     <span
@@ -808,11 +885,11 @@ function Facturas({
   const columnas = "grid-cols-[190px_100px_130px_150px_minmax(0,1fr)_120px]";
   return (
     <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2820] px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2A23] px-5 py-4">
         <div>
           <h2 className="font-display text-[22px] font-semibold">Facturas y pagos</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Cada mes se factura el día en que vence. Un pago cargado por error se anula: nunca se borra.
+            Cada período se factura el día en que vence. Un pago cargado por error se anula: nunca se borra.
           </p>
         </div>
       </div>
@@ -823,7 +900,7 @@ function Facturas({
           <div role="table" aria-label="Facturas y pagos" className="min-w-[920px]">
             <div
               role="row"
-              className={`grid h-[42px] ${columnas} items-center gap-3 bg-[#19140F] px-5 font-mono text-[10.5px] tracking-[0.1em]`}
+              className={`grid h-[42px] ${columnas} items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]`}
               style={{ color: EJE }}
             >
               <span role="columnheader">PERÍODO</span>
@@ -839,11 +916,15 @@ function Facturas({
               <div
                 key={f.id}
                 role="row"
-                className={`grid min-h-[60px] ${columnas} items-center gap-3 border-t border-[#2A241D] px-5 py-2 text-[13.5px]`}
+                className={`grid min-h-[60px] ${columnas} items-center gap-3 border-t border-[#2B2620] px-5 py-2 text-[13.5px]`}
               >
                 <span role="cell" className="tabular-nums">
                   {diaAR(f.desde, false)} al {diaAR(f.hasta)}
-                  {f.meses > 1 && <span className="ml-1.5 text-xs text-muted-foreground">· {f.meses} meses</span>}
+                  {f.meses > 1 && (
+                    <span className="ml-1.5 text-xs text-muted-foreground">
+                      · {f.meses} meses{f.descuento > 0 ? ` −${f.descuento}%` : ""}
+                    </span>
+                  )}
                 </span>
                 <span role="cell" className="tabular-nums">
                   {diaAR(f.desde, false)}
@@ -967,6 +1048,9 @@ function describirMovimiento(h: DetalleSuscripcion["historial"][number]) {
           d.pagadoHasta !== undefined ? `fijó «pagado hasta» en el ${fecha(d.pagadoHasta)}` : null,
           d.bonificada === true ? "la marcó como bonificada" : null,
           d.bonificada === false ? "le quitó la bonificación" : null,
+          typeof d.periodo === "string"
+            ? `la pasó a pago ${d.periodo.toLowerCase()}${typeof d.descuento === "number" && d.descuento > 0 ? ` (−${d.descuento}%)` : ""}`
+            : null,
         ]
           .filter(Boolean)
           .join(" y ") || "editó la cuenta"
@@ -1028,9 +1112,9 @@ function AccionDialog({
     accion.tipo === "pagadoHasta" ? (cuenta.pagadoHasta ?? hoy) : sumarDiasAR(baseExtra, 7),
   );
   const [motivo, setMotivo] = useState("");
-  // Pago
-  const [meses, setMeses] = useState(1);
-  const [importe, setImporte] = useState(String(cuenta.facturaPendiente?.importe ?? cuenta.mensual ?? ""));
+  // Pago: por defecto, lo que debe o un período entero (tres meses con su descuento si es trimestral).
+  const [meses, setMeses] = useState(cuenta.facturaPendiente?.meses ?? cuenta.periodo.meses);
+  const [importe, setImporte] = useState(String(cuenta.facturaPendiente?.importe ?? cuenta.importePeriodo ?? ""));
   const [importeTocado, setImporteTocado] = useState(false);
   const [medio, setMedio] = useState<MedioPagoSaas>("TRANSFERENCIA");
   const [fecha, setFecha] = useState(hoy);
@@ -1073,6 +1157,10 @@ function AccionDialog({
       "Anular el pago",
       "El vencimiento vuelve a donde estaba antes de este pago. Si queda con más de 5 días de atraso, se suspende en la próxima revisión.",
     ],
+    periodo: [
+      "Período de pago",
+      "Cada cuánto paga. Rige desde la próxima factura; lo que ya pagó no cambia.",
+    ],
   };
 
   async function confirmar(e: React.FormEvent) {
@@ -1103,6 +1191,10 @@ function AccionDialog({
         case "anular":
           r = await anularPagoAction(empresa.id, accion.factura.id, motivo.trim());
           aviso = "Pago anulado.";
+          break;
+        case "periodo":
+          r = await editarSuscripcionAction(empresa.id, { periodo: accion.periodo.codigo });
+          aviso = `Ahora paga ${accion.periodo.nombre.toLowerCase()}.`;
           break;
         default: {
           const monto = Number(importe);
@@ -1280,7 +1372,9 @@ function AccionDialog({
                     onChange={(e) => {
                       const n = Number(e.target.value);
                       setMeses(n);
-                      if (!importeTocado && cuenta.mensual) setImporte(String(cuenta.mensual * n));
+                      // Los meses de su período llevan su descuento; otra cantidad, el precio de lista.
+                      if (!importeTocado && cuenta.mensual)
+                        setImporte(String(n === cuenta.periodo.meses ? cuenta.importePeriodo : cuenta.mensual * n));
                     }}
                   >
                     {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
@@ -1347,6 +1441,40 @@ function AccionDialog({
             </>
           )}
 
+          {accion.tipo === "periodo" && (
+            <>
+              {resumen(
+                <>
+                  Pasa a pagar <b>{accion.periodo.nombre.toLowerCase()}</b>:{" "}
+                  {cuenta.mensual ? (
+                    <>
+                      <b>{pesos(importeDelPeriodo(cuenta.mensual, accion.periodo))}</b> {cadaPeriodo(accion.periodo.meses)}
+                      {accion.periodo.descuento > 0 &&
+                        ` (−${accion.periodo.descuento}%, ahorra ${pesos(cuenta.mensual * accion.periodo.meses - importeDelPeriodo(cuenta.mensual, accion.periodo))})`}
+                      .
+                    </>
+                  ) : (
+                    `un pago ${cadaPeriodo(accion.periodo.meses)}.`
+                  )}{" "}
+                  {cuenta.facturaPendiente
+                    ? "La factura pendiente se recalcula con el período nuevo."
+                    : cuenta.proximoVencimiento
+                      ? `La próxima factura, el ${diaAR(cuenta.proximoVencimiento)}, ya sale así.`
+                      : ""}{" "}
+                  El descuento queda fijo para esta empresa aunque después cambie el catálogo.
+                </>,
+              )}
+              {cuenta.debito &&
+                resumen(
+                  <>
+                    Tiene débito automático: MercadoPago lo cobra cada tantos meses por un importe fijo, así que se da de baja y
+                    la empresa lo tiene que volver a activar desde Mi plan con el período nuevo.
+                  </>,
+                  "alerta",
+                )}
+            </>
+          )}
+
           {accion.tipo === "anular" &&
             resumen(
               <>
@@ -1395,7 +1523,9 @@ function AccionDialog({
                   ? "Anular pago"
                   : accion.tipo === "alta"
                     ? "Dar de alta"
-                    : "Confirmar"}
+                    : accion.tipo === "periodo"
+                      ? `Pasar a ${accion.periodo.nombre.toLowerCase()}`
+                      : "Confirmar"}
             </Button>
           </div>
         </form>

@@ -43,7 +43,7 @@ function EstadoDeuda({ d }: { d: DeudaCuenta }) {
     ? [d.situacion === 'PARCIAL' ? 'Vencido · pago parcial' : 'Vencido', 'bg-[#FF5C4D]/[0.16] text-[#FF7A4D]']
     : d.situacion === 'PARCIAL'
       ? ['Pago parcial', 'bg-gm-yellow/[0.14] text-gm-yellow']
-      : ['Pendiente', 'bg-[#231D17] text-[#E9E1D4]'];
+      : ['Pendiente', 'bg-[#221F1A] text-[#E9E1D4]'];
   return <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${clase}`}>{texto}</span>;
 }
 

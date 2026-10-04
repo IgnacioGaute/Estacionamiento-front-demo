@@ -9,33 +9,36 @@
    ========================================================= */
 
 @layer base {
+  /* Fondo y superficies: un negro cálido y apenas tostado (#12100D de fondo, #1B1915 las
+     tarjetas, #2E2A23 los bordes), menos marrón que antes. Es el de los diseños de planes; vale
+     para todo el sistema. La landing tiene su propia paleta clara. */
   :root {
-    --background: 30 18% 7%;
+    --background: 36 16% 6%;
     --foreground: 38 36% 92%;
 
-    --card:            32 22% 9%;
+    --card:            40 12% 9%;
     --card-foreground: 38 36% 92%;
 
-    --popover:            32 22% 9%;
+    --popover:            40 12% 9%;
     --popover-foreground: 38 36% 92%;
 
     --primary:            46 92% 53%;
     --primary-foreground: 30 78% 7%;
 
-    --secondary:            34 22% 12%;
+    --secondary:            38 12% 12%;
     --secondary-foreground: 38 36% 92%;
 
-    --muted:            34 18% 11%;
+    --muted:            38 12% 11%;
     --muted-foreground: 34 12% 60%;
 
-    --accent:            34 22% 12%;
+    --accent:            38 12% 12%;
     --accent-foreground: 38 36% 92%;
 
     --destructive:            10 78% 56%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 34 18% 18%;
-    --input:  34 18% 18%;
+    --border: 38 14% 16%;
+    --input:  38 14% 16%;
     --ring:   46 92% 53%;
 
     --chart-1: 46 92% 53%;
@@ -46,13 +49,13 @@
 
     --radius: 0.5rem;
 
-    --sidebar-background: 32 22% 9%;
+    --sidebar-background: 40 12% 9%;
     --sidebar-foreground: 34 12% 70%;
     --sidebar-primary:               46 92% 53%;
     --sidebar-primary-foreground:    30 78% 7%;
-    --sidebar-accent:                34 22% 12%;
+    --sidebar-accent:                38 12% 12%;
     --sidebar-accent-foreground:     38 36% 92%;
-    --sidebar-border:                34 18% 18%;
+    --sidebar-border:                38 14% 16%;
     --sidebar-ring:                  46 92% 53%;
 
     --gm-yellow:        46 92% 53%;
@@ -60,32 +63,32 @@
     --gm-orange:        14 80% 51%;
     --gm-orange-deep:   14 80% 40%;
     --gm-ink:           30 78% 7%;
-    --gm-surface:       32 22% 9%;
-    --gm-surface-2:     34 22% 12%;
-    --gm-surface-3:     34 18% 14%;
-    --gm-line:          34 18% 18%;
-    --gm-line-strong:   34 16% 28%;
+    --gm-surface:       40 12% 9%;
+    --gm-surface-2:     38 12% 12%;
+    --gm-surface-3:     38 12% 14%;
+    --gm-line:          38 14% 16%;
+    --gm-line-strong:   36 14% 24%;
   }
 
   .dark {
-    --background: 30 18% 7%;
+    --background: 36 16% 6%;
     --foreground: 38 36% 92%;
-    --card:            32 22% 9%;
+    --card:            40 12% 9%;
     --card-foreground: 38 36% 92%;
-    --popover:            32 22% 9%;
+    --popover:            40 12% 9%;
     --popover-foreground: 38 36% 92%;
     --primary:            46 92% 53%;
     --primary-foreground: 30 78% 7%;
-    --secondary:            34 22% 12%;
+    --secondary:            38 12% 12%;
     --secondary-foreground: 38 36% 92%;
-    --muted:            34 18% 11%;
+    --muted:            38 12% 11%;
     --muted-foreground: 34 12% 60%;
-    --accent:            34 22% 12%;
+    --accent:            38 12% 12%;
     --accent-foreground: 38 36% 92%;
     --destructive:            10 78% 56%;
     --destructive-foreground: 0 0% 100%;
-    --border: 34 18% 18%;
-    --input:  34 18% 18%;
+    --border: 38 14% 16%;
+    --input:  38 14% 16%;
     --ring:   46 92% 53%;
   }
 }

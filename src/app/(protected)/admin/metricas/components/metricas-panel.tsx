@@ -559,7 +559,7 @@ export function MetricasPanel() {
                     {a.importe > 0 && <span className="ml-2 text-xs">{corto(a.importe)}</span>}
                   </span>
                 </div>
-                <div className="mt-1.5 h-2 rounded-full bg-[#231D17]">
+                <div className="mt-1.5 h-2 rounded-full bg-[#221F1A]">
                   <div
                     className="h-2 rounded-full"
                     style={{
@@ -805,7 +805,7 @@ export function MetricasPanel() {
                     </span>
                     <span className="shrink-0 tabular-nums text-[#C9BFB1]">{corto(p.cobrado)}</span>
                   </div>
-                  <div className="mt-[5px] h-[7px] rounded-full bg-[#231D17]">
+                  <div className="mt-[5px] h-[7px] rounded-full bg-[#221F1A]">
                     <div
                       className="h-[7px] rounded-full"
                       style={{
@@ -846,7 +846,7 @@ export function MetricasPanel() {
                   Este período
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span aria-hidden className="size-2 rounded-full bg-[#3A3228]" />
+                  <span aria-hidden className="size-2 rounded-full bg-[#3A342B]" />
                   Anterior
                 </span>
               </span>
@@ -892,13 +892,13 @@ export function MetricasPanel() {
                         key={e.id}
                         title={`${e.nombre}: ${ok ? "conectada" : "sin conectar"}`}
                         className="h-2 rounded-full"
-                        style={{ background: ok ? "#7E86F0" : "#2A251D" }}
+                        style={{ background: ok ? "#7E86F0" : "#2B2620" }}
                       />
                     );
                   })}
                 </div>
               ) : (
-                <div className="h-2 rounded-full bg-[#2A251D]">
+                <div className="h-2 rounded-full bg-[#2B2620]">
                   <div
                     className="h-2 rounded-full bg-[#7E86F0]"
                     style={{ width: `${(conectadas.length / empresasVista.length) * 100}%` }}
@@ -942,7 +942,7 @@ export function MetricasPanel() {
           </Escenario>
         ) : (
           <div className="mt-3.5 grid flex-1 gap-4 lg:grid-cols-3">
-            <div className="flex flex-col rounded-2xl border border-[#262019] bg-background p-4">
+            <div className="flex flex-col rounded-2xl border border-[#26221C] bg-background p-4">
               <span className="font-mono text-[10.5px] tracking-[0.12em]" style={{ color: EJE }}>
                 POR TEMA
               </span>
@@ -956,7 +956,7 @@ export function MetricasPanel() {
                         <span style={{ color: EJE }}>· {Math.round((t.total / preguntas) * 100)}%</span>
                       </span>
                     </div>
-                    <div className="mt-[5px] h-[7px] rounded-full bg-[#231D17]">
+                    <div className="mt-[5px] h-[7px] rounded-full bg-[#221F1A]">
                       <div
                         className="h-[7px] rounded-full"
                         style={{
@@ -970,7 +970,7 @@ export function MetricasPanel() {
               </div>
             </div>
 
-            <div className="flex flex-col rounded-2xl border border-[#262019] bg-background p-4">
+            <div className="flex flex-col rounded-2xl border border-[#26221C] bg-background p-4">
               <span className="font-mono text-[10.5px] tracking-[0.12em]" style={{ color: EJE }}>
                 SE REPITEN
               </span>
@@ -997,7 +997,7 @@ export function MetricasPanel() {
               )}
             </div>
 
-            <div className="flex flex-col rounded-2xl border border-[#262019] bg-background p-4">
+            <div className="flex flex-col rounded-2xl border border-[#26221C] bg-background p-4">
               <span className="font-mono text-[10.5px] tracking-[0.12em]" style={{ color: EJE }}>
                 ÚLTIMAS
               </span>
@@ -1018,7 +1018,7 @@ export function MetricasPanel() {
       </Tarjeta>
 
       <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2E2820] px-5 py-[18px]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2E2A23] px-5 py-[18px]">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
@@ -1042,7 +1042,7 @@ export function MetricasPanel() {
           <div role="table" aria-label="Comparativa por empresa" className="min-w-[1000px]">
             <div
               role="row"
-              className="grid h-[42px] grid-cols-[56px_minmax(0,1fr)_140px_110px_150px_110px_120px_180px] items-center bg-[#19140F] pl-3 pr-5 font-mono text-[10.5px] tracking-[0.1em]"
+              className="grid h-[42px] grid-cols-[56px_minmax(0,1fr)_140px_110px_150px_110px_120px_180px] items-center bg-[#15120E] pl-3 pr-5 font-mono text-[10.5px] tracking-[0.1em]"
               style={{ color: EJE }}
             >
               <span role="columnheader" className="pl-2">#</span>
@@ -1055,7 +1055,7 @@ export function MetricasPanel() {
               <span role="columnheader">PARTICIPACIÓN</span>
             </div>
             {!comparativa.length && (
-              <p className="border-t border-[#2A241D] px-5 py-10 text-center text-sm text-muted-foreground">
+              <p className="border-t border-[#2B2620] px-5 py-10 text-center text-sm text-muted-foreground">
                 Sin cobros en el período.
               </p>
             )}
@@ -1068,7 +1068,7 @@ export function MetricasPanel() {
                   key={e.empresaId}
                   href={`/admin/empresas/${e.empresaId}`}
                   role="row"
-                  className="grid h-[60px] grid-cols-[56px_minmax(0,1fr)_140px_110px_150px_110px_120px_180px] items-center border-t border-[#2A241D] pl-3 pr-5 text-[13.5px] transition-colors hover:bg-[#201A15]"
+                  className="grid h-[60px] grid-cols-[56px_minmax(0,1fr)_140px_110px_150px_110px_120px_180px] items-center border-t border-[#2B2620] pl-3 pr-5 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
                 >
                   <span role="cell" className="pl-2 font-mono text-[11px]" style={{ color: EJE }}>
                     {dos(i + 1)}
@@ -1096,7 +1096,7 @@ export function MetricasPanel() {
                     {e.estadias ? plata(e.cobrado / e.estadias) : "—"}
                   </span>
                   <span role="cell" className="flex items-center gap-2.5">
-                    <span className="h-[7px] w-[110px] rounded-full bg-[#231D17]">
+                    <span className="h-[7px] w-[110px] rounded-full bg-[#221F1A]">
                       <span
                         className="block h-[7px] rounded-full"
                         style={{

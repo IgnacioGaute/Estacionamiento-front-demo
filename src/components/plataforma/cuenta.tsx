@@ -30,9 +30,9 @@ export const ESTADOS_CUENTA: Record<EstadoCuenta, { label: string; clase: string
   AL_DIA: { label: "Al día", clase: "bg-emerald-400/[0.12] text-emerald-400" },
   VENCIDA: { label: "Vencida", clase: "bg-[#FF7A4D]/[0.14] text-[#FF7A4D]" },
   SUSPENDIDA: { label: "Suspendida", clase: "bg-[#E5484D]/[0.16] text-[#FF8A8D]" },
-  BAJA: { label: "De baja", clase: "bg-[#231D17] text-muted-foreground" },
+  BAJA: { label: "De baja", clase: "bg-[#221F1A] text-muted-foreground" },
   BONIFICADA: { label: "Bonificada", clase: "bg-[#7E86F0]/[0.14] text-[#A9AFFF]" },
-  SIN_ACTIVAR: { label: "Sin activar", clase: "bg-[#231D17] text-[#C9BFB1]" },
+  SIN_ACTIVAR: { label: "Sin activar", clase: "bg-[#221F1A] text-[#C9BFB1]" },
 };
 
 export const MEDIOS_PAGO: Record<MedioPagoSaas, string> = {
@@ -187,10 +187,13 @@ export type GrupoPlan = {
 
 const tamanoDe = (codigo: string) => codigo.replace(/_COCHERAS$/, "");
 
+/** El tamaño dicho como la landing: «Hasta 30 vehículos a la vez», «Sin límite de vehículos». */
+export const rangoDeVehiculos = (maxActivos: number | null) =>
+  maxActivos === null ? "Sin límite de vehículos" : `Hasta ${maxActivos} vehículos a la vez`;
+
 /**
- * Los planes de a pares por tamaño de playa, como en la landing: cada tarjeta lleva el precio solo
- * tickets y el precio con alquileres mensuales. El rango sale de los límites: «Hasta 50», «51 a
- * 120», «Más de 120».
+ * Los planes de a pares por tamaño de playa, como en la landing: cada tamaño tiene su precio solo
+ * tickets y su precio con cocheras mensuales. El rango, con las palabras de la landing.
  */
 export function agruparPlanes(planes: Plan[]): GrupoPlan[] {
   const grupos = new Map<string, GrupoPlan>();
@@ -215,20 +218,17 @@ export function agruparPlanes(planes: Plan[]): GrupoPlan[] {
   const ordenados = [...grupos.values()].sort(
     (a, b) => (a.maxActivos ?? Infinity) - (b.maxActivos ?? Infinity),
   );
-  let anterior: number | null = null;
-  for (const g of ordenados) {
-    g.rango =
-      g.maxActivos === null
-        ? anterior === null
-          ? "Vehículos activos ilimitados"
-          : `Más de ${anterior} vehículos activos a la vez`
-        : anterior === null
-          ? `Hasta ${g.maxActivos} vehículos activos a la vez`
-          : `${anterior + 1} a ${g.maxActivos} vehículos activos a la vez`;
-    if (g.maxActivos !== null) anterior = g.maxActivos;
-  }
+  for (const g of ordenados) g.rango = rangoDeVehiculos(g.maxActivos);
   return ordenados;
 }
+
+/** Cada cuánto se paga, dicho como la landing: «por mes», «cada 3 meses», «por año». */
+export const cadaPeriodo = (meses: number) =>
+  meses === 1 ? "por mes" : meses === 12 ? "por año" : `cada ${meses} meses`;
+
+/** El sufijo corto de un importe: «/mes», «/3 meses», «/año». */
+export const sufijoPeriodo = (meses: number) =>
+  meses === 1 ? "/mes" : meses === 12 ? "/año" : `/${meses} meses`;
 
 /** «$ 70.000» con el formato de la landing: punto de miles, sin espacio. */
 export const pesos = (valor: number) => `$${Math.round(valor).toLocaleString("es-AR")}`;

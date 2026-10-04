@@ -79,7 +79,7 @@ function EstadoCargo({ r }: { r: CargoCuenta }) {
         ? [r.situacion === 'PARCIAL' ? 'Vencido · pago parcial' : 'Vencido', 'bg-[#FF5C4D]/[0.16] text-[#FF7A4D]']
         : r.situacion === 'PARCIAL'
           ? ['Pago parcial', 'bg-gm-yellow/[0.14] text-gm-yellow']
-          : ['Pendiente', 'bg-[#231D17] text-[#E9E1D4]'];
+          : ['Pendiente', 'bg-[#221F1A] text-[#E9E1D4]'];
   return <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${clase}`}>{texto}</span>;
 }
 
@@ -371,7 +371,7 @@ export function CuentaCorriente({
       {tab === 'resumen' && (
         <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
           {/* En el teléfono, lista: la tabla de seis columnas obligaba a desplazarse de costado. */}
-          <ul aria-label="Estado de cuenta" className="divide-y divide-[#2A241D] md:hidden">
+          <ul aria-label="Estado de cuenta" className="divide-y divide-[#2B2620] md:hidden">
             {!movimientos.length && (
               <li className="px-4 py-10 text-center text-sm text-muted-foreground">Todavía no hay movimientos.</li>
             )}
@@ -403,7 +403,7 @@ export function CuentaCorriente({
             <div role="table" aria-label="Estado de cuenta" className="min-w-[860px]">
               <div
                 role="row"
-                className="grid h-11 grid-cols-[100px_minmax(0,1fr)_120px_130px_130px_60px] items-center bg-[#19140F] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+                className="grid h-11 grid-cols-[100px_minmax(0,1fr)_120px_130px_130px_60px] items-center bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
                 style={{ color: EJE }}
               >
                 <span role="columnheader">FECHA</span>
@@ -414,7 +414,7 @@ export function CuentaCorriente({
                 <span role="columnheader" className="sr-only">Acciones</span>
               </div>
               {!movimientos.length && (
-                <p className="border-t border-[#2A241D] px-5 py-10 text-center text-sm text-muted-foreground">
+                <p className="border-t border-[#2B2620] px-5 py-10 text-center text-sm text-muted-foreground">
                   Todavía no hay movimientos. El primero aparece al cargar su abono o su saldo inicial.
                 </p>
               )}
@@ -424,7 +424,7 @@ export function CuentaCorriente({
                   <div
                     key={m.id}
                     role="row"
-                    className={`grid min-h-[58px] grid-cols-[100px_minmax(0,1fr)_120px_130px_130px_60px] items-center border-t border-[#2A241D] px-5 py-2 text-[13.5px] ${
+                    className={`grid min-h-[58px] grid-cols-[100px_minmax(0,1fr)_120px_130px_130px_60px] items-center border-t border-[#2B2620] px-5 py-2 text-[13.5px] ${
                       m.anulado ? 'opacity-55' : ''
                     }`}
                   >
@@ -481,7 +481,7 @@ export function CuentaCorriente({
               })}
             </div>
           </div>
-          <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[#2A241D] bg-[#19140F] px-5 py-2.5 text-[12px] text-muted-foreground">
+          <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[#2B2620] bg-[#15120E] px-5 py-2.5 text-[12px] text-muted-foreground">
             <span className="hidden md:inline">P = pendiente · F = a favor</span>
             <span>
               Saldo: <strong className="text-foreground">{textoSaldo(estado.saldo)}</strong>
@@ -527,7 +527,7 @@ export function CuentaCorriente({
                   </div>
                 ) : (
                 <div>
-                  <div className="h-2 rounded-full bg-[#231D17]">
+                  <div className="h-2 rounded-full bg-[#221F1A]">
                     <div
                       className={`h-2 rounded-full ${r.situacion === 'SALDADO' ? 'bg-emerald-400' : 'bg-gm-yellow'}`}
                       style={{ width: `${Math.max(3, pct)}%` }}
@@ -563,7 +563,7 @@ export function CuentaCorriente({
                 </div>
                 )}
                 {r.pagos.length > 0 && (
-                  <ul className="space-y-1 border-t border-[#2A241D] pt-2 text-xs">
+                  <ul className="space-y-1 border-t border-[#2B2620] pt-2 text-xs">
                     {r.pagos.map((p, i) => (
                       <li key={i} className="flex justify-between gap-2 text-[#C9BFB1]">
                         <span>
@@ -617,7 +617,7 @@ export function CuentaCorriente({
             {pagos.map((p) => (
               <li
                 key={p.id}
-                className={`flex flex-wrap items-center gap-4 border-b border-[#2A241D] px-5 py-3.5 last:border-b-0 ${p.anulado ? 'opacity-55' : ''}`}
+                className={`flex flex-wrap items-center gap-4 border-b border-[#2B2620] px-5 py-3.5 last:border-b-0 ${p.anulado ? 'opacity-55' : ''}`}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">

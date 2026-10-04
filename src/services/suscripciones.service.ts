@@ -5,6 +5,7 @@ import {
   MedioPagoSaas,
   MiPlan,
   PagoPlataforma,
+  PeriodoPago,
   Plan,
 } from '@/types/suscripcion.type';
 
@@ -46,6 +47,12 @@ export const editarPlan = (
   cambios: { nombre?: string; precioMensual?: number; maxActivos?: number | null; activo?: boolean },
 ) => pedir<Plan[]>(`/tenancy/planes/${id}`, 'No se pudo guardar el plan.', enviar('PATCH', cambios));
 
+export const getPeriodos = () =>
+  pedir<PeriodoPago[]>('/tenancy/periodos', 'No se pudieron cargar los períodos de pago.');
+
+export const editarPeriodo = (codigo: string, cambios: { nombre?: string; descuento?: number; activo?: boolean }) =>
+  pedir<PeriodoPago[]>(`/tenancy/periodos/${codigo}`, 'No se pudo guardar el período.', enviar('PATCH', cambios));
+
 export const getPagosPlataforma = (desde: string, hasta: string) =>
   pedir<PagoPlataforma[]>(
     `/tenancy/suscripciones/pagos?desde=${desde}&hasta=${hasta}`,
@@ -77,7 +84,7 @@ export const asignarPlan = (empresaId: string, playaId: string, planId: string, 
 
 export const editarSuscripcion = (
   empresaId: string,
-  cambios: { alta?: string; pagadoHasta?: string; bonificada?: boolean; notas?: string | null },
+  cambios: { alta?: string; pagadoHasta?: string; bonificada?: boolean; notas?: string | null; periodo?: string },
 ) => pedir<DetalleSuscripcion>(deEmpresa(empresaId), 'No se pudo guardar.', enviar('PATCH', cambios));
 
 // Da de alta la cuenta: desde qué día es cliente y cuántos días de prueba gratis (0 = sin prueba).
