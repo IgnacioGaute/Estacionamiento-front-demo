@@ -9,7 +9,7 @@ export type PlateRecognitionResponse = { plate: string | null; score?: number };
 // multipart — dejamos que fetch ponga el boundary solo al pasar un FormData como body.
 export const recognizePlateFromImage = async (
   file: File,
-): Promise<PlateRecognitionResponse | { error: string }> => {
+): Promise<PlateRecognitionResponse | { error: string; code?: string }> => {
   try {
     const headers = await getAuthHeaders();
     delete headers['Content-Type'];
@@ -25,7 +25,7 @@ export const recognizePlateFromImage = async (
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
-      return { error: data?.message || 'No se pudo reconocer la patente.' };
+      return { error: data?.message || 'No se pudo reconocer la patente.', code: data?.code };
     }
 
     return data as PlateRecognitionResponse;

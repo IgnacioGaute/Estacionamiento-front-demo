@@ -25,22 +25,11 @@ import { entryByPlateSchema, EntryByPlateSchemaType } from '@/schemas/entry-by-p
 import { createRegistrationByPlateAction } from '@/actions/tickets/create-registration-by-plate.action';
 import { getFrequentCustomersAction } from '@/actions/tickets/get-frequent-customers.action';
 import { startScanner } from '@/services/scanner.service';
-import { sanitizePlateInput } from '@/utils/plate.utils';
+import { looksLikeKnownPlateFormat, sanitizePlateInput } from '@/utils/plate.utils';
 import { FrequentCustomer } from '@/types/frequent-customer.type';
 import { PlateCameraScanButton } from './plate-camera-scan-button';
 
 const VEHICLE_TYPE_LABEL: Record<string, string> = { AUTO: 'Auto', CAMIONETA: 'Camioneta' };
-
-// Chequeo liviano, solo para el aviso — el server siempre recalcula y es la fuente de verdad.
-function looksLikeKnownPlateFormat(raw: string): boolean {
-  const normalized = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  return (
-    /^[A-Z]{3}\d{3}$/.test(normalized) ||
-    /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(normalized) ||
-    /^\d{3}[A-Z]{3}$/.test(normalized) ||
-    /^[A-Z]\d{3}[A-Z]{3}$/.test(normalized)
-  );
-}
 
 type DuplicateError = { existingRegistrationId?: string; entryTime?: string; message: string };
 
