@@ -80,7 +80,7 @@ import { Borrado, BorradoDialog } from "../../components/borrado-dialog";
 import { ActividadDeEmpresa, cuandoFue, describirActividad } from "./actividad-empresa";
 import { PlanDeEmpresa } from "./plan-empresa";
 import { PatentesPlayas } from "./patentes-playas";
-import { DiagnosticoMercadoPago } from "./diagnostico-mercadopago";
+import { PruebaTransferencias } from "./prueba-transferencias";
 import { EstadoCuentaPill, diaAR, hoyAR, sufijoPeriodo, textoVencimiento } from "@/components/plataforma/cuenta";
 
 type Tab = "resumen" | "plan" | "playas" | "usuarios" | "actividad";
@@ -1123,8 +1123,9 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
 
       {tab === "plan" && <PlanDeEmpresa empresa={empresa} alCambiar={() => void refrescar()} />}
 
-      {/* Prueba: si las transferencias al alias de la playa se ven por la cuenta conectada. */}
-      {tab === "resumen" && <DiagnosticoMercadoPago empresaId={empresa.id} />}
+      {/* Prueba (no comercial): si las transferencias recibidas se ven por la cuenta conectada.
+          El backend solo la corre sobre cuentas de MercadoPago autorizadas para probar. */}
+      {tab === "resumen" && <PruebaTransferencias empresaId={empresa.id} />}
 
       {tab === "actividad" && <ActividadDeEmpresa actividad={actividad} desdeQue={visto} />}
 

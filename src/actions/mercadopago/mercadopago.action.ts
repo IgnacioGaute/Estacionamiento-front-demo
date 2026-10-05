@@ -6,7 +6,6 @@ import {
   consultarCobroMercadoPago,
   crearCobroMercadoPago,
   desconectarMercadoPago,
-  diagnosticoIngresosMercadoPago,
   getEstadoMercadoPago,
   iniciarConexionMercadoPago,
 } from '@/services/mercadopago.service';
@@ -67,17 +66,6 @@ export async function cancelarCobroMercadoPagoAction(id: string) {
     return { cobro: await cancelarCobroMercadoPago(id) };
   } catch (error) {
     return { error: mensaje(error, 'No se pudo cancelar el cobro.') };
-  }
-}
-
-export async function diagnosticoIngresosMercadoPagoAction(
-  empresaId: string,
-  dias: number,
-) {
-  try {
-    return { datos: await diagnosticoIngresosMercadoPago(empresaId, dias) };
-  } catch (error) {
-    return { error: mensaje(error, 'No se pudo consultar a MercadoPago.') };
   }
 }
 
