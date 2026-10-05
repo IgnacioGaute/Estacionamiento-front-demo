@@ -9,7 +9,7 @@ import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CompactPagination } from '@/components/compact-pagination';
 import { Turno } from '@/types/turno.type';
-import { getTurnosAction } from '@/actions/turnos/cash-context.action';
+import { getTurnosAction, getOperadoresAction } from '@/actions/turnos/cash-context.action';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -27,6 +27,9 @@ const periods: { value: Period; label: string }[] = [
 ];
 
 export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {}) {
+  const [usuarioId, setUsuarioId] = useState('');
+  const [operadores, setOperadores] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
+  useEffect(() => { let current = true; getOperadoresAction().then(result => { if (current) setOperadores(result.operadores ?? []); }); return () => { current = false; }; }, [revision]);
   const [period, setPeriod] = useState<Period>('week');
   const [page, setPage] = useState(0);
   const [turnos, setTurnos] = useState<Turno[]>([]);
@@ -40,22 +43,23 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
     const today = dayjs().tz(TZ);
     const from = period === 'today' ? today : period === 'week' ? today.subtract(6, 'day') : period === 'month' ? today.subtract(29, 'day') : null;
     setPending(true);
-    getTurnosAction({ desde: from?.format('YYYY-MM-DD'), hasta: from ? today.format('YYYY-MM-DD') : undefined, estado: 'CERRADO', fechaPor: 'CIERRE', page: page + 1, limit: PAGE_SIZE }).then(result => {
+    getTurnosAction({ usuarioId: usuarioId || undefined, desde: from?.format('YYYY-MM-DD'), hasta: from ? today.format('YYYY-MM-DD') : undefined, estado: 'CERRADO', fechaPor: 'CIERRE', page: page + 1, limit: PAGE_SIZE }).then(result => {
       if (!current) return;
       setTurnos(result.result?.data ?? []);
       setTotal(result.result?.meta.totalItems ?? 0);
       setError(result.error ?? '');
     }).finally(() => { if (current) setPending(false); });
     return () => { current = false; };
-  }, [period, page, revision, retry]);
+  }, [period, page, revision, retry, usuarioId]);
 
   return <section className="min-w-0 space-y-4">
     <div>
       <h2 className="text-lg font-semibold">Historial de turnos</h2>
-      <p className="text-sm text-muted-foreground">Revisá los cierres y el efectivo entregado al siguiente operador.</p>
+      <p className="text-sm text-muted-foreground">Revisá los turnos de cada usuario y los arqueos de las cajas. El fondo queda para el próximo operador de esa caja.</p>
     </div>
     <div data-tour="caja-rangos" className="flex flex-wrap items-center gap-2">
       {periods.map(item => <Button key={item.value} size="sm" variant={period === item.value ? 'default' : 'outline'} aria-pressed={period === item.value} onClick={() => { setPeriod(item.value); setPage(0); }}>{item.label}</Button>)}
+      <label className="flex items-center gap-2 text-sm"><span className="sr-only">Filtrar por usuario</span><select aria-label="Filtrar por usuario" value={usuarioId} onChange={e => { setUsuarioId(e.target.value); setPage(0); }} className="h-9 max-w-full rounded-md border border-border bg-background px-3 text-sm"><option value="">Todos los usuarios</option>{operadores.map(user => <option key={user.id} value={user.id}>{user.firstName} {user.lastName}</option>)}</select></label>
       {!pending && !error && <span className="ml-auto text-xs text-muted-foreground">{total} {total === 1 ? 'cierre' : 'cierres'}</span>}
     </div>
     <div aria-live="polite" aria-busy={pending} data-tour="caja-tabla">
@@ -68,23 +72,25 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
 }
 
 function ShiftCard({ turno }: { turno: Turno }) {
+  const individual = !!turno.cashSessionId && !turno.cierreCaja;
   const difference = turno.diferencia;
-  const status = difference == null ? 'Sin arqueo' : difference === 0 ? 'Caja correcta' : difference > 0 ? `Faltaron ${money(difference)}` : `Sobraron ${money(-difference)}`;
+  const status = individual ? 'Turno finalizado · Caja compartida' : difference == null ? 'Sin arqueo' : difference === 0 ? 'Caja correcta' : difference > 0 ? `Faltaron ${money(difference)}` : `Sobraron ${money(-difference)}`;
   const statusColor = difference == null ? 'text-muted-foreground' : difference === 0 ? 'text-emerald-400' : 'text-amber-400';
   const closedBy = operator(turno.usuarioCierre);
   const openedBy = operator(turno.usuarioApertura);
   return <details className="group overflow-hidden rounded-xl border border-border bg-gm-surface-2/40">
     <summary className="cursor-pointer list-none p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gm-yellow [&::-webkit-details-marker]:hidden">
-      <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="break-words font-semibold">{openedBy}</p><p className="mt-1 text-xs text-muted-foreground">{turno.fechaCierre ? `Cerró ${date(turno.fechaCierre)}` : 'Cierre sin fecha'}</p></div><span className={`text-sm font-semibold ${statusColor}`}>{status}</span></div>
-      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground"><span>Contó {turno.efectivoContado == null ? 'sin registro' : money(turno.efectivoContado)} · Entregó {turno.efectivoParaSiguiente == null ? 'sin registro' : money(turno.efectivoParaSiguiente)}</span><ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" /></div>
+      <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="break-words font-semibold">{openedBy}</p><p className="mt-1 text-xs text-muted-foreground">{turno.caja?.nombre ?? 'Caja del esquema anterior'}</p><p className="mt-1 text-xs text-muted-foreground">{turno.fechaCierre ? `Cerró ${date(turno.fechaCierre)}` : 'Cierre sin fecha'}</p></div><span className={`text-sm font-semibold ${statusColor}`}>{status}</span></div>
+      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">{individual ? <span>El arqueo corresponde al último operador de la caja.</span> : <span>Contó {turno.efectivoContado == null ? 'sin registro' : money(turno.efectivoContado)} · Reservó {turno.efectivoParaSiguiente == null ? 'sin registro' : money(turno.efectivoParaSiguiente)}</span>}<ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" /></div>
     </summary>
     <div className="border-t border-border px-4 py-4 text-sm">
-      <dl className="grid gap-3 sm:grid-cols-3">
-        <Amount label="Abrió con" value={turno.fondoInicial} />
+      {!individual && <dl className="grid gap-3 sm:grid-cols-3">
+        <Amount label="Fondo inicial de la caja" value={turno.cashSession?.fondoInicial ?? turno.fondoInicial} />
         <Amount label="Esperado al cerrar" value={turno.efectivoTeorico} />
         <Amount label="Efectivo retirado" value={turno.efectivoRetirado} />
-      </dl>
+      </dl>}
       <p className="mt-4 text-xs text-muted-foreground">Abrió {date(turno.fechaApertura)}{closedBy !== openedBy ? ` · Cerrado por ${closedBy}` : ''}</p>
+      {!!turno.cashSession?.diferenciaApertura && <p className="mt-3 text-xs text-amber-400">Diferencia al recibir esta caja: {money(turno.cashSession.diferenciaApertura)} · {turno.cashSession.motivoApertura}</p>}
       {turno.observaciones && <p className="mt-3 whitespace-pre-wrap break-words text-xs"><strong>Nota:</strong> {turno.observaciones}</p>}
       {turno.cierreForzado && <p className="mt-3 break-words text-xs text-amber-400"><strong>Cierre por administrador:</strong> {turno.motivoCierreForzado || 'Sin motivo registrado'}</p>}
     </div>

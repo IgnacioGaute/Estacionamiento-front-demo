@@ -17,6 +17,9 @@ import {
   getEmpresa,
   getActividadEmpresa,
   getMetricsDetalle,
+  getConsumoPatentes,
+  configurarPatentes,
+  quitarPatentes,
 } from "@/services/tenancy.service";
 
 const mensaje = (error: unknown, porDefecto: string) =>
@@ -167,5 +170,29 @@ export async function getMetricsDetalleAction(dias = 30, empresaId?: string) {
     return { detalle: await getMetricsDetalle(dias, empresaId) };
   } catch (error) {
     return { error: mensaje(error, "No se pudieron cargar las métricas.") };
+  }
+}
+
+export async function getConsumoPatentesAction(empresaId: string) {
+  try {
+    return { consumo: await getConsumoPatentes(empresaId) };
+  } catch (error) {
+    return { error: mensaje(error, "No se pudo consultar el reconocimiento de patentes.") };
+  }
+}
+export async function configurarPatentesAction(playaId: string, token: string) {
+  try {
+    await configurarPatentes(playaId, token);
+    return { ok: true };
+  } catch (error) {
+    return { error: mensaje(error, "No se pudo guardar el token.") };
+  }
+}
+export async function quitarPatentesAction(playaId: string) {
+  try {
+    await quitarPatentes(playaId);
+    return { ok: true };
+  } catch (error) {
+    return { error: mensaje(error, "No se pudo quitar el reconocimiento de patentes.") };
   }
 }

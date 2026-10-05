@@ -1,6 +1,10 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
-import { CobroMercadoPago, EstadoMercadoPago } from '@/types/mercadopago.type';
+import {
+  CobroMercadoPago,
+  DiagnosticoIngresos,
+  EstadoMercadoPago,
+} from '@/types/mercadopago.type';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -115,6 +119,22 @@ export async function cancelarCobroMercadoPago(
   });
   if (!response.ok)
     throw new Error(await leerError(response, 'No se pudo cancelar el cobro.'));
+  return response.json();
+}
+
+/** Solo el super admin: qué entró a la cuenta de MercadoPago de una empresa en los últimos días. */
+export async function diagnosticoIngresosMercadoPago(
+  empresaId: string,
+  dias: number,
+): Promise<DiagnosticoIngresos> {
+  const response = await fetch(
+    `${BASE_URL}/tenancy/empresas/${empresaId}/mercadopago/ingresos?dias=${dias}`,
+    { headers: await getAuthHeaders(), cache: 'no-store' },
+  );
+  if (!response.ok)
+    throw new Error(
+      await leerError(response, 'No se pudo consultar a MercadoPago.'),
+    );
   return response.json();
 }
 

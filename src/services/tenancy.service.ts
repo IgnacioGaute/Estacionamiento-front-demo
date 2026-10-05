@@ -7,6 +7,7 @@ import {
   PlataformaMetrics,
   PlayaResumen,
   ResumenEliminacion,
+  ConsumoPatentes,
 } from "@/types/tenancy.type";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -248,3 +249,21 @@ export async function getMetricsDetalle(
     );
   return response.json();
 }
+
+// Reconocimiento de patentes por playa. El consumo se consulta en vivo a Plate Recognizer (no
+// gasta reconocimientos), así que no se cachea: es lo que el cliente tiene ahora en su plan.
+export async function getConsumoPatentes(empresaId: string): Promise<ConsumoPatentes[]> {
+  const response = await fetch(
+    `${BASE_URL}/tenancy/empresas/${encodeURIComponent(empresaId)}/patentes`,
+    { headers: await getAuthHeaders(), cache: "no-store" },
+  );
+  if (!response.ok)
+    throw new Error(
+      await leerError(response, "No se pudo consultar el reconocimiento de patentes."),
+    );
+  return response.json();
+}
+export const configurarPatentes = (playaId: string, token: string) =>
+  modificar(`playas/${encodeURIComponent(playaId)}/patentes`, "PUT", { token });
+export const quitarPatentes = (playaId: string) =>
+  modificar(`playas/${encodeURIComponent(playaId)}/patentes`, "DELETE");

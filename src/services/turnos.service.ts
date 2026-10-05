@@ -91,3 +91,22 @@ export async function getOperadores(): Promise<{ id: string; firstName: string; 
   if (!response.ok) throw new Error('No se pudo consultar los operadores.');
   return response.json();
 }
+
+export async function getCashConfiguration(): Promise<{ cajas: import('@/types/turno.type').Caja[]; hayTurnosAbiertos: boolean }> {
+  const response = await fetch(BASE_URL + '/turnos/configuracion', { headers: await getAuthHeaders(), cache: 'no-store' });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'No se pudo consultar las cajas.');
+  return data;
+}
+export async function saveCaja(payload: { nombre: string; activa?: boolean }, id?: string) {
+  const response = await fetch(BASE_URL + '/turnos/cajas' + (id ? '/' + id : ''), { method: id ? 'PATCH' : 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'No se pudo guardar la caja.');
+  return data as import('@/types/turno.type').Caja;
+}
+export async function addCashMovement(id: string, payload: { tipo: 'APORTE' | 'RETIRO'; importe: number; efectivoEsperado: number; motivo: string }) {
+  const response = await fetch(BASE_URL + '/turnos/sesiones/' + id + '/movimientos', { method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'No se pudo registrar el movimiento.');
+  return data;
+}

@@ -11,7 +11,9 @@ const TenantContext = createContext<{
   shiftsEnabled: boolean;
   // La sección de inquilinos la prende el super admin por playa.
   inquilinosEnabled: boolean;
-}>({ playaId: "", context: { empresa: null, playas: [] }, shiftsEnabled: false, inquilinosEnabled: false });
+  // Escanear patentes con la cámara: solo en playas con plan de Plate Recognizer cargado.
+  reconocimientoPatentes: boolean;
+}>({ playaId: "", context: { empresa: null, playas: [] }, shiftsEnabled: false, inquilinosEnabled: false, reconocimientoPatentes: false });
 export const useTenant = () => useContext(TenantContext);
 export function TenantProvider({
   context,
@@ -24,9 +26,11 @@ export function TenantProvider({
   children: React.ReactNode;
   shiftsEnabled?: boolean;
 }) {
-  const inquilinosEnabled = !!context.playas.find((p) => p.id === playaId)?.modulos?.inquilinos;
+  const playa = context.playas.find((p) => p.id === playaId);
+  const inquilinosEnabled = !!playa?.modulos?.inquilinos;
+  const reconocimientoPatentes = !!playa?.reconocimientoPatentes;
   return (
-    <TenantContext.Provider value={{ context, playaId, shiftsEnabled, inquilinosEnabled }}>
+    <TenantContext.Provider value={{ context, playaId, shiftsEnabled, inquilinosEnabled, reconocimientoPatentes }}>
       {children}
     </TenantContext.Provider>
   );

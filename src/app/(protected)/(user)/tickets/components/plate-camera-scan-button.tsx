@@ -5,12 +5,15 @@ import { useRef, useState } from 'react';
 import { Camera } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTenant } from '@/components/tenant-provider';
 import { sanitizePlateInput } from '@/utils/plate.utils';
 import { prepararFotoPatente } from '@/utils/plate-photo';
 import { recognizePlateAction } from '@/actions/tickets/recognize-plate.action';
 import { PlateLiveScanner } from './plate-live-scanner';
 
-// Solo aparece en mobile (viewport angosto). Con cámara en vivo (`getUserMedia`) la patente se lee
+// Solo aparece en mobile (viewport angosto) y en playas con plan de Plate Recognizer: cada lectura
+// descuenta del plan de la playa, que el super admin carga en la ficha de la empresa. Sin plan, el
+// operador escribe la patente. Con cámara en vivo (`getUserMedia`) la patente se lee
 // sola apuntando; si no está disponible, se cae a la foto con el <input capture="environment">
 // nativo. El botón no se oculta nunca por falta de `mediaDevices`: esa API solo existe en contextos
 // seguros (HTTPS o localhost), y en LAN por HTTP simple viene `undefined` aunque la foto funcione.
@@ -22,11 +25,12 @@ export function PlateCameraScanButton({
   onRecognized: (plate: string) => void;
 }) {
   const isMobile = useIsMobile();
+  const { reconocimientoPatentes } = useTenant();
   const [isScanning, setIsScanning] = useState(false);
   const [enVivo, setEnVivo] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  if (!isMobile) return null;
+  if (!isMobile || !reconocimientoPatentes) return null;
 
   const abrir = () => {
     if (typeof navigator.mediaDevices?.getUserMedia === 'function') setEnVivo(true);

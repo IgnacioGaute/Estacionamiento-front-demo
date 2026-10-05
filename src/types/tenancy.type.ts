@@ -9,6 +9,19 @@ export type PlayaResumen = {
   modulos?: { inquilinos?: boolean };
 };
 
+// Reconocimiento de patentes de una playa: su cuenta de Plate Recognizer. El token nunca llega
+// acá; solo sus últimos cuatro caracteres para reconocer cuál está cargado.
+export type ConsumoPatentes = {
+  playaId: string;
+  nombre: string;
+  configurado: boolean;
+  terminaEn?: string;
+  uso?: { usadas: number; total: number; restantes: number; seRenueva: string | null };
+  // Otras playas de la empresa con el mismo token: comparten plan y cupo.
+  compartidaCon?: string[];
+  error?: string;
+};
+
 export type UsuarioDeEmpresa = {
   id: string;
   firstName: string;
