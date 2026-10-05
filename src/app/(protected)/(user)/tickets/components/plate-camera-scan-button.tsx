@@ -6,6 +6,7 @@ import { Camera } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { sanitizePlateInput } from '@/utils/plate.utils';
+import { prepararFotoPatente } from '@/utils/plate-photo';
 import { recognizePlateAction } from '@/actions/tickets/recognize-plate.action';
 
 // Solo aparece en mobile (viewport angosto). La captura la hace el <input capture="environment">
@@ -35,7 +36,7 @@ export function PlateCameraScanButton({
     setIsScanning(true);
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', await prepararFotoPatente(file));
       const result = await recognizePlateAction(formData);
 
       if ('error' in result) {
