@@ -48,7 +48,7 @@ test('al unirse a la caja abierta no vuelve a cargar el fondo', async () => {
   render(<TurnoBar />); fireEvent.click(screen.getByRole('button', { name: 'Abrir mi turno' }));
   expect(await screen.findByText('Te vas a unir a una caja abierta')).toBeInTheDocument();
   expect(screen.queryByLabelText('¿Cuánto efectivo recibiste en la caja?')).not.toBeInTheDocument();
-  const submit = screen.getByRole('button', { name: 'Abrir mi turno en esta caja' }); await waitFor(() => expect(submit).toBeEnabled()); fireEvent.click(submit);
+  const submit = await screen.findByRole('button', { name: 'Abrir mi turno en esta caja' }); await waitFor(() => expect(submit).toBeEnabled()); fireEvent.click(submit);
   await waitFor(() => expect(openTurnoAction).toHaveBeenCalledWith(expect.objectContaining({ fondoInicial: 0, sesionActivaId: 'compartida' })));
 });
 
@@ -64,7 +64,7 @@ test('si comparte caja cierra sólo su turno sin pedir efectivo contado', async 
 test('el administrador cierra el último turno con arqueo y motivo, preservando el formulario si falla', async () => {
   render(<TurnoBar turnoId="otro-turno" />); fireEvent.click(screen.getByRole('button', { name: 'Cerrar turno' }));
   const input = await screen.findByLabelText('¿Cuánto efectivo contaste?'); await waitFor(() => expect(input).toBeEnabled()); fireEvent.change(input, { target: { value: '900' } });
-  const submit = screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' }); expect(submit).toBeDisabled(); fireEvent.change(screen.getByLabelText('¿Por qué cerrás el turno de otra persona?'), { target: { value: 'Fin de jornada' } }); fireEvent.click(submit);
+  const submit = await screen.findByRole('button', { name: 'Confirmar cierre de turno y caja' }); expect(submit).toBeDisabled(); fireEvent.change(screen.getByLabelText('¿Por qué cerrás el turno de otra persona?'), { target: { value: 'Fin de jornada' } }); fireEvent.click(submit);
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith('otro-turno', expect.objectContaining({ cerrarCaja: true, efectivoContado: 900, efectivoEsperado: 900, motivoCierreForzado: 'Fin de jornada' })));
   expect(input).toHaveValue(900);
 });
