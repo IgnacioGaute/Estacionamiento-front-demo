@@ -7,6 +7,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CompactPagination } from '@/components/compact-pagination';
 import { Turno } from '@/types/turno.type';
 import { getTurnosAction, getOperadoresAction } from '@/actions/turnos/cash-context.action';
@@ -59,7 +60,7 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
     </div>
     <div data-tour="caja-rangos" className="flex flex-wrap items-center gap-2">
       {periods.map(item => <Button key={item.value} size="sm" variant={period === item.value ? 'default' : 'outline'} aria-pressed={period === item.value} onClick={() => { setPeriod(item.value); setPage(0); }}>{item.label}</Button>)}
-      <label className="flex items-center gap-2 text-sm"><span className="sr-only">Filtrar por usuario</span><select aria-label="Filtrar por usuario" value={usuarioId} onChange={e => { setUsuarioId(e.target.value); setPage(0); }} className="h-9 max-w-full rounded-md border border-border bg-background px-3 text-sm"><option value="">Todos los usuarios</option>{operadores.map(user => <option key={user.id} value={user.id}>{user.firstName} {user.lastName}</option>)}</select></label>
+      <div className="w-full sm:w-64"><Select value={usuarioId || 'all'} onValueChange={value => { setUsuarioId(value === 'all' ? '' : value); setPage(0); }}><SelectTrigger aria-label="Filtrar por usuario" className="h-9"><SelectValue placeholder="Todos los usuarios" /></SelectTrigger><SelectContent><SelectItem value="all">Todos los usuarios</SelectItem>{operadores.map(user => <SelectItem key={user.id} value={user.id}>{user.firstName} {user.lastName}</SelectItem>)}</SelectContent></Select></div>
       {!pending && !error && <span className="ml-auto text-xs text-muted-foreground">{total} {total === 1 ? 'cierre' : 'cierres'}</span>}
     </div>
     <div aria-live="polite" aria-busy={pending} data-tour="caja-tabla">
