@@ -139,7 +139,7 @@ export async function buscarPatente(
 
     if ('error' in resultado) {
       // Ocupado: el mismo cuadro sirve, se vuelve a consultar pasada la pausa.
-      if (resultado.code === 'PLATE_RECOGNIZER_BUSY') continue;
+      if (resultado.code === 'PLATE_RECOGNIZER_BUSY' || resultado.code === 'ALPR_BUSY') continue;
       if (resultado.code === 'SIN_PATENTE') {
         fallida = muestra.gris;
         continue;

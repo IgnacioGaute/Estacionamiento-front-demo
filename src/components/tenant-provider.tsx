@@ -11,7 +11,7 @@ const TenantContext = createContext<{
   shiftsEnabled: boolean;
   // La sección de inquilinos la prende el super admin por playa.
   inquilinosEnabled: boolean;
-  // Escanear patentes con la cámara: solo en playas con plan de Plate Recognizer cargado.
+  // Escanear con el motor disponible de la playa: token propio o reconocimiento de la plataforma.
   reconocimientoPatentes: boolean;
 }>({ playaId: "", context: { empresa: null, playas: [] }, shiftsEnabled: false, inquilinosEnabled: false, reconocimientoPatentes: false });
 export const useTenant = () => useContext(TenantContext);

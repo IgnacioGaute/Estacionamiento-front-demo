@@ -12,7 +12,7 @@ export type OperationalContext = {
     empresaId: string;
     // Secciones opcionales que el super admin prendió en la playa.
     modulos?: { inquilinos?: boolean };
-    // Tiene cuenta de Plate Recognizer cargada: solo entonces se ofrece escanear la patente.
+    // Motor disponible: token propio de Plate Recognizer o fast-alpr de la plataforma.
     reconocimientoPatentes?: boolean;
   }[];
   // Estado de la cuenta con la plataforma (prueba, vencida, suspendida), para los avisos.

@@ -20,6 +20,8 @@ export type ConsumoPatentes = {
   // Otras playas de la empresa con el mismo token: comparten plan y cupo.
   compartidaCon?: string[];
   error?: string;
+  // Sin token, escanea con el reconocimiento gratuito (fast-alpr) de la plataforma.
+  gratuito?: boolean;
 };
 
 export type UsuarioDeEmpresa = {

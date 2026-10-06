@@ -11,9 +11,9 @@ import { prepararFotoPatente } from '@/utils/plate-photo';
 import { recognizePlateAction } from '@/actions/tickets/recognize-plate.action';
 import { PlateLiveScanner } from './plate-live-scanner';
 
-// Solo aparece en mobile (viewport angosto) y en playas con plan de Plate Recognizer: cada lectura
-// descuenta del plan de la playa, que el super admin carga en la ficha de la empresa. Sin plan, el
-// operador escribe la patente. Con cámara en vivo (`getUserMedia`) la patente se lee
+// Aparece en mobile cuando el backend informa un motor disponible: Plate Recognizer con token
+// de la playa, o fast-alpr de la plataforma para las playas sin token. La cámara no necesita saber
+// cuál se usa ni recibir credenciales. Con cámara en vivo (`getUserMedia`) la patente se lee
 // sola apuntando; si no está disponible, se cae a la foto con el <input capture="environment">
 // nativo. El botón no se oculta nunca por falta de `mediaDevices`: esa API solo existe en contextos
 // seguros (HTTPS o localhost), y en LAN por HTTP simple viene `undefined` aunque la foto funcione.

@@ -1,8 +1,9 @@
 "use client";
 
-// Reconocimiento de patentes por playa. Cada cliente contrata su propio plan de Plate Recognizer
-// y el super admin pega acá el token de esa cuenta: cada foto que lee el operador descuenta de ese
-// plan. Una playa sin token no tiene cámara para la patente; el operador la escribe.
+// Reconocimiento de patentes por playa. Cada cliente puede contratar su propio plan de Plate
+// Recognizer y el super admin pega acá el token de esa cuenta: cada foto que lee el operador
+// descuenta de ese plan. Una playa sin token usa el reconocimiento gratuito (fast-alpr, servicio
+// propio de la plataforma) si está levantado; si no, no tiene cámara y el operador la escribe.
 //
 // El token nunca vuelve del servidor: la sección ve sus últimos cuatro caracteres, el consumo que
 // informa Plate Recognizer en este momento y si otra playa de la empresa usa la misma cuenta.
@@ -34,7 +35,15 @@ const diaMes = (iso: string) =>
 
 function Consumo({ playa }: { playa: ConsumoPatentes }) {
   if (!playa.configurado)
-    return (
+    return playa.gratuito ? (
+      <p className="m-0 text-[12.5px]">
+        Reconocimiento gratuito
+        <span style={{ color: EJE }}>
+          {" "}
+          · cámara disponible sin token de Plate Recognizer. Revisá siempre la patente antes de confirmar.
+        </span>
+      </p>
+    ) : (
       <p className="m-0 text-[12.5px]" style={{ color: EJE }}>
         Sin reconocimiento: el operador escribe la patente.
       </p>
@@ -130,7 +139,7 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
       toast.error(r.error);
       return;
     }
-    toast.success(`${playa.nombre} ya no tiene reconocimiento de patentes.`);
+    toast.success(`Token de Plate Recognizer quitado de ${playa.nombre}.`);
     await cargar();
   };
 
@@ -142,8 +151,9 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
           Reconocimiento de patentes
         </h2>
         <p className="mt-1 max-w-3xl text-[13px] text-muted-foreground">
-          Cada playa usa su propia cuenta de Plate Recognizer. Cada foto que se lee descuenta del plan de esa
-          playa, encuentre o no una patente. Sin plan, la cámara no aparece y el operador escribe la patente.
+          Con un token, la playa usa su propia cuenta de Plate Recognizer: cada foto que se lee descuenta de su
+          plan, encuentre o no una patente. Sin token, usa el reconocimiento gratuito de la plataforma, si está
+          activo; si no, la cámara no aparece y el operador escribe la patente.
         </p>
       </div>
 
@@ -152,7 +162,7 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
       ) : !consumo ? (
         <p className="m-0 flex items-center gap-2 px-5 py-6 text-[13px]" style={{ color: EJE }}>
           <Loader2 className="size-4 animate-spin" />
-          Consultando el consumo en Plate Recognizer…
+          Consultando reconocimiento y consumo…
         </p>
       ) : (
         <ul className="m-0 list-none p-0">
@@ -171,7 +181,7 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
                 <div className="flex justify-end gap-1.5">
                   {quitando === playa.playaId ? (
                     <>
-                      <span className="self-center text-[12.5px] text-muted-foreground">¿Quitar?</span>
+                      <span className="self-center text-[12.5px] text-muted-foreground">¿Quitar token?</span>
                       <button
                         type="button"
                         className={botonPeligro}
