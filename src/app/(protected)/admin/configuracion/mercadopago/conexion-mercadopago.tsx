@@ -18,7 +18,6 @@ import {
   desconectarMercadoPagoAction,
   iniciarConexionMercadoPagoAction,
 } from '@/actions/mercadopago/mercadopago.action';
-import { PruebaTransferencias } from './prueba-transferencias';
 import { VerificacionAliasConfig } from './verificacion-alias';
 import { CajasQrConfig } from './cajas-qr';
 import { ConfiguracionAlias } from '@/types/verificacion-alias.type';
@@ -274,12 +273,11 @@ export function ConexionMercadoPago({
       {/* El QR para cualquier banco: con la cuenta activa (crea sucursal y caja por playa). */}
       {estado.conectada && estado.estado === 'ACTIVA' && <CajasQrConfig />}
 
-      {/* La verificación por alias y la prueba: solo con la cuenta activa y las condiciones
+      {/* La verificación por alias: solo con la cuenta activa y las condiciones
           aceptadas (el backend lo vuelve a exigir). */}
       {estado.conectada && estado.estado === 'ACTIVA' && condicionesAlDia && verificacionAlias && (
         <VerificacionAliasConfig inicial={verificacionAlias} />
       )}
-      {estado.conectada && estado.estado === 'ACTIVA' && condicionesAlDia && <PruebaTransferencias />}
     </div>
   );
 }
