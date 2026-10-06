@@ -10,7 +10,7 @@
 // cajero pregunta quién transfirió. Un error al consultar se dice como error, nunca como «no pagó».
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Copy, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Check, Copy, Flag, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/components/pricing-breakdown';
 import { cn } from '@/lib/utils';
@@ -31,8 +31,90 @@ const hora = (iso: string | null | undefined) =>
 
 const abiertos = ['ESPERANDO', 'REVISION'];
 
+const horaCorta = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleTimeString('es-AR', { timeZone: ZONA, hour: '2-digit', minute: '2-digit' }) : '—';
+
 // Los últimos dígitos alcanzan para distinguir dos operaciones en pantalla.
 const operacionCorta = (id: string) => (id.length > 6 ? `…${id.slice(-6)}` : id);
+
+// «Transferencia de Ignacio Gaute · 22:57», o sin nombre si MercadoPago no lo informó.
+const quienYCuando = (cobro: CobroAlias) => {
+  const t = cobro.transferencia;
+  if (!t) return 'Transferencia recibida';
+  return t.nombre ? `Transferencia de ${t.nombre} · ${horaCorta(t.fechaOperacion)}` : `Transferencia de las ${horaCorta(t.fechaOperacion)}`;
+};
+
+const SEGUNDOS_PARA_CERRAR = 4;
+
+/**
+ * La confirmación de un cobro por transferencia que registró la salida: queda en el mismo cuadro
+ * de cobro, con quién pagó, y el diálogo se cierra solo (o antes, con «Cerrar ahora»). El aviso de
+ * abajo es el de siempre, «Salida registrada exitosamente»: lo dispara el panel de cierre.
+ */
+export function PagoRecibido({ cobro, onCerrar }: { cobro: CobroAlias; onCerrar: () => void }) {
+  const [restante, setRestante] = useState(SEGUNDOS_PARA_CERRAR * 1000);
+  const cerrado = useRef(false);
+  const alCerrar = useRef(onCerrar);
+  alCerrar.current = onCerrar;
+
+  const cerrar = useCallback(() => {
+    if (cerrado.current) return;
+    cerrado.current = true;
+    alCerrar.current();
+  }, []);
+
+  useEffect(() => {
+    const desde = Date.now();
+    const reloj = setInterval(() => {
+      const falta = Math.max(0, SEGUNDOS_PARA_CERRAR * 1000 - (Date.now() - desde));
+      setRestante(falta);
+      if (falta === 0) {
+        clearInterval(reloj);
+        cerrar();
+      }
+    }, 100);
+    return () => clearInterval(reloj);
+  }, [cerrar]);
+
+  return (
+    <div role="status" className="flex flex-col items-center gap-1.5 rounded-2xl border-[1.5px] border-emerald-500/50 bg-emerald-500/10 px-5 pb-4 pt-6 text-center">
+      <span className="grid size-16 place-items-center rounded-full bg-emerald-400/15 text-emerald-400">
+        <Check className="size-9" strokeWidth={2.2} />
+      </span>
+      <p className="mt-1.5 gm-display text-[28px] font-bold tracking-wide text-emerald-400">PAGO RECIBIDO</p>
+      <p className="gm-mono gm-tnum text-3xl font-semibold text-foreground">{formatPrice(cobro.importe)}</p>
+      <p className="mt-0.5 text-sm text-muted-foreground">{quienYCuando(cobro)}</p>
+      <p className="text-xs text-muted-foreground">
+        {cobro.modo === 'MANUAL'
+          ? 'Transferencia elegida por el cajero'
+          : 'Única transferencia de ese importe: se asoció sola'}
+        {cobro.transferencia ? ` · operación ${operacionCorta(cobro.transferencia.operacionId)}` : ''}
+      </p>
+
+      <div className="my-2.5 h-px w-full bg-emerald-400/25" />
+
+      <p className="flex items-center gap-2 text-[15px] font-semibold">
+        <Flag className="size-[18px] text-emerald-400" />
+        Salida registrada
+      </p>
+
+      <div className="mt-2.5 w-full space-y-2">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-emerald-400/15">
+          <div
+            className="h-full rounded-full bg-emerald-400 transition-[width] duration-100 ease-linear"
+            style={{ width: `${(restante / (SEGUNDOS_PARA_CERRAR * 1000)) * 100}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[13px] text-muted-foreground">Se cierra sola en {Math.ceil(restante / 1000)} s</span>
+          <Button variant="outline" className="min-h-11" onClick={cerrar}>
+            Cerrar ahora
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const MOTIVOS: Record<string, string> = {
   VARIAS_TRANSFERENCIAS: 'Entró más de una transferencia de este importe.',
@@ -123,24 +205,23 @@ export function CobroAliasPanel({
     }
   };
 
-  // ── Confirmado ────────────────────────────────────────────────────────────
+  // ── Confirmado con saldo pendiente ────────────────────────────────────────
+  // (Con la salida registrada lo muestra PagoRecibido, que además cierra el diálogo.) Entró la
+  // transferencia pero la tarifa subió mientras esperaba: abajo vuelve lo que falta cobrar.
   if (cobro.estado === 'CONFIRMADO')
     return (
-      <div role="status" className="rounded-2xl border-[1.5px] border-emerald-500/50 bg-emerald-500/10 p-6 text-center">
-        <CheckCircle2 className="mx-auto size-14 text-emerald-400" strokeWidth={1.75} />
-        <p className="mt-3 gm-display text-2xl font-bold text-emerald-400">PAGO RECIBIDO</p>
-        <p className="gm-mono gm-tnum mt-1 text-lg font-semibold text-foreground">{formatPrice(cobro.importe)}</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {cobro.salidaRegistrada
-            ? 'Salida registrada.'
-            : `La tarifa subió mientras esperaba: falta cobrar ${formatPrice(cobro.saldoPendiente ?? 0)}.`}
-        </p>
-        {cobro.transferencia && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Transferencia de las {hora(cobro.transferencia.fechaOperacion)} · operación {operacionCorta(cobro.transferencia.operacionId)}
-            {cobro.modo === 'AUTOMATICO_COINCIDENCIA_UNICA' ? ' · asociada por coincidencia única de importe y hora' : ' · elegida por el cajero'}
+      <div role="status" className="flex items-center gap-3.5 rounded-2xl border-[1.5px] border-emerald-500/50 bg-emerald-500/10 p-4">
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-emerald-400/15 text-emerald-400">
+          <Check className="size-6" strokeWidth={2.2} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="gm-display text-lg font-bold tracking-wide text-emerald-400">
+            PAGO RECIBIDO · {formatPrice(cobro.importe)}
           </p>
-        )}
+          <p className="text-[13.5px] text-muted-foreground">
+            {quienYCuando(cobro)}. La tarifa subió mientras esperaba.
+          </p>
+        </div>
       </div>
     );
 

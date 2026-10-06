@@ -18,7 +18,7 @@ import { closeRegistrationAction } from '@/actions/tickets/close-registration.ac
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import { CobroMercadoPago } from '@/types/mercadopago.type';
 import { CobroQrMercadoPago } from './cobro-qr-mercadopago';
-import { CobroAliasPanel } from './cobro-alias';
+import { CobroAliasPanel, PagoRecibido } from './cobro-alias';
 import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
 import {
   cobroAliasDeEstadiaAction,
@@ -56,6 +56,19 @@ export function CloseTicketPanel({
   const [alias, setAlias] = useState<DisponibilidadAlias | null>(null);
   const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
   const aliasEsperando = !!cobroAlias && ['ESPERANDO', 'REVISION'].includes(cobroAlias.estado);
+  // Transferencia confirmada con la salida registrada: se muestra y el diálogo se cierra solo.
+  const [pagoConSalida, setPagoConSalida] = useState<CobroAlias | null>(null);
+
+  // Al cerrar (solo, con «Cerrar ahora» o con la X): lo mismo que después de un cobro en efectivo,
+  // el comprobante de salida y refrescar la lista.
+  const cerrarTrasPago = () => {
+    const pago = pagoConSalida;
+    if (!pago) return;
+    setPagoConSalida(null);
+    setReceiptId(pago.registrationId);
+    onOpenChange(false);
+    onSuccess?.();
+  };
   // Se entró desde un vehículo ya elegido y el resumen todavía está cargando. No alcanza con
   // mirar `initialRegistrationId`: al apretar «Volver a buscar» ese prop sigue puesto y el
   // buscador nunca aparecería.
@@ -72,6 +85,7 @@ export function CloseTicketPanel({
     setCourtesyReason('');
     setCobroQr(null);
     setCobroAlias(null);
+    setPagoConSalida(null);
     setAbriendoDirecto(false);
   };
 
@@ -93,10 +107,10 @@ export function CloseTicketPanel({
 
   const terminadoAlias = (cobro: CobroAlias) => {
     if (cobro.estado === 'CONFIRMADO' && cobro.salidaRegistrada) {
-      toast.success(`Pago recibido · ${formatPrice(cobro.importe)} · Salida registrada`);
-      setReceiptId(cobro.registrationId);
-      onOpenChange(false);
-      onSuccess?.();
+      // El aviso de siempre abajo; la confirmación del pago queda en el cuadro hasta que se cierra.
+      toast.success('Salida registrada exitosamente');
+      setCobroAlias(null);
+      setPagoConSalida(cobro);
       return;
     }
     // Pago recibido pero quedó saldo (la tarifa subió), o se cobró por otro medio: se recarga la
@@ -196,7 +210,7 @@ export function CloseTicketPanel({
   };
 
   return (
-    <><Dialog open={open} onOpenChange={(o) => { if (isPending) return; if (!o) resetAll(); onOpenChange(o); }}>
+    <><Dialog open={open} onOpenChange={(o) => { if (isPending) return; if (!o && pagoConSalida) { cerrarTrasPago(); return; } if (!o) resetAll(); onOpenChange(o); }}>
       <DialogContent className="max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader className="items-center">
           <DialogTitle>Registrar salida y cobrar</DialogTitle>
@@ -285,6 +299,12 @@ export function CloseTicketPanel({
               )}
             </div>
 
+            {/* Pago por transferencia confirmado y salida registrada: la confirmación queda en el
+                mismo cuadro, con quién pagó, y el diálogo se cierra solo. */}
+            {pagoConSalida ? (
+              <PagoRecibido cobro={pagoConSalida} onCerrar={cerrarTrasPago} />
+            ) : (
+            <>
             {summary.cambioARetornar > 0 && (
               <p className="text-sm text-muted-foreground text-center">Hay que devolverle: {formatPrice(summary.cambioARetornar)}</p>
             )}
@@ -416,6 +436,8 @@ export function CloseTicketPanel({
             <Button type="button" variant="ghost" disabled={isPending} className="w-full" onClick={resetAll}>
               Volver a buscar
             </Button>
+            </>
+            )}
           </div>
         )}
       </DialogContent>

@@ -65,3 +65,15 @@ export type CajasQr = {
     caja: { creadaEl: string; direccion: DireccionCaja | null } | null;
   }[];
 };
+
+// Provincia o ciudad tal como las acepta MercadoPago para una sucursal (listado de MercadoLibre).
+export type UbicacionMp = { id: string; nombre: string };
+
+// Activar la caja con la ubicación del dispositivo: creada, o lo detectado para completar a mano.
+export type CajaConUbicacion =
+  | ({ creada: true } & CajasQr)
+  | {
+      creada: false;
+      motivo: string;
+      sugerencia: { calle: string; numero: string; provincia: string | null; latitud: number; longitud: number };
+    };

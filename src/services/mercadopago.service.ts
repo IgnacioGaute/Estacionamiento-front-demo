@@ -1,6 +1,13 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
-import { CajasQr, CobroMercadoPago, DireccionCaja, EstadoMercadoPago } from '@/types/mercadopago.type';
+import {
+  CajaConUbicacion,
+  CajasQr,
+  CobroMercadoPago,
+  DireccionCaja,
+  EstadoMercadoPago,
+  UbicacionMp,
+} from '@/types/mercadopago.type';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -171,3 +178,30 @@ export async function crearCajaQr(playaId: string, direccion: DireccionCaja): Pr
     throw new Error(await leerError(response, 'No se pudo crear la caja.'));
   return response.json();
 }
+
+async function pedirMp<T>(path: string, porDefecto: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  if (!response.ok) throw new Error(await leerError(response, porDefecto));
+  return response.json();
+}
+
+/** Provincias y ciudades como las acepta MercadoPago para la sucursal de una caja. */
+export const getProvinciasQr = () =>
+  pedirMp<UbicacionMp[]>('/mercadopago/cajas/provincias', 'No se pudieron cargar las provincias.');
+
+export const getCiudadesQr = (provinciaId: string) =>
+  pedirMp<UbicacionMp[]>(
+    `/mercadopago/cajas/provincias/${encodeURIComponent(provinciaId)}/ciudades`,
+    'No se pudieron cargar las ciudades.',
+  );
+
+/** Crea la caja de una playa con la ubicación del dispositivo, sin formulario. */
+export const crearCajaQrConUbicacion = (playaId: string, latitud: number, longitud: number) =>
+  pedirMp<CajaConUbicacion>('/mercadopago/cajas/con-ubicacion', 'No se pudo crear la caja.', {
+    method: 'POST',
+    body: JSON.stringify({ playaId, latitud, longitud }),
+  });

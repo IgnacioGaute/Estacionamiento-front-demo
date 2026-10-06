@@ -5,11 +5,14 @@ import {
   cancelarCobroMercadoPago,
   conectarMercadoPago,
   crearCajaQr,
+  crearCajaQrConUbicacion,
   consultarCobroMercadoPago,
   crearCobroMercadoPago,
   desconectarMercadoPago,
   getCajasQr,
+  getCiudadesQr,
   getEstadoMercadoPago,
+  getProvinciasQr,
   iniciarConexionMercadoPago,
 } from '@/services/mercadopago.service';
 import type { DireccionCaja } from '@/types/mercadopago.type';
@@ -100,6 +103,30 @@ export async function getCajasQrAction() {
 export async function crearCajaQrAction(playaId: string, direccion: DireccionCaja) {
   try {
     return { cajas: await crearCajaQr(playaId, direccion) };
+  } catch (error) {
+    return { error: mensaje(error, 'No se pudo crear la caja.') };
+  }
+}
+
+export async function getProvinciasQrAction() {
+  try {
+    return { lista: await getProvinciasQr() };
+  } catch (error) {
+    return { error: mensaje(error, 'No se pudieron cargar las provincias.') };
+  }
+}
+
+export async function getCiudadesQrAction(provinciaId: string) {
+  try {
+    return { lista: await getCiudadesQr(provinciaId) };
+  } catch (error) {
+    return { error: mensaje(error, 'No se pudieron cargar las ciudades.') };
+  }
+}
+
+export async function crearCajaQrConUbicacionAction(playaId: string, latitud: number, longitud: number) {
+  try {
+    return { resultado: await crearCajaQrConUbicacion(playaId, latitud, longitud) };
   } catch (error) {
     return { error: mensaje(error, 'No se pudo crear la caja.') };
   }

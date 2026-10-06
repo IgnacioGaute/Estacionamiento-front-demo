@@ -43,7 +43,14 @@ export type CobroAlias = {
   salidaRegistrada: boolean;
   // Si la tarifa subió mientras se esperaba, lo que quedó por cobrar.
   saldoPendiente: number | null;
-  transferencia: { operacionId: string; importe: number; fechaOperacion: string; detectadaEl: string } | null;
+  // `nombre`: quién transfirió, solo en la respuesta que la confirma (no se guarda).
+  transferencia: {
+    operacionId: string;
+    importe: number;
+    fechaOperacion: string;
+    detectadaEl: string;
+    nombre?: string | null;
+  } | null;
   // Cómo salió la última consulta a MercadoPago. Un error NO significa que no pagó.
   consulta: { ok: true; consultadoEl: string } | { ok: false; code: string; error: string } | null;
   motivoRevision: 'VARIAS_TRANSFERENCIAS' | 'VARIOS_COBROS' | 'YA_EN_REVISION' | null;
