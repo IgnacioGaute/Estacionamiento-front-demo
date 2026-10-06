@@ -9,7 +9,7 @@ import {
 } from '@/services/prueba-transferencias.service';
 import type { VentanaPrueba } from '@/types/prueba-transferencias.type';
 
-// La prueba de transferencias del super admin. Cada acción devuelve { datos } o { error }, como el
+// La prueba de transferencias de la empresa. Cada acción devuelve { datos } o { error }, como el
 // resto de las acciones de MercadoPago.
 async function intentar<T>(hacer: () => Promise<T>) {
   try {
@@ -19,22 +19,22 @@ async function intentar<T>(hacer: () => Promise<T>) {
   }
 }
 
-export async function pruebaPagosAction(empresaId: string, minutos: VentanaPrueba) {
-  return intentar(() => pruebaPagos(empresaId, minutos));
+export async function pruebaPagosAction(minutos: VentanaPrueba) {
+  return intentar(() => pruebaPagos(minutos));
 }
 
-export async function pruebaReporteEstadoAction(empresaId: string) {
-  return intentar(() => pruebaReporteEstado(empresaId));
+export async function pruebaReporteEstadoAction() {
+  return intentar(() => pruebaReporteEstado());
 }
 
-export async function pruebaPedirReporteAction(empresaId: string, minutos: VentanaPrueba) {
-  return intentar(() => pruebaPedirReporte(empresaId, minutos));
+export async function pruebaPedirReporteAction(minutos: VentanaPrueba) {
+  return intentar(() => pruebaPedirReporte(minutos));
 }
 
-export async function pruebaConfigurarReporteAction(empresaId: string) {
-  return intentar(() => pruebaConfigurarReporte(empresaId));
+export async function pruebaConfigurarReporteAction() {
+  return intentar(() => pruebaConfigurarReporte());
 }
 
-export async function pruebaLeerReporteAction(empresaId: string, nombre: string) {
-  return intentar(() => pruebaLeerReporte(empresaId, nombre));
+export async function pruebaLeerReporteAction(nombre: string) {
+  return intentar(() => pruebaLeerReporte(nombre));
 }

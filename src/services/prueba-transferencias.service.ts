@@ -9,18 +9,16 @@ import {
   VentanaPrueba,
 } from '@/types/prueba-transferencias.type';
 
-// Solo el super admin, y el backend además solo la corre sobre cuentas de MercadoPago autorizadas
-// para probar. No es la función comercial de verificación de transferencias.
+// La prueba de transferencias de la empresa sobre su propia cuenta de MercadoPago. El backend la
+// corre solo para un administrador de la empresa y solo con las condiciones aceptadas; la cuenta
+// es siempre la de la sesión. No es la función comercial.
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
-const base = (empresaId: string) =>
-  `${BASE_URL}/tenancy/empresas/${empresaId}/mercadopago/prueba-transferencias`;
+const BASE = `${process.env.NEXT_PUBLIC_API_URL}/mercadopago/prueba-transferencias`;
 
 async function pedir<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
-    headers: { ...(await getAuthHeaders()), 'Content-Type': 'application/json' },
+    headers: await getAuthHeaders(),
     cache: 'no-store',
   });
   if (!response.ok) {
@@ -36,20 +34,15 @@ async function pedir<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json();
 }
 
-export const pruebaPagos = (empresaId: string, minutos: VentanaPrueba) =>
-  pedir<PruebaPagos>(`${base(empresaId)}/pagos?minutos=${minutos}`);
+export const pruebaPagos = (minutos: VentanaPrueba) => pedir<PruebaPagos>(`${BASE}/pagos?minutos=${minutos}`);
 
-export const pruebaReporteEstado = (empresaId: string) =>
-  pedir<PruebaReporteEstado>(`${base(empresaId)}/reporte`);
+export const pruebaReporteEstado = () => pedir<PruebaReporteEstado>(`${BASE}/reporte`);
 
-export const pruebaPedirReporte = (empresaId: string, minutos: VentanaPrueba) =>
-  pedir<PruebaReportePedido>(`${base(empresaId)}/reporte`, {
-    method: 'POST',
-    body: JSON.stringify({ minutos }),
-  });
+export const pruebaPedirReporte = (minutos: VentanaPrueba) =>
+  pedir<PruebaReportePedido>(`${BASE}/reporte`, { method: 'POST', body: JSON.stringify({ minutos }) });
 
-export const pruebaConfigurarReporte = (empresaId: string) =>
-  pedir<PruebaReporteConfiguracion>(`${base(empresaId)}/reporte/configuracion`, { method: 'POST' });
+export const pruebaConfigurarReporte = () =>
+  pedir<PruebaReporteConfiguracion>(`${BASE}/reporte/configuracion`, { method: 'POST' });
 
-export const pruebaLeerReporte = (empresaId: string, nombre: string) =>
-  pedir<PruebaReporteLectura>(`${base(empresaId)}/reporte/archivo?nombre=${encodeURIComponent(nombre)}`);
+export const pruebaLeerReporte = (nombre: string) =>
+  pedir<PruebaReporteLectura>(`${BASE}/reporte/archivo?nombre=${encodeURIComponent(nombre)}`);

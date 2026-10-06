@@ -1,6 +1,7 @@
 'use server';
 
 import {
+  aceptarCondicionesMercadoPago,
   cancelarCobroMercadoPago,
   conectarMercadoPago,
   consultarCobroMercadoPago,
@@ -23,11 +24,19 @@ export async function getEstadoMercadoPagoAction() {
   }
 }
 
-export async function iniciarConexionMercadoPagoAction() {
+export async function iniciarConexionMercadoPagoAction(condiciones: string) {
   try {
-    return { url: (await iniciarConexionMercadoPago()).url };
+    return { url: (await iniciarConexionMercadoPago(condiciones)).url };
   } catch (error) {
     return { error: mensaje(error, 'No se pudo iniciar la conexión.') };
+  }
+}
+
+export async function aceptarCondicionesMercadoPagoAction(condiciones: string) {
+  try {
+    return { estado: await aceptarCondicionesMercadoPago(condiciones) };
+  } catch (error) {
+    return { error: mensaje(error, 'No se pudieron aceptar las condiciones.') };
   }
 }
 

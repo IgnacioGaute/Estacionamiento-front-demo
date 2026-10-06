@@ -33,17 +33,34 @@ export async function getEstadoMercadoPago(): Promise<EstadoMercadoPago> {
   return response.json();
 }
 
-/** Devuelve la URL de MercadoPago a la que hay que mandar al admin para que autorice. */
-export async function iniciarConexionMercadoPago(): Promise<{ url: string }> {
+/**
+ * Devuelve la URL de MercadoPago a la que hay que mandar al admin para que autorice. Lleva la
+ * versión de las condiciones que aceptó: sin la vigente, el backend no arma el link.
+ */
+export async function iniciarConexionMercadoPago(condiciones: string): Promise<{ url: string }> {
   const response = await fetch(`${BASE_URL}/mercadopago/conectar`, {
     method: 'POST',
     headers: await getAuthHeaders(),
+    body: JSON.stringify({ condiciones }),
     cache: 'no-store',
   });
   if (!response.ok)
     throw new Error(
       await leerError(response, 'No se pudo iniciar la conexión.'),
     );
+  return response.json();
+}
+
+/** Aceptar las condiciones vigentes con la cuenta ya conectada. */
+export async function aceptarCondicionesMercadoPago(condiciones: string): Promise<EstadoMercadoPago> {
+  const response = await fetch(`${BASE_URL}/mercadopago/condiciones`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ condiciones }),
+    cache: 'no-store',
+  });
+  if (!response.ok)
+    throw new Error(await leerError(response, 'No se pudieron aceptar las condiciones.'));
   return response.json();
 }
 

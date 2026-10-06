@@ -1,9 +1,9 @@
 "use client";
 
-// La prueba de transferencias del super admin. NO es la función comercial: sirve para averiguar
-// con evidencia si las transferencias que recibe una cuenta conectada por OAuth se ven desde el
-// sistema, con qué datos y con qué demora. El backend solo la corre sobre cuentas de MercadoPago
-// autorizadas para probar (con cualquier otra contesta que no está autorizada) y solo devuelve
+// La prueba de transferencias, en la configuración de MercadoPago de la empresa y sobre su propia
+// cuenta. NO es la función comercial: sirve para averiguar con evidencia si las transferencias que
+// recibe la cuenta se ven desde el sistema, con qué datos y con qué demora. Se muestra solo con las
+// condiciones aceptadas, y el backend además lo exige (y deja afuera al super admin). Solo devuelve
 // plata que entró. Muestra cada respuesta tal cual, también los errores, porque eso es lo que se
 // está probando. Ver docs/verificacion-transferencias.md en el backend.
 //
@@ -112,7 +112,7 @@ function FilaPago({ p }: { p: PagoDePrueba }) {
   );
 }
 
-export function PruebaTransferencias({ empresaId }: { empresaId: string }) {
+export function PruebaTransferencias() {
   const [minutos, setMinutos] = useState<VentanaPrueba>(5);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -132,7 +132,7 @@ export function PruebaTransferencias({ empresaId }: { empresaId: string }) {
     else if (r.datos) listo(r.datos);
   }
 
-  const verReporte = () => correr("estado", () => pruebaReporteEstadoAction(empresaId), setReporte);
+  const verReporte = () => correr("estado", () => pruebaReporteEstadoAction(), setReporte);
 
   const sinConfig = reporte && !reporte.config.ok && reporte.config.estado === 404;
 
@@ -143,8 +143,8 @@ export function PruebaTransferencias({ empresaId }: { empresaId: string }) {
           <div className="text-[11px] font-bold tracking-[0.12em] text-gm-yellow">PRUEBA · NO ES LA FUNCIÓN COMERCIAL</div>
           <h3 className="m-0 mt-1 text-[15px] font-semibold">Transferencias recibidas en MercadoPago</h3>
           <p className="m-0 mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
-            Solo funciona con cuentas de MercadoPago autorizadas para probar. Muestra únicamente plata que entró; no
-            guarda nada ni toca cobros.
+            Mandá una transferencia chica al alias de esta cuenta y consultá. Muestra únicamente plata que entró; lo
+            que pagaste con la cuenta no aparece. No guarda nada ni toca cobros.
           </p>
         </div>
         <Segmentos etiqueta="Ventana" claro opciones={VENTANAS} valor={minutos} onChange={setMinutos} />
@@ -161,7 +161,7 @@ export function PruebaTransferencias({ empresaId }: { empresaId: string }) {
               type="button"
               className={boton}
               disabled={!!ocupado}
-              onClick={() => void correr("pagos", () => pruebaPagosAction(empresaId, minutos), setPagos)}
+              onClick={() => void correr("pagos", () => pruebaPagosAction(minutos), setPagos)}
             >
               {ocupado === "pagos" ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
               Consultar pagos
@@ -209,7 +209,7 @@ export function PruebaTransferencias({ empresaId }: { empresaId: string }) {
               className={boton}
               disabled={!!ocupado}
               onClick={() =>
-                void correr("pedir", () => pruebaPedirReporteAction(empresaId, minutos), (d) => {
+                void correr("pedir", () => pruebaPedirReporteAction(minutos), (d) => {
                   setAviso(
                     d.respuesta.ok
                       ? `Pedido a las ${horaAR(d.pedidoEl)} (MercadoPago contestó ${d.respuesta.estado}). Tocá «Ver estado» en un rato para ver si ya está.`
@@ -227,7 +227,7 @@ export function PruebaTransferencias({ empresaId }: { empresaId: string }) {
                 className={boton}
                 disabled={!!ocupado}
                 onClick={() =>
-                  void correr("config", () => pruebaConfigurarReporteAction(empresaId), (d) => {
+                  void correr("config", () => pruebaConfigurarReporteAction(), (d) => {
                     setAviso(
                       d.creada
                         ? "Configuración creada."
@@ -275,7 +275,7 @@ export function PruebaTransferencias({ empresaId }: { empresaId: string }) {
                             className={boton}
                             disabled={!!ocupado}
                             onClick={() =>
-                              void correr("leer", () => pruebaLeerReporteAction(empresaId, nombre), setLectura)
+                              void correr("leer", () => pruebaLeerReporteAction(nombre), setLectura)
                             }
                           >
                             Leer

@@ -1,7 +1,15 @@
+// Lo que la empresa acepta al conectar MercadoPago: qué puede hacer el sistema con su cuenta. El
+// texto viene del backend (src/mercadopago/condiciones.ts), que guarda qué versión se aceptó.
+export type CondicionesMercadoPago = {
+  version: string;
+  titulo: string;
+  puntos: string[];
+};
+
 // Lo que el backend cuenta sobre la cuenta de MercadoPago de la empresa. Nunca incluye tokens:
 // las credenciales no salen del servidor.
 export type EstadoMercadoPago =
-  | { conectada: false }
+  | { conectada: false; condicionesVigentes: CondicionesMercadoPago }
   | {
       conectada: true;
       mpUserId: string;
@@ -12,6 +20,9 @@ export type EstadoMercadoPago =
       conectadaEl: string | null;
       // Por qué dejó de funcionar, cuando el permiso se venció o MercadoPago lo revocó.
       ultimoError: string | null;
+      condicionesVigentes: CondicionesMercadoPago;
+      // null: la cuenta se conectó antes de que existieran las condiciones.
+      condicionesAceptadas: { version: string; el: string | null; alDia: boolean } | null;
     };
 
 // Un pedido de pago por QR. El importe queda congelado hasta `expiraEl`: la tarifa sigue
