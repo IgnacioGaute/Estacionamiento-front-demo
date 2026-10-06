@@ -27,6 +27,7 @@ import { ActiveDayTicketDialog } from "./active-day-ticket-dialog";
 import { PriceBracketMapDialog } from "./price-bracket-map-dialog";
 import { AdvancePaymentDialog } from "./advance-payment-dialog";
 import { ActiveTicketsList } from "./active-tickets-list";
+import { ScanPlateAction } from './scan-plate-action';
 import { EntryByPlateDialog } from "./entry-by-plate-dialog";
 import { CloseTicketPanel } from "./close-ticket-panel";
 import { TurnoBar } from "./turno-bar";
@@ -131,6 +132,10 @@ export default function CardTicket({
     vehicleType: string;
     existing: TicketRegistration | null;
   } | null>(null);
+  const [entryScanRequest, setEntryScanRequest] = useState<{ plate: string; sequence: number } | null>(null);
+  const [entryDialogOpen, setEntryDialogOpen] = useState(false);
+  const [plateScanBusy, setPlateScanBusy] = useState(false);
+  const [scannedDayRegistration, setScannedDayRegistration] = useState<TicketRegistrationForDay | null>(null);
   const [closePanelOpen, setClosePanelOpen] = useState(false);
   const [closePanelTargetId, setClosePanelTargetId] = useState<string | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<{
@@ -153,7 +158,7 @@ export default function CardTicket({
   // El diálogo de alta por día/semana/mes también tiene que silenciar el lector USB mientras
   // está abierto — si no, tipear la patente dispara el escáner.
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
-  const isDialogOpen = advanceTarget !== null || closePanelOpen || dayDialogOpen || receiptTarget !== null;
+  const isDialogOpen = entryDialogOpen || plateScanBusy || advanceTarget !== null || closePanelOpen || dayDialogOpen || receiptTarget !== null;
 
   const selectSidebarTab = (tab: "hourly" | "daily" | "receipts") => {
     if (tab === sidebarTab) return;
@@ -165,7 +170,7 @@ export default function CardTicket({
   const activeDayRegistrations = registrationsForDay.filter(isDayRegistrationActive);
   const overdueDayRegistrations = activeDayRegistrations.filter(isDayRegistrationOverdue);
   const openDayRegistration =
-    registrationsForDay.find((r) => r.id === openDayRegistrationId) ?? null;
+    (scannedDayRegistration?.id === openDayRegistrationId ? scannedDayRegistration : registrationsForDay.find((r) => r.id === openDayRegistrationId)) ?? null;
   const prevLatestIdRef = useRef<string | null>(null);
   const selectedDetailRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -394,11 +399,19 @@ export default function CardTicket({
           <section aria-label="Registrar entradas y salidas" className="mb-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
             <h2 className="mb-3 text-base font-semibold">¿Qué necesitás hacer?</h2>
             <div ref={tour.refFor('salida')} style={tour.isActive('salida') ? { ...tourTransition, ...tourHighlight } : tourTransition} className="grid gap-3 xl:grid-cols-2">
-              <EntryByPlateDialog ticketEntryEnabled={barcodeTicketsEnabled} onGoToRegistration={(id) => { setClosePanelTargetId(id); setClosePanelOpen(true); }} onTicketRegistered={() => router.refresh()} triggerRef={(el) => tour.refFor("entrada")(el)} triggerStyle={tour.isActive("entrada") ? { ...tourTransition, ...tourHighlight } : tourTransition} />
+              <EntryByPlateDialog scanRequest={entryScanRequest} onOpenChange={setEntryDialogOpen} ticketEntryEnabled={barcodeTicketsEnabled} onGoToRegistration={(id) => { setClosePanelTargetId(id); setClosePanelOpen(true); }} onTicketRegistered={() => router.refresh()} triggerRef={(el) => tour.refFor("entrada")(el)} triggerStyle={tour.isActive("entrada") ? { ...tourTransition, ...tourHighlight } : tourTransition} />
               <button type="button" onClick={() => { setClosePanelTargetId(null); setClosePanelOpen(true); }} className="flex min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-gm-line-strong bg-secondary px-4 py-4 text-left transition-colors hover:border-gm-yellow/60 hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-background text-gm-yellow"><Banknote className="size-5" /></span>
                 <span className="min-w-0"><span className="block text-base font-semibold">Cobrar salida</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{barcodeTicketsEnabled ? "Buscá la patente o el ticket" : "Buscá por patente o apellido"}</span></span>
               </button>
+            </div>
+            <div className="mt-3">
+              <ScanPlateAction
+                onBusyChange={setPlateScanBusy}
+                onEntry={plate => setEntryScanRequest(previous => ({ plate, sequence: (previous?.sequence ?? 0) + 1 }))}
+                onHourlyExit={id => { setClosePanelTargetId(id); setClosePanelOpen(true); }}
+                onDailyExit={registration => { setScannedDayRegistration(registration); setOpenDayRegistrationId(registration.id); }}
+              />
             </div>
             {barcodeTicketsEnabled && <p role="status" className="mt-3 flex items-center gap-2 text-xs leading-relaxed text-muted-foreground"><Barcode className={cn("size-4 shrink-0", isScanning && "text-gm-yellow")} />{isScanning ? "Leyendo ticket…" : "También podés usar el lector de tickets."}</p>}
             <div ref={tour.refFor('alta-abono')} style={tour.isActive('alta-abono') ? { ...tourTransition, ...tourHighlight } : tourTransition} className="mt-4 border-t border-border pt-4"><CreateTicketRegistrationDialog isAdmin={isAdmin} setIsDialogOpen={setDayDialogOpen} /></div>
@@ -678,7 +691,7 @@ export default function CardTicket({
         deliveryEnabled={receiptDeliveryEnabled}
         registration={openDayRegistration}
         open={openDayRegistrationId !== null}
-        onOpenChange={(next) => { if (!next) setOpenDayRegistrationId(null); }}
+        onOpenChange={(next) => { if (!next) { setOpenDayRegistrationId(null); setScannedDayRegistration(null); } }}
       />
 
       <CloseTicketPanel

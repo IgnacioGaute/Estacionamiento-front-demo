@@ -1,5 +1,7 @@
  'use client';
-import { useEffect, useState } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
+import { Bike, CarFront, Check, Truck } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import LatticeLoader from '@/components/ui/lattice-loader';
 import { getVehicleTypesAction, VehicleTypeItem } from '@/actions/tickets/vehicle-types.action';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,3 +29,49 @@ export function VehicleTypePicker({ value, onChange, disabled }: { value: string
   if (loading && !active.length) return <div aria-label="Cargando tipos de vehículo" className="space-y-2"><LatticeLoader label="Cargando vehículos…" showTimer={false} cellSize={4} gap={1} fontSize={12} /></div>;
   return <Select key={loading ? 'loading' : 'ready'} value={value} onValueChange={onChange} disabled={disabled || loading || !!error || !active.length}><SelectTrigger aria-label="Tipo de vehículo"><SelectValue placeholder={placeholder}>{selected?.name ?? placeholder}</SelectValue></SelectTrigger><SelectContent>{active.map(t => <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>)}</SelectContent></Select>;
 }
+
+
+export const VehicleTypeButtons = forwardRef<HTMLDivElement, {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  onValidityChange?: (valid: boolean) => void;
+}>(({ value, onChange, disabled, onValidityChange, ...props }, ref) => {
+  const { types, error, loading } = useVehicleTypes();
+  const active = types.filter(type => type.enabled);
+  const valid = !loading && !error && active.some(type => type.code === value);
+  useEffect(() => { onValidityChange?.(!!valid); }, [valid, onValidityChange]);
+  return <div {...props} ref={ref}>
+    {loading ? <LatticeLoader label="Cargando vehículos…" showTimer={false} cellSize={4} gap={1} fontSize={12} />
+      : error ? <p role="alert" className="text-xs text-gm-orange">{error}</p>
+      : !active.length ? <p role="alert" className="text-xs text-muted-foreground">No hay tipos de vehículo habilitados. Pedile al administrador que los configure.</p>
+      : <>
+        <div role="radiogroup" aria-label="Tipo de vehículo" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {active.map((type, index) => {
+            const selected = value === type.code;
+            const name = (type.code + ' ' + type.name).toLowerCase();
+            const Icon = /moto|bici/.test(name) ? Bike : /camion|truck|utilitario/.test(name) ? Truck : CarFront;
+            return <button key={type.code} type="button" role="radio" aria-checked={selected}
+              tabIndex={selected || (!valid && index === 0) ? 0 : -1} disabled={disabled}
+              onClick={() => onChange(type.code)}
+              onKeyDown={event => {
+                if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+                event.preventDefault();
+                const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
+                const next = (index + step + active.length) % active.length;
+                onChange(active[next].code);
+                event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
+              }}
+              className={cn('relative flex min-h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50',
+                selected ? 'border-gm-yellow bg-gm-yellow/10 text-gm-yellow' : 'border-gm-line-strong bg-gm-surface-2 text-muted-foreground hover:border-gm-yellow/40 hover:text-foreground')}>
+              <Icon className="size-6 shrink-0" aria-hidden />
+              <span className="w-full break-words text-center text-xs leading-4">{type.name}</span>
+              {selected && <Check className="absolute right-2 top-2 size-3.5" aria-hidden />}
+            </button>;
+          })}
+        </div>
+        {!valid && <p className="mt-2 text-xs text-gm-orange">Elegí uno de los vehículos habilitados.</p>}
+      </>}
+  </div>;
+});
+VehicleTypeButtons.displayName = 'VehicleTypeButtons';

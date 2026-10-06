@@ -2,13 +2,14 @@
 import { useTenant } from '@/components/tenant-provider';
 import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 
-import { VehicleTypePicker } from '@/components/vehicle-type-options';
+import { VehicleTypeButtons } from '@/components/vehicle-type-options';
 
 import { useSession } from 'next-auth/react';
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -19,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/lib/toast';
-import { AlertTriangle, Barcode, CarFront, CheckCircle2, Search, X } from 'lucide-react';
+import { AlertTriangle, Barcode, CarFront, CheckCircle2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { entryByPlateSchema, EntryByPlateSchemaType } from '@/schemas/entry-by-plate.schema';
 import { createRegistrationByPlateAction } from '@/actions/tickets/create-registration-by-plate.action';
@@ -39,6 +40,8 @@ export function EntryByPlateDialog({
   ticketEntryEnabled,
   triggerRef,
   triggerStyle,
+  scanRequest,
+  onOpenChange,
 }: {
   onGoToRegistration?: (id: string) => void;
   // Se dispara cuando la pestaña "Ticket" registra una entrada (mismo endpoint que usa el
@@ -47,10 +50,14 @@ export function EntryByPlateDialog({
   ticketEntryEnabled?: boolean;
   triggerRef?: (el: HTMLElement | null) => void;
   triggerStyle?: React.CSSProperties;
+  scanRequest?: { plate: string; sequence: number } | null;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { playaId } = useTenant();
   const session = useSession();
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
   const [receiptId, setReceiptId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [duplicateError, setDuplicateError] = useState<DuplicateError | null>(null);
@@ -61,26 +68,9 @@ export function EntryByPlateDialog({
   const [frequentCustomers, setFrequentCustomers] = useState<FrequentCustomer[]>([]);
   const [frequentQuery, setFrequentQuery] = useState('');
   const [selectedFrequent, setSelectedFrequent] = useState<FrequentCustomer | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    let current = true;
-    const timer = setTimeout(() => { getFrequentCustomersAction({ minVisits: 2, search: frequentQuery, limit: 20 }).then(data => { if (current) setFrequentCustomers(data); }).catch(() => { if (current) setFrequentCustomers([]); }); }, 250);
-    return () => { current = false; clearTimeout(timer); };
-  }, [open, frequentQuery]);
-
-  const filteredFrequent = useMemo(() => {
-    const q = frequentQuery.trim();
-    if (!q) return [];
-    const qNorm = sanitizePlateInput(q);
-    const qLower = q.toLowerCase();
-    return frequentCustomers.filter(
-      (c) =>
-        (qNorm && c.licensePlateNormalized.includes(qNorm)) ||
-        (c.lastNameCustomer && c.lastNameCustomer.toLowerCase().includes(qLower)) ||
-        (!!q.replace(/\D/g, '') && !!c.phoneCustomer?.includes(q.replace(/\D/g, ''))),
-    );
-  }, [frequentQuery, frequentCustomers]);
+  const [frequentLoading, setFrequentLoading] = useState(false);
+  const [frequentError, setFrequentError] = useState('');
+  const [vehicleValid, setVehicleValid] = useState(false);
 
   const form = useForm<EntryByPlateSchemaType>({
     resolver: zodResolver(entryByPlateSchema),
@@ -93,6 +83,71 @@ export function EntryByPlateDialog({
     },
   });
 
+  const chooseFrequent = (customer: FrequentCustomer, automatic = false) => {
+    setSelectedFrequent(customer);
+    setFrequentQuery(customer.licensePlateOriginal);
+    form.setValue('licensePlate', customer.licensePlateOriginal, { shouldValidate: true });
+    if (!automatic || !form.getValues('lastNameCustomer')) form.setValue('lastNameCustomer', customer.lastNameCustomer ?? '');
+    if (!automatic || !form.getValues('phoneCustomer')) form.setValue('phoneCustomer', customer.phoneCustomer ?? '');
+    if (!automatic || !form.getFieldState('vehicleType').isDirty) form.setValue('vehicleType', customer.vehicleType);
+    setFrequentCustomers([]);
+  };
+
+  useEffect(() => {
+    if (!scanRequest) return;
+    form.reset({ licensePlate: scanRequest.plate, vehicleType: 'AUTO', casilleroNumber: '', lastNameCustomer: '', phoneCustomer: '' });
+    setDuplicateError(null);
+    setOverrideReason('');
+    setMethod('PLATE');
+    setSelectedFrequent(null);
+    setFrequentQuery(scanRequest.plate);
+    setOpen(true);
+  }, [scanRequest, form]);
+
+  useEffect(() => {
+    const query = frequentQuery.trim();
+    if (!open || method !== 'PLATE' || query.length < 2 || selectedFrequent) {
+      setFrequentLoading(false);
+      return;
+    }
+    let current = true;
+    setFrequentLoading(true);
+    setFrequentError('');
+    const timer = setTimeout(async () => {
+      try {
+        const search = looksLikeKnownPlateFormat(query) ? sanitizePlateInput(query) : query;
+        const data = await getFrequentCustomersAction({ minVisits: 2, search, limit: 6 });
+        if (!current) return;
+        const exact = data.find(c => c.licensePlateNormalized === sanitizePlateInput(query));
+        if (exact) {
+          setSelectedFrequent(exact);
+          form.setValue('licensePlate', exact.licensePlateOriginal, { shouldValidate: true });
+          if (!form.getValues('lastNameCustomer')) form.setValue('lastNameCustomer', exact.lastNameCustomer ?? '');
+          if (!form.getValues('phoneCustomer')) form.setValue('phoneCustomer', exact.phoneCustomer ?? '');
+          if (!form.getFieldState('vehicleType').isDirty) form.setValue('vehicleType', exact.vehicleType);
+          setFrequentCustomers([]);
+        } else setFrequentCustomers(data);
+      } catch {
+        if (current) { setFrequentCustomers([]); setFrequentError('No se pudieron buscar frecuentes. Podés completar la entrada.'); }
+      } finally {
+        if (current) setFrequentLoading(false);
+      }
+    }, 250);
+    return () => { current = false; clearTimeout(timer); };
+  }, [open, method, frequentQuery, selectedFrequent, form]);
+
+  const changeQuery = (query: string) => {
+    if (selectedFrequent) {
+      if (form.getValues('lastNameCustomer') === (selectedFrequent.lastNameCustomer ?? '')) form.setValue('lastNameCustomer', '');
+      if (form.getValues('phoneCustomer') === (selectedFrequent.phoneCustomer ?? '')) form.setValue('phoneCustomer', '');
+    }
+    setSelectedFrequent(null);
+    setFrequentCustomers([]);
+    setFrequentError('');
+    setFrequentQuery(query);
+    form.setValue('licensePlate', sanitizePlateInput(query), { shouldDirty: true, shouldValidate: true });
+  };
+
   const plateValue = form.watch('licensePlate') ?? '';
   const showFormatWarning = plateValue.trim().length >= 5 && !looksLikeKnownPlateFormat(plateValue);
 
@@ -104,6 +159,8 @@ export function EntryByPlateDialog({
     setTicketCode('');
     setFrequentQuery('');
     setSelectedFrequent(null);
+    setFrequentCustomers([]);
+    setFrequentError('');
   };
 
   const submitTicket = async () => {
@@ -161,20 +218,9 @@ export function EntryByPlateDialog({
     });
   };
 
-  const onSubmit = (values: EntryByPlateSchemaType) => submit(values, false);
-  const submitFrequentDirect = async () => {
-    if (!selectedFrequent) return;
-    if (!await form.trigger('phoneCustomer')) return;
-    submit(
-      {
-        licensePlate: selectedFrequent.licensePlateOriginal,
-        vehicleType: selectedFrequent.vehicleType,
-        casilleroNumber: '',
-        lastNameCustomer: selectedFrequent.lastNameCustomer ?? '',
-        phoneCustomer: form.getValues('phoneCustomer') ?? '',
-      },
-      false,
-    );
+  const onSubmit = (values: EntryByPlateSchemaType) => {
+    if (!values.licensePlate?.trim()) { form.setError('licensePlate', { message: 'Ingresá o escaneá una patente.' }); return; }
+    if (vehicleValid) submit(values, false);
   };
   const onConfirmOverride = () => {
     if (!overrideReason.trim()) {
@@ -205,9 +251,10 @@ export function EntryByPlateDialog({
         </button>
       </DialogTrigger>
 
-      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl sm:max-w-lg">
+      <DialogContent ref={dialogRef} onOpenAutoFocus={event => { if (scanRequest && frequentQuery === scanRequest.plate) { event.preventDefault(); dialogRef.current?.focus(); } }} className="w-[calc(100vw-1.5rem)] max-w-md max-h-[90dvh] rounded-2xl sm:max-w-lg">
         <DialogHeader className="items-center">
           <DialogTitle>Registrar entrada</DialogTitle>
+          <DialogDescription className="text-center text-xs">Buscá o escaneá la patente y revisá los datos antes de confirmar.</DialogDescription>
         </DialogHeader>
 
         {duplicateError ? (
@@ -314,204 +361,82 @@ export function EntryByPlateDialog({
               </div>
             ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="frequent-entry-search" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Clientes frecuentes
-                </label>
-
-                {selectedFrequent ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2.5 rounded-2xl border-2 border-gm-yellow bg-gm-yellow/10 p-3">
-                      <div className="flex min-w-0 items-center gap-2.5">
-                        <CheckCircle2 className="size-5 shrink-0 text-gm-yellow" />
-                        <div className="flex min-w-0 flex-col">
-                          <span className="gm-mono text-[15px] font-bold tracking-[0.04em]">
-                            {selectedFrequent.licensePlateOriginal}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {selectedFrequent.lastNameCustomer ?? 'Sin apellido'}
-                            {selectedFrequent.phoneCustomer && ` · +${selectedFrequent.phoneCustomer}`}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedFrequent(null);
-                          setFrequentQuery('');
-                        }}
-                        aria-label="Cambiar vehículo frecuente"
-                        className="grid size-9 shrink-0 place-items-center rounded-[10px] border border-border text-muted-foreground transition-colors hover:bg-gm-surface-3 hover:text-foreground"
-                      >
-                        <X className="size-3.5" />
-                      </button>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              <div className="space-y-3">
+                <FormField control={form.control} name="licensePlate" render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between gap-2">
+                      <FormLabel>Patente o cliente frecuente</FormLabel>
+                      <span className="text-[10px] text-muted-foreground">Buscá o escaneá</span>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="gm-mono inline-flex items-center rounded-full border border-gm-line-strong bg-gm-surface-2 px-2 py-0.5 text-[10px] text-foreground">
-                        {VEHICLE_TYPE_LABEL[selectedFrequent.vehicleType] ?? selectedFrequent.vehicleType}
-                      </span>
-                      <span className="gm-mono inline-flex items-center rounded-full border border-gm-yellow/30 bg-gm-yellow/15 px-2 py-0.5 text-[10px] text-gm-yellow">
-                        {selectedFrequent.visits} visitas
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="relative">
-                    <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="frequent-entry-search"
-                      placeholder="Buscar por patente, apellido o teléfono..."
-                      value={frequentQuery}
-                      onChange={(e) => setFrequentQuery(e.target.value)}
-                      className="h-11 pl-10 pr-3 text-base"
-                    />
-                    </div>
-                    {frequentQuery.trim() && (
-                      <div className="mt-2 max-h-[180px] overflow-y-auto rounded-2xl border border-gm-line-strong bg-gm-surface-2">
-                        {filteredFrequent.length === 0 ? (
-                          <div className="p-4 text-center text-xs text-muted-foreground">
-                            No se encontraron coincidencias.
-                          </div>
-                        ) : (
-                          filteredFrequent.map((c) => (
-                            <button
-                              type="button"
-                              key={c.licensePlateNormalized}
-                              onClick={() => {
-                                setSelectedFrequent(c);
-                                form.setValue('licensePlate', c.licensePlateOriginal);
-                                form.setValue('vehicleType', c.vehicleType);
-                                form.setValue('lastNameCustomer', c.lastNameCustomer ?? '');
-                                form.setValue('phoneCustomer', c.phoneCustomer ?? '');
-                                setFrequentQuery('');
-                              }}
-                              className="flex min-h-16 w-full flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-gm-line-strong px-3.5 py-3 text-left last:border-b-0 hover:bg-gm-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow"
-                            >
-                              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                <span className="gm-mono truncate text-sm font-bold leading-5">{c.licensePlateOriginal}</span>
-                                <span className="truncate text-[11.5px] text-muted-foreground">
-                                  {c.lastNameCustomer ?? 'Sin apellido'}
-                                </span>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-1.5">
-                                <span className="gm-mono inline-flex items-center rounded-full border border-gm-line-strong bg-card px-2 py-0.5 text-[9.5px] text-muted-foreground">
-                                  {VEHICLE_TYPE_LABEL[c.vehicleType] ?? c.vehicleType}
-                                </span>
-                                <span className="gm-mono inline-flex items-center rounded-full border border-gm-yellow/30 bg-gm-yellow/15 px-2 py-0.5 text-[9.5px] text-gm-yellow">
-                                  {c.visits} visitas
-                                </span>
-                              </div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {selectedFrequent ? (
-                <>
-                <FormField control={form.control} name="phoneCustomer" render={({ field }) => (
-                  <FormItem><FormLabel>Teléfono de WhatsApp (opcional)</FormLabel>
-                    <FormControl><Input type="tel" autoComplete="tel" placeholder="+54 9 11 1234 5678" disabled={isPending} {...field} /></FormControl>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={frequentQuery}
+                        disabled={isPending}
+                        autoComplete="off"
+                        spellCheck={false}
+                        maxLength={50}
+                        placeholder="Patente, apellido o teléfono"
+                        onChange={(event) => changeQuery(event.target.value)}
+                        className="gm-mono h-16 rounded-2xl border-2 border-gm-line-strong bg-gm-surface-2 px-4 text-center text-xl font-bold uppercase tracking-[0.06em] placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:normal-case placeholder:tracking-normal md:text-2xl focus-visible:border-gm-yellow"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
-                <button
-                  type="button"
-                  onClick={submitFrequentDirect}
-                  disabled={isPending}
-                  className="gm-display w-full h-[52px] rounded-2xl bg-gradient-to-br from-gm-yellow to-gm-yellow-deep text-sm font-bold text-gm-ink disabled:opacity-50"
-                >
-                  Registrar entrada
-                </button>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2.5 text-[10.5px] uppercase tracking-wide text-muted-foreground">
-                    <span className="h-px flex-1 bg-border" />
-                    o completá los datos manualmente
-                    <span className="h-px flex-1 bg-border" />
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name="licensePlate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Patente</FormLabel>
-                        <FormControl>
-                          <Input
-                            disabled={isPending}
-                            placeholder="AB123CD"
-                            {...field}
-                            onChange={(e) => field.onChange(sanitizePlateInput(e.target.value))}
-                            className="h-16 rounded-2xl border-2 border-gm-line-strong bg-gm-surface-2 text-center gm-mono text-2xl md:text-2xl font-bold uppercase tracking-[0.12em]"
-                          />
-                        </FormControl>
-                        {showFormatWarning && (
-                          <p className="text-xs text-gm-orange">Verificá la patente — el formato no es el habitual, pero se puede guardar igual.</p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <PlateCameraScanButton
-                    disabled={isPending}
-                    onRecognized={(plate) => form.setValue('licensePlate', plate, { shouldValidate: true })}
-                  />
+                <PlateCameraScanButton disabled={isPending} onRecognized={changeQuery} />
+                <div aria-live="polite">
+                  {selectedFrequent ? (
+                    <div className="flex items-start gap-3 rounded-xl border border-gm-yellow/25 bg-gm-yellow/5 p-3">
+                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-gm-yellow" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold">Cliente frecuente identificado</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{selectedFrequent.lastNameCustomer || selectedFrequent.licensePlateOriginal} · {selectedFrequent.visits} {selectedFrequent.visits === 1 ? 'visita' : 'visitas'}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">Cargamos sus datos. Podés revisarlos abajo.</p>
+                      </div>
+                    </div>
+                  ) : frequentLoading ? <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground"><Search className="size-3.5" />Buscando frecuentes…</p>
+                    : frequentError ? <p className="text-xs text-gm-orange">{frequentError}</p>
+                    : frequentCustomers.length ? (
+                    <div className="overflow-hidden rounded-xl border border-gm-line-strong bg-gm-surface-2">
+                      <p className="border-b border-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Clientes que coinciden</p>
+                      <div className="max-h-44 overflow-y-auto">
+                        {frequentCustomers.map(customer => (
+                          <button key={customer.licensePlateNormalized} type="button" disabled={isPending} onClick={() => chooseFrequent(customer)}
+                            className="flex min-h-14 w-full items-center justify-between gap-3 border-b border-border px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow">
+                            <span className="min-w-0"><span className="gm-mono block font-semibold">{customer.licensePlateOriginal}</span><span className="block truncate text-xs text-muted-foreground">{customer.lastNameCustomer || 'Sin apellido'}</span></span>
+                            <span className="shrink-0 text-right"><span className="block text-[11px]">{VEHICLE_TYPE_LABEL[customer.vehicleType] || customer.vehicleType}</span><span className="text-[10px] text-muted-foreground">{customer.visits} visitas</span></span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : <p className="text-[11px] leading-relaxed text-muted-foreground">{frequentQuery.trim().length >= 2 ? 'Sin coincidencias en frecuentes. Completá los datos para registrar la entrada.' : 'Al escribir aparecen sus visitas y datos guardados.'}</p>}
+                </div>
+                {showFormatWarning && <p className="text-xs text-gm-orange">Revisá la patente: el formato no es el habitual. Si buscaste un cliente, elegilo de la lista.</p>}
+              </div>
 
-                  <FormField
-                    control={form.control}
-                    name="vehicleType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo de Vehículo</FormLabel>
-                        <FormControl>
-                          <VehicleTypePicker value={field.value} onChange={field.onChange} disabled={isPending} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <FormField control={form.control} name="vehicleType" render={({ field }) => (
+                <FormItem><FormLabel>Tipo de vehículo</FormLabel><FormControl>
+                  <VehicleTypeButtons value={field.value} onChange={field.onChange} disabled={isPending} onValidityChange={setVehicleValid} />
+                </FormControl><FormMessage /></FormItem>
+              )} />
 
-                  <FormField
-                    control={form.control}
-                    name="lastNameCustomer"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Apellido (opcional)</FormLabel>
-                        <FormControl>
-                          <Input disabled={isPending} placeholder="Escriba apellido" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="phoneCustomer"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Teléfono de WhatsApp (opcional)</FormLabel>
-                        <FormControl><Input type="tel" autoComplete="tel" placeholder="+54 9 11 1234 5678" disabled={isPending} {...field} /></FormControl>
-                        <p className="text-xs text-muted-foreground">Incluí el código de país. Al guardarlo, el cliente aparecerá en frecuentes desde esta visita.</p>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <button
-                    type="submit"
-                    disabled={isPending}
-                    className="gm-display w-full h-[52px] rounded-2xl bg-gradient-to-br from-gm-yellow to-gm-yellow-deep text-sm font-bold text-gm-ink disabled:opacity-50"
-                  >
-                    Registrar entrada
-                  </button>
-                </>
-              )}
+              <div className="space-y-4 rounded-2xl border border-border bg-gm-surface-2/40 p-3.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Datos del cliente · opcionales</p>
+                <FormField control={form.control} name="lastNameCustomer" render={({ field }) => (
+                  <FormItem><FormLabel>Apellido</FormLabel><FormControl><Input disabled={isPending} autoComplete="family-name" placeholder="Apellido del cliente" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="phoneCustomer" render={({ field }) => (
+                  <FormItem><FormLabel>WhatsApp</FormLabel><FormControl><Input type="tel" autoComplete="tel" placeholder="+54 9 11 1234 5678" disabled={isPending} {...field} /></FormControl>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">Incluí el código de país. Con su teléfono lo encontrás desde la primera visita.</p><FormMessage /></FormItem>
+                )} />
+              </div>
+              <div className="sticky -bottom-6 z-10 border-t border-border bg-card pb-6 pt-3">
+              <button type="submit" disabled={isPending || !vehicleValid || !plateValue.trim()} className="gm-display h-[52px] w-full rounded-2xl bg-gradient-to-br from-gm-yellow to-gm-yellow-deep text-sm font-bold text-gm-ink transition-opacity disabled:opacity-50">
+                {isPending ? 'Registrando entrada…' : 'Registrar entrada'}
+              </button>
+              </div>
             </form>
           </Form>
             )}
