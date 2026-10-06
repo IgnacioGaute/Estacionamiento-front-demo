@@ -23,6 +23,7 @@ export type OpcionTransferencia = {
   detectadaEl: string;
   nombre: string | null;
   entidad: string | null;
+  documento?: string | null;
 };
 
 export type CobroAlias = {

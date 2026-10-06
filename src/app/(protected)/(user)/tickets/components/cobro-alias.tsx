@@ -298,9 +298,10 @@ export function CobroAliasPanel({
                   )}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{o.nombre ?? 'Nombre no informado'}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {o.entidad ? `${o.entidad} · ` : ''}a las {hora(o.fechaOperacion)} · operación {operacionCorta(o.operacionId)}
+                    <span className="block truncate font-medium">{o.nombre || o.documento || 'Pagador sin identificar'}</span>
+                    <span className="block break-words text-xs text-muted-foreground">
+                      {o.nombre && o.documento && <span className="block text-xs text-muted-foreground">{o.documento}</span>}
+                      {o.entidad ? `${o.entidad} · ` : ''}a las {hora(o.fechaOperacion)} · operación {o.operacionId}
                     </span>
                   </span>
                   <span className="gm-mono gm-tnum font-semibold">{formatPrice(o.importe)}</span>
@@ -310,7 +311,7 @@ export function CobroAliasPanel({
           )}
           {cobro.opciones.length > 0 && cobro.opciones.every((o) => !o.nombre) && (
             <p className="text-xs text-muted-foreground">
-              MercadoPago no informa el nombre: si no podés distinguirlas por la hora, pedile el comprobante al cliente.
+              Compará el CUIT o documento del pagador con el comprobante del cliente. Si falta, verificá la hora y el número de operación antes de elegir.
             </p>
           )}
           <Button className="min-h-12 w-full whitespace-normal" disabled={!elegida || ocupado} onClick={() => void asignar()}>
