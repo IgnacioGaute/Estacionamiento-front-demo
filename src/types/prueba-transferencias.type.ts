@@ -1,6 +1,6 @@
-// La prueba de transferencias del super admin (no es la función comercial): qué informa
-// MercadoPago de la plata que entró a una cuenta autorizada para probar. Cada consulta viene con
-// su resultado o con el error que contestó MercadoPago, porque eso también es parte de la prueba.
+// La prueba de transferencias de la empresa sobre su propia cuenta (no es la función comercial):
+// qué informa MercadoPago de la plata que entró. Cada consulta viene con su resultado o con el
+// error que contestó MercadoPago, porque eso también es parte de la prueba.
 
 export type ConsultaFallida = { ok: false; estado: number | null; error: string };
 type Simples = Record<string, string | number | boolean | null>;
@@ -23,10 +23,13 @@ export type PagoDePrueba = {
   medio: string | null;
   descripcion: string | null;
   referencia: string | null;
+  // El número de la transferencia en el circuito bancario, si MercadoPago lo informa.
+  idTransferencia: string | number | null;
   cobradorId: number | null;
-  // null: MercadoPago no dijo quién cobró.
+  // null: MercadoPago no dijo ni quién cobró ni que pagó esta cuenta.
   recibido: boolean | null;
-  pagador: { nombre: string | null; documento: string | null };
+  // `entidad`: el banco o la billetera desde donde salió la plata.
+  pagador: { nombre: string | null; documento: string | null; entidad: string | null };
   origen: {
     tipo: string | null;
     subtipo: string | null;

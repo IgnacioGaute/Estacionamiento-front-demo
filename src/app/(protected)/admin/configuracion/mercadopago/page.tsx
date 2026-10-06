@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 import { currentUser } from '@/lib/auth';
 import { PageHeader } from '@/components/page-header';
 import { getEstadoMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
+import { configuracionAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
 import { ConexionMercadoPago } from './conexion-mercadopago';
 
 // Esta ruta es además la URL de retorno registrada en MercadoPago, así que tiene que existir con
@@ -19,7 +20,10 @@ export default async function MercadoPagoPage() {
   // adónde va la plata.
   if (user?.role !== 'ADMIN') redirect('/tickets');
 
-  const { estado, error } = await getEstadoMercadoPagoAction();
+  const [{ estado, error }, verificacion] = await Promise.all([
+    getEstadoMercadoPagoAction(),
+    configuracionAliasAction(),
+  ]);
 
   return (
     <div className="container mx-auto max-w-4xl space-y-6 px-4 py-6">
@@ -49,7 +53,7 @@ export default async function MercadoPagoPage() {
             <DataLoading label="Cargando MercadoPago…" />
           }
         >
-          <ConexionMercadoPago inicial={estado} />
+          <ConexionMercadoPago inicial={estado} verificacionAlias={verificacion.datos ?? null} />
         </Suspense>
       )}
     </div>

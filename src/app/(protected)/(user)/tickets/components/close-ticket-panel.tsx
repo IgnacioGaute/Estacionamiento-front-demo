@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
-import { AlertTriangle, Banknote, Barcode, Car, CreditCard, QrCode, Search } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, Banknote, Barcode, Car, CreditCard, QrCode, Search } from 'lucide-react';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
 import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
@@ -18,6 +18,13 @@ import { closeRegistrationAction } from '@/actions/tickets/close-registration.ac
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import { CobroMercadoPago } from '@/types/mercadopago.type';
 import { CobroQrMercadoPago } from './cobro-qr-mercadopago';
+import { CobroAliasPanel } from './cobro-alias';
+import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
+import {
+  cobroAliasDeEstadiaAction,
+  disponibilidadAliasAction,
+  iniciarCobroAliasAction,
+} from '@/actions/mercadopago/verificacion-alias.action';
 import { CloseSummary } from '@/services/tickets.service';
 import { formatElapsed, minutesSinceEntry, isOverdue, isBarcodeOrigin } from '@/utils/ticket-registration.utils';
 
@@ -45,6 +52,10 @@ export function CloseTicketPanel({
   const [showCourtesy, setShowCourtesy] = useState(false);
   const [courtesyReason, setCourtesyReason] = useState('');
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
+  // La transferencia al alias: si la empresa la tiene (adicional + activada) y el cobro en curso.
+  const [alias, setAlias] = useState<DisponibilidadAlias | null>(null);
+  const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
+  const aliasEsperando = !!cobroAlias && ['ESPERANDO', 'REVISION'].includes(cobroAlias.estado);
   // Se entró desde un vehículo ya elegido y el resumen todavía está cargando. No alcanza con
   // mirar `initialRegistrationId`: al apretar «Volver a buscar» ese prop sigue puesto y el
   // buscador nunca aparecería.
@@ -60,7 +71,38 @@ export function CloseTicketPanel({
     setShowCourtesy(false);
     setCourtesyReason('');
     setCobroQr(null);
+    setCobroAlias(null);
     setAbriendoDirecto(false);
+  };
+
+  // Abre la espera de la transferencia. No registra nada: el cobro y la salida se registran cuando
+  // el sistema encuentra la transferencia (o el cajero la elige entre varias).
+  const iniciarAlias = () => {
+    if (!summary) return;
+    startTransition(async () => {
+      const r = await iniciarCobroAliasAction(summary.registration.id);
+      if (r.error || !r.datos) {
+        toast.error(r.error ?? 'No se pudo empezar a esperar la transferencia.');
+        return;
+      }
+      setPaymentMethod(null);
+      if (r.datos.estado === 'CONFIRMADO' || r.datos.estado === 'PAGADO_OTRO_MEDIO') terminadoAlias(r.datos);
+      else setCobroAlias(r.datos);
+    });
+  };
+
+  const terminadoAlias = (cobro: CobroAlias) => {
+    if (cobro.estado === 'CONFIRMADO' && cobro.salidaRegistrada) {
+      toast.success(`Pago recibido · ${formatPrice(cobro.importe)} · Salida registrada`);
+      setReceiptId(cobro.registrationId);
+      onOpenChange(false);
+      onSuccess?.();
+      return;
+    }
+    // Pago recibido pero quedó saldo (la tarifa subió), o se cobró por otro medio: se recarga la
+    // estadía y el cajero sigue desde ahí.
+    setCobroAlias(cobro);
+    loadSummary(cobro.registrationId);
   };
 
   // El pago por QR entra como un cobro más de la estadía, no como el cierre: cuando se acredita,
@@ -84,6 +126,7 @@ export function CloseTicketPanel({
       return;
     }
     resetAll();
+    void disponibilidadAliasAction().then((r) => setAlias(r.datos ?? null));
     if (initialRegistrationId) {
       setAbriendoDirecto(true);
       loadSummary(initialRegistrationId);
@@ -105,6 +148,11 @@ export function CloseTicketPanel({
         return;
       }
       setSummary(data);
+      // Si esta estadía ya estaba esperando una transferencia (se cerró la pantalla, se cortó la
+      // conexión), se retoma desde el estado real del backend.
+      const previo = await cobroAliasDeEstadiaAction(id);
+      if (request !== summaryRequest.current) return;
+      if (previo.datos && ['ESPERANDO', 'REVISION'].includes(previo.datos.estado)) setCobroAlias(previo.datos);
     });
   };
 
@@ -259,11 +307,20 @@ export function CloseTicketPanel({
               />
             )}
 
+            {cobroAlias && (
+              <CobroAliasPanel
+                key={cobroAlias.id}
+                cobro={cobroAlias}
+                onTerminado={terminadoAlias}
+                onCancelado={() => setCobroAlias(null)}
+              />
+            )}
+
             {summary.saldoACobrar > 0 ? (
-              // Con un QR esperando pago no se ofrecen los otros medios: o se paga ese, o se
-              // cancela. Si el pago entró y aún así quedó un saldo —la tarifa subió mientras
-              // pagaba— vuelven a aparecer para cobrar la diferencia.
-              cobroQr?.estado === 'PENDIENTE' ? null : (
+              // Con un QR o una transferencia esperando no se ofrecen los otros medios: o se paga
+              // ese, o se cancela. Si el pago entró y aún así quedó un saldo —la tarifa subió
+              // mientras pagaba— vuelven a aparecer para cobrar la diferencia.
+              cobroQr?.estado === 'PENDIENTE' || aliasEsperando ? null : (
               <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
@@ -288,6 +345,22 @@ export function CloseTicketPanel({
                     {isPending ? 'Generando…' : 'QR / Celular'}
                   </span>
                 </button>
+                {/* La transferencia al alias también la verifica el sistema (contra la cuenta de
+                    MercadoPago de la empresa): solo aparece si la empresa la tiene activa. */}
+                {alias?.disponible && (
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={iniciarAlias}
+                    className="col-span-2 flex items-center justify-center gap-2 min-h-[60px] rounded-2xl border-[1.5px] border-gm-yellow/60 bg-gm-yellow/10 text-foreground disabled:opacity-50"
+                  >
+                    <ArrowLeftRight className="size-5 text-gm-yellow" />
+                    <span className="flex flex-col items-start leading-tight">
+                      <span className="gm-display text-base font-semibold">Transferencia al alias</span>
+                      <span className="text-xs text-muted-foreground">El sistema detecta cuando llega</span>
+                    </span>
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={isPending}
@@ -316,9 +389,9 @@ export function CloseTicketPanel({
               </button>
             )}
 
-            {cobroQr?.estado !== 'PENDIENTE' && summary.saldoACobrar > 0 && <div className="space-y-2"><p className="text-sm text-muted-foreground">Elegí cómo te pagó. Confirmá sólo después de recibir el efectivo o verificar la transferencia.</p><Button className="w-full min-h-12 whitespace-normal" disabled={isPending || !paymentMethod} onClick={() => paymentMethod && handleClose('PAYMENT', paymentMethod)}>{isPending ? 'Registrando…' : `Confirmar cobro de ${formatPrice(summary.saldoACobrar)} y salida`}</Button></div>}
+            {cobroQr?.estado !== 'PENDIENTE' && !aliasEsperando && summary.saldoACobrar > 0 && <div className="space-y-2"><p className="text-sm text-muted-foreground">Elegí cómo te pagó. Confirmá sólo después de recibir el efectivo o verificar la transferencia.</p><Button className="w-full min-h-12 whitespace-normal" disabled={isPending || !paymentMethod} onClick={() => paymentMethod && handleClose('PAYMENT', paymentMethod)}>{isPending ? 'Registrando…' : `Confirmar cobro de ${formatPrice(summary.saldoACobrar)} y salida`}</Button></div>}
 
-            {cobroQr?.estado !== 'PENDIENTE' && summary.saldoACobrar > 0 && (!showCourtesy ? (
+            {cobroQr?.estado !== 'PENDIENTE' && !aliasEsperando && summary.saldoACobrar > 0 && (!showCourtesy ? (
               <button
                 type="button"
                 className="text-xs text-muted-foreground underline w-full text-center"

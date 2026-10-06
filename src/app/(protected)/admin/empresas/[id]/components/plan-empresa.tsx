@@ -73,6 +73,7 @@ import {
   sumarMesesAR,
 } from "@/components/plataforma/cuenta";
 import { cuandoFue } from "./actividad-empresa";
+import { AdicionalesEmpresa } from "./adicionales-empresa";
 
 const botonSecundario =
   "flex h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 text-[13.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2 disabled:opacity-50";
@@ -172,6 +173,8 @@ export function PlanDeEmpresa({
         <UsoDePlayas playas={detalle.playas} />
         <Ajustes empresaId={empresa.id} detalle={detalle} accion={setAccion} aplicar={aplicar} />
       </div>
+
+      <AdicionalesEmpresa empresaId={empresa.id} />
 
       <Facturas
         facturas={detalle.facturas}

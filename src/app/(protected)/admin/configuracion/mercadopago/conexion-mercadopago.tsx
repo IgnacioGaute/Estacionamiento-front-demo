@@ -19,6 +19,8 @@ import {
   iniciarConexionMercadoPagoAction,
 } from '@/actions/mercadopago/mercadopago.action';
 import { PruebaTransferencias } from './prueba-transferencias';
+import { VerificacionAliasConfig } from './verificacion-alias';
+import { ConfiguracionAlias } from '@/types/verificacion-alias.type';
 
 // Lo que el sistema puede hacer con la cuenta, tal cual lo manda el backend. Conectar la cuenta
 // es aceptarlo; el backend guarda qué versión se aceptó, quién y cuándo.
@@ -64,7 +66,14 @@ const fecha = (iso: string | null) =>
       })
     : '—';
 
-export function ConexionMercadoPago({ inicial }: { inicial: EstadoMercadoPago }) {
+export function ConexionMercadoPago({
+  inicial,
+  verificacionAlias,
+}: {
+  inicial: EstadoMercadoPago;
+  // null si no se pudo leer: la sección no se muestra.
+  verificacionAlias: ConfiguracionAlias | null;
+}) {
   const [estado, setEstado] = useState(inicial);
   const [pendiente, startTransition] = useTransition();
   const [canjeando, setCanjeando] = useState(false);
@@ -261,7 +270,11 @@ export function ConexionMercadoPago({ inicial }: { inicial: EstadoMercadoPago })
         </div>
       </div>
 
-      {/* La prueba de transferencias: solo con la cuenta activa y las condiciones aceptadas. */}
+      {/* La verificación por alias y la prueba: solo con la cuenta activa y las condiciones
+          aceptadas (el backend lo vuelve a exigir). */}
+      {estado.conectada && estado.estado === 'ACTIVA' && condicionesAlDia && verificacionAlias && (
+        <VerificacionAliasConfig inicial={verificacionAlias} />
+      )}
       {estado.conectada && estado.estado === 'ACTIVA' && condicionesAlDia && <PruebaTransferencias />}
     </div>
   );
