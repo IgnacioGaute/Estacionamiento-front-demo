@@ -101,20 +101,23 @@ export function CobroQrMercadoPago({
     <div className="space-y-3 rounded-2xl border border-border bg-gm-surface-2 p-4">
       <div className="text-center">
         <p className="text-sm text-muted-foreground">
-          Que escanee este código para pagar
+          {cobro.interoperable
+            ? 'Que lo escanee con la app de su banco o billetera'
+            : 'Que lo escanee con la cámara o la app de MercadoPago'}
         </p>
         <p className="gm-display gm-tnum text-2xl font-bold">
           {formatPrice(cobro.monto)}
         </p>
       </div>
 
-      {/* Fondo blanco siempre: un QR sobre fondo oscuro no lo lee ningún celular. */}
+      {/* Fondo blanco siempre: un QR sobre fondo oscuro no lo lee ningún celular. Con caja de la
+          playa es el código estándar (QR interoperable); sin caja, el link de MercadoPago. */}
       <QRCodeSVG
-        value={cobro.initPoint}
+        value={cobro.qr || cobro.initPoint}
         size={224}
         marginSize={4}
         className="mx-auto h-auto w-full max-w-[220px] rounded bg-white"
-        title="Escaneá para pagar con MercadoPago"
+        title={cobro.interoperable ? 'Escaneá con cualquier banco o billetera' : 'Escaneá para pagar con MercadoPago'}
       />
 
       {vencido ? (

@@ -20,6 +20,7 @@ import {
 } from '@/actions/mercadopago/mercadopago.action';
 import { PruebaTransferencias } from './prueba-transferencias';
 import { VerificacionAliasConfig } from './verificacion-alias';
+import { CajasQrConfig } from './cajas-qr';
 import { ConfiguracionAlias } from '@/types/verificacion-alias.type';
 
 // Lo que el sistema puede hacer con la cuenta, tal cual lo manda el backend. Conectar la cuenta
@@ -269,6 +270,9 @@ export function ConexionMercadoPago({
           </Button>
         </div>
       </div>
+
+      {/* El QR para cualquier banco: con la cuenta activa (crea sucursal y caja por playa). */}
+      {estado.conectada && estado.estado === 'ACTIVA' && <CajasQrConfig />}
 
       {/* La verificación por alias y la prueba: solo con la cuenta activa y las condiciones
           aceptadas (el backend lo vuelve a exigir). */}

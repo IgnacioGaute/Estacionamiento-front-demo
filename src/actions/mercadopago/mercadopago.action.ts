@@ -4,12 +4,15 @@ import {
   aceptarCondicionesMercadoPago,
   cancelarCobroMercadoPago,
   conectarMercadoPago,
+  crearCajaQr,
   consultarCobroMercadoPago,
   crearCobroMercadoPago,
   desconectarMercadoPago,
+  getCajasQr,
   getEstadoMercadoPago,
   iniciarConexionMercadoPago,
 } from '@/services/mercadopago.service';
+import type { DireccionCaja } from '@/types/mercadopago.type';
 
 const mensaje = (error: unknown, porDefecto: string) =>
   error instanceof Error ? error.message : porDefecto;
@@ -83,5 +86,21 @@ export async function desconectarMercadoPagoAction() {
     return { estado: await desconectarMercadoPago() };
   } catch (error) {
     return { error: mensaje(error, 'No se pudo desconectar la cuenta.') };
+  }
+}
+
+export async function getCajasQrAction() {
+  try {
+    return { cajas: await getCajasQr() };
+  } catch (error) {
+    return { error: mensaje(error, 'No se pudieron cargar las cajas.') };
+  }
+}
+
+export async function crearCajaQrAction(playaId: string, direccion: DireccionCaja) {
+  try {
+    return { cajas: await crearCajaQr(playaId, direccion) };
+  } catch (error) {
+    return { error: mensaje(error, 'No se pudo crear la caja.') };
   }
 }

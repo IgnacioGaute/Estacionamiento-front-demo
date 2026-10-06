@@ -2,6 +2,7 @@
 
 import {
   pruebaConfigurarReporte,
+  pruebaDetallePago,
   pruebaLeerReporte,
   pruebaPagos,
   pruebaPedirReporte,
@@ -17,6 +18,10 @@ async function intentar<T>(hacer: () => Promise<T>) {
   } catch (error) {
     return { error: error instanceof Error ? error.message : 'No se pudo consultar a MercadoPago.' };
   }
+}
+
+export async function pruebaDetallePagoAction(operacionId: string) {
+  return intentar(() => pruebaDetallePago(operacionId));
 }
 
 export async function pruebaPagosAction(minutos: VentanaPrueba) {

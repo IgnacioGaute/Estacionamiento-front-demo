@@ -22,11 +22,13 @@ import {
   Landmark,
   Loader2,
   RefreshCw,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Segmentos } from "@/components/plataforma/mono";
 import {
   pruebaConfigurarReporteAction,
+  pruebaDetallePagoAction,
   pruebaLeerReporteAction,
   pruebaPagosAction,
   pruebaPedirReporteAction,
@@ -35,6 +37,7 @@ import {
 import type {
   ConsultaFallida,
   PagoDePrueba,
+  PruebaDetallePago,
   PruebaPagos,
   PruebaReporteEstado,
   PruebaReporteLectura,
@@ -216,9 +219,71 @@ function TarjetaIngreso({ p, ahora }: { p: PagoDePrueba; ahora: string }) {
               mono
             />
           )}
+          <div className="[grid-column:1/-1]">
+            <BuscarNombre operacionId={String(p.id)} />
+          </div>
         </dl>
       )}
     </li>
+  );
+}
+
+// Trae el pago completo de MercadoPago y muestra en qué campos viene quién pagó: es para saber de
+// dónde leer el nombre en la verificación. Solo campos de nombre, documento y banco de origen.
+function BuscarNombre({ operacionId }: { operacionId: string }) {
+  const [cargando, setCargando] = useState(false);
+  const [detalle, setDetalle] = useState<PruebaDetallePago | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function buscar() {
+    setCargando(true);
+    setError(null);
+    const r = await pruebaDetallePagoAction(operacionId);
+    setCargando(false);
+    if (r.error) setError(r.error);
+    else setDetalle(r.datos ?? null);
+  }
+
+  return (
+    <div className="space-y-2 border-t border-border pt-3">
+      <button
+        type="button"
+        onClick={() => void buscar()}
+        disabled={cargando}
+        className="inline-flex h-8 items-center gap-2 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2 disabled:opacity-60"
+      >
+        {cargando ? <Loader2 className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
+        Buscar el nombre en el detalle del pago
+      </button>
+      {error && <Falla r={{ error }} />}
+      {detalle &&
+        (!detalle.respuesta.ok ? (
+          <Falla r={detalle.respuesta} />
+        ) : (
+          <div className="space-y-2 text-[12.5px]">
+            <p className="m-0">
+              <span className="text-muted-foreground">Nombre: </span>
+              <strong>{detalle.respuesta.pagador.nombre ?? "MercadoPago no lo manda en el detalle"}</strong>
+              {detalle.respuesta.pagador.documento && ` · ${detalle.respuesta.pagador.documento}`}
+              {detalle.respuesta.pagador.entidad && ` · ${detalle.respuesta.pagador.entidad}`}
+            </p>
+            {detalle.respuesta.campos.length > 0 ? (
+              <ul className="m-0 list-none space-y-1 rounded-[10px] bg-secondary/30 p-3 font-mono text-[11.5px]">
+                {detalle.respuesta.campos.map((c) => (
+                  <li key={c.ruta} className="break-all">
+                    <span className="text-muted-foreground">{c.ruta}</span>: {c.valor}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="m-0 text-muted-foreground">Ningún campo del pago habla de quien pagó.</p>
+            )}
+            <p className="m-0 break-all text-[11px] text-muted-foreground">
+              Campos que manda MercadoPago: {detalle.respuesta.claves.join(", ")}
+            </p>
+          </div>
+        ))}
+    </div>
   );
 }
 

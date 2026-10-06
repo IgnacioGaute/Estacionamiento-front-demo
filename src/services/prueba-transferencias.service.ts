@@ -1,6 +1,7 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
 import {
+  PruebaDetallePago,
   PruebaPagos,
   PruebaReporteConfiguracion,
   PruebaReporteEstado,
@@ -35,6 +36,9 @@ async function pedir<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const pruebaPagos = (minutos: VentanaPrueba) => pedir<PruebaPagos>(`${BASE}/pagos?minutos=${minutos}`);
+
+export const pruebaDetallePago = (operacionId: string) =>
+  pedir<PruebaDetallePago>(`${BASE}/pagos/${encodeURIComponent(operacionId)}`);
 
 export const pruebaReporteEstado = () => pedir<PruebaReporteEstado>(`${BASE}/reporte`);
 

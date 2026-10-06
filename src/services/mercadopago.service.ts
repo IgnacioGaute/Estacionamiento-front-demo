@@ -1,6 +1,6 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
-import { CobroMercadoPago, EstadoMercadoPago } from '@/types/mercadopago.type';
+import { CajasQr, CobroMercadoPago, DireccionCaja, EstadoMercadoPago } from '@/types/mercadopago.type';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -145,5 +145,29 @@ export async function desconectarMercadoPago(): Promise<EstadoMercadoPago> {
     throw new Error(
       await leerError(response, 'No se pudo desconectar la cuenta.'),
     );
+  return response.json();
+}
+
+/** Las playas y sus cajas de MercadoPago (administrador). */
+export async function getCajasQr(): Promise<CajasQr> {
+  const response = await fetch(`${BASE_URL}/mercadopago/cajas`, {
+    headers: await getAuthHeaders(),
+    cache: 'no-store',
+  });
+  if (!response.ok)
+    throw new Error(await leerError(response, 'No se pudieron cargar las cajas.'));
+  return response.json();
+}
+
+/** Crea la sucursal y la caja de MercadoPago de una playa, con su dirección. */
+export async function crearCajaQr(playaId: string, direccion: DireccionCaja): Promise<CajasQr> {
+  const response = await fetch(`${BASE_URL}/mercadopago/cajas`, {
+    method: 'POST',
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ playaId, ...direccion }),
+    cache: 'no-store',
+  });
+  if (!response.ok)
+    throw new Error(await leerError(response, 'No se pudo crear la caja.'));
   return response.json();
 }

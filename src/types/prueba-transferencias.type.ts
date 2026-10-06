@@ -73,3 +73,17 @@ export type PruebaReporteLectura = {
     | { ok: true; columnas: string[]; reconocible: boolean; totalFilas: number; ingresos: Record<string, string>[] }
     | ConsultaFallida;
 };
+
+// El detalle de un pago (GET /v1/payments/:id) de la cuenta: dónde viene el nombre o el documento
+// de quien pagó. Solo los campos que hablan de quien pagó.
+export type PruebaDetallePago = {
+  operacionId: string;
+  respuesta:
+    | {
+        ok: true;
+        pagador: { nombre: string | null; documento: string | null; entidad: string | null };
+        campos: { ruta: string; valor: string }[];
+        claves: string[];
+      }
+    | ConsultaFallida;
+};

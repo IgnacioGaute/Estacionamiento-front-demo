@@ -31,10 +31,37 @@ export type CobroMercadoPago = {
   id: string;
   estado: 'PENDIENTE' | 'ACREDITADO' | 'VENCIDO' | 'CANCELADO';
   monto: number;
-  // La URL de pago: es a la vez lo que se dibuja como QR y lo que se manda por WhatsApp.
+  // El link de pago de MercadoPago (vacío si el cobro salió con la caja de la playa).
   initPoint: string;
+  // Lo que se dibuja como QR: el código estándar si la playa tiene caja de MercadoPago (lo paga
+  // cualquier banco o billetera), si no el link.
+  qr: string;
+  interoperable: boolean;
   expiraEl: string;
   acreditadoEl: string | null;
   // Solo en un cobro de inquilino ya acreditado: el recibo del pago que quedó asentado.
   recibo?: import('./cuenta.type').ResultadoPago | null;
+};
+
+// La dirección con la que se crea la sucursal de MercadoPago de una playa (la exige completa).
+export type DireccionCaja = {
+  calle: string;
+  numero: string;
+  ciudad: string;
+  provincia: string;
+  latitud: number;
+  longitud: number;
+  referencia?: string;
+};
+
+// Las playas de la empresa y si ya tienen caja de MercadoPago para el QR que se paga desde
+// cualquier banco o billetera.
+export type CajasQr = {
+  cuentaConectada: boolean;
+  playas: {
+    playaId: string;
+    nombre: string;
+    direccion: string | null;
+    caja: { creadaEl: string; direccion: DireccionCaja | null } | null;
+  }[];
 };
