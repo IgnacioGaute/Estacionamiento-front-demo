@@ -247,18 +247,27 @@ export function CobroAliasPanel({
 
   return (
     <div className="space-y-4 rounded-2xl border border-gm-yellow/50 bg-gm-surface-2 p-4">
-      <div className="text-center">
-        <p className="text-sm text-muted-foreground">Que transfiera exactamente</p>
-        <p className="gm-display gm-tnum text-3xl font-bold">{formatPrice(cobro.importe)}</p>
-        <p className="mt-2 text-sm text-muted-foreground">al alias</p>
+      <div className="overflow-hidden rounded-2xl border border-border bg-background/40">
+        <div className="px-5 py-5 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Importe a transferir</p>
+          <p className="gm-display gm-tnum mt-2 text-4xl font-bold">{formatPrice(cobro.importe)}</p>
+          <p className="mt-2 text-xs text-muted-foreground">Transferir el importe exacto permite encontrar el pago.</p>
+        </div>
         <button
           type="button"
           onClick={() => void copiarAlias()}
-          className="mt-1 inline-flex items-center gap-2 rounded-xl border border-border bg-background/40 px-4 py-2 gm-mono text-lg font-semibold tracking-wide hover:border-gm-line-strong"
-          title="Copiar alias"
+          disabled={!cobro.alias}
+          className="group flex min-h-20 w-full items-center gap-4 border-t border-border bg-gm-yellow/5 px-5 py-4 text-left transition-colors hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow disabled:opacity-50"
+          aria-label={cobro.alias ? 'Copiar alias ' + cobro.alias : 'Alias no disponible'}
         >
-          {cobro.alias ?? '—'}
-          <Copy className="size-4 text-muted-foreground" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Alias de la playa</span>
+            <span className="gm-mono mt-1 block break-all text-xl font-semibold text-foreground">{cobro.alias ?? '—'}</span>
+          </span>
+          <span className="flex shrink-0 flex-col items-center gap-1 text-gm-yellow">
+            <Copy className="size-5" aria-hidden="true" />
+            <span className="text-xs font-semibold">Copiar</span>
+          </span>
         </button>
       </div>
 
@@ -276,7 +285,7 @@ export function CobroAliasPanel({
       ) : revision ? (
         <div className="space-y-3">
           <div className="rounded-xl border border-gm-yellow/40 bg-gm-yellow/10 p-3 text-sm">
-            <p className="font-medium">Hay que elegir: preguntale quién transfirió</p>
+            <p className="font-medium">Confirmá cuál es el pago de este auto</p>
             <p className="text-muted-foreground">{MOTIVOS[cobro.motivoRevision ?? ''] ?? 'Hay más de una posibilidad.'}</p>
           </div>
           {cobro.opciones.length === 0 ? (
@@ -284,30 +293,37 @@ export function CobroAliasPanel({
               La transferencia que coincidía ya se usó en otro cobro. Si el cliente transfirió, su transferencia va a aparecer acá.
             </p>
           ) : (
-            <div role="radiogroup" aria-label="Transferencias recibidas" className="space-y-2">
+            <fieldset className="min-w-0 space-y-3" disabled={ocupado}>
+              <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transferencias disponibles ({cobro.opciones.length})</legend>
               {cobro.opciones.map((o) => (
-                <button
+                <label
                   key={o.operacionId}
-                  type="button"
-                  role="radio"
-                  aria-checked={elegida === o.operacionId}
-                  onClick={() => setElegida(o.operacionId)}
                   className={cn(
-                    'flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors',
-                    elegida === o.operacionId ? 'border-gm-yellow bg-gm-yellow/15' : 'border-border hover:bg-white/[0.03]',
+                    'relative flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-gm-yellow',
+                    elegida === o.operacionId ? 'border-gm-yellow bg-gm-yellow/10' : 'border-border bg-background/30 hover:border-gm-yellow/50',
+                    ocupado && 'pointer-events-none opacity-60',
                   )}
                 >
+                  <input type="radio" name={'transferencia-' + cobro.id} value={o.operacionId} checked={elegida === o.operacionId} onChange={() => setElegida(o.operacionId)} className="mt-1 size-5 shrink-0 accent-yellow-400" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{o.nombre || o.documento || 'Pagador sin identificar'}</span>
-                    <span className="block break-words text-xs text-muted-foreground">
-                      {o.nombre && o.documento && <span className="block text-xs text-muted-foreground">{o.documento}</span>}
-                      {o.entidad ? `${o.entidad} · ` : ''}a las {hora(o.fechaOperacion)} · operación {o.operacionId}
+                    <span className="flex flex-wrap items-start justify-between gap-2">
+                      <span className="min-w-0">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pagador</span>
+                        <span className="mt-1 block break-words text-base font-semibold">{o.nombre || o.documento || 'Pagador sin identificar'}</span>
+                        {o.nombre && o.documento && <span className="gm-mono mt-1 block text-sm text-muted-foreground">{o.documento}</span>}
+                      </span>
+                      <span className="gm-mono gm-tnum text-lg font-semibold">{formatPrice(o.importe)}</span>
                     </span>
+                    <span className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-3 text-sm text-muted-foreground">
+                      <span>Recibida a las <span className="gm-mono text-foreground">{hora(o.fechaOperacion)}</span></span>
+                      {o.entidad && <span>{o.entidad}</span>}
+                    </span>
+                    <span className="mt-1 block break-all text-xs text-muted-foreground">Operaci&oacute;n <span className="gm-mono">{o.operacionId}</span></span>
+                    {elegida === o.operacionId && <span className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-gm-yellow"><Check className="size-4" aria-hidden="true" />Seleccionada para este auto</span>}
                   </span>
-                  <span className="gm-mono gm-tnum font-semibold">{formatPrice(o.importe)}</span>
-                </button>
+                </label>
               ))}
-            </div>
+            </fieldset>
           )}
           {cobro.opciones.length > 0 && cobro.opciones.every((o) => !o.nombre) && (
             <p className="text-xs text-muted-foreground">
@@ -315,13 +331,13 @@ export function CobroAliasPanel({
             </p>
           )}
           <Button className="min-h-12 w-full whitespace-normal" disabled={!elegida || ocupado} onClick={() => void asignar()}>
-            {ocupado ? 'Registrando…' : 'Asignar transferencia y registrar salida'}
+            {ocupado ? 'Registrando…' : 'Confirmar pago y registrar salida'}
           </Button>
         </div>
       ) : (
         <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground" role="status">
           <Loader2 className="size-4 animate-spin" />
-          Esperando la transferencia… desde las {hora(cobro.buscarDesde)}
+          <span>Buscando el pago desde las {hora(cobro.buscarDesde)}<span className="mt-1 block text-xs">Si hay una coincidencia única, se registra automáticamente.</span></span>
         </p>
       )}
 
