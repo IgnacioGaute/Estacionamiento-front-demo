@@ -414,6 +414,20 @@ function Reporte() {
             </div>
           )}
 
+          {lectura?.respuesta.ok && (
+            <div role="status" className="space-y-1 rounded-[12px] border border-border p-3 text-[13px]">
+              <p className="m-0 font-semibold">Prueba del nombre del pagador (PAYER_NAME)</p>
+              <p className="m-0 text-muted-foreground">
+                {lectura.respuesta.columnas.includes("PAYER_NAME")
+                  ? 'La columna está presente en el CSV. Ingresos mostrados con nombre: ' + lectura.respuesta.ingresos.filter((f) => Boolean(f.PAYER_NAME?.trim())).length + ' de ' + lectura.respuesta.ingresos.length + '.'
+                  : "El CSV no contiene la columna PAYER_NAME. Revisá las columnas de la configuración y generá un reporte nuevo."}
+              </p>
+              <p className="m-0 break-words text-xs text-muted-foreground">
+                Columnas recibidas: {lectura.respuesta.columnas.join(", ")}
+              </p>
+            </div>
+          )}
+
           {lectura &&
             (!lectura.respuesta.ok ? (
               <Falla r={lectura.respuesta} />
@@ -431,7 +445,7 @@ function Reporte() {
                 {lectura.respuesta.ingresos.map((f, i) => (
                   <li key={f.SOURCE_ID ?? i} className="rounded-[12px] border border-border bg-[#17140F] px-4 py-3 text-[13px]">
                     <div className="flex flex-wrap justify-between gap-2">
-                      <span className="font-semibold">{f.PAYER_NAME || "Nombre no informado"}</span>
+                      <span className="font-semibold">{f.PAYER_NAME || (Object.prototype.hasOwnProperty.call(f, "PAYER_NAME") ? "Nombre vacío en el reporte de MercadoPago" : "Columna de nombre ausente en el reporte")}</span>
                       <span className="font-mono font-semibold">${f.TRANSACTION_AMOUNT}</span>
                     </div>
                     <p className="m-0 mt-1 text-[12px] text-muted-foreground">
