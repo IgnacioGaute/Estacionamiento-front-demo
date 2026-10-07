@@ -4,6 +4,67 @@ import { receiptQrSvg } from './offline-qr.js';
 const $ = id => document.getElementById(id);
 let state = null, revision = 0, password = '', busy = false, exit = null, timer;
 let selectedReceipt = null;
+let receiptPage = 1, receiptKind = 'all';
+const RECEIPTS_PER_PAGE = 8;
+const receiptDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires', year: 'numeric', month: '2-digit', day: '2-digit' });
+const receiptTime = r => r.occurredAt || r.entry;
+const receiptState = r => r.historical ? 'historical' : r.synced ? 'synced' : 'pending';
+const receiptStateLabels = { historical: 'Copia anterior', synced: 'Sincronizado', pending: 'Pendiente' };
+function receiptDay(r) {
+  const date = new Date(receiptTime(r));
+  if (!Number.isFinite(date.getTime())) return '';
+  const parts = Object.fromEntries(receiptDate.formatToParts(date).map(p => [p.type, p.value]));
+  return parts.year + '-' + parts.month + '-' + parts.day;
+}
+function renderReceipts() {
+  const all = state.receipts || [];
+  const query = normalize($('receipt-search').value);
+  const status = $('receipt-state').value;
+  const from = $('receipt-from').value, to = $('receipt-to').value;
+  const hasFilters = !!($('receipt-search').value || status !== 'all' || receiptKind !== 'all' || from || to);
+  $('receipts-section').hidden = !all.length && !receiptEnabled();
+  $('receipt-total').textContent = all.length;
+  $('receipt-reset').hidden = !hasFilters;
+  document.querySelectorAll('[data-receipt-kind]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.receiptKind === receiptKind)));
+  const invalidRange = from && to && from > to;
+  const receipts = all.filter(r => {
+    const day = receiptDay(r);
+    return !invalidRange && (!query || normalize(r.plate || '').includes(query)) &&
+      (receiptKind === 'all' || r.kind === receiptKind) && (status === 'all' || receiptState(r) === status) &&
+      (!from || day >= from) && (!to || (day && day <= to));
+  }).sort((a, b) => Date.parse(receiptTime(b)) - Date.parse(receiptTime(a)));
+  const pages = Math.max(1, Math.ceil(receipts.length / RECEIPTS_PER_PAGE));
+  receiptPage = Math.min(receiptPage, pages);
+  const offset = (receiptPage - 1) * RECEIPTS_PER_PAGE;
+  $('receipt-results').textContent = invalidRange ? 'La fecha Desde debe ser anterior o igual a Hasta.' : receipts.length
+    ? (offset + 1) + '–' + Math.min(offset + RECEIPTS_PER_PAGE, receipts.length) + ' de ' + receipts.length + ' comprobantes' + (hasFilters ? ' que coinciden' : '')
+    : '0 comprobantes' + (hasFilters ? ' que coinciden' : ' guardados');
+  $('receipts').replaceChildren(...receipts.slice(offset, offset + RECEIPTS_PER_PAGE).map(r => {
+    const el = document.createElement('div'); el.className = 'receipt-row';
+    const identity = document.createElement('div'); identity.className = 'receipt-identity';
+    const kind = document.createElement('span'); kind.className = 'kind-badge ' + (r.kind === 'ENTRY' ? 'entry' : 'exit'); kind.textContent = r.kind === 'ENTRY' ? 'Entrada' : 'Salida';
+    const plate = document.createElement('strong'); plate.textContent = r.plate || 'Sin patente';
+    identity.append(kind, plate);
+    const detail = document.createElement('div'); detail.className = 'receipt-detail';
+    const date = document.createElement('time'); date.dateTime = receiptTime(r); date.textContent = new Date(receiptTime(r)).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const type = document.createElement('span'); type.textContent = state.types.find(t => t.code === r.vehicleType)?.name || r.vehicleType || '';
+    detail.append(date, type);
+    const statusEl = document.createElement('span'); statusEl.className = 'receipt-state ' + receiptState(r); statusEl.textContent = receiptStateLabels[receiptState(r)];
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'receipt-view'; button.textContent = 'Ver comprobante'; button.setAttribute('aria-label', 'Ver comprobante de ' + (r.kind === 'ENTRY' ? 'entrada' : 'salida') + ' de ' + (r.plate || 'vehículo')); button.onclick = () => showReceipt(r);
+    el.append(identity, detail, statusEl, button); return el;
+  }));
+  if (!receipts.length) {
+    const empty = document.createElement('div'); empty.className = 'empty-state';
+    const title = document.createElement('strong'); title.textContent = hasFilters ? 'No encontramos comprobantes' : 'Todavía no hay comprobantes';
+    const hint = document.createElement('p'); hint.textContent = hasFilters ? 'Probá con otra patente, cambiá las fechas o limpiá los filtros.' : 'Los comprobantes disponibles en este equipo aparecerán acá.';
+    empty.append(title, hint); $('receipts').append(empty);
+  }
+  $('receipt-pagination').hidden = pages <= 1;
+  $('receipt-page').textContent = 'Página ' + receiptPage + ' de ' + pages;
+  $('receipt-prev').dataset.ineligible = String(receiptPage <= 1);
+  $('receipt-next').dataset.ineligible = String(receiptPage >= pages);
+  controls();
+}
 const receiptEnabled = () => !!(state?.receiptDelivery?.print || state?.receiptDelivery?.qr || state?.receiptDelivery?.whatsapp);
 function addReceipt(next, op) {
   if (!receiptEnabled()) return;
@@ -81,14 +142,7 @@ function render() {
     return el;
   }));
   if (!vehicles.length) $('rows').textContent = 'No hay vehículos activos en esta búsqueda.';
-  const receiptQuery = normalize($('receipt-search').value);
-  const receipts = (state.receipts || []).filter(r => !receiptQuery || normalize(r.plate || '').includes(receiptQuery));
-  $('receipts-section').hidden = !receipts.length && !receiptEnabled();
-  $('receipts').replaceChildren(...receipts.slice().sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt)).map(r => {
-    const el = row(r.plate, (r.kind === 'ENTRY' ? 'Entrada' : 'Salida') + ' · ' + new Date(r.occurredAt).toLocaleString('es-AR'));
-    const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Ver comprobante'; button.onclick = () => showReceipt(r); el.append(button); return el;
-  }));
-  if (!receipts.length) $('receipts').textContent = receiptQuery ? 'No hay comprobantes para esa patente.' : 'Todavía no hay comprobantes guardados en este dispositivo.';
+  renderReceipts();
   controls();
 }
 async function sync() {
@@ -157,7 +211,19 @@ $('confirm-exit').onclick = async () => {
   await sync();
 };
 $('cancel-exit').onclick = () => { exit = null; $('exit').hidden = true; };
-$('search').oninput = render; $('receipt-search').oninput = render; $('sync').onclick = sync; $('lock').onclick = lock;
+$('search').oninput = render; $('sync').onclick = sync; $('lock').onclick = lock;
+for (const id of ['receipt-search', 'receipt-state', 'receipt-from', 'receipt-to']) {
+  $(id).addEventListener(id === 'receipt-search' ? 'input' : 'change', () => { if (!state) return; receiptPage = 1; renderReceipts(); });
+}
+document.querySelectorAll('[data-receipt-kind]').forEach(button => {
+  button.onclick = () => { if (!state) return; receiptKind = button.dataset.receiptKind; receiptPage = 1; renderReceipts(); };
+});
+$('receipt-reset').onclick = () => {
+  $('receipt-search').value = ''; $('receipt-state').value = 'all'; $('receipt-from').value = ''; $('receipt-to').value = '';
+  receiptKind = 'all'; receiptPage = 1; if (state) renderReceipts();
+};
+$('receipt-prev').onclick = () => { if (receiptPage > 1 && state) { receiptPage--; renderReceipts(); } };
+$('receipt-next').onclick = () => { if (state) { receiptPage++; renderReceipts(); } };
 $('return-online').addEventListener('click', async event => {
   event.preventDefault();
   if (busy) return;
