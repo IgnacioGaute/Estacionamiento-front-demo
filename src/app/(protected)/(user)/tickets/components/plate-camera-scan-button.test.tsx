@@ -21,13 +21,13 @@ test('ofrece la cámara cuando el backend habilita el motor sin token de la play
   render(<PlateCameraScanButton onRecognized={jest.fn()} />);
   expect(screen.getByRole('button', { name: 'Escanear patente con la cámara' })).toBeEnabled();
 });
-test('sin motor o fuera de celular no ofrece una cámara inutilizable', () => {
+test.each(['field', 'action'] as const)('sin motor o fuera de celular oculta la cámara %s', (variant) => {
   jest.mocked(useTenant).mockReturnValue({ reconocimientoPatentes: false } as ReturnType<typeof useTenant>);
-  const view = render(<PlateCameraScanButton onRecognized={jest.fn()} />);
+  const view = render(<PlateCameraScanButton variant={variant} onRecognized={jest.fn()} />);
   expect(screen.queryByRole('button')).not.toBeInTheDocument();
   jest.mocked(useTenant).mockReturnValue({ reconocimientoPatentes: true } as ReturnType<typeof useTenant>);
   jest.mocked(useIsMobile).mockReturnValue(false);
-  view.rerender(<PlateCameraScanButton onRecognized={jest.fn()} />);
+  view.rerender(<PlateCameraScanButton variant={variant} onRecognized={jest.fn()} />);
   expect(screen.queryByRole('button')).not.toBeInTheDocument();
 });
 test('la foto completa la patente para revisión sin registrar una entrada', async () => {

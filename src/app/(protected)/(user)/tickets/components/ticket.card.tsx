@@ -405,7 +405,7 @@ export default function CardTicket({
                 <span className="min-w-0"><span className="block text-base font-semibold">Cobrar salida</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{barcodeTicketsEnabled ? "Buscá la patente o el ticket" : "Buscá por patente o apellido"}</span></span>
               </button>
             </div>
-            <div className="mt-3">
+            <div className="mt-3 md:hidden">
               <ScanPlateAction
                 onBusyChange={setPlateScanBusy}
                 onEntry={plate => setEntryScanRequest(previous => ({ plate, sequence: (previous?.sequence ?? 0) + 1 }))}

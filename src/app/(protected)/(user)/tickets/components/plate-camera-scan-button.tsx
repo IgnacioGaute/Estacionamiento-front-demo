@@ -38,7 +38,7 @@ export function PlateCameraScanButton({
 
   useEffect(() => { onBusyChange?.(isScanning || enVivo); }, [isScanning, enVivo, onBusyChange]);
 
-  if ((variant === 'field' && !isMobile) || !reconocimientoPatentes) return null;
+  if (!isMobile || !reconocimientoPatentes) return null;
 
   const abrir = () => {
     if (typeof navigator.mediaDevices?.getUserMedia === 'function') setEnVivo(true);
