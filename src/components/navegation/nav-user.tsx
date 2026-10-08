@@ -330,58 +330,47 @@ function PlatformNavUser({
   }, [pathname]);
 
   const nombre = userNav.name.trim() || 'Mi cuenta';
-  const initials =
-    nombre
-      .split(' ')
-      .filter(Boolean)
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2) || 'SA';
+  const rol = estiloRol('SUPER_ADMIN');
   const item =
     'cursor-pointer gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]';
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
+        {/* El mismo botón de cuenta que en la barra de una playa. */}
         <button
+          aria-label={`Tu cuenta: ${nombre}`}
           className={cn(
-            'group flex shrink-0 items-center gap-3 rounded-2xl border border-transparent bg-white/[0.04] px-2.5 py-2 text-left text-sm transition-all duration-200 hover:bg-white/[0.08]',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-            isOpen && 'border-border/60 bg-white/[0.08]',
+            'group flex h-11 shrink-0 items-center gap-2.5 rounded-[14px] p-1 text-left text-sm transition-colors duration-200 lg:pr-3',
+            'hover:bg-white/[0.05]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
+            isOpen && 'bg-white/[0.07]',
           )}
         >
-          <Avatar className="h-10 w-10 rounded-xl border border-border/60">
-            <AvatarImage src={userNav.avatar} alt={nombre} />
-            <AvatarFallback className="rounded-xl bg-gm-yellow font-display text-sm font-bold tracking-wider text-gm-ink">
-              {initials}
+          <Avatar className="size-9 rounded-xl">
+            <AvatarImage src={userNav.avatar} alt="" />
+            <AvatarFallback className={cn('rounded-xl', rol.fondo)}>
+              <rol.Icono className="size-5" strokeWidth={2.2} aria-hidden />
             </AvatarFallback>
           </Avatar>
-          <div className="hidden flex-col leading-tight lg:flex">
-            <span className="max-w-[160px] truncate text-sm font-medium text-foreground">{nombre}</span>
-            <span className="text-xs text-muted-foreground">Super admin</span>
-          </div>
-          <span
-            className={cn(
-              'hidden h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-white/5 text-muted-foreground transition-transform duration-200 lg:flex',
-              isOpen && 'rotate-180',
-            )}
-          >
-            <ChevronDown className="h-4 w-4" />
+          <span className="hidden min-w-0 flex-col leading-tight lg:flex">
+            <span className="max-w-[150px] truncate text-[13.5px] font-semibold text-foreground">{nombre}</span>
+            <span className="text-[11.5px] text-muted-foreground">Super admin</span>
           </span>
+          <ChevronDown className={cn('hidden size-4 shrink-0 text-muted-foreground transition-transform duration-200 lg:block', isOpen && 'rotate-180')} aria-hidden />
         </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         align="end"
         sideOffset={8}
-        className="w-64 rounded-xl border border-border/70 bg-card/95 p-1.5 shadow-[0_28px_90px_-35px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+        className="w-[min(260px,calc(100vw-24px))] rounded-2xl border border-white/[0.07] bg-[#0B0A08]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl lg:p-2"
       >
         <div className="mb-1 flex items-center gap-2.5 rounded-lg bg-white/[0.04] px-2.5 py-2">
-          <Avatar className="h-8 w-8 rounded-md border border-border/60">
-            <AvatarImage src={userNav.avatar} alt={nombre} />
-            <AvatarFallback className="rounded-md bg-gm-yellow font-display text-[11px] font-bold tracking-wider text-gm-ink">
-              {initials}
+          <Avatar className="h-7 w-7 rounded-lg">
+            <AvatarImage src={userNav.avatar} alt="" />
+            <AvatarFallback className={cn('rounded-lg', rol.fondo)}>
+              <rol.Icono className="size-4" strokeWidth={2.2} aria-hidden />
             </AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-1 flex-col">

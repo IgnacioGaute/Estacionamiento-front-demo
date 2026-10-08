@@ -94,7 +94,7 @@ export function PlateCameraScanButton({
         onClick={abrir}
         aria-label={variant === 'square' || variant === 'dock' ? 'Escanear patente con la cámara' : undefined}
         className={variant === 'dock'
-          ? 'relative flex h-[76px] w-[84px] flex-col items-center justify-end pb-2 text-[11px] font-bold tracking-[0.06em] text-gm-yellow focus-visible:outline-none disabled:opacity-70 [&:focus-visible_.gm-dock-scan]:ring-2 [&:focus-visible_.gm-dock-scan]:ring-gm-yellow [&:focus-visible_.gm-dock-scan]:ring-offset-2 [&:focus-visible_.gm-dock-scan]:ring-offset-background'
+          ? 'relative flex h-[76px] w-[80px] flex-col items-center justify-end pb-2 text-[11px] font-bold tracking-[0.06em] text-gm-yellow focus-visible:outline-none disabled:opacity-70 [&:focus-visible_.gm-dock-scan]:ring-2 [&:focus-visible_.gm-dock-scan]:ring-gm-yellow [&:focus-visible_.gm-dock-scan]:ring-offset-2 [&:focus-visible_.gm-dock-scan]:ring-offset-background'
           : variant === 'action'
           ? 'flex min-h-[72px] w-full min-w-0 items-center gap-3 rounded-xl border border-gm-line-strong bg-card/40 px-4 py-3 text-left transition-colors hover:border-gm-yellow/50 hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50'
           : variant === 'square'

@@ -1,8 +1,10 @@
 "use client";
 
-// El historial de una empresa: qué se cambió, quién y cuándo. Cubre la administración de la
-// plataforma (empresas, playas, usuarios) y los cambios que hace el admin dentro de cada playa
-// (tarifas, franjas, configuración, tipos de vehículo, clientes y cocheras).
+// El historial de una empresa: qué se cambió, quién y cuándo. Cubre todo lo que hace la
+// administración: la plataforma (empresas, playas, usuarios, plan y cuenta), lo que el admin
+// cambia en cada playa (tarifas, configuración, cajas, tipos de vehículo, clientes y cocheras), la
+// cuenta de MercadoPago (conexión, condiciones, alias, QR, comisiones) y las correcciones a mano de
+// cuentas de inquilinos y recibos.
 //
 // La operación del día no entra a propósito: entradas, salidas, cobros y turnos ya tienen su
 // propio rastro en caja y movimientos, y acá taparían lo que importa, que es quién cambió las
@@ -10,22 +12,36 @@
 
 import { useMemo, useState } from "react";
 import {
+  BadgePercent,
+  Banknote,
   ChevronDown,
   Building2,
   Car,
   ClipboardList,
+  CreditCard,
+  FileSpreadsheet,
+  Puzzle,
+  QrCode,
+  ReceiptText,
+  ScanLine,
+  ScrollText,
   Settings,
   Tag,
   Ticket,
   Trash2,
+  Unplug,
   UserCog,
+  Vault,
+  Wallet,
 } from "lucide-react";
 import { ActividadEmpresa } from "@/types/tenancy.type";
 import { Segmentos } from "@/components/plataforma/mono";
+import { describirMovimientoCuenta } from "./describir-cuenta";
 
 type Categoria =
   | "tarifas"
   | "configuracion"
+  | "mercadopago"
   | "cuentas"
   | "plataforma"
   | "clientes";
@@ -36,20 +52,122 @@ const plata = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: 0,
 });
 
+type Detalle = Record<string, unknown>;
+
+const pesos = (v: unknown) => (typeof v === "number" ? plata.format(v) : "");
+
+// `campos`: cómo se llama un campo en esta acción, cuando el nombre general no alcanza («activa»
+// es la caja en una y la verificación del alias en otra). `detalle`: la línea de abajo armada a
+// mano, para las acciones que se cuentan mejor en una frase que campo por campo.
 const ACCIONES: Record<
   string,
-  { texto: string; categoria: Categoria; Icono: typeof Tag; destructiva?: boolean }
+  {
+    texto: string;
+    categoria: Categoria;
+    Icono: typeof Tag;
+    destructiva?: boolean;
+    campos?: Record<string, string>;
+    detalle?: (d: Detalle) => string;
+  }
 > = {
   EMPRESA_CREADA: { texto: "Creó la empresa", categoria: "plataforma", Icono: Building2 },
   EMPRESA_EDITADA: { texto: "Editó los datos de la empresa", categoria: "plataforma", Icono: Building2 },
   EMPRESA_SUSPENDIDA: { texto: "Suspendió la empresa", categoria: "plataforma", Icono: Building2, destructiva: true },
   EMPRESA_ACTIVA: { texto: "Reactivó la empresa", categoria: "plataforma", Icono: Building2 },
+  EMPRESA_REACTIVADA: { texto: "Reactivó la empresa", categoria: "plataforma", Icono: Building2 },
   EMPRESA_BAJA: { texto: "Dio de baja la empresa", categoria: "plataforma", Icono: Building2, destructiva: true },
   EMPRESA_ELIMINADA: { texto: "Eliminó la empresa", categoria: "plataforma", Icono: Trash2, destructiva: true },
   PLAYA_CREADA: { texto: "Creó la playa", categoria: "plataforma", Icono: Building2 },
   PLAYA_EDITADA: { texto: "Editó la playa", categoria: "plataforma", Icono: Building2 },
   PLAYA_MODULOS: { texto: "Cambió las secciones habilitadas de la playa", categoria: "plataforma", Icono: Building2 },
   PLAYA_ELIMINADA: { texto: "Eliminó la playa", categoria: "plataforma", Icono: Trash2, destructiva: true },
+  PLAYA_PATENTES_CONFIGURADA: { texto: "Configuró el reconocimiento de patentes de la playa", categoria: "plataforma", Icono: ScanLine },
+  PLAYA_PATENTES_QUITADA: { texto: "Quitó el reconocimiento de patentes de la playa", categoria: "plataforma", Icono: ScanLine, destructiva: true },
+  // Plan y cuenta con la plataforma: la frase sale de describirMovimientoCuenta, como en la
+  // pestaña Plan; acá van el ícono y el filtro.
+  SUSCRIPCION_ALTA: { texto: "Dio de alta la cuenta", categoria: "plataforma", Icono: CreditCard },
+  SUSCRIPCION_PRUEBA: { texto: "Dio días de prueba", categoria: "plataforma", Icono: CreditCard },
+  SUSCRIPCION_PRUEBA_EXTENDIDA: { texto: "Extendió la prueba", categoria: "plataforma", Icono: CreditCard },
+  SUSCRIPCION_PRORROGA: { texto: "Dio una prórroga", categoria: "plataforma", Icono: CreditCard },
+  SUSCRIPCION_DIAS_EXTRA: { texto: "Dio días extra", categoria: "plataforma", Icono: CreditCard },
+  SUSCRIPCION_PLAN: { texto: "Asignó un plan", categoria: "plataforma", Icono: CreditCard },
+  SUSCRIPCION_EDITADA: { texto: "Editó la cuenta", categoria: "plataforma", Icono: CreditCard },
+  SUSCRIPCION_DEBITO: { texto: "Cambió el débito automático", categoria: "plataforma", Icono: CreditCard },
+  SUSCRIPCION_PAGO: { texto: "Registró un pago del plan", categoria: "plataforma", Icono: CreditCard },
+  SUSCRIPCION_PAGO_ANULADO: { texto: "Anuló un pago del plan", categoria: "plataforma", Icono: CreditCard, destructiva: true },
+  ADICIONAL_EDITADO: { texto: "Editó un adicional", categoria: "plataforma", Icono: Puzzle },
+  MERCADOPAGO_CONECTADO: {
+    texto: "Conectó la cuenta de MercadoPago",
+    categoria: "mercadopago",
+    Icono: Wallet,
+    detalle: (d) => (d.nickname ? `Cuenta ${d.nickname}` : ""),
+  },
+  MERCADOPAGO_DESCONECTADO: { texto: "Desconectó la cuenta de MercadoPago", categoria: "mercadopago", Icono: Unplug, destructiva: true },
+  MERCADOPAGO_CONDICIONES: {
+    texto: "Aceptó las condiciones de uso de MercadoPago",
+    categoria: "mercadopago",
+    Icono: ScrollText,
+    detalle: (d) => (d.condiciones ? `Versión ${d.condiciones}` : ""),
+  },
+  ALIAS_CONFIGURADO: {
+    texto: "Configuró la verificación de transferencias al alias",
+    categoria: "mercadopago",
+    Icono: Wallet,
+    campos: { activa: "la verificación de transferencias" },
+  },
+  QR_CAJA_CREADA: {
+    texto: "Activó el QR para cobrar desde cualquier banco o billetera",
+    categoria: "mercadopago",
+    Icono: QrCode,
+    detalle: (d) =>
+      [d.calle ? `${d.calle} ${d.numero ?? ""}`.trim() : null, d.ciudad, d.provincia]
+        .filter(Boolean)
+        .join(", "),
+  },
+  MERCADOPAGO_REPORTE: { texto: "Configuró el reporte de liquidaciones de MercadoPago", categoria: "mercadopago", Icono: FileSpreadsheet },
+  COMISIONES_CAMBIADAS: { texto: "Cambió las comisiones estimadas de MercadoPago", categoria: "mercadopago", Icono: BadgePercent },
+  CAJA_CREADA: { texto: "Creó una caja", categoria: "configuracion", Icono: Vault, campos: { activa: "la caja" } },
+  CAJA_EDITADA: { texto: "Editó una caja", categoria: "configuracion", Icono: Vault, campos: { activa: "la caja" } },
+  CUENTA_SALDO_INICIAL: {
+    texto: "Cargó el saldo inicial de un inquilino",
+    categoria: "clientes",
+    Icono: Banknote,
+    detalle: (d) =>
+      d.tipo === "AL_DIA"
+        ? "Al día"
+        : `${d.tipo === "A_FAVOR" ? "Saldo a favor" : "Deuda"}${typeof d.importe === "number" ? ` de ${pesos(d.importe)}` : " por mes"}`,
+  },
+  CUENTA_AJUSTE: {
+    texto: "Hizo un ajuste en la cuenta de un inquilino",
+    categoria: "clientes",
+    Icono: Banknote,
+    detalle: (d) => `${d.tipo === "BONIFICACION" ? "Bonificación" : "Recargo"} de ${pesos(d.importe)}${d.motivo ? `: «${d.motivo}»` : ""}`,
+  },
+  CUENTA_ANULACION: {
+    texto: "Anuló un movimiento de la cuenta de un inquilino",
+    categoria: "clientes",
+    Icono: Banknote,
+    destructiva: true,
+    detalle: (d) => `${pesos(d.confirmacion)}${d.motivo ? `: «${d.motivo}»` : ""}`,
+  },
+  ABONOS_CARGADOS: {
+    texto: "Cargó los abonos del mes",
+    categoria: "clientes",
+    Icono: ReceiptText,
+    detalle: (d) => `${d.mes ?? ""}${d.vencimientoDia ? ` · vencen el día ${d.vencimientoDia}` : ""}`,
+  },
+  RECIBOS_GENERADOS: {
+    texto: "Generó los recibos de los abonados",
+    categoria: "clientes",
+    Icono: ReceiptText,
+    detalle: (d) => {
+      const fecha = new Date(String(d.dateNow));
+      return Number.isNaN(fecha.getTime()) ? "" : `Al ${fecha.toLocaleDateString("es-AR")}`;
+    },
+  },
+  RECIBO_ANULADO: { texto: "Anuló un recibo", categoria: "clientes", Icono: ReceiptText, destructiva: true },
+  RECIBO_ELIMINADO: { texto: "Eliminó un recibo", categoria: "clientes", Icono: Trash2, destructiva: true },
+  TARIFAS_APLICADAS: { texto: "Cambió las tarifas", categoria: "tarifas", Icono: Tag },
   USUARIO_CREADO: { texto: "Dio de alta un usuario", categoria: "cuentas", Icono: UserCog },
   USUARIO_EDITADO: { texto: "Editó un usuario", categoria: "cuentas", Icono: UserCog },
   USUARIO_CONTRASENA: { texto: "Cambió una contraseña", categoria: "cuentas", Icono: UserCog },
@@ -86,6 +204,7 @@ const CATEGORIAS: { id: Categoria | "todo"; label: string }[] = [
   { id: "todo", label: "Todo" },
   { id: "tarifas", label: "Tarifas" },
   { id: "configuracion", label: "Configuración" },
+  { id: "mercadopago", label: "MercadoPago" },
   { id: "cuentas", label: "Usuarios" },
   { id: "clientes", label: "Clientes y cocheras" },
   { id: "plataforma", label: "Plataforma" },
@@ -129,7 +248,34 @@ const CAMPOS: Record<string, string> = {
   percentage: "el porcentaje",
   amount: "el importe",
   codeBar: "el código",
+  dayStartHour: "el inicio del horario diurno",
+  dayEndHour: "el fin del horario diurno",
+  graceMinutes: "la tolerancia",
+  alias: "el alias",
+  nombre: "el nombre",
+  qrSaldo: "la comisión del QR con saldo o transferencia",
+  qrDebito: "la comisión del QR con débito",
+  qrCredito: "la comisión del QR con crédito",
+  aliasSaldo: "la comisión de las transferencias al alias",
+  aliasDebito: "la comisión del alias con débito",
+  aliasCredito: "la comisión del alias con crédito",
 };
+
+// Los valores fijos del backend, dichos como se dicen en la pantalla de tarifas.
+const VALORES: Record<string, string> = {
+  ENTRY: "la entrada",
+  EXIT: "la salida",
+  SPLIT: "dividido entre día y noche",
+  STARTED: "por unidad empezada",
+  COMPLETED: "por unidad completa",
+  PROPORTIONAL: "proporcional",
+  FIXED: "precio fijo por unidad",
+  DERIVED: "proporcional a la franja",
+  DAY: "día",
+  NIGHT: "noche",
+};
+
+const COMISION = /^(qr|alias)(Saldo|Debito|Credito)$/;
 
 const SECCIONES: Record<string, string> = {
   receiptDelivery: "los comprobantes",
@@ -141,14 +287,21 @@ const SECCIONES: Record<string, string> = {
   rates: "las tarifas",
 };
 
-function texto(campo: string, dato: unknown): string {
+// El formato depende de la última parte de la ruta (`franjas.«Auto».price` es un precio).
+function texto(ruta: string, dato: unknown): string {
+  const hoja = ruta.split(".").pop() ?? ruta;
+  // Una comisión vacía no es «nada»: es la tasa de referencia de MercadoPago.
+  if (COMISION.test(hoja))
+    return typeof dato === "number" ? `${dato.toLocaleString("es-AR")} %` : "la de referencia";
   if (typeof dato === "boolean") return dato ? "activado" : "desactivado";
   if (dato === null || dato === undefined || dato === "") return "vacío";
   if (Array.isArray(dato))
     return dato.length ? `${dato.length} elementos` : "ninguno";
-  if (campo === "price" || campo === "amount" || campo.endsWith("Price"))
+  if (hoja === "price" || hoja === "amount" || hoja.endsWith("Price"))
     return plata.format(Number(dato));
-  if (campo.endsWith("Minutes")) return `${dato} min`;
+  if (hoja.endsWith("Minutes")) return `${dato} min`;
+  if (hoja.endsWith("Hour")) return `${dato} h`;
+  if (typeof dato === "string" && VALORES[dato]) return VALORES[dato];
   return String(dato);
 }
 
@@ -189,23 +342,37 @@ function aplanar(
 
 // «pricingOptions.stay.capEnabled» → { que: "el tope", donde: "las opciones de cobro · las
 // reglas de permanencia" }. Es lo que convierte el detalle en una frase que se lee.
-function nombrar(ruta: string) {
+//
+// Una parte entre « » es el nombre de una fila de una lista (el vehículo, la franja) y se suma a
+// lo que cambió: `pricingOptions.charging.«Auto».dayPrice` → «el precio de día de Auto».
+function nombrar(ruta: string, etiquetas?: Record<string, string>) {
   const partes = ruta.split(".");
   const hoja = partes[partes.length - 1];
-  const contexto = partes
-    .slice(0, -1)
-    .map((p) => SECCIONES[p])
-    .filter(Boolean);
+  const medio = partes.slice(0, -1);
+  const nombre = medio
+    .filter((p) => p.startsWith("«"))
+    .map((p) => p.replace(/^«|»$/g, ""))
+    .join(" · ");
+  const contexto = medio.map((p) => SECCIONES[p]).filter(Boolean);
+  const base = etiquetas?.[hoja] ?? CAMPOS[hoja] ?? hoja;
   return {
-    que: CAMPOS[hoja] ?? hoja,
+    que: nombre ? `${base} de ${nombre}` : base,
     donde: contexto.length ? contexto[contexto.length - 1] : "",
+    nombre,
+    hoja,
   };
 }
 
 // Cada cambio, contado como una oración: «Desactivó el QR en los comprobantes».
-function frase(ruta: string, dato: unknown) {
-  const { que, donde } = nombrar(ruta);
+function frase(ruta: string, dato: unknown, etiquetas?: Record<string, string>) {
+  const { que, donde, nombre, hoja } = nombrar(ruta, etiquetas);
   const en = donde ? ` en ${donde}` : "";
+  // Una franja que aparece o desaparece es una franja agregada o quitada, no un precio que pasó
+  // de vacío a algo.
+  if (esCambio(dato) && ruta.startsWith("franjas.") && hoja === "price" && (dato.de === null || dato.a === null))
+    return dato.de === null
+      ? { verbo: "Agregó", resto: `la franja ${nombre}`, de: null, a: texto(ruta, dato.a) }
+      : { verbo: "Quitó", resto: `la franja ${nombre}`, de: null, a: texto(ruta, dato.de) };
   if (esCambio(dato)) {
     if (typeof dato.a === "boolean")
       return {
@@ -248,8 +415,12 @@ const ENTIDADES_GENERICAS = new Set(["usuario", "empresa", "asignación", "playa
 // ficha, que muestra las últimas sin desplegar nada.
 export function describirActividad(a: ActividadEmpresa) {
   const info = ACCIONES[a.accion];
-  const cambios = aplanar(a.detalle);
-  const primero = cambios[0] ? frase(cambios[0][0], cambios[0][1]) : null;
+  // Lo de la cuenta con la plataforma ya se cuenta entero en una frase, la misma del historial
+  // del Plan. Sin detalle (las acciones del panel de empresas) queda la frase general.
+  const deCuenta = a.detalle ? describirMovimientoCuenta(a.accion, a.detalle) : null;
+  const armado = !deCuenta && info?.detalle && a.detalle ? info.detalle(a.detalle) : null;
+  const cambios = deCuenta || armado !== null ? [] : aplanar(a.detalle);
+  const primero = cambios[0] ? frase(cambios[0][0], cambios[0][1], info?.campos) : null;
   const resto =
     cambios.length > 1
       ? ` · +${cambios.length - 1} ${cambios.length === 2 ? "cambio" : "cambios"}`
@@ -258,17 +429,21 @@ export function describirActividad(a: ActividadEmpresa) {
     primero && primero.a !== null
       ? `: ${primero.de !== null ? `${primero.de} → ` : ""}${primero.a}`
       : "";
-  const detalle = primero
-    ? `${primero.verbo} ${primero.resto}${valor}${resto}`
-    : a.entidad && !ENTIDADES_GENERICAS.has(a.entidad)
-      ? a.entidad
-      : "";
-  const texto = info?.texto ?? a.accion;
+  const detalle =
+    armado ??
+    (primero
+      ? `${primero.verbo} ${primero.resto}${valor}${resto}`
+      : !deCuenta && a.entidad && !ENTIDADES_GENERICAS.has(a.entidad)
+        ? a.entidad
+        : "");
+  // Una acción que el panel todavía no conoce se lee «suscripcion alta» y no «sUSCRIPCION_ALTA».
+  const texto = deCuenta ?? info?.texto ?? a.accion.toLowerCase().replace(/_/g, " ");
   return {
     quien: a.usuario ?? "Sistema",
     que: texto.charAt(0).toLowerCase() + texto.slice(1),
     detalle,
     cambios,
+    etiquetas: info?.campos,
     Icono: info?.Icono ?? ClipboardList,
     destructiva: !!info?.destructiva,
     categoria: info?.categoria,
@@ -309,7 +484,7 @@ export function ActividadDeEmpresa({
         <div>
           <h2 className="font-display text-[22px] font-semibold leading-tight">Actividad</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Cambios de reglas y accesos hechos por personas. Nunca muestra contraseñas ni tokens.
+            Todo lo que cambia la administración: reglas, usuarios, MercadoPago y el plan. Nunca muestra contraseñas ni tokens.
           </p>
         </div>
         <div className="max-w-full overflow-x-auto">
@@ -327,7 +502,7 @@ export function ActividadDeEmpresa({
         <p className="px-5 py-14 text-center text-sm text-muted-foreground">
           {actividad.length
             ? "No hay movimientos de ese tipo."
-            : "Todavía no hay movimientos. Se anota cada cambio de tarifas, configuración, usuarios y clientes."}
+            : "Todavía no hay movimientos. Se anota cada cambio de tarifas, configuración, usuarios, clientes, MercadoPago y el plan."}
         </p>
       )}
 
@@ -405,14 +580,14 @@ export function ActividadDeEmpresa({
                 {desplegable && (
                   <ul className="space-y-1.5 pb-4 pl-[66px] pr-4">
                     {d.cambios.map(([ruta, dato]) => {
-                      const f = frase(ruta, dato);
+                      const f = frase(ruta, dato, d.etiquetas);
                       return (
                         <li key={ruta} className="flex flex-wrap items-baseline gap-x-2 text-sm">
                           <span
                             className={`font-semibold ${
-                              f.verbo === "Desactivó"
+                              f.verbo === "Desactivó" || f.verbo === "Quitó"
                                 ? "text-[#FF7A4D]"
-                                : f.verbo === "Activó"
+                                : f.verbo === "Activó" || f.verbo === "Agregó"
                                   ? "text-emerald-400"
                                   : "text-foreground"
                             }`}

@@ -7,7 +7,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { Building2, CreditCard, LayoutDashboard } from 'lucide-react';
 import {
   Sidebar,
@@ -18,24 +17,21 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
-  SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { AppIcon } from '@/components/brand/logo';
 import { EmpresaConDetalle, PlataformaMetrics } from '@/types/tenancy.type';
 import {
   getEmpresasAction,
   getPlataformaMetricsAction,
 } from '@/actions/tenancy/tenancy.action';
 import { iniciales } from '@/components/plataforma/formato';
+import { cn } from '@/lib/utils';
+import { CAJITA, CENTRADO, ITEM, NavAprender, PANEL_FLOTANTE, PANEL_MOVIL, PestaniaLateral } from './nav-main';
 
-const ROTULO =
-  'px-3 pb-2 font-mono text-[10.5px] tracking-[0.14em] text-[#8A8073] group-data-[collapsible=icon]:hidden';
-
+// La misma barra flotante que la de la empresa (encastra con la de arriba, baja como panel en el
+// celular): cambian el contenido y el rótulo, no la forma.
 export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
-  const { data: session } = useSession();
   const { isMobile, setOpenMobile } = useSidebar();
   const [empresas, setEmpresas] = useState<EmpresaConDetalle[]>([]);
   const [metrics, setMetrics] = useState<PlataformaMetrics | null>(null);
@@ -89,60 +85,36 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
     },
   ];
 
-  const nombre = `${session?.user?.firstName ?? ''} ${session?.user?.lastName ?? ''}`.trim();
-
   return (
-    <Sidebar collapsible="icon" className="group/sidebar border-r border-[#2E2A23] bg-[#17140F]" {...props}>
-      {/* Continúa la franja de la barra superior. */}
-      <div className="gm-stripes h-[3px] w-full shrink-0" aria-hidden />
-
-      <SidebarHeader className="h-[75px] shrink-0 flex-row items-center justify-between gap-2 border-b border-[#2E2A23] bg-[#17140F] px-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
-        <Link
-          href="/admin/metricas"
-          onClick={cerrarEnMovil}
-          className="flex min-w-0 items-center gap-3 group-data-[collapsible=icon]:hidden"
-        >
-          <AppIcon className="size-9 shrink-0" />
-          <span className="flex min-w-0 flex-col gap-1">
-            <span className="font-display text-[15px] font-semibold leading-none tracking-[0.05em] text-foreground">
-              ESTACIONAMIENTO
-            </span>
-            <span className="truncate font-mono text-[9.5px] tracking-[0.12em] text-muted-foreground">
-              CONSOLA DE PLATAFORMA
-            </span>
-          </span>
-        </Link>
-        <SidebarTrigger className="h-8 w-8 shrink-0 rounded-md hover:bg-gm-surface-2 hover:text-foreground" />
+    <Sidebar variant="floating" collapsible="icon" className={PANEL_FLOTANTE} mobileSide="top" mobileClassName={PANEL_MOVIL} {...props}>
+      <PestaniaLateral />
+      <SidebarHeader className="h-12 shrink-0 flex-row items-center px-4 pb-0 pt-1">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground group-data-[collapsible=icon]:hidden">
+          Plataforma
+        </span>
       </SidebarHeader>
 
-      <SidebarContent className="gap-7 bg-[#17140F] px-2 py-5">
-        <SidebarGroup className="p-0">
-          <span className={ROTULO}>PLATAFORMA</span>
-          <SidebarMenu className="gap-1">
+      <SidebarContent className="gap-0 px-1">
+        <SidebarGroup>
+          <SidebarMenu className={CENTRADO}>
             {items.map(({ titulo, url, Icono, activo, cuenta }) => (
               <SidebarMenuItem key={url}>
-                <SidebarMenuButton
-                  asChild
-                  tooltip={titulo}
-                  isActive={activo}
-                  className="h-11 gap-3 rounded-xl px-3 text-sm font-medium text-[#C9BFB1] hover:bg-[#221F1A] hover:text-foreground data-[active=true]:bg-[#2B2620] data-[active=true]:font-semibold data-[active=true]:text-foreground [&[data-active=true]>svg]:text-gm-yellow"
-                >
-                  <Link href={url} onClick={cerrarEnMovil} aria-current={activo ? 'page' : undefined}>
-                    <Icono className="size-[18px]" />
-                    <span className="flex-1">{titulo}</span>
+                <SidebarMenuButton asChild tooltip={titulo} isActive={activo} className={ITEM}>
+                  <Link href={url} onClick={cerrarEnMovil} aria-current={activo ? 'page' : undefined} className="flex w-full items-center gap-3">
+                    <span className={CAJITA}>
+                      <Icono aria-hidden />
+                    </span>
+                    <span className="flex-1 truncate">{titulo}</span>
+                    {/* Plegada no hay lugar: el número vuelve al desplegarla. */}
                     {cuenta !== undefined && (
                       <span
-                        className={`rounded-full px-[7px] py-0.5 font-mono text-[11px] ${
-                          activo
-                            ? 'bg-gm-yellow font-semibold text-gm-ink'
-                            : 'border border-[#34302A] text-muted-foreground'
-                        }`}
+                        className={cn(
+                          'shrink-0 rounded-full px-[7px] py-0.5 font-mono text-[11px] font-semibold group-data-[collapsible=icon]:hidden',
+                          activo ? 'bg-gm-ink text-gm-yellow' : 'bg-white/[0.06] text-muted-foreground',
+                        )}
                       >
                         {cuenta}
                       </span>
-                    )}
-                    {activo && cuenta === undefined && (
-                      <span aria-hidden className="size-1.5 rounded-full bg-gm-yellow" />
                     )}
                   </Link>
                 </SidebarMenuButton>
@@ -152,8 +124,11 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
 
         {atajos.length > 0 && (
-          <SidebarGroup className="p-0 group-data-[collapsible=icon]:hidden">
-            <span className={ROTULO}>ACCESO RÁPIDO</span>
+          <SidebarGroup className="pt-1 group-data-[collapsible=icon]:hidden">
+            <span aria-hidden className="mx-1.5 mb-3 h-px bg-white/[0.07]" />
+            <span className="px-2.5 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Acceso rápido
+            </span>
             <ul className="flex flex-col gap-1">
               {atajos.map((e) => {
                 const actual = e.id === empresaActual;
@@ -163,15 +138,17 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       href={`/admin/empresas/${e.id}`}
                       onClick={cerrarEnMovil}
                       aria-current={actual ? 'page' : undefined}
-                      className={`flex h-10 items-center gap-2.5 rounded-[10px] px-3 text-[13px] transition-colors hover:bg-[#221F1A] ${
-                        actual ? 'bg-[#221F1A] font-semibold text-foreground' : 'text-[#C9BFB1]'
-                      }`}
+                      className={cn(
+                        'flex h-10 items-center gap-3 rounded-xl px-1.5 text-[13px] transition-colors hover:bg-white/[0.04] hover:text-foreground',
+                        actual ? 'bg-white/[0.06] font-semibold text-foreground' : 'text-[#D9D1C3]',
+                      )}
                     >
                       <span
                         aria-hidden
-                        className={`flex size-6 shrink-0 items-center justify-center rounded-[7px] font-display text-[11px] font-semibold ${
-                          actual ? 'bg-gm-yellow text-gm-ink' : 'bg-[#2B2620] text-[#E9E1D4]'
-                        }`}
+                        className={cn(
+                          'grid size-8 shrink-0 place-items-center rounded-[10px] font-display text-[11.5px] font-semibold',
+                          actual ? 'bg-gm-yellow text-gm-ink' : 'bg-white/[0.05] text-[#E9E1D4]',
+                        )}
                       >
                         {iniciales(e.nombre)}
                       </span>
@@ -179,9 +156,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       <span
                         role="img"
                         aria-label={e.estado === 'ACTIVA' ? 'Activa' : 'Suspendida'}
-                        className={`size-[7px] shrink-0 rounded-full ${
-                          e.estado === 'ACTIVA' ? 'bg-emerald-400' : 'bg-[#FF7A4D]'
-                        }`}
+                        className={cn('mr-2 size-[7px] shrink-0 rounded-full', e.estado === 'ACTIVA' ? 'bg-emerald-400' : 'bg-[#FF7A4D]')}
                       />
                     </Link>
                   </li>
@@ -191,7 +166,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
             <Link
               href="/admin/empresas"
               onClick={cerrarEnMovil}
-              className="px-3 pt-2 text-[12.5px] font-semibold text-gm-yellow hover:text-[#FFD84D]"
+              className="px-2.5 pt-2 text-[12.5px] font-semibold text-gm-yellow hover:text-[#FFD84D]"
             >
               Ver las {empresas.length} empresas →
             </Link>
@@ -199,22 +174,9 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-[#2E2A23] bg-[#17140F] p-3 group-data-[collapsible=icon]:p-1.5">
-        <div className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-          <span
-            title={nombre || 'Super admin'}
-            className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-gm-yellow font-display text-[13px] font-bold text-gm-ink"
-          >
-            {nombre ? iniciales(nombre) : 'SA'}
-          </span>
-          <div className="flex min-w-0 flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-[13px] font-semibold">{nombre || 'Super admin'}</span>
-            <span className="text-[11.5px] text-muted-foreground">Super admin · dueño de la plataforma</span>
-          </div>
-        </div>
+      <SidebarFooter className="border-t border-white/[0.06] p-2">
+        <NavAprender />
       </SidebarFooter>
-
-      <SidebarRail />
     </Sidebar>
   );
 }

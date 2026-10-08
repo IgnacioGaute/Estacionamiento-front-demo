@@ -95,7 +95,7 @@ export function PestaniaMovil() {
 }
 
 // Cada ítem: el ícono en su cajita y el nombre. Plegada, la cajita es el botón (44 px).
-const ITEM = cn(
+export const ITEM = cn(
   'group/item relative h-11 w-full rounded-xl px-1.5 text-[14px] font-semibold tracking-tight transition-[background-color,color,box-shadow] duration-150',
   'text-[#D9D1C3] hover:bg-white/[0.04] hover:text-foreground',
   'data-[active=true]:font-bold data-[active=true]:text-gm-ink data-[active=true]:shadow-[0_10px_24px_-12px_hsl(26_92%_55%/0.75)]',
@@ -104,11 +104,11 @@ const ITEM = cn(
   'data-[active=true]:bg-gradient-to-r data-[active=true]:from-gm-yellow data-[active=true]:to-[hsl(26_92%_55%)]',
   'group-data-[collapsible=icon]:!size-11 group-data-[collapsible=icon]:!p-1.5',
 );
-const CAJITA =
+export const CAJITA =
   'grid size-8 shrink-0 place-items-center rounded-[10px] bg-white/[0.05] text-[#CFC5B5] transition-colors group-hover/item:bg-white/[0.08] group-hover/item:text-foreground group-data-[active=true]/item:bg-gm-ink/[0.14] group-data-[active=true]/item:text-gm-ink [&>svg]:size-[18px] [&>svg]:stroke-[1.9]';
 
 // Plegada, cada botón de 44 px queda centrado en la tira (si no, se pega a la izquierda).
-const CENTRADO = 'gap-1 group-data-[collapsible=icon]:items-center';
+export const CENTRADO = 'gap-1 group-data-[collapsible=icon]:items-center';
 
 function Icono({ icon }: { icon: NavItem['icon'] }) {
   if (!icon) return null;

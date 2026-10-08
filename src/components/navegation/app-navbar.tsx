@@ -1,5 +1,5 @@
 import { PlayaSelector } from '@/components/tenant-provider';
-import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarInset } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { ReactNode } from 'react';
 import { currentUser } from '@/lib/auth';
@@ -27,8 +27,8 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
     name: `${user?.firstName ?? ''} ${user?.lastName ?? ''}`,
     role: user?.role || 'USER',
   };
-  // La barra lateral flotante de la empresa encastra con esta barra; la del super admin es otra.
-  const encastre = !!(adminSidebar || userSidebar) && user?.role !== 'SUPER_ADMIN';
+  // La barra lateral flotante encastra con esta barra, también la de la consola de plataforma.
+  const encastre = !!(adminSidebar || userSidebar);
 
   return (
     <>
@@ -56,19 +56,10 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
               encastre && 'md:pl-5 md:[-webkit-mask-image:radial-gradient(circle_21px_at_-10px_31px,transparent_20.5px,#000_21px)] md:[mask-image:radial-gradient(circle_21px_at_-10px_31px,transparent_20.5px,#000_21px)]',
             )}
           >
-            {user?.role === 'SUPER_ADMIN' && (adminSidebar || userSidebar) && (
-              <SidebarTrigger className="md:hidden h-9 w-9 border border-border/60 bg-white/[0.04] hover:bg-white/[0.08]" />
-            )}
-
-            {/* La barra del super admin trae su marca: con ella abierta, el logo de acá se
-                repetiría al lado. Se muestra cuando está colapsada o en el celular. La franja de
-                obra queda como detalle al pie del logo. */}
             <Link
               href={user?.role === 'SUPER_ADMIN' ? '/admin/empresas' : '/tickets'}
               aria-label={user?.role === 'SUPER_ADMIN' ? 'Ir a empresas' : 'Ir a Entradas y salidas'}
-              className={`group grid size-10 shrink-0 place-items-center rounded-[9px] transition-[filter] hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow ${
-                user?.role === 'SUPER_ADMIN' ? 'md:[.peer[data-state=expanded]~*_&]:hidden' : ''
-              }`}
+              className="group grid size-10 shrink-0 place-items-center rounded-[9px] transition-[filter] hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow"
             >
               {/* El mismo ícono que la pestaña y la pantalla de carga. */}
               <AppIcon className="size-10" />
@@ -78,7 +69,6 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
                 buscador de la plataforma y su estado. */}
             {user?.role === 'SUPER_ADMIN' ? (
               <>
-                <div className="hidden md:block h-6 w-px bg-border/40" />
                 <PlatformBar />
                 <NavUser userNav={userNav} />
               </>

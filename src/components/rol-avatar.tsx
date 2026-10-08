@@ -1,10 +1,13 @@
-import { UserRound, UserRoundCog, type LucideIcon } from 'lucide-react';
+import { ShieldCheck, UserRound, UserRoundCog, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // En vez de iniciales, una personita que dice el rol de un vistazo: el administrador en amarillo y
 // con engranaje (el mismo amarillo de su etiqueta «Admin»), el operador en naranja. Difieren en
 // color, en claridad y en el dibujo, así no dependen solo del tono.
 export function estiloRol(role?: string | null): { fondo: string; Icono: LucideIcon; etiqueta: string } {
+  // El dueño de la plataforma: el degradado del logo y un escudo, distinto de los dos de una empresa.
+  if (role === 'SUPER_ADMIN')
+    return { fondo: 'bg-gradient-to-br from-gm-yellow to-[hsl(26_92%_55%)] text-gm-ink', Icono: ShieldCheck, etiqueta: 'Super admin' };
   if (role === 'ADMIN') return { fondo: 'bg-gm-yellow text-gm-ink', Icono: UserRoundCog, etiqueta: 'Administrador' };
   return { fondo: 'bg-gm-orange text-white', Icono: UserRound, etiqueta: 'Operador' };
 }

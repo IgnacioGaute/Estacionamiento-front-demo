@@ -136,7 +136,7 @@ export function PlatformBar() {
       </nav>
 
       <div ref={caja} className="relative min-w-0 flex-1 md:min-w-[260px] md:max-w-md">
-        <label className="flex h-10 items-center gap-2 rounded-xl border border-border/70 bg-gm-surface-2 px-3">
+        <label className="flex h-9 items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 transition-colors focus-within:border-gm-yellow/50 focus-within:bg-white/[0.06] sm:h-10">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <span className="sr-only">Buscar en la plataforma</span>
           <input
@@ -151,12 +151,12 @@ export function PlatformBar() {
             onFocus={() => setAbierto(true)}
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
-          <kbd className="hidden shrink-0 rounded border border-border/70 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground lg:block">
+          <kbd className="hidden shrink-0 rounded-md border border-white/[0.08] px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground lg:block">
             Ctrl K
           </kbd>
         </label>
         {abierto && busqueda.length >= 2 && (
-          <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-xl border border-border bg-gm-surface shadow-xl">
+          <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0B0A08]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl">
             {!resultados.length && (
               <p className="p-4 text-sm text-muted-foreground">
                 Nada coincide con «{texto}».
@@ -170,7 +170,7 @@ export function PlatformBar() {
                   setAbierto(false);
                   setTexto("");
                 }}
-                className="flex items-center gap-3 border-b border-border/60 p-3 last:border-b-0 hover:bg-gm-surface-2"
+                className="flex items-center gap-3 rounded-lg p-2.5 hover:bg-white/[0.06]"
               >
                 <span
                   className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-bold tracking-wide ${
@@ -198,7 +198,7 @@ export function PlatformBar() {
       <Link
         href="/admin/empresas"
         aria-label="Estado de la plataforma"
-        className="ml-auto hidden h-9 shrink-0 items-center gap-3 rounded-full border border-border bg-gm-surface px-3.5 text-[12.5px] text-[#C9BFB1] transition-colors hover:border-gm-line-strong hover:text-foreground xl:flex"
+        className="ml-auto hidden h-9 shrink-0 items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 text-[12.5px] text-[#C9BFB1] transition-colors hover:bg-white/[0.07] hover:text-foreground xl:flex"
       >
         <span className="flex items-center gap-1.5">
           <span className="size-[7px] rounded-full bg-emerald-400" aria-hidden />
@@ -229,7 +229,7 @@ export function PlatformBar() {
         href="/admin/empresas?nueva=1"
         data-tour="empresas-crear"
         aria-label="Nueva empresa"
-        className="flex h-10 shrink-0 items-center gap-2 rounded-xl bg-gm-yellow px-3 text-sm font-bold text-gm-ink transition-colors hover:bg-[#FFD23A] sm:px-4"
+        className="flex h-9 shrink-0 items-center gap-2 rounded-xl bg-gm-yellow px-2.5 text-sm font-bold text-gm-ink transition-colors hover:bg-[#FFD23A] sm:h-10 sm:px-4"
       >
         <Plus className="size-4" strokeWidth={2.5} />
         <span className="hidden sm:inline">Nueva empresa</span>

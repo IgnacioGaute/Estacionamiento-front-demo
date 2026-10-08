@@ -438,6 +438,20 @@ export function FichasEnElPlayon({ catalogo, registros, ahora, recienEscaneada, 
 
 // ── Barra de abajo del celular ────────────────────────────────────────────────
 
+// La barra entra desde 320 px. «ENTRADA» con su ícono redondo pide unos 120 px de botón, y en un
+// Android de 360 (o con la letra del sistema agrandada) el botón queda más angosto: ahí suelta el
+// ícono y centra el texto en vez de cortarlo debajo del círculo de escanear. Se mide el botón y no
+// la pantalla (container query), así también se adapta cuando no hay escanear en el medio.
+// El `truncate` es la última red: con una letra enorme el texto termina en «…», nunca encimado.
+const DOCK_LADO =
+  'flex h-14 min-w-0 rounded-[20px] transition-transform [container-type:inline-size] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow';
+const DOCK_DENTRO =
+  'flex h-full w-full min-w-0 items-center gap-2 [@container(width<120px)]:justify-center [@container(width<120px)]:px-2.5';
+const DOCK_ICONO =
+  'grid size-[34px] shrink-0 place-items-center rounded-full [@container(width<120px)]:hidden';
+const DOCK_TEXTO =
+  'flex min-w-0 flex-col leading-[1.05] [@container(width<120px)]:items-center [@container(width<120px)]:text-center';
+
 export function MostradorDock({ onEntrada, onSalida, escanear, entradaRef, salidaRef }: {
   onEntrada: () => void;
   onSalida: () => void;
@@ -451,18 +465,22 @@ export function MostradorDock({ onEntrada, onSalida, escanear, entradaRef, salid
       <nav
         aria-label="Acciones del mostrador"
         className={cn(
-          'fixed inset-x-3 bottom-[max(env(safe-area-inset-bottom),14px)] z-40 grid h-[76px] items-center gap-1.5 rounded-[28px] border border-white/[0.08] bg-[#1F1C17]/95 px-2.5 shadow-[0_18px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur lg:hidden',
-          escanear ? 'grid-cols-[minmax(0,1fr)_84px_minmax(0,1fr)]' : 'grid-cols-2',
+          'fixed inset-x-3 bottom-[max(env(safe-area-inset-bottom),14px)] z-40 grid h-[76px] items-center gap-1.5 rounded-[28px] border border-white/[0.08] bg-[#1F1C17]/95 px-2 shadow-[0_18px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur lg:hidden',
+          escanear ? 'grid-cols-[minmax(0,1fr)_80px_minmax(0,1fr)]' : 'grid-cols-2',
         )}
       >
-        <button ref={entradaRef} type="button" onClick={onEntrada} className="flex h-14 min-w-0 items-center gap-2.5 rounded-[20px] bg-gm-yellow pl-2 pr-3 text-left text-gm-ink transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-          <span className="grid size-[38px] shrink-0 place-items-center rounded-full bg-gm-ink text-gm-yellow"><CarFront className="size-5" aria-hidden /></span>
-          <span className="flex min-w-0 flex-col leading-[1.05]"><span className="gm-display text-[17px] tracking-[0.04em]">Entrada</span><span className="text-[11px] font-semibold opacity-70">Registrar</span></span>
+        <button ref={entradaRef} type="button" onClick={onEntrada} className={cn(DOCK_LADO, 'bg-gm-yellow text-left text-gm-ink focus-visible:ring-offset-2 focus-visible:ring-offset-background')}>
+          <span className={cn(DOCK_DENTRO, 'pl-1.5 pr-2.5')}>
+            <span className={cn(DOCK_ICONO, 'bg-gm-ink text-gm-yellow')}><CarFront className="size-[18px]" aria-hidden /></span>
+            <span className={DOCK_TEXTO}><span className="gm-display max-w-full truncate text-base tracking-[0.03em]">Entrada</span><span className="max-w-full truncate text-[11px] font-semibold opacity-70">Registrar</span></span>
+          </span>
         </button>
         {escanear}
-        <button ref={salidaRef} type="button" onClick={onSalida} className="flex h-14 min-w-0 items-center justify-end gap-2.5 rounded-[20px] bg-[#2E2A23] pl-3 pr-2 text-right text-foreground transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
-          <span className="flex min-w-0 flex-col leading-[1.05]"><span className="gm-display text-[17px] tracking-[0.04em]">Salida</span><span className="text-[11px] font-semibold text-muted-foreground">Cobrar</span></span>
-          <span className="grid size-[38px] shrink-0 place-items-center rounded-full bg-background text-gm-yellow"><Banknote className="size-5" aria-hidden /></span>
+        <button ref={salidaRef} type="button" onClick={onSalida} className={cn(DOCK_LADO, 'bg-[#2E2A23] text-right text-foreground')}>
+          <span className={cn(DOCK_DENTRO, 'justify-end pl-2.5 pr-1.5')}>
+            <span className={cn(DOCK_TEXTO, 'items-end')}><span className="gm-display max-w-full truncate text-base tracking-[0.03em]">Salida</span><span className="max-w-full truncate text-[11px] font-semibold text-muted-foreground">Cobrar</span></span>
+            <span className={cn(DOCK_ICONO, 'bg-background text-gm-yellow')}><Banknote className="size-[18px]" aria-hidden /></span>
+          </span>
         </button>
       </nav>
     </>
