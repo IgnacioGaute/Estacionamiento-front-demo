@@ -29,6 +29,7 @@ export type OpcionTransferencia = {
 export type CobroAlias = {
   id: string;
   registrationId: string;
+  tipo?: 'HORA' | 'ABONO';
   estado: EstadoCobroAlias;
   importe: number;
   moneda: string;

@@ -164,8 +164,8 @@ function ScopedAssistant() {
   // The source's 316 × 430 content box has a 1px border on each side.
   const width = Math.min(318, viewport.width - 24);
   const height = Math.min(432, viewport.height - 24);
-  const px = clamp(x + 74 - width, viewport.left + 12, viewport.left + viewport.width - width - 12);
-  const py = y - viewport.top > height + 18 ? y - height - 10 : clamp(y + 68, viewport.top + 12, viewport.top + viewport.height - height - 12);
+  const px = clamp(x + 66 - width, viewport.left + 12, viewport.left + viewport.width - width - 12);
+  const py = y - viewport.top > height + 18 ? y - height - 10 : clamp(y + 62, viewport.top + 12, viewport.top + viewport.height - height - 12);
   const examples = pathname.startsWith('/admin')
     ? ['¿Cómo cambio las tarifas?', '¿Cómo asigno una playa a un operador?', '¿Cómo reviso un cierre de caja?']
     : ['¿Cómo cierro mi turno?', '¿Cómo busco un auto por patente?', '¿Cómo registro un gasto?'];

@@ -15,9 +15,10 @@ import {
   ActionDialogPrimaryButton,
   ActionDialogSecondaryButton,
 } from '@/components/ui/action-dialog';
+import { PaymentMethodChoices, MedioCobro } from './payment-method-choices';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
-import { AlertTriangle, ArrowLeftRight, Banknote, Barcode, Check, ChevronDown, ChevronRight, Gift, Landmark, QrCode, Search, Timer } from 'lucide-react';
+import { AlertTriangle, Barcode, ChevronDown, ChevronRight, Gift, Search, Timer } from 'lucide-react';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
 import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
@@ -40,14 +41,8 @@ import { cuandoEntro, formatEstadia as formatElapsed } from '@/utils/estadia';
 // Efectivo y transferencia los declara el cajero; QR y alias los verifica el sistema contra
 // MercadoPago. Los cuatro se eligen igual (tocar y confirmar abajo) para que el botón principal
 // diga siempre qué va a pasar antes de que pase.
-type Medio = 'CASH' | 'QR' | 'ALIAS' | 'TRANSFER';
+type Medio = MedioCobro;
 
-const MEDIOS: { id: Medio; titulo: string; ayuda: string; Icon: typeof Banknote; verificado: boolean }[] = [
-  { id: 'CASH', titulo: 'Efectivo', ayuda: 'Contalo antes de confirmar', Icon: Banknote, verificado: false },
-  { id: 'QR', titulo: 'QR / celular', ayuda: 'Se acredita solo', Icon: QrCode, verificado: true },
-  { id: 'ALIAS', titulo: 'Al alias', ayuda: 'Se detecta sola', Icon: ArrowLeftRight, verificado: true },
-  { id: 'TRANSFER', titulo: 'Transferencia', ayuda: 'Verificala antes de confirmar', Icon: Landmark, verificado: false },
-];
 
 const etiqueta = 'text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground';
 const miles = (valor: number) => new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(valor);
@@ -384,7 +379,6 @@ export function CloseTicketPanel({
   const enEspera = cobroQr?.estado === 'PENDIENTE' || aliasEsperando;
   const saldo = summary?.saldoACobrar ?? 0;
   const mostrarMedios = !!summary && saldo > 0 && !enEspera && !pagoConSalida;
-  const medios = MEDIOS.filter((m) => m.id !== 'ALIAS' || alias?.disponible);
   const sugeridos = pagosSugeridos(saldo);
   const recibido = pagaCon === 'OTRO' ? (otroImporte ? Number(otroImporte) : null) : pagaCon;
   const vuelto = recibido !== null ? calcularVuelto(saldo, recibido) : null;
@@ -604,38 +598,7 @@ export function CloseTicketPanel({
                               Cortesía
                             </button>
                           </div>
-                          <div className="grid grid-cols-2 gap-2.5 short:gap-2">
-                            {medios.map(({ id, titulo, ayuda, Icon, verificado }, index) => {
-                              const elegido = paymentMethod === id;
-                              return (
-                                <button
-                                  key={id}
-                                  type="button"
-                                  aria-pressed={elegido}
-                                  disabled={isPending}
-                                  onClick={() => setPaymentMethod(id)}
-                                  className={cn(
-                                    'relative flex min-h-[66px] flex-col items-start justify-center gap-1 rounded-2xl border-[1.5px] px-3.5 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50 short:min-h-[54px] short:py-2',
-                                    elegido ? 'border-gm-yellow bg-gm-yellow/[0.12] shadow-[inset_0_0_0_1px_hsl(var(--gm-yellow))]' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/40',
-                                    medios.length % 2 === 1 && index === medios.length - 1 && 'col-span-2',
-                                  )}
-                                >
-                                  <span className="flex items-center gap-2">
-                                    {/* Elegido, el ícono pasa a ser el tilde: no ocupa lugar extra y el nombre no se corta. */}
-                                    {elegido ? (
-                                      <span className="grid size-5 shrink-0 place-items-center rounded-full bg-gm-yellow text-gm-ink" aria-hidden>
-                                        <Check className="size-3.5" strokeWidth={3} />
-                                      </span>
-                                    ) : (
-                                      <Icon className={cn('size-5 shrink-0', verificado ? 'text-gm-yellow' : 'text-muted-foreground')} aria-hidden />
-                                    )}
-                                    <span className="gm-display whitespace-nowrap text-[15px] tracking-[0.03em]">{titulo}</span>
-                                  </span>
-                                  <span className={cn('text-[11.5px] leading-tight text-muted-foreground', paymentMethod && 'short:hidden')}>{ayuda}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
+                          <PaymentMethodChoices value={paymentMethod} onChange={setPaymentMethod} disabled={isPending} aliasDisponible={!!alias?.disponible} />
                         </fieldset>
 
                         {paymentMethod === 'CASH' ? (

@@ -125,7 +125,7 @@ export function useTour(steps: TourStep[]): TourHandle {
     <>
       <button
         onClick={start}
-        className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-semibold transition-colors"
+        className="hidden items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-semibold transition-colors md:inline-flex"
         style={
           open
             ? {

@@ -27,6 +27,17 @@
 .legend strong { color:hsl(var(--foreground)); }
 .empty { padding:20px 0; font-size:14px; }
 @media(max-width:640px) {
+ .embedded .map { padding:12px; }
+ .embedded .mapHeading { gap:8px; }
+ .embedded .mapHeading h4 { font-size:14px; }
+ .embedded .mapHeading p { font-size:12px; }
+ .embedded .vehicleIcon { width:34px; height:34px; }
+ .embedded .start { margin:14px 0 10px; }
+ .embedded .route { gap:16px; }
+ .embedded .stop { padding-left:36px; }
+ .embedded .card { padding:12px; }
+ .embedded .connector { bottom:-17px; }
+ .embedded .stop:not(:last-child)::before { height:calc(100% + 2px); }
  .map { padding:16px; border-radius:16px; }
  .route { display:flex; flex-direction:column; gap:24px; overflow:visible; padding-bottom:4px; }
  .stop { flex:auto; max-width:none; padding:0 0 0 42px; min-width:0; }

@@ -40,12 +40,12 @@ const enviar = (body?: unknown): RequestInit => ({
 
 export const disponibilidadAlias = () => pedir<DisponibilidadAlias>('/mercadopago/alias/disponibilidad');
 
-export const iniciarCobroAlias = (registrationId: string) =>
-  pedir<CobroAlias>('/mercadopago/alias/cobros', enviar({ registrationId }));
+export const iniciarCobroAlias = (registrationId: string, tipo: 'HORA' | 'ABONO' = 'HORA') =>
+  pedir<CobroAlias>('/mercadopago/alias/cobros', enviar({ registrationId, tipo }));
 
 // null si la estadía nunca esperó una transferencia.
-export const cobroAliasDeEstadia = (registrationId: string) =>
-  pedir<CobroAlias | null>(`/mercadopago/alias/cobros/estadia/${registrationId}`);
+export const cobroAliasDeEstadia = (registrationId: string, tipo: 'HORA' | 'ABONO' = 'HORA') =>
+  pedir<CobroAlias | null>(`/mercadopago/alias/cobros/estadia/${registrationId}?tipo=${tipo}`);
 
 export const consultarCobroAlias = (id: string) => pedir<CobroAlias>(`/mercadopago/alias/cobros/${id}`);
 

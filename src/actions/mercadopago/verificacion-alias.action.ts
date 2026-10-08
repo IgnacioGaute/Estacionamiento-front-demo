@@ -27,12 +27,12 @@ export async function disponibilidadAliasAction() {
   return intentar(() => disponibilidadAlias());
 }
 
-export async function iniciarCobroAliasAction(registrationId: string) {
-  return intentar(() => iniciarCobroAlias(registrationId));
+export async function iniciarCobroAliasAction(registrationId: string, tipo: 'HORA' | 'ABONO' = 'HORA') {
+  return intentar(() => iniciarCobroAlias(registrationId, tipo));
 }
 
-export async function cobroAliasDeEstadiaAction(registrationId: string) {
-  return intentar(() => cobroAliasDeEstadia(registrationId));
+export async function cobroAliasDeEstadiaAction(registrationId: string, tipo: 'HORA' | 'ABONO' = 'HORA') {
+  return intentar(() => cobroAliasDeEstadia(registrationId, tipo));
 }
 
 export async function consultarCobroAliasAction(id: string) {

@@ -5,18 +5,22 @@
 .ai-widget button { cursor:pointer; }
 .ai-widget button:disabled { cursor:default; }
 .ai-widget button:focus-visible, .ai-widget input:focus-visible { outline:2px solid #f7ce46; outline-offset:3px; }
-.ai-orb-position { position:fixed; z-index:60; width:72px; height:56px; transition:left .18s ease,top .18s ease; }
+.ai-orb-position { position:fixed; z-index:60; width:64px; height:50px; transition:left .18s ease,top .18s ease; }
 .ai-orb-position.ai-dragging { transition:none; transform:scale(1.08); }
-/* Con una hoja de operación abierta en el celular (action-dialog.tsx) el asistente queda encima de
-   la hoja y tapa sus botones: se esconde hasta que se cierre. Sin estado en JS que pueda desfasarse. */
-@media (max-width:639px) { html:has([data-action-dialog][data-state="open"]) .ai-orb-position, html:has([data-action-dialog][data-state="open"]) .ai-panel-position { display:none; } }
-.ai-widget button.ai-help-label { position:absolute; top:59px; left:50%; transform:translateX(-50%); display:block; width:max-content; max-width:100px; box-sizing:border-box; margin:0; padding:5px 0; border:0; border-radius:4px; background:transparent; color:#a99a60; font-family:inherit; font-size:9px; font-weight:500; line-height:14px; letter-spacing:.01em; white-space:nowrap; text-align:center; box-shadow:none; -webkit-text-size-adjust:100%; transition:color .18s ease; }
+/* En mobile cualquier diálogo tiene prioridad sobre el asistente. */
+@media (max-width:767px) {
+  .ai-orb-position, .ai-panel-position { z-index:35; }
+  /* Incluye diálogos generales, hojas, calendario y confirmaciones Radix. */
+  html:has([role="dialog"][data-state="open"], [role="dialog"][aria-modal="true"], [role="alertdialog"]) .ai-orb-position,
+  html:has([role="dialog"][data-state="open"], [role="dialog"][aria-modal="true"], [role="alertdialog"]) .ai-panel-position { visibility:hidden; pointer-events:none; }
+}
+.ai-widget button.ai-help-label { position:absolute; top:52px; left:50%; transform:translateX(-50%); display:block; width:max-content; max-width:110px; box-sizing:border-box; margin:0; padding:5px 0; border:0; border-radius:4px; background:transparent; color:#f7ce46; font-family:inherit; font-size:10px; font-weight:650; line-height:14px; letter-spacing:.01em; white-space:nowrap; text-align:center; box-shadow:none; -webkit-text-size-adjust:100%; transition:color .18s ease; }
 .ai-widget button.ai-help-label:hover, .ai-widget button.ai-help-label:focus-visible { color:#f7ce46; background:transparent; }
 .ai-dragging .ai-help-label { pointer-events:none; opacity:.6; }
-.ai-orb { position:relative; display:block; padding:0; width:72px; height:56px; border-radius:28px; cursor:grab!important; touch-action:none; user-select:none; background:linear-gradient(165deg,#34322b,#17160f); border:1px solid #403e35; box-shadow:0 14px 30px rgba(0,0,0,.6); animation:ai-orbFloat 4.6s ease-in-out infinite; }
+.ai-orb { position:relative; display:block; padding:0; width:64px; height:50px; border-radius:25px; cursor:grab!important; touch-action:none; user-select:none; background:linear-gradient(165deg,#171613,#0d0c0a); border:1px solid #2b2922; box-shadow:0 10px 24px rgba(0,0,0,.5); animation:ai-orbFloat 4.6s ease-in-out infinite; }
 .ai-dragging .ai-orb { cursor:grabbing!important; }
 .ai-halo { position:absolute; inset:-6px; border-radius:32px; border:1.5px solid rgba(247,206,70,.4); animation:ai-orbHalo 2.8s ease-out infinite; pointer-events:none; }
-.ai-visor { position:absolute; left:7px; right:7px; top:11px; height:26px; border-radius:14px; background:#090806; border:1px solid rgba(247,206,70,.2); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.ai-visor { position:absolute; left:6px; right:6px; top:9px; height:24px; border-radius:13px; background:#090806; border:1px solid rgba(247,206,70,.2); display:flex; align-items:center; justify-content:center; overflow:hidden; }
 .ai-eyes { display:flex; gap:11px; animation:ai-lookAround 5.4s ease-in-out infinite; }
 .ai-eyes > span { width:11px; height:11px; border-radius:50%; background:#f7ce46; box-shadow:0 0 10px rgba(247,206,70,.8); animation:ai-blink 4s infinite; }
 .ai-smile { position:absolute; left:50%; bottom:6px; margin-left:-8px; width:16px; height:6px; border-bottom:2px solid rgba(247,206,70,.75); border-radius:0 0 10px 10px; }

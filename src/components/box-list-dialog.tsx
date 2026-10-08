@@ -3,13 +3,13 @@ import LatticeLoader from '@/components/ui/lattice-loader';
 import { DataLoading } from '@/components/ui/data-loading';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ActionDialog,
+  ActionDialogContent,
+  ActionDialogBody,
+  ActionDialogFooter,
+  ActionDialogHeader,
+  ActionDialogPrimaryButton,
+} from '@/components/ui/action-dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { appCalendarClassNames } from '@/components/app-date-picker';
 import * as DateDialog from '@radix-ui/react-dialog';
@@ -22,10 +22,11 @@ import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { CalendarDays, ChevronLeft, ChevronRight, FileText, Printer, Wallet, Info } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { getShiftsEnabledAction } from '@/actions/turnos/shifts-enabled.action';
 import { CompactPagination } from '@/components/compact-pagination';
 import { ResumenCajaNeto } from '@/components/resumen-caja-neto';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -56,7 +57,7 @@ function CobrosInquilinosDelDia({ cobros }: { cobros: CobroInquilinoDia[] }) {
   const porMedio = MEDIOS_INQUILINOS.map((m) => ({
     ...m,
     total: cobros.filter((c) => c.metodo === m.id).reduce((s, c) => s + c.monto, 0),
-  })).filter((m) => m.total !== 0 || m.id === 'CASH' || m.id === 'TRANSFER');
+  })).filter((m) => m.total !== 0);
   const recibos = new Set(cobros.filter((c) => c.tipo === 'PAGO').map((c) => c.numero ?? c.id)).size;
   const total = cobros.reduce((s, c) => s + c.monto, 0);
   return (
@@ -67,19 +68,20 @@ function CobrosInquilinosDelDia({ cobros }: { cobros: CobroInquilinoDia[] }) {
           {recibos ? `${recibos} ${recibos === 1 ? 'recibo' : 'recibos'} · ${ars(total)}` : 'Sin cobros en el día'}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {porMedio.length > 0 && <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {porMedio.map((m) => (
           <div key={m.id} className="rounded-xl border border-border/60 bg-background/40 px-3 py-2.5">
             <div className="text-[11px] text-muted-foreground">{m.label}</div>
             <div className="gm-mono gm-tnum mt-0.5 text-[14px] font-semibold text-foreground">{ars(m.total)}</div>
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
 
 export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
+  const escritorio = useMediaQuery('(min-width: 768px)');
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [boxData, setBoxData] = useState<BoxList | null>(null);
@@ -163,29 +165,16 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
     .format('DD/MM/YYYY');
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-3xl max-h-[90dvh] overflow-hidden">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-md border border-gm-yellow/40 bg-gm-yellow/15 text-gm-yellow">
-              <FileText className="size-4" />
-            </span>
-            <div>
-              <DialogTitle>Planilla diaria de caja</DialogTitle>
-              <DialogDescription className="mt-0.5">
-                Efectivo, cobros digitales y comisiones estimadas de la fecha que elijas.
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="min-w-0 space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-secondary/20 p-3">
-            <div className="flex items-center gap-2">
+    <ActionDialog open={open} onOpenChange={setOpen}>
+      <ActionDialogContent className="sm:max-w-3xl">
+        <ActionDialogHeader title="Planilla diaria de caja" description="Efectivo y cobros del día" />
+        <ActionDialogBody className="gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-2xl border border-border bg-secondary/20 p-2">
+            <div className="flex flex-1 items-center justify-between gap-1 sm:flex-none">
               <Button size="icon" variant="ghost" aria-label="Día anterior" onClick={() => setSelectedDate(dayjs(selectedDate).subtract(1, 'day').toDate())}><ChevronLeft className="size-4" /></Button>
               <DateDialog.Root open={datePickerOpen} onOpenChange={setDatePickerOpen}>
                 <DateDialog.Trigger asChild>
-                  <Button variant="outline" aria-label={`Cambiar fecha: ${formattedSelectedDate}`} className="h-11 gap-3 rounded-xl bg-background px-4 font-semibold tabular-nums">
+                  <Button variant="outline" aria-label={`Cambiar fecha: ${formattedSelectedDate}`} className="h-11 gap-2 rounded-xl bg-background px-3 font-semibold tabular-nums">
                     <CalendarDays className="size-4 text-gm-yellow" />{formattedSelectedDate}
                   </Button>
                 </DateDialog.Trigger>
@@ -207,29 +196,23 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
               </DateDialog.Root>
               <Button size="icon" variant="ghost" aria-label="Día siguiente" disabled={dateKey >= todayKey} onClick={() => setSelectedDate(dayjs(selectedDate).add(1, 'day').toDate())}><ChevronRight className="size-4" /></Button>
             </div>
-            <div className="flex gap-1 rounded-xl border border-border bg-background p-1">
-              {[{ label: 'Hoy', days: 0 }, { label: 'Ayer', days: 1 }].map(item => <Button key={item.label} size="sm" aria-pressed={dateKey === dayjs().subtract(item.days, 'day').format('YYYY-MM-DD')} variant={dateKey === dayjs().subtract(item.days, 'day').format('YYYY-MM-DD') ? 'default' : 'ghost'} className="rounded-lg px-5" onClick={() => setSelectedDate(dayjs().subtract(item.days, 'day').toDate())}>{item.label}</Button>)}
+            <div className="flex w-full justify-center gap-1 sm:w-auto">
+              {[{ label: 'Hoy', days: 0 }, { label: 'Ayer', days: 1 }].map(item => <Button key={item.label} size="sm" aria-pressed={dateKey === dayjs().subtract(item.days, 'day').format('YYYY-MM-DD')} variant={dateKey === dayjs().subtract(item.days, 'day').format('YYYY-MM-DD') ? 'default' : 'ghost'} className="h-8 rounded-lg px-4 text-xs" onClick={() => setSelectedDate(dayjs().subtract(item.days, 'day').toDate())}>{item.label}</Button>)}
             </div>
           </div>
-          <section className="min-w-0 space-y-4" aria-busy={loading} aria-label="Resumen de caja">
+          <section className="min-w-0 space-y-3" aria-busy={loading} aria-label="Resumen de caja">
           {boxData && (
             <div key={dateKey} className="overflow-hidden rounded-2xl border border-border bg-background/40 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
-                <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Resumen diario</p><h3 className="mt-1 text-base font-semibold capitalize">{dateLabel}</h3></div>
-                <span className="rounded-lg border border-border bg-secondary/30 px-3 py-1.5 font-mono text-xs text-muted-foreground">{formattedSelectedDate}</span>
-              </div>
-              <div className="relative overflow-hidden bg-gradient-to-br from-gm-yellow/10 via-transparent to-transparent px-5 py-7 sm:px-6 sm:py-9">
-                <Wallet aria-hidden className="pointer-events-none absolute -right-4 top-3 size-36 -rotate-12 text-gm-yellow/[0.04]" />
-                <div className="relative">
+              <div className="bg-gradient-to-br from-gm-yellow/10 via-transparent to-transparent px-4 py-4 sm:px-6 sm:py-6">
+                <p className="mb-3 text-xs capitalize text-muted-foreground">{dateLabel}</p>
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground"><span className="size-2 rounded-full bg-gm-yellow" /> Efectivo neto del día</div>
-                  <p className="mt-4 break-words text-4xl font-bold tracking-tight text-foreground tabular-nums sm:text-5xl">{ars(boxData.totalPrice)}</p>
-                  <p className="mt-3 text-sm text-muted-foreground">Entradas menos salidas · Pesos argentinos</p>
-                </div>
+                  <p className="gm-mono mt-2 break-words text-[34px] font-bold leading-tight tracking-tight text-foreground tabular-nums sm:text-5xl">{ars(boxData.totalPrice)}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Entradas menos salidas de efectivo</p>
               </div>
-              <div className="flex items-start gap-3 border-t border-dashed border-border bg-secondary/15 px-5 py-4 sm:px-6">
-                <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                <p className="text-xs leading-relaxed text-muted-foreground">Este total resume el movimiento de efectivo de la fecha; no representa el saldo disponible en el cajón.{shiftsEnabled && ' No incluye el fondo inicial ni los retiros al cerrar el turno.'}</p>
-              </div>
+              <details className="border-t border-border/60 px-4 py-2.5 sm:px-6">
+                <summary className="cursor-pointer text-xs text-muted-foreground">Qué incluye este total</summary>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Este total resume el movimiento de efectivo de la fecha; no representa el saldo disponible en el cajón.{shiftsEnabled && ' No incluye el fondo inicial ni los retiros al cerrar el turno.'}</p>
+              </details>
               {boxData.resumenCaja && <ResumenCajaNeto resumen={boxData.resumenCaja} />}
             </div>
           )}
@@ -239,10 +222,9 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
           )}
 
           {shiftsEnabled && boxData && boxData.turnosDelDia && boxData.turnosDelDia.length > 0 && (
-            <div className="rounded-2xl border border-border bg-secondary/20 p-4 space-y-3">
-              <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                Efectivo del día por turno
-              </div>
+            <details open={escritorio || undefined} className="rounded-2xl border border-border bg-secondary/20 p-3.5">
+              <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">Efectivo por turno <span className="font-normal">· {turns.length} {turns.length === 1 ? 'turno' : 'turnos'}</span></summary>
+              <div className="mt-3 space-y-3">
               {turns.slice(currentTurnPage * 3, (currentTurnPage + 1) * 3).map((t) => (
                 <div key={t.turnoId ?? 'sin-turno'} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border/60 bg-background/40 p-3">
                   <div className="min-w-0">
@@ -265,7 +247,8 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
               <p className="border-t border-border/60 pt-2 text-[11px] leading-snug text-muted-foreground">
                 Un día puede incluir varios turnos, y un turno puede abarcar varios días. El administrador consulta los cierres en Caja → Turnos e historial.
               </p>
-            </div>
+              </div>
+            </details>
           )}
 
           {loading && <DataLoading label="Cargando planilla…" />}
@@ -275,16 +258,16 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
             </div>
           )}
           </section>
-        </div>
-
-        <DialogFooter className="mt-1 gap-2 border-t border-border pt-4">
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cerrar</Button>
-          <Button onClick={handlePrintPdf} disabled={!boxData || loading || printing}>
+        </ActionDialogBody>
+        <ActionDialogFooter>
+          <ActionDialogPrimaryButton onClick={handlePrintPdf} disabled={!boxData || loading || printing}>
+            <span className="flex items-center justify-center gap-2">
             {printing ? <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} /> : <Printer className="size-4" />}
             {printing ? 'Preparando PDF…' : 'Imprimir planilla'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            </span>
+          </ActionDialogPrimaryButton>
+        </ActionDialogFooter>
+      </ActionDialogContent>
+    </ActionDialog>
   );
 }

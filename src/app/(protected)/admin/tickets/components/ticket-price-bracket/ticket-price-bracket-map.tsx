@@ -38,17 +38,17 @@ export function TicketPriceBracketMap({ brackets, schedule, embedded = false }: 
     return minutePrices.filter(row => current.uptoMinutes! + row.uptoMinutes! < next.uptoMinutes!);
   };
 
-  return <section className={embedded ? 'min-w-0 space-y-6' : 'min-w-0 space-y-6 rounded-2xl border bg-gm-surface-2 p-4 sm:p-6'}>
+  return <section className={embedded ? `min-w-0 space-y-4 ${styles.embedded}` : 'min-w-0 space-y-6 rounded-2xl border bg-gm-surface-2 p-4 sm:p-6'}>
     <header className="space-y-2">
-      <h3 className="text-xl font-bold">Tu mapa de tarifas</h3>
-      <p className="text-sm text-muted-foreground">Seguí el recorrido: mirá cuánto tiempo se queda y qué precio corresponde.</p>
+      {!embedded && <><h3 className="text-xl font-bold">Tu mapa de tarifas</h3>
+      <p className="text-sm text-muted-foreground">Seguí el recorrido: mirá cuánto tiempo se queda y qué precio corresponde.</p></>}
       <p className="text-xs text-muted-foreground">Para un vehículo que ya ingresó, consultá su importe desde Cobrar salida: puede conservar una tarifa anterior.</p>
     </header>
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4">
       <div className="min-w-0 space-y-2"><label htmlFor={id} className="text-sm font-medium">Vehículo</label>
         <Select value={vehicle} onValueChange={setSelected} disabled={!codes.length}><SelectTrigger id={id} className="w-full"><SelectValue>{codes.length ? name(vehicle) : 'Sin precios cargados'}</SelectValue></SelectTrigger><SelectContent>{codes.map(code => <SelectItem key={code} value={code}>{name(code)}</SelectItem>)}</SelectContent></Select>
       </div>
-      <fieldset className="min-w-0 space-y-2"><legend className="text-sm font-medium">Horario de la tarifa</legend><div className="grid grid-cols-2 gap-2">{(['DAY', 'NIGHT'] as const).map(value => <button key={value} type="button" aria-pressed={period === value} onClick={() => setPeriod(value)} className={'rounded-lg border px-3 py-2 text-sm ' + (period === value ? 'border-gm-yellow bg-gm-yellow text-gm-ink' : 'bg-background text-foreground')}><span className="block font-semibold">{value === 'DAY' ? 'Día' : 'Noche'}</span><span className="text-xs">{value === 'DAY' ? hour(schedule.dayStartHour) + ' a ' + hour(schedule.dayEndHour) : hour(schedule.dayEndHour) + ' a ' + hour(schedule.dayStartHour)}</span></button>)}</div></fieldset>
+      <fieldset className="min-w-0 space-y-2"><legend className="text-sm font-medium">Horario</legend><div className="grid grid-cols-2 gap-1.5">{(['DAY', 'NIGHT'] as const).map(value => <button key={value} type="button" aria-pressed={period === value} onClick={() => setPeriod(value)} className={'min-h-11 rounded-lg border px-1 py-2 text-sm ' + (period === value ? 'border-gm-yellow bg-gm-yellow text-gm-ink' : 'bg-background text-foreground')}><span className="block font-semibold">{value === 'DAY' ? 'Día' : 'Noche'}</span><span className="hidden text-xs sm:block">{value === 'DAY' ? hour(schedule.dayStartHour) + ' a ' + hour(schedule.dayEndHour) : hour(schedule.dayEndHour) + ' a ' + hour(schedule.dayStartHour)}</span></button>)}</div></fieldset>
     </div>
     <div className={styles.map} data-night={period === 'NIGHT'}>
       <div className={styles.mapHeading}>

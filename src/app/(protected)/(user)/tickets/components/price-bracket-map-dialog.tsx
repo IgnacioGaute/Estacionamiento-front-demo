@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Map } from 'lucide-react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ActionDialog, ActionDialogContent, ActionDialogHeader, ActionDialogBody } from '@/components/ui/action-dialog';
 import { TicketPriceBracketMap } from '@/app/(protected)/admin/tickets/components/ticket-price-bracket/ticket-price-bracket-map';
 import { TicketPriceBracket } from '@/types/ticket-price-bracket.type';
 import { TicketSchedule } from '@/services/tickets.service';
@@ -34,16 +34,14 @@ export function PriceBracketMapDialog({
         </button>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] max-w-3xl overflow-hidden">
-          <DialogTitle className="sr-only">Consultar precios</DialogTitle>
-          <DialogDescription className="sr-only">
-            Escalera de precios por franja horaria, con la tolerancia entre saltos y la diferencia
-            entre día y noche.
-          </DialogDescription>
-          <TicketPriceBracketMap brackets={brackets} schedule={schedule} embedded />
-        </DialogContent>
-      </Dialog>
+      <ActionDialog open={open} onOpenChange={setOpen}>
+        <ActionDialogContent className="sm:max-w-3xl">
+          <ActionDialogHeader title="Ver tarifas" description="Precios por vehículo y horario" />
+          <ActionDialogBody>
+            <TicketPriceBracketMap brackets={brackets} schedule={schedule} embedded />
+          </ActionDialogBody>
+        </ActionDialogContent>
+      </ActionDialog>
     </>
   );
 }

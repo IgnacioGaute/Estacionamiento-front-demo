@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 import { useRouter } from 'next/navigation';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import { Landmark, ReceiptText } from 'lucide-react';
 import {
   ActionDialog,
@@ -19,7 +20,12 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/toast';
 import { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
 import { updateTicketRegistrationForDayStatusAction } from '@/actions/tickets/update-ticket-registration-for-day-status.action';
-import { PaymentMethodDialog } from './payment-method-dialog';
+import { PaymentMethodChoices, MedioCobro } from './payment-method-choices';
+import { CobroQrMercadoPago } from './cobro-qr-mercadopago';
+import { CobroAliasPanel, PagoRecibido } from './cobro-alias';
+import { CobroMercadoPago } from '@/types/mercadopago.type';
+import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
+import { cobroAliasDeEstadiaAction, disponibilidadAliasAction, iniciarCobroAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 
 const ars = (n: number) =>
@@ -81,10 +87,45 @@ interface ActiveDayTicketDialogProps {
 
 export function ActiveDayTicketDialog({ registration, open, onOpenChange, deliveryEnabled = false }: ActiveDayTicketDialogProps) {
   const [isPending, startTransition] = useTransition();
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [medio, setMedio] = useState<MedioCobro | null>(null);
+  const [alias, setAlias] = useState<DisponibilidadAlias | null>(null);
+  const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
+  const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
+  const [pagoConSalida, setPagoConSalida] = useState<CobroAlias | null>(null);
   const [receiptId, setReceiptId] = useState<string | null>(null);
   const [receiptKind, setReceiptKind] = useState<'ENTRY' | 'EXIT'>('EXIT');
   const router = useRouter();
+  const escritorio = useMediaQuery('(min-width: 768px)');
+
+  useEffect(() => {
+    let vigente = true;
+    setMedio(null); setAlias(null); setCobroQr(null); setCobroAlias(null); setPagoConSalida(null);
+    if (open && registration && !registration.paid && !registration.retired) {
+      void disponibilidadAliasAction().then(r => { if (vigente) setAlias(r.datos ?? null); });
+      void cobroAliasDeEstadiaAction(registration.id, 'ABONO').then(r => {
+        if (!vigente || !r.datos) return;
+        if (['ESPERANDO', 'REVISION'].includes(r.datos.estado)) setCobroAlias(r.datos);
+        else if (r.datos.estado === 'CONFIRMADO' && r.datos.salidaRegistrada) setPagoConSalida(r.datos);
+      });
+    }
+    return () => { vigente = false; };
+  }, [open, registration?.id]);
+
+  const pagado = !!registration?.paid || cobroQr?.estado === 'ACREDITADO' || !!pagoConSalida;
+  const esperando = cobroQr?.estado === 'PENDIENTE' || !!cobroAlias;
+  const terminar = () => {
+    if (!registration) return;
+    toast.success('Salida registrada exitosamente');
+    if (deliveryEnabled) setReceiptId(registration.id);
+    setReceiptKind('EXIT');
+    onOpenChange(false);
+    router.refresh();
+  };
+  const terminadoAlias = (cobro: CobroAlias) => {
+    setCobroAlias(null);
+    if (cobro.estado === 'CONFIRMADO' && cobro.salidaRegistrada) setPagoConSalida(cobro);
+    else if (cobro.estado === 'PAGADO_OTRO_MEDIO') { onOpenChange(false); router.refresh(); }
+  };
 
   const dueDate = registration ? estimatedDueDate(registration) : null;
   const overdueDays = dueDate
@@ -105,31 +146,36 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
 
   const handleRegisterExit = () => {
     if (!registration) return;
-    // Ya estaba pagado (al crearlo o antes) — solo hace falta marcar la salida, no vuelve a
-    // pedir método de pago.
-    if (registration.paid) {
-      startTransition(async () => {
-        const result = await updateTicketRegistrationForDayStatusAction(registration.id, { retired: true });
+    if (!pagado && !medio) return;
+    startTransition(async () => {
+      if (!pagado && medio === 'QR') {
+        const r = await crearCobroMercadoPagoAction(registration.id, 'ABONO');
+        if (r.error || !r.cobro) toast.error(r.error ?? 'No se pudo generar el QR.');
+        else { setMedio(null); setCobroQr(r.cobro); }
+      } else if (!pagado && medio === 'ALIAS') {
+        const r = await iniciarCobroAliasAction(registration.id, 'ABONO');
+        if (r.error || !r.datos) toast.error(r.error ?? 'No se pudo esperar la transferencia.');
+        else {
+          setMedio(null);
+          if (['CONFIRMADO', 'PAGADO_OTRO_MEDIO'].includes(r.datos.estado)) terminadoAlias(r.datos);
+          else setCobroAlias(r.datos);
+        }
+      } else {
+        const result = await updateTicketRegistrationForDayStatusAction(registration.id, pagado
+          ? { retired: true }
+          : { paid: true, paymentMetodo: medio as 'CASH' | 'TRANSFER', retired: true });
         if ('error' in result && result.error) {
           toast.error(result.error);
         } else {
-          toast.success('Salida registrada exitosamente');
-          if (deliveryEnabled) setReceiptId(registration.id);
-          setReceiptKind('EXIT');
-          onOpenChange(false);
-          router.refresh();
+          terminar();
         }
-      });
-      return;
-    }
-    // Todavía no pagó — pide el método antes de cerrar, igual que al escanear la salida de un
-    // ticket por código de barras.
-    setShowPaymentDialog(true);
+      }
+    });
   };
 
   return (
     <>
-      <ActionDialog open={open} onOpenChange={onOpenChange}>
+      <ActionDialog open={open} onOpenChange={next => { if (!next && pagoConSalida) terminar(); else onOpenChange(next); }}>
         <ActionDialogContent className="md:max-w-[920px]">
           <ActionDialogHeader
             title={registration?.retired ? 'Detalle de estadía' : 'Estadía activa'}
@@ -140,16 +186,23 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
               <section aria-label="Resumen de la estadía" className="shrink-0 rounded-[18px] border border-border bg-gm-surface-2 p-3.5 short:p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   {registration.vehiclePlateCustomer ? <PlateChip plate={registration.vehiclePlateCustomer} /> : <span className="gm-mono text-base font-semibold">Sin patente</span>}
-                  <Badge variant={registration.paid ? 'green' : 'blue'}>{registration.paid ? 'Pagado' : 'Pendiente de pago'}</Badge>
+                  <Badge variant={pagado ? 'green' : 'blue'}>{pagado ? 'Pagado' : 'Pendiente de pago'}</Badge>
                 </div>
                 <div className="my-3 h-px bg-border short:my-2.5" />
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{registration.paid ? 'Importe de la estadía' : 'Falta cobrar'}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{pagado ? 'Importe de la estadía' : 'Falta cobrar'}</p>
                 <p className="gm-mono mt-1 text-[38px] font-bold leading-none tracking-tight short:text-[32px]">{ars(registration.price)}</p>
                 <p className="mt-2 text-[13px] text-muted-foreground">{duration} · {registration.vehicleType === 'CAMIONETA' ? 'Camioneta' : 'Automóvil'}</p>
                 {registration.paid && registration.paymentMetodo && <p className="mt-1 text-xs text-muted-foreground">Pagó con {metodoLabel[registration.paymentMetodo]}</p>}
               </section>
 
               <div className="flex min-w-0 flex-col gap-4 short:gap-3">
+                {pagoConSalida ? <PagoRecibido cobro={pagoConSalida} onCerrar={terminar} /> : cobroAlias ? <CobroAliasPanel key={cobroAlias.id} cobro={cobroAlias} onTerminado={terminadoAlias} onCancelado={() => setCobroAlias(null)} /> : cobroQr ? <CobroQrMercadoPago cobro={cobroQr} onAcreditado={setCobroQr} onCancelar={() => setCobroQr(null)} /> : !pagado && !registration.retired ? <fieldset className="min-w-0 space-y-2">
+                  <legend className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">¿Cómo paga?</legend>
+                  <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} />
+                  {medio === 'TRANSFER' && <p className="text-xs text-muted-foreground">Confirmá solo si ya viste la transferencia acreditada en la cuenta.</p>}
+                </fieldset> : null}
+                <details open={pagado || registration.retired || escritorio ? true : undefined} className="group">
+                  <summary className="cursor-pointer py-1 text-xs text-muted-foreground group-open:mb-2">Datos de la estadía</summary>
                 <section aria-label="Datos de la estadía" className="rounded-[18px] border border-border bg-gm-surface-2 p-3.5 short:p-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Cliente</p>
                   <p className="mt-1 text-[14px] font-medium">{[registration.firstNameCustomer, registration.lastNameCustomer].filter(Boolean).join(' ') || 'Sin nombre cargado'}</p>
@@ -160,6 +213,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
                   {isOverdue && <p className="mt-3 rounded-xl border border-destructive/25 bg-destructive/10 p-2.5 text-xs leading-relaxed text-destructive">Venció hace {overdueDays} día{overdueDays > 1 ? 's' : ''}. No se agrega recargo automático. Cualquier adicional se acuerda y registra aparte.</p>}
                   {registration.description && <details className="mt-3 text-xs text-muted-foreground"><summary className="cursor-pointer py-1 hover:text-foreground">Detalle del ticket</summary><p className="mt-1 break-words leading-relaxed">{registration.description}</p></details>}
                 </section>
+                </details>
 
                 {registration.paid && registration.boxList && <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1.5"><Landmark className="size-3.5" aria-hidden />Caja #{registration.boxList.boxNumber}</span>
@@ -177,41 +231,15 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
               {registration.retired ? <>
                 <p className="mr-auto text-center text-sm text-muted-foreground">Salida ya registrada.</p>
                 <ActionDialogSecondaryButton onClick={() => onOpenChange(false)}>Cerrar</ActionDialogSecondaryButton>
-              </> : <ActionDialogPrimaryButton disabled={isPending} onClick={handleRegisterExit} detail={`${registration.vehiclePlateCustomer || 'Sin patente'} · ${registration.paid ? 'Ya pagado' : ars(registration.price)}`}>
-                {isPending ? 'Registrando…' : 'Registrar salida'}
-              </ActionDialogPrimaryButton>}
+              </> : !esperando && !pagoConSalida ? <ActionDialogPrimaryButton disabled={isPending || (!pagado && !medio)} onClick={handleRegisterExit} detail={`${registration.vehiclePlateCustomer || 'Sin patente'} · ${pagado ? 'Ya pagado' : ars(registration.price)}`}>
+                {isPending ? 'Procesando…' : pagado ? 'Registrar salida' : medio === 'QR' ? 'Generar QR' : medio === 'ALIAS' ? 'Esperar transferencia' : medio ? 'Cobrar y registrar salida' : 'Elegí cómo paga'}
+              </ActionDialogPrimaryButton> : null}
             </ActionDialogFooter>
           </>}
         </ActionDialogContent>
       </ActionDialog>
 
       {deliveryEnabled && <ParkingReceiptDelivery registrationId={receiptId} kind={receiptKind} showDisabledMessage onDismiss={() => setReceiptId(null)} />}
-      <PaymentMethodDialog
-        price={registration?.price ?? null}
-        open={showPaymentDialog}
-        onOpenChange={setShowPaymentDialog}
-        onPick={(metodo) =>
-          updateTicketRegistrationForDayStatusAction(registration!.id, {
-            paid: true,
-            paymentMetodo: metodo,
-            retired: true,
-          })
-        }
-        onQr={() => crearCobroMercadoPagoAction(registration!.id, 'ABONO')}
-        // El cobro ya dejó el abono pagado; falta marcar que el vehículo se retiró, que es la otra
-        // mitad de lo que hace registrar la salida.
-        onQrListo={() =>
-          updateTicketRegistrationForDayStatusAction(registration!.id, {
-            retired: true,
-          })
-        }
-        onConfirmed={() => {
-          setReceiptKind('EXIT');
-          if (registration && deliveryEnabled) setReceiptId(registration.id);
-          onOpenChange(false);
-          router.refresh();
-        }}
-      />
     </>
   );
 }
