@@ -3,7 +3,7 @@
 import { useId, useState } from 'react';
 import { ArrowDown, ArrowRight, Car, Clock3, Flag, Repeat2, ShieldCheck } from 'lucide-react';
 import styles from './ticket-price-bracket-map.module.css';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TariffDayNightToggle, VehicleTariffTabs } from '@/app/(protected)/admin/tarifas/tariff-summary-controls';
 import { useVehicleTypes } from '@/components/vehicle-type-options';
 import { TicketPriceBracket } from '@/types/ticket-price-bracket.type';
 import { TicketSchedule } from '@/services/tickets.service';
@@ -44,13 +44,13 @@ export function TicketPriceBracketMap({ brackets, schedule, embedded = false }: 
       <p className="text-sm text-muted-foreground">Seguí el recorrido: mirá cuánto tiempo se queda y qué precio corresponde.</p></>}
       <p className="text-xs text-muted-foreground">Para un vehículo que ya ingresó, consultá su importe desde Cobrar salida: puede conservar una tarifa anterior.</p>
     </header>
-    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-      <div className="min-w-0 space-y-2"><label htmlFor={id} className="text-sm font-medium">Vehículo</label>
-        <Select value={vehicle} onValueChange={setSelected} disabled={!codes.length}><SelectTrigger id={id} className="w-full"><SelectValue>{codes.length ? name(vehicle) : 'Sin precios cargados'}</SelectValue></SelectTrigger><SelectContent>{codes.map(code => <SelectItem key={code} value={code}>{name(code)}</SelectItem>)}</SelectContent></Select>
+    <div className={'flex flex-col gap-4 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4 ' + (period === 'NIGHT' ? 'border-indigo-400/25 bg-indigo-500/[0.06]' : 'border-amber-400/25 bg-amber-500/[0.06]')}>
+      <div className="min-w-0 space-y-2"><p className="text-xs font-medium text-muted-foreground">Tipo de vehículo</p>
+        {codes.length ? <VehicleTariffTabs vehicles={codes.map(code => ({ code, name: name(code) }))} value={vehicle} onChange={setSelected} panelId={id} label="Tipo de vehículo" /> : <p className="text-sm text-muted-foreground">Sin precios cargados</p>}
       </div>
-      <fieldset className="min-w-0 space-y-2"><legend className="text-sm font-medium">Horario</legend><div className="grid grid-cols-2 gap-1.5">{(['DAY', 'NIGHT'] as const).map(value => <button key={value} type="button" aria-pressed={period === value} onClick={() => setPeriod(value)} className={'min-h-11 rounded-lg border px-1 py-2 text-sm ' + (period === value ? 'border-gm-yellow bg-gm-yellow text-gm-ink' : 'bg-background text-foreground')}><span className="block font-semibold">{value === 'DAY' ? 'Día' : 'Noche'}</span><span className="hidden text-xs sm:block">{value === 'DAY' ? hour(schedule.dayStartHour) + ' a ' + hour(schedule.dayEndHour) : hour(schedule.dayEndHour) + ' a ' + hour(schedule.dayStartHour)}</span></button>)}</div></fieldset>
+      <TariffDayNightToggle value={period} onChange={setPeriod} panelId={id} description={period === 'DAY' ? hour(schedule.dayStartHour) + ' a ' + hour(schedule.dayEndHour) : hour(schedule.dayEndHour) + ' a ' + hour(schedule.dayStartHour)} />
     </div>
-    <div className={styles.map} data-night={period === 'NIGHT'}>
+    <div id={id} role="tabpanel" aria-labelledby={codes.length ? id + '-tab-' + vehicle : undefined} className={styles.map} data-night={period === 'NIGHT'}>
       <div className={styles.mapHeading}>
         <span className={styles.vehicleIcon}><Car aria-hidden="true" size={22} /></span>
         <div><h4>{name(vehicle)} · {period === 'DAY' ? 'Tarifa de día' : 'Tarifa de noche'}</h4><p>{charging?.enabled ? 'Así se cuenta el tiempo' : 'Cada parada muestra una duración y su precio de referencia'}</p></div>
