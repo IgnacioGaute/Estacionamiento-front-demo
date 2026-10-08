@@ -23,6 +23,7 @@ import { formatImporte } from '@/components/pricing-breakdown';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { CobroAlias } from '@/types/verificacion-alias.type';
+import { ConfirmacionDePago } from './pago-recibido';
 import {
   ampliarCobroAliasAction,
   asignarTransferenciaAliasAction,
@@ -63,66 +64,20 @@ function useTranscurrido(desde: string) {
   return texto;
 }
 
-const SEGUNDOS_PARA_CERRAR = 4;
-
-/**
- * La confirmación de un cobro por transferencia que registró la salida: queda en el mismo cuadro
- * de cobro, con quién pagó, y el diálogo se cierra solo (o antes, con «Listo»). El aviso de abajo
- * es el de siempre, «Salida registrada exitosamente»: lo dispara el panel de cierre.
- */
+/** Una transferencia que registró la salida: la confirmación común, con quién pagó. */
 export function PagoRecibido({ cobro, onCerrar }: { cobro: CobroAlias; onCerrar: () => void }) {
-  const [restante, setRestante] = useState(SEGUNDOS_PARA_CERRAR * 1000);
-  const cerrado = useRef(false);
-  const alCerrar = useRef(onCerrar);
-  alCerrar.current = onCerrar;
-
-  const cerrar = useCallback(() => {
-    if (cerrado.current) return;
-    cerrado.current = true;
-    alCerrar.current();
-  }, []);
-
-  useEffect(() => {
-    const desde = Date.now();
-    const reloj = setInterval(() => {
-      const falta = Math.max(0, SEGUNDOS_PARA_CERRAR * 1000 - (Date.now() - desde));
-      setRestante(falta);
-      if (falta === 0) {
-        clearInterval(reloj);
-        cerrar();
-      }
-    }, 100);
-    return () => clearInterval(reloj);
-  }, [cerrar]);
-
   return (
-    <>
-      <div role="status" className="flex flex-col items-center gap-1.5 rounded-[20px] border-[1.5px] border-emerald-500/50 bg-emerald-500/10 px-5 pb-5 pt-6 text-center">
-        <span className="grid size-[72px] place-items-center rounded-full border-2 border-emerald-400/50 bg-emerald-400/15 text-emerald-400">
-          <Check className="size-10" strokeWidth={2.4} />
-        </span>
-        <p className="gm-display mt-2 text-[26px] font-bold tracking-wide text-emerald-400">Pago recibido</p>
-        <p className="gm-mono text-3xl font-semibold text-foreground">{formatImporte(cobro.importe)}</p>
-        <p className="mt-0.5 text-sm text-muted-foreground">{quienYCuando(cobro)}</p>
-        <p className="text-xs text-muted-foreground">
-          {cobro.modo === 'MANUAL'
-            ? 'Transferencia elegida por el cajero'
-            : 'Única transferencia de ese importe: se asoció sola'}
-          {cobro.transferencia ? ` · operación ${operacionCorta(cobro.transferencia.operacionId)}` : ''}
-        </p>
-        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-emerald-400/15" aria-hidden>
-          <div
-            className="h-full rounded-full bg-emerald-400 transition-[width] duration-100 ease-linear"
-            style={{ width: `${(restante / (SEGUNDOS_PARA_CERRAR * 1000)) * 100}%` }}
-          />
-        </div>
-      </div>
-      <ActionDialogFooterPortal>
-        <ActionDialogPrimaryButton onClick={cerrar} detail={`Se cierra sola en ${Math.ceil(restante / 1000)} s`}>
-          Listo
-        </ActionDialogPrimaryButton>
-      </ActionDialogFooterPortal>
-    </>
+    <ConfirmacionDePago
+      importe={cobro.importe}
+      detalle={quienYCuando(cobro)}
+      nota={
+        (cobro.modo === 'MANUAL'
+          ? 'Transferencia elegida por el cajero'
+          : 'Única transferencia de ese importe: se asoció sola') +
+        (cobro.transferencia ? ` · operación ${operacionCorta(cobro.transferencia.operacionId)}` : '')
+      }
+      onCerrar={onCerrar}
+    />
   );
 }
 

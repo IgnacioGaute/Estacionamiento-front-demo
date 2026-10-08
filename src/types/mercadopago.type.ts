@@ -39,6 +39,8 @@ export type CobroMercadoPago = {
   interoperable: boolean;
   expiraEl: string;
   acreditadoEl: string | null;
+  // Con el pago la estadía o el abono quedaron cerrados: el sistema registró la salida solo.
+  salidaRegistrada?: boolean;
   // Solo en un cobro de inquilino ya acreditado: el recibo del pago que quedó asentado.
   recibo?: import('./cuenta.type').ResultadoPago | null;
 };

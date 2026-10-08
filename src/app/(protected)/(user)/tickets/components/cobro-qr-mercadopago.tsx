@@ -19,8 +19,27 @@ import {
   cancelarCobroMercadoPagoAction,
   consultarCobroMercadoPagoAction,
 } from '@/actions/mercadopago/mercadopago.action';
+import { ConfirmacionDePago } from './pago-recibido';
 
 const SEGUNDOS_ENTRE_CONSULTAS = 4;
+
+const horaCorta = (iso: string | null) =>
+  iso
+    ? new Date(iso).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' })
+    : null;
+
+/** Un QR pagado que registró la salida: la misma confirmación que la transferencia al alias. */
+export function PagoQrRecibido({ cobro, onCerrar }: { cobro: CobroMercadoPago; onCerrar: () => void }) {
+  const hora = horaCorta(cobro.acreditadoEl);
+  return (
+    <ConfirmacionDePago
+      importe={cobro.monto}
+      detalle={hora ? `Pagado con QR · ${hora}` : 'Pagado con QR'}
+      nota="MercadoPago confirmó que el dinero entró a la cuenta"
+      onCerrar={onCerrar}
+    />
+  );
+}
 
 function cuentaRegresiva(hasta: string) {
   const faltan = Math.max(
@@ -76,8 +95,9 @@ export function CobroQrMercadoPago({
     return () => clearInterval(reloj);
   }, [pendiente, consultar]);
 
-  // Queda en el lugar donde estaba el QR, para que el cajero vea de un vistazo que ya está pago
-  // antes de registrar la salida.
+  // Queda en el lugar donde estaba el QR cuando el pago no terminó la operación: quedó un saldo
+  // (la tarifa subió mientras pagaba) o es el pago de un inquilino. Si registró la salida, la
+  // pantalla lo reemplaza por la confirmación que se cierra sola (PagoQrRecibido).
   if (cobro.estado === 'ACREDITADO')
     return (
       <div role="status" className="flex items-center gap-3.5 rounded-2xl border-[1.5px] border-emerald-500/50 bg-emerald-500/10 p-4">

@@ -14,7 +14,13 @@ jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn() 
 jest.mock('@/actions/tickets/update-ticket-registration-for-day-status.action', () => ({ updateTicketRegistrationForDayStatusAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/mercadopago.action', () => ({ crearCobroMercadoPagoAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/verificacion-alias.action', () => ({ disponibilidadAliasAction: jest.fn(), cobroAliasDeEstadiaAction: jest.fn(), iniciarCobroAliasAction: jest.fn() }));
-jest.mock('./cobro-qr-mercadopago', () => ({ CobroQrMercadoPago: ({ cobro, onAcreditado }: { cobro: CobroMercadoPago; onAcreditado: (p: CobroMercadoPago) => void }) => <button onClick={() => onAcreditado({ ...cobro, estado: 'ACREDITADO' })}>Simular acreditación QR</button> }));
+jest.mock('./cobro-qr-mercadopago', () => ({
+  CobroQrMercadoPago: ({ cobro, onAcreditado }: { cobro: CobroMercadoPago; onAcreditado: (p: CobroMercadoPago) => void }) => <>
+    <button onClick={() => onAcreditado({ ...cobro, estado: 'ACREDITADO' })}>Simular acreditación QR</button>
+    <button onClick={() => onAcreditado({ ...cobro, estado: 'ACREDITADO', salidaRegistrada: true })}>Simular QR con salida</button>
+  </>,
+  PagoQrRecibido: ({ onCerrar }: { onCerrar: () => void }) => <button onClick={onCerrar}>QR recibido: listo</button>,
+}));
 jest.mock('./cobro-alias', () => ({ CobroAliasPanel: () => <p>Esperando transferencia</p>, PagoRecibido: ({ onCerrar }: { onCerrar: () => void }) => <button onClick={onCerrar}>Pago recibido: listo</button> }));
 
 const registration: TicketRegistrationForDay = {
@@ -57,6 +63,17 @@ test('QR usa ABONO y espera acreditación antes de permitir la salida', async ()
   fireEvent.click(screen.getByRole('button', { name: /Simular acreditación/ }));
   fireEvent.click(await screen.findByRole('button', { name: /^Registrar salida/ }));
   await waitFor(() => expect(updateStatus).toHaveBeenCalledWith('abono', { retired: true }));
+});
+test('QR acreditado con la salida ya registrada en el servidor: confirma y cierra sin registrar de nuevo', async () => {
+  jest.mocked(crearQr).mockResolvedValue({ cobro: { id: 'qr', estado: 'PENDIENTE' } as CobroMercadoPago });
+  const close = await abrir();
+  fireEvent.click(screen.getByRole('button', { name: /QR \/ celular/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Generar QR/ }));
+  fireEvent.click(await screen.findByRole('button', { name: /Simular QR con salida/ }));
+  expect(screen.queryByRole('button', { name: /^Registrar salida/ })).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByRole('button', { name: /QR recibido: listo/ }));
+  expect(updateStatus).not.toHaveBeenCalled();
+  expect(close).toHaveBeenCalledWith(false);
 });
 test('alias confirmado ya cobra y sale en el servidor, no vuelve a cobrar en el front', async () => {
   jest.mocked(iniciarCobroAliasAction).mockResolvedValue({ datos: { id: 'alias', registrationId: 'abono', estado: 'CONFIRMADO', salidaRegistrada: true } as CobroAlias });

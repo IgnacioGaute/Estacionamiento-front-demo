@@ -25,7 +25,7 @@ import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.actio
 import { closeRegistrationAction } from '@/actions/tickets/close-registration.action';
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import { CobroMercadoPago } from '@/types/mercadopago.type';
-import { CobroQrMercadoPago } from './cobro-qr-mercadopago';
+import { CobroQrMercadoPago, PagoQrRecibido } from './cobro-qr-mercadopago';
 import { CobroAliasPanel, PagoRecibido } from './cobro-alias';
 import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
 import {
@@ -196,8 +196,11 @@ export function CloseTicketPanel({
   const [alias, setAlias] = useState<DisponibilidadAlias | null>(null);
   const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
   const aliasEsperando = !!cobroAlias && ['ESPERANDO', 'REVISION'].includes(cobroAlias.estado);
-  // Transferencia confirmada con la salida registrada: se muestra y el diálogo se cierra solo.
-  const [pagoConSalida, setPagoConSalida] = useState<CobroAlias | null>(null);
+  // Transferencia o QR que registró la salida: se muestra la confirmación y el diálogo se cierra solo.
+  const [pagoConSalida, setPagoConSalida] = useState<
+    | ({ registrationId: string } & ({ medio: 'ALIAS'; cobro: CobroAlias } | { medio: 'QR'; cobro: CobroMercadoPago }))
+    | null
+  >(null);
 
   // Al cerrar (solo, con «Listo» o con la X): lo mismo que después de un cobro en efectivo,
   // el comprobante de salida y refrescar la lista.
@@ -257,7 +260,7 @@ export function CloseTicketPanel({
       // El aviso de siempre abajo; la confirmación del pago queda en el cuadro hasta que se cierra.
       toast.success('Salida registrada exitosamente');
       setCobroAlias(null);
-      setPagoConSalida(cobro);
+      setPagoConSalida({ registrationId: cobro.registrationId, medio: 'ALIAS', cobro });
       return;
     }
     // Pago recibido pero quedó saldo (la tarifa subió), o se cobró por otro medio: se recarga la
@@ -266,8 +269,20 @@ export function CloseTicketPanel({
     loadSummary(cobro.registrationId);
   };
 
-  // El pago por QR entra como un cobro más de la estadía, no como el cierre: cuando se acredita,
-  // se vuelve a pedir el resumen y el saldo pasa a cero. El cajero cierra con «no queda saldo».
+  // Como con el alias: si el pago no dejó saldo, el sistema ya registró la salida y queda la
+  // confirmación que se cierra sola. Si quedó saldo (la tarifa subió mientras pagaba), se recarga
+  // la estadía para cobrar la diferencia.
+  const acreditadoQr = (registrationId: string, cobro: CobroMercadoPago) => {
+    if (cobro.salidaRegistrada) {
+      toast.success('Salida registrada exitosamente');
+      setCobroQr(null);
+      setPagoConSalida({ registrationId, medio: 'QR', cobro });
+      return;
+    }
+    setCobroQr(cobro);
+    loadSummary(registrationId);
+  };
+
   const generarQr = () => {
     if (!summary) return;
     startTransition(async () => {
@@ -520,21 +535,22 @@ export function CloseTicketPanel({
               </div>
 
               <div className="flex min-w-0 flex-col gap-4 short:gap-3">
-                {/* Pago por transferencia confirmado y salida registrada: la confirmación queda en el
-                    mismo cuadro, con quién pagó, y el diálogo se cierra solo. */}
+                {/* Pago confirmado y salida registrada: la confirmación queda en el mismo cuadro y el
+                    diálogo se cierra solo. */}
                 {pagoConSalida ? (
-                  <PagoRecibido cobro={pagoConSalida} onCerrar={cerrarTrasPago} />
+                  pagoConSalida.medio === 'QR' ? (
+                    <PagoQrRecibido cobro={pagoConSalida.cobro} onCerrar={cerrarTrasPago} />
+                  ) : (
+                    <PagoRecibido cobro={pagoConSalida.cobro} onCerrar={cerrarTrasPago} />
+                  )
                 ) : (
                   <>
-                    {/* Queda en pantalla también después de acreditado: ahí muestra el tilde de pagado,
-                        y recién entonces el cajero registra la salida con el botón de abajo. */}
+                    {/* Acreditado con saldo pendiente queda en pantalla con el tilde de pagado, y el
+                        cajero cobra la diferencia con los medios de abajo. */}
                     {cobroQr && (
                       <CobroQrMercadoPago
                         cobro={cobroQr}
-                        onAcreditado={(pagado) => {
-                          setCobroQr(pagado);
-                          loadSummary(summary.registration.id);
-                        }}
+                        onAcreditado={(pagado) => acreditadoQr(summary.registration.id, pagado)}
                         onCancelar={() => setCobroQr(null)}
                       />
                     )}

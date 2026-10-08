@@ -21,7 +21,7 @@ import { toast } from '@/lib/toast';
 import { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
 import { updateTicketRegistrationForDayStatusAction } from '@/actions/tickets/update-ticket-registration-for-day-status.action';
 import { PaymentMethodChoices, MedioCobro } from './payment-method-choices';
-import { CobroQrMercadoPago } from './cobro-qr-mercadopago';
+import { CobroQrMercadoPago, PagoQrRecibido } from './cobro-qr-mercadopago';
 import { CobroAliasPanel, PagoRecibido } from './cobro-alias';
 import { CobroMercadoPago } from '@/types/mercadopago.type';
 import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
@@ -91,7 +91,8 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
   const [alias, setAlias] = useState<DisponibilidadAlias | null>(null);
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
   const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
-  const [pagoConSalida, setPagoConSalida] = useState<CobroAlias | null>(null);
+  // Transferencia o QR que dejó el abono pagado y retirado: confirmación que se cierra sola.
+  const [pagoConSalida, setPagoConSalida] = useState<{ medio: 'ALIAS'; cobro: CobroAlias } | { medio: 'QR'; cobro: CobroMercadoPago } | null>(null);
   const [receiptId, setReceiptId] = useState<string | null>(null);
   const [receiptKind, setReceiptKind] = useState<'ENTRY' | 'EXIT'>('EXIT');
   const router = useRouter();
@@ -105,7 +106,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
       void cobroAliasDeEstadiaAction(registration.id, 'ABONO').then(r => {
         if (!vigente || !r.datos) return;
         if (['ESPERANDO', 'REVISION'].includes(r.datos.estado)) setCobroAlias(r.datos);
-        else if (r.datos.estado === 'CONFIRMADO' && r.datos.salidaRegistrada) setPagoConSalida(r.datos);
+        else if (r.datos.estado === 'CONFIRMADO' && r.datos.salidaRegistrada) setPagoConSalida({ medio: 'ALIAS', cobro: r.datos });
       });
     }
     return () => { vigente = false; };
@@ -123,8 +124,14 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
   };
   const terminadoAlias = (cobro: CobroAlias) => {
     setCobroAlias(null);
-    if (cobro.estado === 'CONFIRMADO' && cobro.salidaRegistrada) setPagoConSalida(cobro);
+    if (cobro.estado === 'CONFIRMADO' && cobro.salidaRegistrada) setPagoConSalida({ medio: 'ALIAS', cobro });
     else if (cobro.estado === 'PAGADO_OTRO_MEDIO') { onOpenChange(false); router.refresh(); }
+  };
+  // El QR pagado ya dejó el abono pagado y retirado; si no figura así, queda el tilde de pagado y
+  // la salida se registra con el botón, como antes.
+  const acreditadoQr = (cobro: CobroMercadoPago) => {
+    if (cobro.salidaRegistrada) { setCobroQr(null); setPagoConSalida({ medio: 'QR', cobro }); }
+    else setCobroQr(cobro);
   };
 
   const dueDate = registration ? estimatedDueDate(registration) : null;
@@ -196,7 +203,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
               </section>
 
               <div className="flex min-w-0 flex-col gap-4 short:gap-3">
-                {pagoConSalida ? <PagoRecibido cobro={pagoConSalida} onCerrar={terminar} /> : cobroAlias ? <CobroAliasPanel key={cobroAlias.id} cobro={cobroAlias} onTerminado={terminadoAlias} onCancelado={() => setCobroAlias(null)} /> : cobroQr ? <CobroQrMercadoPago cobro={cobroQr} onAcreditado={setCobroQr} onCancelar={() => setCobroQr(null)} /> : !pagado && !registration.retired ? <fieldset className="min-w-0 space-y-2">
+                {pagoConSalida ? (pagoConSalida.medio === 'QR' ? <PagoQrRecibido cobro={pagoConSalida.cobro} onCerrar={terminar} /> : <PagoRecibido cobro={pagoConSalida.cobro} onCerrar={terminar} />) : cobroAlias ? <CobroAliasPanel key={cobroAlias.id} cobro={cobroAlias} onTerminado={terminadoAlias} onCancelado={() => setCobroAlias(null)} /> : cobroQr ? <CobroQrMercadoPago cobro={cobroQr} onAcreditado={acreditadoQr} onCancelar={() => setCobroQr(null)} /> : !pagado && !registration.retired ? <fieldset className="min-w-0 space-y-2">
                   <legend className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">¿Cómo paga?</legend>
                   <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} />
                   {medio === 'TRANSFER' && <p className="text-xs text-muted-foreground">Confirmá solo si ya viste la transferencia acreditada en la cuenta.</p>}
