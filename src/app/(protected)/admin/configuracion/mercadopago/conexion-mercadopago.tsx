@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { CheckCircle2, ExternalLink, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -277,6 +278,14 @@ export function ConexionMercadoPago({
           aceptadas (el backend lo vuelve a exigir). */}
       {estado.conectada && estado.estado === 'ACTIVA' && condicionesAlDia && verificacionAlias && (
         <VerificacionAliasConfig inicial={verificacionAlias} />
+      )}
+      {estado.conectada && estado.estado === 'ACTIVA' && (
+        <div className="border-t border-border pt-5">
+          <Link href="/admin/configuracion/mercadopago/comisiones" className="group flex items-center justify-between gap-4 rounded-lg px-3 py-3 transition-colors hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <div><p className="text-sm font-medium">Comisiones de Mercado Pago</p><p className="mt-1 text-xs text-muted-foreground">Porcentajes por medio de pago para el neto de caja.</p></div>
+            <span className="text-xs text-muted-foreground group-hover:text-foreground">Configurar →</span>
+          </Link>
+        </div>
       )}
     </div>
   );

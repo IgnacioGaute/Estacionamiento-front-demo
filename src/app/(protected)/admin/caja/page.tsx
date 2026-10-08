@@ -23,7 +23,6 @@ export default async function CajaPage({ searchParams }: { searchParams: Promise
   const expenses = tab === 'movimientos' ? await getExpenses(undefined, params) : null;
   return <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6 sm:p-8">
     <PageHeader breadcrumb={['Estacionamiento', 'Administración', 'Caja']} title="Caja" description={shiftsEnabled ? 'Consultá la planilla diaria, registrá ingresos y gastos y revisá los turnos.' : 'Consultá la planilla diaria y registrá ingresos y gastos.'} actions={tab === 'movimientos' ? <PlanillaButton /> : undefined} />
-    <Link href="/admin/configuracion/mercadopago#comisiones" className="inline-flex text-sm font-medium text-gm-yellow underline underline-offset-4">Configurar comisiones de caja</Link>
     <nav aria-label="Secciones de caja" className="flex flex-wrap gap-2 border-b border-border pb-3">
       {[{ value: 'movimientos', label: 'Ingresos y gastos' }, ...(shiftsEnabled ? [{ value: 'turnos', label: 'Turnos' }] : [])].map(item => <Link key={item.value} href={'/admin/caja?tab=' + item.value} aria-current={tab === item.value ? 'page' : undefined} className={'rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ' + (tab === item.value ? 'border-gm-yellow/40 bg-gm-yellow/10 text-gm-yellow' : 'border-border hover:bg-secondary/40')}>{item.label}</Link>)}
     </nav>

@@ -1097,19 +1097,23 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     if (boxList.resumenCaja) {
       const resumen = boxList.resumenCaja
       const money = (n: number) => `$ ${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      ensureSpace(180)
+      ensureSpace(200 + resumen.medios.length * 18)
       page.drawText('TOTAL DEL DIA CON COMISIONES ESTIMADAS', { x: marginLeft, y: yPosition, size: 11, font: fontBold, color: inkColor })
       yPosition -= 22
       const filas: [string, number][] = [
         ['Efectivo del dia', resumen.efectivo],
         ...resumen.medios.map(m => [`${m.etiqueta} - antes de comision`, m.bruto] as [string, number]),
         ['Total antes de comisiones', resumen.totalAntesComisiones],
-        [`Comisiones (QR ${resumen.medios.find(m => m.metodo === 'MERCADOPAGO')?.porcentaje ?? 0}% / Transferencias ${resumen.medios.find(m => m.metodo === 'TRANSFER')?.porcentaje ?? 0}%)`, -resumen.comisionEstimada],
-        ['TOTAL NETO ESTIMADO', resumen.totalNetoEstimado],
+        ['Comisiones estimadas de Mercado Pago', -resumen.comisionEstimada],
+        [resumen.importePendienteComision ? 'NETO ESTIMADO (PARCIAL)' : 'TOTAL NETO ESTIMADO', resumen.totalNetoEstimado],
       ]
       for (const [label, amount] of filas) {
         page.drawText(label, { x: marginLeft, y: yPosition, size: 9, font: fontBold, color: inkColor })
         drawRightText(money(amount), salidasRightX, yPosition, fontBold, 10)
+        yPosition -= 18
+      }
+      if (resumen.importePendienteComision) {
+        page.drawText(`Comision pendiente sobre ${money(resumen.importePendienteComision)}. Importe incluido sin descuento.`, { x: marginLeft, y: yPosition, size: 8, font, color: mutedColor })
         yPosition -= 18
       }
       page.drawText('Porcentajes actuales de la empresa. Recalculan fechas anteriores. No modifican los tickets.', { x: marginLeft, y: yPosition, size: 8, font, color: mutedColor })

@@ -26,14 +26,17 @@ export type BoxList = {
     cobrosInquilinos?: CobroInquilinoDia[] | null;
 }
 
-export type ComisionesCaja = { qrPorcentaje: number; transferenciaPorcentaje: number };
+export type ClaveComision = 'qrSaldo' | 'qrDebito' | 'qrCredito' | 'aliasSaldo' | 'aliasDebito' | 'aliasCredito';
+export type ComisionesCaja = Record<ClaveComision, number | null>;
+export type ConfiguracionComisiones = { conectada: boolean; tasas: ComisionesCaja; referencia: ComisionesCaja };
 export type ResumenCaja = {
     criterio: 'PORCENTAJES_ACTUALES';
     efectivo: number;
     totalAntesComisiones: number;
     comisionEstimada: number;
     totalNetoEstimado: number;
-    medios: { metodo: string; etiqueta: string; porcentaje: number; bruto: number; comision: number; neto: number }[];
+    importePendienteComision?: number;
+    medios: { metodo: string; etiqueta: string; porcentaje: number | null; bruto: number; comision: number; pendiente?: number; neto: number }[];
 };
 
 export type CobroInquilinoDia = {
