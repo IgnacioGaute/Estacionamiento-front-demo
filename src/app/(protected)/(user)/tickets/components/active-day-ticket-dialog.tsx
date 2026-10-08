@@ -3,14 +3,17 @@
 import { useState, useTransition } from 'react';
 import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 import { useRouter } from 'next/navigation';
-import { CalendarDays, CircleDollarSign, Landmark, LogOut, ReceiptText } from 'lucide-react';
+import { Landmark, ReceiptText } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ActionDialog,
+  ActionDialogBody,
+  ActionDialogContent,
+  ActionDialogFooter,
+  ActionDialogHeader,
+  ActionDialogPrimaryButton,
+  ActionDialogSecondaryButton,
+} from '@/components/ui/action-dialog';
+import { PlateChip } from '@/components/plate-chip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/toast';
@@ -126,152 +129,61 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] max-w-sm overflow-hidden sm:max-h-[90dvh]">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <span className="grid size-9 place-items-center rounded-md border border-gm-yellow/40 bg-gm-yellow/15 text-gm-yellow">
-                <CalendarDays className="size-4" />
-              </span>
-              <div>
-                <DialogTitle>
-                  {registration?.vehiclePlateCustomer || 'Sin patente'}
-                </DialogTitle>
-                <DialogDescription className="mt-0.5">
-                  Ticket por {registration ? ticketTimeTypeLabel[registration.ticketTimeType] : '—'}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
+      <ActionDialog open={open} onOpenChange={onOpenChange}>
+        <ActionDialogContent className="md:max-w-[920px]">
+          <ActionDialogHeader
+            title={registration?.retired ? 'Detalle de estadía' : 'Estadía activa'}
+            description={`Ticket por ${registration ? ticketTimeTypeLabel[registration.ticketTimeType] : '—'}`}
+          />
+          {registration && <>
+            <ActionDialogBody className="md:grid md:grid-cols-[300px_minmax(0,1fr)] md:items-start md:gap-6">
+              <section aria-label="Resumen de la estadía" className="shrink-0 rounded-[18px] border border-border bg-gm-surface-2 p-3.5 short:p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {registration.vehiclePlateCustomer ? <PlateChip plate={registration.vehiclePlateCustomer} /> : <span className="gm-mono text-base font-semibold">Sin patente</span>}
+                  <Badge variant={registration.paid ? 'green' : 'blue'}>{registration.paid ? 'Pagado' : 'Pendiente de pago'}</Badge>
+                </div>
+                <div className="my-3 h-px bg-border short:my-2.5" />
+                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{registration.paid ? 'Importe de la estadía' : 'Falta cobrar'}</p>
+                <p className="gm-mono mt-1 text-[38px] font-bold leading-none tracking-tight short:text-[32px]">{ars(registration.price)}</p>
+                <p className="mt-2 text-[13px] text-muted-foreground">{duration} · {registration.vehicleType === 'CAMIONETA' ? 'Camioneta' : 'Automóvil'}</p>
+                {registration.paid && registration.paymentMetodo && <p className="mt-1 text-xs text-muted-foreground">Pagó con {metodoLabel[registration.paymentMetodo]}</p>}
+              </section>
 
-          {registration && (
-            <div className="space-y-3">
-              {deliveryEnabled && (
-                <section aria-label="Comprobantes del ticket" className="rounded-xl border border-gm-yellow/15 bg-gm-yellow/5 p-3">
-                  <p className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground"><ReceiptText className="size-4 text-gm-yellow" />Comprobantes</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="ghost" size="sm" className="min-h-11 flex-1 bg-background/40 text-gm-yellow hover:bg-gm-yellow/10" onClick={() => { setReceiptKind('ENTRY'); setReceiptId(registration.id); onOpenChange(false); }}>Ver entrada</Button>
-                    {registration.retired && <Button variant="ghost" size="sm" className="min-h-11 flex-1 bg-background/40 text-gm-yellow hover:bg-gm-yellow/10" onClick={() => { setReceiptKind('EXIT'); setReceiptId(registration.id); onOpenChange(false); }}>Ver salida</Button>}
-                  </div>
+              <div className="flex min-w-0 flex-col gap-4 short:gap-3">
+                <section aria-label="Datos de la estadía" className="rounded-[18px] border border-border bg-gm-surface-2 p-3.5 short:p-3">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">Cliente</p>
+                  <p className="mt-1 text-[14px] font-medium">{[registration.firstNameCustomer, registration.lastNameCustomer].filter(Boolean).join(' ') || 'Sin nombre cargado'}</p>
+                  <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs">
+                    <div className="min-w-0"><dt className="text-muted-foreground">Desde</dt><dd className="gm-mono mt-1 text-[14px] font-semibold">{formatDate(registration.dateNow)}</dd></div>
+                    <div className="min-w-0"><dt className="text-muted-foreground">Vence (estimado)</dt><dd className={`gm-mono mt-1 text-[14px] font-semibold ${isOverdue ? 'text-destructive' : 'text-foreground'}`}>{formatDate(dueDate)}</dd></div>
+                  </dl>
+                  {isOverdue && <p className="mt-3 rounded-xl border border-destructive/25 bg-destructive/10 p-2.5 text-xs leading-relaxed text-destructive">Venció hace {overdueDays} día{overdueDays > 1 ? 's' : ''}. No se agrega recargo automático. Cualquier adicional se acuerda y registra aparte.</p>}
+                  {registration.description && <details className="mt-3 text-xs text-muted-foreground"><summary className="cursor-pointer py-1 hover:text-foreground">Detalle del ticket</summary><p className="mt-1 break-words leading-relaxed">{registration.description}</p></details>}
                 </section>
-              )}
-              <div className="rounded-md border border-border bg-gm-surface-2 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                    Cliente
-                  </span>
-                  <Badge variant={registration.paid ? 'yellow' : 'blue'}>
-                    {registration.paid ? 'Pagado' : 'Pendiente de pago'}
-                  </Badge>
-                </div>
-                <p className="mt-1.5 text-[13px] font-medium text-foreground">
-                  {[registration.firstNameCustomer, registration.lastNameCustomer].filter(Boolean).join(' ') || 'Sin nombre cargado'}
-                </p>
-                {/* La patente también está en el título, pero acá va rotulada: en el título sola
-                    no se distingue de un número de ticket. */}
-                <dl className="mt-2 space-y-1 border-t border-border pt-2 text-[12px]">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-muted-foreground">Patente</dt>
-                    <dd className="gm-mono break-all text-right font-semibold uppercase tracking-wide text-foreground">
-                      {registration.vehiclePlateCustomer || 'Sin patente'}
-                    </dd>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <dt className="text-muted-foreground">Vehículo</dt>
-                    <dd className="text-right text-foreground">
-                      {registration.vehicleType === 'CAMIONETA' ? 'Camioneta' : 'Automóvil'}
-                    </dd>
-                  </div>
-                  {registration.description && (
-                    <div className="flex items-baseline justify-between gap-3">
-                      <dt className="text-muted-foreground">Detalle</dt>
-                      <dd className="break-words text-right text-foreground">{registration.description}</dd>
-                    </div>
-                  )}
-                </dl>
-                {registration.paid && registration.paymentMetodo && (
-                  <p className="mt-1 text-[11.5px] text-muted-foreground">
-                    Pagó con {metodoLabel[registration.paymentMetodo]}
-                  </p>
-                )}
+
+                {registration.paid && registration.boxList && <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5"><Landmark className="size-3.5" aria-hidden />Caja #{registration.boxList.boxNumber}</span>
+                  <span className="gm-mono">{formatDate(registration.boxList.date ?? registration.dateNow)}</span>
+                </div>}
+
+                {deliveryEnabled && <section aria-label="Comprobantes del ticket" className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-1">
+                  <span className="mr-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground"><ReceiptText className="size-3.5" aria-hidden />Comprobantes</span>
+                  <Button variant="ghost" size="sm" className="min-h-11 px-2 text-xs text-gm-yellow" onClick={() => { setReceiptKind('ENTRY'); setReceiptId(registration.id); onOpenChange(false); }}>Ver entrada</Button>
+                  {registration.retired && <Button variant="ghost" size="sm" className="min-h-11 px-2 text-xs text-gm-yellow" onClick={() => { setReceiptKind('EXIT'); setReceiptId(registration.id); onOpenChange(false); }}>Ver salida</Button>}
+                </section>}
               </div>
-
-              <div className="rounded-md border border-border bg-gm-surface-2 p-3">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                  <CalendarDays className="size-3.5" />
-                  Duración
-                </div>
-                <p className="mt-1.5 text-[13px] font-medium text-foreground">{duration}</p>
-                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border pt-2.5">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                    Desde
-                  </span>
-                  <span className="gm-mono gm-tnum text-[13px] font-semibold text-foreground">
-                    {formatDate(registration.dateNow)}
-                  </span>
-                </div>
-                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                  <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                    Vence (estimado)
-                  </span>
-                  <span
-                    className={`gm-mono gm-tnum text-[13px] font-semibold ${isOverdue ? 'text-destructive' : 'text-foreground'}`}
-                  >
-                    {formatDate(dueDate)}
-                  </span>
-                </div>
-                {isOverdue && (
-                  <p className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-[11px] text-destructive">
-                    Venció hace {overdueDays} día{overdueDays > 1 ? 's' : ''}. El sistema no cobra
-                    ninguna tarifa extra por hora automáticamente — si corresponde cobrar algo más,
-                    hay que acordarlo y registrarlo aparte.
-                  </p>
-                )}
-              </div>
-
-              <div className="rounded-md border border-border bg-gm-surface-2 p-3">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                  <CircleDollarSign className="size-3.5" />
-                  Precio
-                </div>
-                <p className="gm-display gm-tnum mt-1 text-[22px] font-bold leading-none text-gm-yellow">
-                  {ars(registration.price)}
-                </p>
-              </div>
-
-              {registration.paid && registration.boxList && (
-                <div className="rounded-md border border-border bg-gm-surface-2 p-3">
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                    <Landmark className="size-3.5" />
-                    Imputado a caja
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                    <span className="text-[13px] font-medium text-foreground">
-                      Caja #{registration.boxList.boxNumber}
-                    </span>
-                    <span className="gm-mono gm-tnum text-[13px] font-semibold text-foreground">
-                      {formatDate(registration.boxList.date ?? registration.dateNow)}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    Corroborá en "Planilla de caja" (menú de usuario) buscando esta fecha — este
-                    ticket ({ticketTimeTypeLabel[registration.ticketTimeType]}) aparece listado ahí.
-                  </p>
-                </div>
-              )}
-
-              {registration.retired ? (
-                <p className="text-center text-[12px] text-muted-foreground">Salida ya registrada.</p>
-              ) : (
-                <Button className="w-full" size="sm" disabled={isPending} onClick={handleRegisterExit}>
-                  <LogOut className="mr-1.5 size-3.5" />
-                  Registrar salida
-                </Button>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            </ActionDialogBody>
+            <ActionDialogFooter>
+              {registration.retired ? <>
+                <p className="mr-auto text-center text-sm text-muted-foreground">Salida ya registrada.</p>
+                <ActionDialogSecondaryButton onClick={() => onOpenChange(false)}>Cerrar</ActionDialogSecondaryButton>
+              </> : <ActionDialogPrimaryButton disabled={isPending} onClick={handleRegisterExit} detail={`${registration.vehiclePlateCustomer || 'Sin patente'} · ${registration.paid ? 'Ya pagado' : ars(registration.price)}`}>
+                {isPending ? 'Registrando…' : 'Registrar salida'}
+              </ActionDialogPrimaryButton>}
+            </ActionDialogFooter>
+          </>}
+        </ActionDialogContent>
+      </ActionDialog>
 
       {deliveryEnabled && <ParkingReceiptDelivery registrationId={receiptId} kind={receiptKind} showDisabledMessage onDismiss={() => setReceiptId(null)} />}
       <PaymentMethodDialog
