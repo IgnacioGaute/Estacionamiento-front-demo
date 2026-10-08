@@ -11,7 +11,7 @@ export type BoxList = {
     totalPrice: number;
     boxNumber: number;
     ticketRegistrations: TicketRegistration[];
-    ticketMovements?: { id: string; monto: number; metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; tipo: 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'CORTESIA'; fechaHora: string; ticketRegistration: TicketRegistration }[];
+    ticketMovements?: { id: string; monto: number; metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; medioPagoDetalle?: string; tipo: 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'CORTESIA'; fechaHora: string; ticketRegistration: TicketRegistration }[];
     ticketRegistrationForDays: TicketRegistrationForDay[];
     receipts: Receipt[];
     otherPayments: OtherPayment[];
@@ -41,6 +41,7 @@ export type ResumenCaja = {
 
 export type CobroInquilinoDia = {
     id: string;
+    medioPagoDetalle?: string;
     // ANULACION: la de un pago o devolución de otro día (las del mismo día no vienen: se compensan).
     tipo: 'PAGO' | 'DEVOLUCION' | 'ANULACION';
     tipoOriginal: 'PAGO' | 'DEVOLUCION' | null;

@@ -511,8 +511,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       sectionKey: string,
       title: string,
       items: any[],
-      // 5 valores: desc, price, fecha, badge de tipo de pago? (EF/TR/MIX), subtítulo? (patente/ticket + horario)
-      dataExtractor: (item: any) => [string, string, string, string?, string?],
+      // El medio verificado de Mercado Pago ocupa su propia línea en la planilla.
+      dataExtractor: (item: any) => [string, string, string, string?, string?, string?],
     ) => {
       yPosition -= 14
       drawSectionHeaderRow(title)
@@ -523,10 +523,10 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       if (items.length > 0) {
         drawTableHeader()
         items.forEach((item: any) => {
-          const [desc, priceStr, dateNow, paymentBadge, subtitle] = dataExtractor(item)
+          const [desc, priceStr, dateNow, paymentBadge, subtitle, medioDetalle] = dataExtractor(item)
           const price = Number(priceStr)
           const hasSubtitle = Boolean(subtitle)
-          const rowHeight = hasSubtitle ? 30 : 18
+          const rowHeight = 18 + (hasSubtitle ? 12 : 0) + (medioDetalle ? 12 : 0)
           ensureSpace(rowHeight + 20)
 
           const nameSize = 9.5
@@ -544,6 +544,9 @@ export default async function generateBoxList(boxList: BoxList, userName: string
 
           if (hasSubtitle) {
             page.drawText(subtitle as string, { x: colDescTextX, y: rowY - 12, size: 8, font, color: mutedColor })
+          }
+          if (medioDetalle) {
+            page.drawText(medioDetalle, { x: colDescTextX, y: rowY - (hasSubtitle ? 24 : 12), size: 8, font, color: mutedText2 })
           }
 
           drawRightText(price >= 0 ? formatNumber(price) : "—", entradasRightX, rowY, font, 9.5)
@@ -799,6 +802,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
         ticket.dateNow ? formatDateA(ticket.dateNow) : "—",
         ticketPaymentBadge(ticket),
         subtitleParts.join("   ·   "),
+        [...new Set((ticket.movimientos ?? []).map(m => m.medioPagoDetalle).filter(Boolean))].join(' / ') || undefined,
       ]
     })
 
@@ -843,6 +847,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
           page.drawText(cobro.cliente, { x: colDescTextX, y: rowY, size: 9.5, font, color: inkColor })
           drawBadge(medio.badge, colDescTextX + font.widthOfTextAtSize(cobro.cliente, 9.5) + 6, rowY - 1)
           page.drawText(detalle, { x: colDescTextX, y: rowY - 12, size: 8, font, color: mutedColor })
+          if (cobro.medioPagoDetalle) page.drawText(cobro.medioPagoDetalle, { x: colDescTextX, y: rowY - 24, size: 8, font, color: mutedText2 })
 
           const monto = Math.abs(cobro.monto)
           if (cobro.metodo === "CASH") {
@@ -863,7 +868,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
           }
           porMedio.set(cobro.metodo, (porMedio.get(cobro.metodo) ?? 0) + cobro.monto)
 
-          yPosition -= 30
+          yPosition -= cobro.medioPagoDetalle ? 42 : 30
           drawRowSeparator()
         })
 
@@ -897,6 +902,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
         ticket.dateNow ? formatDateA(ticket.dateNow) : "—",
         undefined,
         subtitleParts.join("   ·   "),
+        ticket.medioPagoDetalle,
       ]
     })
 

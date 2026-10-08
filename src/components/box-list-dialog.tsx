@@ -26,6 +26,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, FileText, Printer, Wallet, Inf
 import { getShiftsEnabledAction } from '@/actions/turnos/shifts-enabled.action';
 import { CompactPagination } from '@/components/compact-pagination';
 import { ResumenCajaNeto } from '@/components/resumen-caja-neto';
+import { CobrosMpPlanilla } from '@/components/cobros-mp-planilla';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -213,6 +214,7 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
           </div>
           <section className="min-w-0 space-y-4" aria-busy={loading} aria-label="Resumen de caja">
           {boxData?.resumenCaja && <ResumenCajaNeto resumen={boxData.resumenCaja} />}
+          {boxData && <CobrosMpPlanilla box={boxData} />}
           {boxData && (
             <div key={dateKey} className="overflow-hidden rounded-2xl border border-border bg-background/40 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
