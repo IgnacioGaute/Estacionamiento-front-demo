@@ -24,7 +24,7 @@ export async function loginAction(
       });
 
       const safeRedirect = callbackUrl?.startsWith('/') && !callbackUrl.startsWith('//') && !callbackUrl.includes('\\') ? callbackUrl : DEFAULT_LOGIN_REDIRECT;
-      return { success: "Sesión iniciada — redirigiendo.", redirectTo: safeRedirect };
+      return { success: "Sesión iniciada", redirectTo: safeRedirect };
     } catch (error: unknown) {
       console.error("Error en signIn:", error);
 

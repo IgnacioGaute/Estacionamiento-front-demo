@@ -1,94 +1,71 @@
 import { Suspense } from 'react';
 import { LoginForm } from '@/app/auth/login/_components/login-form';
-import { GarageMitreLogo } from '@/components/brand/logo';
+import { AppIcon } from '@/components/brand/logo';
 
+// El saludo depende de la hora de la playa: se arma en cada pedido, no al compilar.
+export const dynamic = 'force-dynamic';
+
+function saludo() {
+  const hora = Number(
+    new Intl.DateTimeFormat('es-AR', { hour: 'numeric', hourCycle: 'h23', timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date()),
+  );
+  if (hora < 6) return 'Buenas noches';
+  if (hora < 12) return 'Buen día';
+  if (hora < 20) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+// Una sola tarjeta y el logo como la pieza que encaja arriba, en un hueco de la tarjeta: el mismo
+// encastre de la barra lateral y la de arriba dentro de la app.
 export default function LoginPage() {
   return (
-    <div className="grid min-h-[100dvh] w-full grid-cols-1 lg:grid-cols-[1fr_480px]">
-      {/* — BRAND PANEL — */}
-      <aside
-        className="relative hidden lg:flex flex-col justify-between overflow-hidden border-r border-border p-14"
-        style={{
-          background:
-            'radial-gradient(ellipse at 30% 20%, hsl(var(--gm-yellow) / 0.10), transparent 55%), radial-gradient(ellipse at 80% 90%, hsl(var(--gm-orange) / 0.10), transparent 55%), hsl(var(--gm-surface))',
-        }}
-      >
-        {/* Vertical caution-tape strip on the very edge */}
-        <div className="gm-stripes absolute inset-y-0 left-0 w-2" aria-hidden />
+    // En pantallas bajas (celulares de 640 px) se achica el aire de arriba y abajo para que entre
+    // todo sin scroll y la marca de abajo no quede cortada.
+    <div className="relative grid min-h-[100dvh] w-full place-items-center overflow-hidden bg-background px-3.5 pb-20 pt-14 [@media(max-height:700px)]:pb-16 [@media(max-height:700px)]:pt-8">
+      <div className="relative w-full max-w-[440px] pt-11">
+        {/* La M del logo, gigante y apenas marcada, detrás de todo. Se ubica respecto de la tarjeta y
+            no de la pantalla: el vértice de adentro del pico del medio (a 0,2 del ancho desde arriba)
+            queda bajo la pieza del logo; centrada en la pantalla asomaba como una punta encima. */}
+        <svg
+          aria-hidden
+          viewBox="0 0 84 72"
+          fill="none"
+          className="pointer-events-none absolute left-1/2 top-[calc(44px_-_0.2*min(1100px,145vw))] h-auto w-[min(1100px,145vw)] max-w-none -translate-x-1/2"
+        >
+          <path
+            d="M4 68 V10 L26 40 L42 8 L58 40 L80 10 V68"
+            stroke="hsl(var(--gm-yellow))"
+            strokeOpacity={0.035}
+            strokeWidth={8}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </svg>
 
-        <GarageMitreLogo size="md" />
-
-        <div>
-          <div className="text-[11px] font-bold tracking-[0.18em] text-gm-orange">
-            OPEN · 24 / 7 · 365
+        <div className="relative [filter:drop-shadow(0_28px_40px_rgba(0,0,0,0.6))]">
+          {/* La pieza: el logo en su círculo, centrado sobre el borde de arriba de la tarjeta. */}
+          <div className="absolute left-1/2 top-0 z-10 grid size-[88px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#0B0A08]">
+            <AppIcon className="size-[58px]" />
           </div>
-          <h2 className="gm-display mt-4 text-[80px] font-bold leading-[0.95] tracking-[-0.01em] text-foreground">
-            EL VOLANTE
-            <br />
-            <span className="text-gm-yellow">DEL NEGOCIO,</span>
-            <br />
-            EN TUS MANOS.
-          </h2>
-          <p className="mt-6 max-w-[460px] text-[14px] leading-[1.6] text-muted-foreground">
-            Sistema operativo de la cochera: tickets, recibos y caja.
-            Diseñado para que el operador haga todo sin levantar la vista del auto que entra.
-          </p>
+          {/* El hueco donde encaja: 3 px más grande que la pieza. */}
+          <div className="rounded-[28px] bg-[#0B0A08] px-6 pb-7 pt-[66px] [-webkit-mask-image:radial-gradient(circle_47px_at_50%_0,transparent_46.5px,#000_47px)] [mask-image:radial-gradient(circle_47px_at_50%_0,transparent_46.5px,#000_47px)] sm:px-9">
+            <p className="text-center text-[11.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground sm:text-xs">{saludo()}</p>
+            <h1 className="mt-2 text-center font-display text-[34px] font-bold leading-none sm:text-[38px]">Iniciar sesión</h1>
 
-          {/* <div className="mt-10 grid max-w-[460px] grid-cols-3 gap-3">
-            {[
-              { k: '62', l: 'años operando' },
-              { k: '284', l: 'espacios' },
-              { k: '1.4k', l: 'clientes activos' },
-            ].map((m) => (
-              <div
-                key={m.l}
-                className="rounded-md border border-border bg-black/25 p-3.5"
-              >
-                <div className="gm-display gm-tnum text-[28px] font-bold leading-none text-gm-yellow">
-                  {m.k}
-                </div>
-                <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                  {m.l}
-                </div>
-              </div>
-            ))}
-          </div> */}
-        </div>
+            <Suspense>
+              <LoginForm />
+            </Suspense>
 
-        <div className="text-[11px] tracking-[0.04em] text-muted-foreground">
-        </div>
-      </aside>
-
-      {/* — FORM PANEL — */}
-      <section className="flex items-center justify-center bg-background p-8 lg:p-14">
-        <div className="w-full max-w-[400px]">
-          {/* mobile logo */}
-          <div className="mb-8 flex justify-center lg:hidden">
-            <GarageMitreLogo size="md" withTagline />
-          </div>
-
-          <div className="mb-6">
-            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              Acceso de operador
-            </div>
-            <h1 className="gm-display mt-2 text-[34px] font-bold leading-tight tracking-[0.01em] text-foreground">
-              Iniciar sesión
-            </h1>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              Ingresá con tu cuenta para abrir caja.
+            <p className="mt-6 text-balance text-center text-[13px] text-muted-foreground">
+              ¿No tenés cuenta? Pedile acceso al administrador de tu playa.
             </p>
           </div>
-
-          <Suspense>
-            <LoginForm />
-          </Suspense>
-
-          <p className="mt-10 text-center text-[12px] text-muted-foreground">
-            ¿Sin cuenta?{' '}
-            <span className="text-gm-yellow">Pedile acceso al administrador.</span>
-          </p>
         </div>
-      </section>
+      </div>
+
+      <p className="absolute inset-x-0 bottom-8 text-center font-display text-[13px] font-bold tracking-[0.18em] text-[#7D7365]">
+        ESTACIONAMIENTO
+      </p>
     </div>
   );
 }

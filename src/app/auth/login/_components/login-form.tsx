@@ -16,7 +16,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, LogIn, Mail, Lock } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
 import { loginSchema, LoginSchemaType } from '@/schemas/auth/login.schema';
@@ -56,25 +56,33 @@ export function LoginForm() {
     });
   };
 
+  // Con la sesión ya iniciada todo queda bloqueado hasta que abre la pantalla siguiente: si el botón
+  // volviera a «Entrar» mientras navega, invitaría a tocarlo de nuevo.
+  const entrando = isPending || !!success;
+
+  // Campos grandes y oscuros sobre la tarjeta negra; en el celular la letra queda en 16 px para que
+  // el teléfono no haga zoom al tocarlos.
+  const campo =
+    'h-[52px] rounded-[14px] border-white/10 bg-[#16130F] px-3.5 text-base md:h-[50px] md:text-[15px] placeholder:text-[#7D7365] focus-visible:ring-4 focus-visible:ring-gm-yellow/15';
+  const etiqueta = 'text-[13px] font-semibold normal-case tracking-normal text-[#D9D1C3]';
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="mt-6 space-y-4">
         <FormField
           control={form.control}
           name="identifier"
           render={({ field }) => (
-            <FormItem className="space-y-1.5">
-              <FormLabel>Email o usuario</FormLabel>
+            <FormItem className="space-y-2">
+              <FormLabel className={etiqueta}>Email o usuario</FormLabel>
               <FormControl>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                  <Input
-                    disabled={isPending}
-                    className="pl-9"
-                    placeholder="juan.castro@garagemitre.ar"
-                    {...field}
-                  />
-                </div>
+                <Input
+                  disabled={entrando}
+                  autoComplete="username"
+                  className={campo}
+                  placeholder="tu@email.com o tu usuario"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -85,36 +93,37 @@ export function LoginForm() {
           control={form.control}
           name="password"
           render={({ field }) => (
-            <FormItem className="space-y-1.5">
+            <FormItem className="space-y-2">
               <div className="flex items-center justify-between">
-                <FormLabel>Contraseña</FormLabel>
+                <FormLabel className={etiqueta}>Contraseña</FormLabel>
                 <Link
                   href="/auth/reset"
-                  className="text-[11px] font-medium text-gm-yellow hover:underline"
+                  className="text-[13px] font-semibold text-gm-yellow hover:underline"
                 >
-                  Olvidé mi contraseña
+                  ¿La olvidaste?
                 </Link>
               </div>
               <FormControl>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <Input
-                    disabled={isPending}
+                    disabled={entrando}
                     type={showPassword ? 'text' : 'password'}
-                    className="pl-9 pr-10"
-                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    className={`${campo} pr-12`}
+                    placeholder="Tu contraseña"
                     {...field}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground rounded-sm hover:bg-gm-surface-3"
-                    tabIndex={-1}
+                    aria-label={showPassword ? 'Ocultar la contraseña' : 'Mostrar la contraseña'}
+                    aria-pressed={showPassword}
+                    className="absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-[10px] text-[#857B6D] transition-colors hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="size-[18px]" aria-hidden />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="size-[18px]" aria-hidden />
                     )}
                   </button>
                 </div>
@@ -125,16 +134,15 @@ export function LoginForm() {
         />
 
         <FormError message={error} />
-        <FormSuccess message={success} />
+        <FormSuccess message={success} detail="Abriendo el sistema…" pending />
 
         <Button
-          className="w-full"
-          size="lg"
+          className="!mt-5 h-[54px] w-full gap-2.5 rounded-[14px] bg-gm-yellow font-display text-lg font-bold tracking-[0.04em] text-gm-ink hover:bg-gm-yellow hover:brightness-105 active:scale-[0.98] disabled:opacity-70"
           type="submit"
-          disabled={isPending}
+          disabled={entrando}
         >
-          <LogIn className="size-4" />
-          Entrar al sistema
+          {entrando ? 'ENTRANDO…' : 'ENTRAR'}
+          <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden />
         </Button>
       </form>
     </Form>
