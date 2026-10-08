@@ -22,7 +22,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { ParkingMark } from '@/components/brand/logo';
+import { AppIcon } from '@/components/brand/logo';
 import { EmpresaConDetalle, PlataformaMetrics } from '@/types/tenancy.type';
 import {
   getEmpresasAction,
@@ -102,9 +102,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
           onClick={cerrarEnMovil}
           className="flex min-w-0 items-center gap-3 group-data-[collapsible=icon]:hidden"
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-[#34302A] bg-gm-surface-2">
-            <ParkingMark size="sm" />
-          </span>
+          <AppIcon className="size-9 shrink-0" />
           <span className="flex min-w-0 flex-col gap-1">
             <span className="font-display text-[15px] font-semibold leading-none tracking-[0.05em] text-foreground">
               ESTACIONAMIENTO

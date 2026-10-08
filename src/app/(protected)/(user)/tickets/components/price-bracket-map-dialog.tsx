@@ -10,9 +10,12 @@ import { TicketSchedule } from '@/services/tickets.service';
 export function PriceBracketMapDialog({
   brackets,
   schedule,
+  renderTrigger,
 }: {
   brackets: TicketPriceBracket[];
   schedule: TicketSchedule | null;
+  // Para dibujar el acceso con el estilo de donde se lo usa (los atajos del inicio).
+  renderTrigger?: (abrir: () => void) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -20,14 +23,16 @@ export function PriceBracketMapDialog({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-gm-yellow"
-      >
-        <Map className="size-3.5" />
-        Consultar precios
-      </button>
+      {renderTrigger ? renderTrigger(() => setOpen(true)) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-gm-yellow"
+        >
+          <Map className="size-3.5" />
+          Consultar precios
+        </button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85dvh] w-[calc(100%_-_2rem)] max-w-3xl overflow-hidden">

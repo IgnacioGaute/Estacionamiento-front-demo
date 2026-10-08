@@ -1,106 +1,65 @@
 "use client";
-import { DataLoading } from '@/components/ui/data-loading';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { OfflineConsultation } from '@/components/offline-consultation';
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ParkingReceiptDelivery } from "@/components/parking-receipt-delivery";
+import { formatImporte } from "@/components/pricing-breakdown";
+import { useTenant } from "@/components/tenant-provider";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { DepartureHistory } from './departure-history';
 import { cn } from "@/lib/utils";
 import { TicketRegistration } from "@/types/ticket-registration.type";
 import { Ticket } from "@/types/ticket.type";
 import { TicketPriceBracket } from "@/types/ticket-price-bracket.type";
 import { TicketRegistrationForDay } from "@/types/ticket-registration-for-day.type";
-import { CloseSummary, TicketSchedule } from "@/services/tickets.service";
-import { getCloseSummaryAction } from "@/actions/tickets/get-close-summary.action";
+import { TicketSchedule } from "@/services/tickets.service";
 import ScannerButton from "../../components/scanner-button";
-import { DayRegistrationsPanel } from "./day-registrations-panel";
 import { CreateTicketRegistrationDialog } from "../tickets-days-or-weeks/create-ticket-registration-for-day-dialog";
 import { ActiveDayTicketDialog } from "./active-day-ticket-dialog";
 import { PriceBracketMapDialog } from "./price-bracket-map-dialog";
 import { AdvancePaymentDialog } from "./advance-payment-dialog";
-import { ActiveTicketsList } from "./active-tickets-list";
 import { ScanPlateAction } from './scan-plate-action';
 import { EntryByPlateDialog } from "./entry-by-plate-dialog";
 import { CloseTicketPanel } from "./close-ticket-panel";
 import { TurnoBar } from "./turno-bar";
-import { useTour, tourHighlight, tourTransition } from "./ticket-tour";
+import { useTour } from "./ticket-tour";
 import { useTicketRealtime } from "@/hooks/use-ticket-realtime";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { isBarcodeOrigin, isOverdue, minutesSinceEntry, upsertRegistration } from "@/utils/ticket-registration.utils";
+import { estadiaLargaActiva as isDayRegistrationActive, estadiaLargaVencida as isDayRegistrationOverdue } from "@/utils/estadia-larga";
+import { EncabezadoVista, estaAdentro, FichasEnElPlayon, InicioHero, MostradorDock, normalizar, TodosLosVehiculos, VehiculoFila, type FiltroVehiculos } from "./inicio";
+import { AccionesEscritorio, BuscadorRapido, TableroPlaya, TarjetaAdentro, UltimosMovimientos, type FiltroTablero } from "./escritorio";
 import {
-  formatElapsed,
-  isBarcodeOrigin,
-  isOverdue,
-  isTicketActive,
-  latestRegistrationForTicket,
-  upsertRegistration,
-} from "@/utils/ticket-registration.utils";
-import {
-  Car,
-  Clock,
-  CalendarDays,
-  QrCode,
-  CircleDollarSign,
-  Timer,
-  AlertTriangle,
+  ArrowDownLeft,
+  ArrowRight,
+  ArrowUpRight,
   Barcode,
-  Banknote,
-  ArrowLeft,
-  Search,
+  CalendarDays,
+  CalendarPlus,
+  ChevronRight,
+  Map,
+  Receipt,
   Settings,
 } from "lucide-react";
 
 const OVERDUE_CHECK_INTERVAL_MS = 20_000;
-const money = (value: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 }).format(value);
-
-// Desactivado a pedido — se dejó el componente sin borrar para reactivarlo después.
+const DIAS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+// Desde este ancho la pantalla es la de computadora (mostrador + tablero); por debajo, la del celular.
+const ESCRITORIO = "(min-width: 1024px)";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 const TZ = "America/Argentina/Buenos_Aires";
 
-
-// Fecha estimada de vencimiento: fecha de alta + la duración comprada. Cada tipo usa SOLO los
-// campos que le corresponden — mezclar semanas/días de un tipo que no los usa da una fecha mal.
-function dayRegistrationDueDate(r: TicketRegistrationForDay): Date | null {
-  if (!r.dateNow) return null;
-  const dueDate = new Date(r.dateNow);
-  if (r.ticketTimeType === "MES" || r.ticketTimeType === "MES_Y_DIA") {
-    dueDate.setMonth(dueDate.getMonth() + (r.months ?? 0));
-    if (r.ticketTimeType === "MES_Y_DIA") {
-      dueDate.setDate(dueDate.getDate() + (r.days ?? 0));
-    }
-  } else {
-    const totalDays =
-      r.ticketTimeType === "SEMANA"
-        ? (r.weeks ?? 0) * 7
-        : r.ticketTimeType === "SEMANA_Y_DIA"
-          ? (r.weeks ?? 0) * 7 + (r.days ?? 0)
-          : r.days ?? 0; // DIA
-    dueDate.setDate(dueDate.getDate() + totalDays);
-  }
-  return dueDate;
-}
-
-// Un abono por día/semana/mes sigue "en el playón" mientras no se haya registrado su salida —
-// pasar la fecha comprada NO lo saca de la lista ni cambia lo que se cobra (este flujo no tiene
-// ninguna conexión con la escalera de tarifas por hora): solo queda marcado como vencido.
-function isDayRegistrationActive(r: TicketRegistrationForDay) {
-  return !r.retired;
-}
-
-function isDayRegistrationOverdue(r: TicketRegistrationForDay) {
-  if (r.retired) return false;
-  const dueDate = dayRegistrationDueDate(r);
-  if (!dueDate) return false;
-  return dueDate.getTime() < new Date().setHours(0, 0, 0, 0);
-}
+type Vista = "inicio" | "vehiculos" | "comprobantes";
 
 export default function CardTicket({
   initialRegistrations,
@@ -119,8 +78,7 @@ export default function CardTicket({
   isAdmin: boolean;
   barcodeTicketsEnabled: boolean;
 }) {
-  const [registrations, setRegistrations] =
-    useState<TicketRegistration[]>(initialRegistrations);
+  const [registrations, setRegistrations] = useState<TicketRegistration[]>(initialRegistrations);
   const TURNO_BAR_ENABLED = schedule?.shiftsEnabled === true;
   const [isScanning, setIsScanning] = useState(false);
   const [receiptTarget, setReceiptTarget] = useState<{ id: string; kind: 'ENTRY' | 'EXIT' } | null>(null);
@@ -138,74 +96,88 @@ export default function CardTicket({
   const [scannedDayRegistration, setScannedDayRegistration] = useState<TicketRegistrationForDay | null>(null);
   const [closePanelOpen, setClosePanelOpen] = useState(false);
   const [closePanelTargetId, setClosePanelTargetId] = useState<string | null>(null);
-  const [selectedTarget, setSelectedTarget] = useState<{
-    id: string;
-    kind: "BARCODE" | "PLATE";
-    codeBar?: string;
-    vehicleType?: string;
-  } | null>(null);
-  const [previewSummary, setPreviewSummary] = useState<CloseSummary | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  // Solo se usa por debajo de `sm` — de `sm` para arriba las dos columnas se ven juntas como
-  // siempre y esto queda sin efecto.
-  const [mobileTab, setMobileTab] = useState<"ingreso" | "activos">("ingreso");
   const [openDayRegistrationId, setOpenDayRegistrationId] = useState<string | null>(null);
-  const [sidebarTab, setSidebarTab] = useState<"hourly" | "daily" | "receipts">("hourly");
-  useEffect(() => {
-    if (!receiptDeliveryEnabled && sidebarTab === 'receipts') setSidebarTab('hourly');
-  }, [receiptDeliveryEnabled, sidebarTab]);
-  const [flipDirection, setFlipDirection] = useState<"next" | "prev">("next");
+  // La barra de abajo y la columna de la computadora abren los mismos diálogos: cada toque suma.
+  const [entradaSignal, setEntradaSignal] = useState(0);
+  const [estadiaSignal, setEstadiaSignal] = useState(0);
   // El diálogo de alta por día/semana/mes también tiene que silenciar el lector USB mientras
   // está abierto — si no, tipear la patente dispara el escáner.
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
   const isDialogOpen = entryDialogOpen || plateScanBusy || advanceTarget !== null || closePanelOpen || dayDialogOpen || receiptTarget !== null;
 
-  const selectSidebarTab = (tab: "hourly" | "daily" | "receipts") => {
-    if (tab === sidebarTab) return;
-    const order = ['hourly', 'daily', 'receipts'];
-    setFlipDirection(order.indexOf(tab) > order.indexOf(sidebarTab) ? "next" : "prev");
-    setSidebarTab(tab);
-  };
+  // El inicio, la lista completa y el historial de comprobantes son tres vistas de la misma
+  // pantalla: se pasa de una a otra con un deslizamiento (hacia la derecha al entrar, a la
+  // izquierda al volver), sin recargar nada.
+  const [vista, setVista] = useState<Vista>("inicio");
+  const [filtro, setFiltro] = useState<FiltroVehiculos>("hora");
+  const [filtroTablero, setFiltroTablero] = useState<FiltroTablero>("todos");
+  const buscadorRef = useRef<HTMLInputElement>(null);
+  // Hasta montar se dibujan las dos pantallas y el CSS muestra la que va (así la primera imagen ya
+  // es la correcta); después queda solo una, sin duplicar listas, ids ni efectos.
+  const esEscritorio = useMediaQuery(ESCRITORIO);
+  const atajos = esEscritorio === true;
+  const [direccion, setDireccion] = useState<"adelante" | "atras">("adelante");
+  const vistaRef = useRef<Vista>("inicio");
+  vistaRef.current = vista;
+  const arribaRef = useRef<HTMLDivElement | null>(null);
+  const irA = useCallback((siguiente: Vista, conFiltro?: FiltroVehiculos) => {
+    setDireccion(siguiente === "inicio" ? "atras" : "adelante");
+    setVista(siguiente);
+    if (conFiltro) setFiltro(conFiltro);
+    // Arriba de todo del contenedor que desplaza (el documento o el del layout), sin esconder la
+    // barra de la app como haría scrollIntoView.
+    requestAnimationFrame(() => {
+      let el = arribaRef.current?.parentElement ?? null;
+      while (el && !(el.scrollHeight > el.clientHeight && /(auto|scroll)/.test(getComputedStyle(el).overflowY))) el = el.parentElement;
+      (el ?? window).scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }, []);
 
   const activeDayRegistrations = registrationsForDay.filter(isDayRegistrationActive);
   const overdueDayRegistrations = activeDayRegistrations.filter(isDayRegistrationOverdue);
   const openDayRegistration =
     (scannedDayRegistration?.id === openDayRegistrationId ? scannedDayRegistration : registrationsForDay.find((r) => r.id === openDayRegistrationId)) ?? null;
   const prevLatestIdRef = useRef<string | null>(null);
-  const selectedDetailRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
-  // En celular cada sección vive en una pestaña: el tour tiene que abrir la que
-  // corresponde antes de cada paso, si no el foco cae sobre algo oculto.
+  const session = useSession();
+  const isMobile = useIsMobile();
+  const { reconocimientoPatentes } = useTenant();
+
+  // Cada paso del tour abre la vista donde está lo que señala.
   const tourSteps = useMemo(
     () => [
       { key: 'entrada', title: 'Registrá una entrada', desc: 'Buscá un cliente frecuente o completá patente y vehículo. Podés guardar su teléfono con código de país: aparecerá en frecuentes desde la primera visita.' },
       ...(barcodeTicketsEnabled ? [{ key: 'entrada', title: 'También podés usar tickets físicos', desc: 'Elegí Ticket en el formulario o usá el lector. El primer escaneo registra la entrada; el siguiente prepara la salida para que revises y confirmes el cobro.' }] : []),
-      { key: 'salida', title: 'Cobrá la salida', desc: 'Buscá la patente o el ticket, revisá el tiempo, el importe y los anticipos, elegí el medio de pago y confirmá. El tour no registra ni cobra nada.' },
-      { key: 'alta-abono', title: 'Día, semana o mes', desc: `Desde acá creás una estadía larga: elegí el período, cantidad, vehículo y si ya está pagada.${isAdmin ? ' Dentro del formulario tenés un enlace para crear o editar sus precios.' : ''}` },
-      { key: 'ticket', title: 'El último movimiento', desc: receiptDeliveryEnabled ? 'Acá queda el resumen de la última operación. Si cerraste la entrega, usá Volver a abrir comprobante: no vuelve a registrar ni cobrar.' : 'Acá queda el resumen de la última entrada o salida, con identificación, horarios e importe cuando corresponda.' },
-      { key: 'occupancy', title: 'Vehículos por hora', desc: 'Buscá por patente o ticket y seleccioná un vehículo para ver su detalle y preparar la salida. La lista se puede desplazar para ver más vehículos.' },
+      { key: 'salida', title: 'Cobrá la salida', desc: 'Buscá la patente o el ticket, o tocá un vehículo de la lista. Revisá el tiempo, el importe y los anticipos, elegí el medio de pago y confirmá. El tour no registra ni cobra nada.' },
+      { key: 'alta-abono', title: 'Día, semana o mes', desc: `Desde Estadía larga creás una estadía de días, semanas o meses: elegí la duración, el vehículo y si ya está pagada.${isAdmin ? ' Dentro del formulario tenés Administrar precios.' : ''}` },
+      { key: 'ticket', title: 'Lo último que pasó', desc: receiptDeliveryEnabled ? 'Acá quedan las últimas entradas y salidas, con su hora e importe. Con Comprobante lo volvés a abrir: no vuelve a registrar ni cobrar.' : 'Acá quedan las últimas entradas y salidas, con su hora e importe.' },
+      { key: 'occupancy', title: 'Todos los vehículos', desc: 'Se agrupan por hace cuánto están y el color lo dice: verde menos de 1 h, azul de 1 a 4 h, violeta más de 4 h. La línea de abajo de cada uno se llena a medida que se acerca al tramo siguiente; en naranja, los que se pasaron del tiempo avisado. Tocá uno para cobrarlo.' },
       { key: 'abonos', title: 'Tus estadías largas', desc: `En Día/Sem/Mes podés buscar y abrir cada abono: ver duración, vencimiento, pago y registrar su salida.${receiptDeliveryEnabled ? ' En su detalle también podés abrir el comprobante de entrada.' : ''} Que venza no significa que el vehículo se haya retirado.` },
       ...(receiptDeliveryEnabled ? [
-        { key: 'comprobantes', title: 'Comprobantes, sin perderlos', desc: 'La pestaña de arriba reúne estadías con entrada o salida de hoy. Usá la fecha para ver otro día, Hoy para volver y el buscador para encontrar patente, ticket o apellido.' },
-        { key: 'comprobantes', title: 'Elegí entrada o salida', desc: 'Cada fila permite abrir Entrada y, si el vehículo ya se retiró, Salida. La entrega muestra solo los medios activos: WhatsApp requiere confirmar el envío, QR abre el enlace en el celular e impresión usa la impresora instalada. Desde el enlace público se puede descargar PDF o imagen.' },
+        { key: 'comprobantes', title: 'Comprobantes, sin perderlos', desc: 'Acá están las estadías con entrada o salida del día. Usá la fecha para ver otro día y el buscador para encontrar patente, ticket o apellido. Cada fila abre la Entrada y, si ya se retiró, la Salida.' },
       ] : []),
-      { key: 'precios', title: 'Consultá antes de cobrar', desc: 'Consultar precios te permite revisar las tarifas de la playa. Los precios de Día/Sem/Mes son distintos de los precios por duración.' },
-      ...(isAdmin ? [{ key: 'admin', title: 'Configuración de la playa', desc: 'Tarifas reúne los precios por tiempo y los pases de día, semana o mes. Podés editar un borrador, probar cuánto cobrarías y aplicar los cambios juntos. Los vehículos, las tarjetas físicas y los comprobantes se administran desde Configuración.' }] : []),
-      ...(TURNO_BAR_ENABLED ? [{ key: 'turno', title: 'Revisá tu turno', desc: 'Desde Turno actual revisás la caja y accedés a la apertura o cierre. Antes de cerrar, contá el efectivo y revisá las diferencias. Este panel es independiente del cobro de vehículos.' }] : []),
+      { key: 'precios', title: 'Consultá antes de cobrar', desc: 'Tarifas te muestra los precios de la playa. Los precios de Día/Sem/Mes son distintos de los precios por duración.' },
+      ...(isAdmin ? [{ key: 'admin', title: 'Configuración de la playa', desc: 'Administrar tarifas reúne los precios por tiempo y los pases de día, semana o mes. Podés editar un borrador, probar cuánto cobrarías y aplicar los cambios juntos.' }] : []),
+      ...(TURNO_BAR_ENABLED ? [{ key: 'turno', title: 'Revisá tu turno', desc: 'Desde tu turno revisás la caja y accedés a la apertura o cierre. Antes de cerrar, contá el efectivo y revisá las diferencias.' }] : []),
     ].map((step) => ({
       ...step,
-      desc: barcodeTicketsEnabled ? step.desc : step.desc.replaceAll("Administrar tickets", "Administrar precios").replaceAll("patente o el ticket", "patente o el apellido").replaceAll("patente o ticket", "patente o apellido").replaceAll("patente, ticket o apellido", "patente o apellido"),
+      desc: barcodeTicketsEnabled ? step.desc : step.desc.replaceAll("patente o el ticket", "patente o el apellido").replaceAll("patente o ticket", "patente o apellido").replaceAll("patente, ticket o apellido", "patente o apellido"),
       onEnter: () => {
-        setMobileTab(['occupancy', 'abonos', 'comprobantes', 'precios', 'admin'].includes(step.key) ? 'activos' : 'ingreso');
-        if (step.key === 'occupancy') setSidebarTab('hourly');
-        if (step.key === 'abonos') setSidebarTab('daily');
-        if (step.key === 'comprobantes') setSidebarTab('receipts');
-        if (step.key === 'ticket') setSelectedTarget(null);
+        if (step.key === 'occupancy') irA('vehiculos', 'hora');
+        else if (step.key === 'abonos') irA('vehiculos', 'dia');
+        else if (step.key === 'comprobantes') irA('comprobantes');
+        else if (vistaRef.current !== 'inicio') irA('inicio');
       },
     })),
-    [barcodeTicketsEnabled, receiptDeliveryEnabled, isAdmin, TURNO_BAR_ENABLED],
+    [barcodeTicketsEnabled, receiptDeliveryEnabled, isAdmin, TURNO_BAR_ENABLED, irA],
   );
   const tour = useTour(tourSteps);
+  // Hay accesos que existen dos veces (en la barra del celular y en la columna de la computadora):
+  // el tour señala el que se ve.
+  const refVisible = (key: string) => (el: HTMLElement | null) => {
+    if (!el || el.getClientRects().length === 0) return;
+    tour.refFor(key)(el);
+  };
 
   // router.refresh() re-renders the server-fetched props in place — sync
   // them into state so the update actually shows up (state initializers only
@@ -227,8 +199,8 @@ export default function CardTicket({
     ? registrations
     : registrations.filter((r) => !isBarcodeOrigin(r));
 
-  // Reloj compartido (no uno por casillero) para calcular en vivo qué tickets activos ya se
-  // pasaron de la duración que avisaron, sin depender del servidor.
+  // Reloj compartido para calcular en vivo los tiempos y qué vehículos ya se pasaron de la
+  // duración que avisaron, sin depender del servidor.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), OVERDUE_CHECK_INTERVAL_MS);
@@ -249,12 +221,11 @@ export default function CardTicket({
     for (const r of currentlyOverdue) {
       if (!overdueToastedRef.current.has(r.id)) {
         overdueToastedRef.current.add(r.id);
-        toast.warning(
-          `Ticket ${r.ticket?.codeBar ?? r.codeBarTicket ?? ""} se pasó de la duración avisada ("${r.expectedBracketLabel}").`
-        );
+        const quien = r.ticket?.codeBar ?? r.codeBarTicket ? `El ticket ${r.ticket?.codeBar ?? r.codeBarTicket}` : r.licensePlateOriginal ?? 'Un vehículo';
+        toast.warning(`${quien} se pasó de la duración avisada ("${r.expectedBracketLabel}").`);
       }
     }
-    const activeIds = new Set(visibleRegistrations.filter((r) => !r.departureTime && !r.departureDay).map((r) => r.id));
+    const activeIds = new Set(visibleRegistrations.filter(estaAdentro).map((r) => r.id));
     for (const id of overdueToastedRef.current) {
       if (!activeIds.has(id)) overdueToastedRef.current.delete(id);
     }
@@ -268,7 +239,7 @@ export default function CardTicket({
         )[0]
       : null;
 
-  // Briefly pulse the sidebar chip for whatever ticket just landed a new registration.
+  // Briefly pulse the ticket chip for whatever ticket just landed a new registration.
   useEffect(() => {
     const currentId = latestRegistration?.id ?? null;
     const prevId = prevLatestIdRef.current;
@@ -285,391 +256,384 @@ export default function CardTicket({
     }
   }, [latestRegistration?.id]);
 
-  const formatDate = (date: string | Date) => {
-    if (typeof date === "string") {
-      const [year, month, day] = date.split("-");
-      return `${day}/${month}/${year}`;
-    }
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+  const abrirCobro = (id: string | null) => {
+    setClosePanelTargetId(id);
+    setClosePanelOpen(true);
+  };
+  const abrirEntrada = () => setEntradaSignal((n) => n + 1);
+  const abrirEstadia = () => setEstadiaSignal((n) => n + 1);
+  const abrirAnticipo = (r: TicketRegistration) => setAdvanceTarget({
+    id: r.id,
+    codeBar: r.ticket?.codeBar ?? r.codeBarTicket ?? "",
+    vehicleType: r.vehicleType ?? r.ticket?.vehicleType ?? "",
+    existing: r,
+  });
+  // Desde el buscador de la computadora: la entrada se abre con lo que se escribió.
+  const entrarCon = (texto: string) => {
+    const patente = normalizar(texto);
+    if (patente) setEntryScanRequest((previous) => ({ plate: patente, sequence: (previous?.sequence ?? 0) + 1 }));
+    else abrirEntrada();
   };
 
-  // Al elegir un vehículo activo de la lista, se pide su resumen de cierre (mismo endpoint
-  // que ya usa CloseTicketPanel) para mostrar toda la info — entrada, tiempo transcurrido,
-  // tarifa y monto a cobrar — antes de decidir cobrar la salida.
-  const loadPreview = (target: { id: string; kind: "BARCODE" | "PLATE"; codeBar?: string; vehicleType?: string }) => {
-    setSelectedTarget(target);
-    // En mobile, "Activos" y el detalle viven en pestañas separadas — elegir un vehículo ahí
-    // tiene que llevar a la pestaña donde se ve su ficha, si no parece que no pasó nada.
-    setMobileTab("ingreso");
-    setPreviewLoading(true);
-    setPreviewSummary(null);
-    getCloseSummaryAction(target.id).then((data) => {
-      setPreviewLoading(false);
-      if (!data) {
-        toast.error("No se pudo cargar el vehículo.");
-        setSelectedTarget(null);
-        return;
-      }
-      setPreviewSummary(data);
-    });
-  };
-  const clearPreview = () => {
-    setSelectedTarget(null);
-    setPreviewSummary(null);
-  };
-
-  // En el celular el encabezado ocupa casi toda la pantalla, así que al tocar una pestaña el
-  // contenido queda abajo, fuera de vista, y parece que no pasó nada. Se scrollea acá y no en un
-  // efecto sobre `mobileTab` a propósito: elegir un vehículo activo también cambia de pestaña, y
-  // ahí el scroll que corresponde es el de su ficha, que ya existe más abajo.
-  const contenidoRef = useRef<HTMLDivElement>(null);
-  const irATab = (tab: "ingreso" | "activos") => {
-    setMobileTab(tab);
-    requestAnimationFrame(() => {
-      contenidoRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
-
-  // Al elegir un vehículo activo (en mobile eso además cambia de pestaña), llevar el arranque
-  // de su ficha al tope de la pantalla — si no, según dónde haya quedado el scroll de "Activos"
-  // puede aparecer fuera de vista. "start" en vez de "center": la ficha es más alta que la
-  // pantalla, así que centrarla completa dejaba "Cobrar salida" tapado debajo del borde.
-  // Hay que esperar a que termine de cargar el resumen antes de scrollear: si se scrollea
-  // mientras todavía se ve el skeleton, el "scroll anchoring" del navegador vuelve a mover la
-  // página cuando el contenido real (más alto) reemplaza al skeleton, dejando todo como si
-  // nunca hubiera scrolleado.
+  // Atajos de la computadora: «/» busca, «E» registra una entrada, «S» cobra una salida. Se
+  // escuchan antes que el lector USB (que toma cualquier tecla fuera de un campo) y se cortan ahí,
+  // así una letra nunca se confunde con un código; nunca mientras se escribe o hay un diálogo.
+  const dialogoAbiertoRef = useRef(isDialogOpen);
+  dialogoAbiertoRef.current = isDialogOpen;
   useEffect(() => {
-    if (!selectedTarget || previewLoading) return;
-    const raf = requestAnimationFrame(() => {
-      selectedDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [selectedTarget?.id, previewLoading]);
+    if (!atajos) return;
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const destino = e.target as HTMLElement | null;
+      if (destino?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
+      if (dialogoAbiertoRef.current || document.querySelector('[role="dialog"][data-state="open"]')) return;
+      const tecla = e.key.toLowerCase();
+      const accion = e.key === "/" ? () => buscadorRef.current?.focus()
+        : tecla === "e" ? () => setEntradaSignal((n) => n + 1)
+        : tecla === "s" ? () => { setClosePanelTargetId(null); setClosePanelOpen(true); }
+        : null;
+      if (!accion) return;
+      e.preventDefault();
+      e.stopPropagation();
+      accion();
+    };
+    window.addEventListener("keydown", alTeclear, true);
+    return () => window.removeEventListener("keydown", alTeclear, true);
+  }, [atajos]);
 
-  // Antes se usaba `latestRegistration?.ticket?.vehicleType` como proxy de "recién entró" —
-  // funcionaba para tickets por código de barras (ticket se pone en null al salir), pero los
-  // tickets por patente nunca tienen `ticket` poblado, así que siempre se leían como "salida".
-  // Lo correcto es mirar directamente si todavía no registró salida.
-  const isDayTicket = !!latestRegistration && !latestRegistration.departureTime && !latestRegistration.departureDay;
-  const isLatestPatenteOrigin = !!latestRegistration && !latestRegistration.ticket && !latestRegistration.codeBarTicket;
-  const todayStr = dayjs().tz(TZ).format("DD/MM/YYYY");
   const sortedCatalog = [...ticketCatalog].sort(
     (a, b) => parseInt(a.codeBar, 10) - parseInt(b.codeBar, 10)
   );
-  const activeTickets = sortedCatalog.filter((t) => isTicketActive(t, registrations));
-  // El número del tab "Por hora" cuenta estadías abiertas (patente + código de barras), que es
-  // lo que lista ActiveTicketsList — no los casilleros del catálogo.
-  const activeHourlyCount = visibleRegistrations.filter(
-    (r) => !r.departureTime && !r.departureDay,
-  ).length;
+  const activosPorHora = visibleRegistrations.filter(estaAdentro);
+  const excedidos = activosPorHora.filter((r) => isOverdue(r, now)).length;
+  const total = activosPorHora.length + activeDayRegistrations.length;
+  const ultimasEntradas = [...activosPorHora]
+    .sort((a, b) => (minutesSinceEntry(a, now) ?? 0) - (minutesSinceEntry(b, now) ?? 0))
+    .slice(0, 2);
+
+  // La última operación en una línea: entrada (todavía adentro) o salida, con su importe.
+  const ultimaEsEntrada = !!latestRegistration && estaAdentro(latestRegistration);
+  const ultimaIdentidad = latestRegistration
+    ? (latestRegistration.ticket?.codeBar || latestRegistration.codeBarTicket
+      ? `Ficha ${latestRegistration.ticket?.codeBar ?? latestRegistration.codeBarTicket}`
+      : latestRegistration.licensePlateOriginal || latestRegistration.lastNameCustomer || "Sin patente")
+    : "";
+  const ultimaHora = latestRegistration ? (ultimaEsEntrada ? latestRegistration.entryTime : latestRegistration.departureTime)?.slice(0, 5) : "";
+
+  const horaActual = Number(dayjs(now).tz(TZ).format("H"));
+  const saludo = horaActual < 12 ? "Buen día" : horaActual < 20 ? "Buenas tardes" : "Buenas noches";
+  const nombre = session.data?.user?.firstName;
+  const hoy = dayjs(now).tz(TZ);
+  const fechaLarga = `${DIAS[hoy.day()]} ${hoy.date()} ${MESES[hoy.month()]}`;
+  const puedeEscanear = isMobile && !!reconocimientoPatentes;
+  const accesoTarifas = "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-border px-3.5 text-[13px] font-semibold text-[#D9D1C3] transition-colors hover:border-gm-yellow/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
+  const lector = barcodeTicketsEnabled && (
+    <p role="status" className="flex items-center gap-2 text-xs leading-relaxed text-muted-foreground">
+      <Barcode className={cn("size-4 shrink-0", isScanning && "text-gm-yellow")} aria-hidden />
+      {isScanning ? "Leyendo ticket…" : "Lector de tickets listo: escaneá en cualquier momento."}
+    </p>
+  );
+
+  const inicio = (
+    <div className="flex flex-col gap-4">
+      <header className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="min-w-0 truncate text-[13.5px] text-muted-foreground">
+            {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-[#6F665A]">· {fechaLarga}</span>
+          </p>
+          <div className="flex shrink-0 flex-col items-end">{tour.node}</div>
+        </div>
+        <h1 className="text-[32px] font-bold leading-[1.05] tracking-tight sm:text-[40px]">{barcodeTicketsEnabled ? "Tickets y patentes" : "Entradas y salidas"}</h1>
+        <div className="flex flex-wrap gap-2">
+          <span ref={refVisible('precios')} className="inline-flex">
+            <PriceBracketMapDialog brackets={priceBrackets} schedule={schedule} renderTrigger={(abrir) => (
+              <button type="button" onClick={abrir} className={accesoTarifas}><Map className="size-4 text-gm-yellow" aria-hidden />Ver tarifas</button>
+            )} />
+          </span>
+          {isAdmin && (
+            <Link href="/admin/tarifas" ref={refVisible('admin')} className={accesoTarifas}><Settings className="size-4 text-gm-yellow" aria-hidden />Administrar tarifas</Link>
+          )}
+        </div>
+      </header>
+
+      <InicioHero
+        total={total}
+        porHora={activosPorHora}
+        ahora={now}
+        excedidos={excedidos}
+        vencidas={overdueDayRegistrations.length}
+        turno={TURNO_BAR_ENABLED ? <span ref={refVisible('turno')} className="inline-flex"><TurnoBar variant="pill" /></span> : null}
+        onExcedidos={() => irA('vehiculos', 'excedidos')}
+        onVencidas={() => irA('vehiculos', 'dia')}
+        onZona={() => irA('vehiculos', 'hora')}
+      />
+
+      {latestRegistration && (
+        <div ref={refVisible('ticket')} className="flex min-h-12 items-center gap-2.5 px-1">
+          <span className={cn("grid size-[30px] shrink-0 place-items-center rounded-full", ultimaEsEntrada ? "bg-sky-400/15 text-sky-400" : "bg-emerald-400/15 text-emerald-400")}>
+            {ultimaEsEntrada ? <ArrowDownLeft className="size-4" strokeWidth={2.6} aria-hidden /> : <ArrowUpRight className="size-4" strokeWidth={2.6} aria-hidden />}
+          </span>
+          <p className="min-w-0 flex-1 truncate text-[13.5px] text-muted-foreground">
+            Última {ultimaEsEntrada ? "entrada" : "salida"} <strong className="gm-mono text-foreground">{ultimaIdentidad}</strong> · {ultimaHora}
+            {!ultimaEsEntrada && <> · <strong className="gm-mono text-foreground">{formatImporte(latestRegistration.price)}</strong></>}
+          </p>
+          {receiptDeliveryEnabled && (
+            <button type="button" onClick={() => setReceiptTarget({ id: latestRegistration.id, kind: ultimaEsEntrada ? 'ENTRY' : 'EXIT' })} className="min-h-11 shrink-0 px-1 text-[13px] font-semibold text-gm-yellow">
+              Comprobante
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Estadía larga es una operación como entrar o salir: se destaca. Comprobantes es consulta. */}
+      <div className={cn("grid gap-2.5", receiptDeliveryEnabled ? "grid-cols-2" : "grid-cols-1")}>
+        <button
+          type="button"
+          ref={refVisible('alta-abono')}
+          onClick={abrirEstadia}
+          className="group relative flex min-h-[104px] flex-col justify-between overflow-hidden rounded-[22px] border-[1.5px] border-gm-yellow/60 bg-gm-yellow/[0.1] p-3.5 text-left transition-colors hover:bg-gm-yellow/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.98]"
+        >
+          <CalendarDays aria-hidden className="pointer-events-none absolute -bottom-3 -right-3 size-20 text-gm-yellow/[0.12]" strokeWidth={1.5} />
+          <span className="flex items-center justify-between">
+            <span className="grid size-10 place-items-center rounded-full bg-gm-yellow text-gm-ink"><CalendarPlus className="size-5" aria-hidden /></span>
+            <ArrowUpRight className="size-[18px] text-gm-yellow transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
+          </span>
+          <span className="relative">
+            <span className="gm-display block text-[17px] tracking-[0.04em]">Estadía larga</span>
+            <span className="block text-xs text-[#D9D1C3]">Por día, semana o mes</span>
+          </span>
+        </button>
+        {receiptDeliveryEnabled && (
+          <button
+            type="button"
+            onClick={() => irA('comprobantes')}
+            className="group flex min-h-[104px] flex-col justify-between rounded-[22px] border border-border bg-card p-3.5 text-left transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.98]"
+          >
+            <span className="flex items-center justify-between">
+              <span className="grid size-10 place-items-center rounded-full bg-background text-gm-yellow"><Receipt className="size-5" aria-hidden /></span>
+              <ChevronRight className="size-[18px] text-[#6F665A] transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </span>
+            <span>
+              <span className="gm-display block text-[17px] tracking-[0.04em]">Comprobantes</span>
+              <span className="block text-xs text-muted-foreground">Historial para reenviar</span>
+            </span>
+          </button>
+        )}
+      </div>
+
+      {/* Prepara el acceso sin conexión (pide datos al servidor): una sola vez, en la pantalla que quedó. */}
+      {esEscritorio === false && <OfflineConsultation revision={registrations} />}
+
+      <section aria-labelledby="ultimas-entradas" className="flex flex-col gap-2.5">
+        <h2 id="ultimas-entradas" className="px-1 text-lg font-bold">Últimas entradas</h2>
+        {ultimasEntradas.length ? (
+          ultimasEntradas.map((r) => <VehiculoFila key={r.id} r={r} ahora={now} onSelect={(v) => abrirCobro(v.id)} />)
+        ) : (
+          <p className="rounded-[20px] border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+            Todavía no hay vehículos adentro. Tocá Entrada para registrar el primero.
+          </p>
+        )}
+        {total > 0 && (
+          <button type="button" onClick={() => irA('vehiculos', 'hora')} className="flex min-h-12 items-center justify-center gap-2 rounded-full border-[1.5px] border-border text-sm font-bold transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
+            {total === 1 ? "Ver el vehículo" : `Ver los ${total} vehículos`}
+            <ArrowRight className="size-4 text-gm-yellow" aria-hidden />
+          </button>
+        )}
+      </section>
+      {lector}
+    </div>
+  );
+
+  const fichas = barcodeTicketsEnabled && sortedCatalog.length > 0 ? (
+    <FichasEnElPlayon
+      catalogo={sortedCatalog}
+      registros={registrations}
+      ahora={now}
+      recienEscaneada={justScannedTicketId}
+      isAdmin={isAdmin}
+      onFicha={(t, r) => setAdvanceTarget({ id: r.id, codeBar: t.codeBar, vehicleType: t.vehicleType, existing: r })}
+    />
+  ) : null;
+
+  const vehiculos = (
+    <TodosLosVehiculos
+      activos={activosPorHora}
+      ahora={now}
+      filtro={filtro}
+      onFiltro={setFiltro}
+      onSelect={(r) => abrirCobro(r.id)}
+      onVolver={() => irA('inicio')}
+      diaActivos={activeDayRegistrations}
+      diaVencidos={overdueDayRegistrations}
+      esDiaVencido={isDayRegistrationOverdue}
+      onSelectDia={setOpenDayRegistrationId}
+      listaRef={refVisible('occupancy')}
+      diaRef={refVisible('abonos')}
+      acciones={tour.node}
+      fichas={fichas}
+    />
+  );
+
+  const comprobantes = (
+    <div ref={refVisible('comprobantes')} className="flex flex-col gap-4">
+      <EncabezadoVista titulo="Comprobantes" onVolver={() => irA('inicio')} acciones={tour.node} />
+      <div className="rounded-[20px] border border-border bg-card p-4">
+        <DepartureHistory
+          barcodeTicketsEnabled={barcodeTicketsEnabled}
+          today={dayjs(now).tz(TZ).format('YYYY-MM-DD')}
+          registrations={registrations}
+          dailyRegistrations={registrationsForDay}
+          onReceipt={(id, kind) => setReceiptTarget({ id, kind })}
+        />
+      </div>
+    </div>
+  );
+
+  // ── Computadora: mostrador a la izquierda, la playa entera a la derecha ──
+  const accesoEscritorio = "inline-flex h-12 shrink-0 items-center gap-2 rounded-[16px] border-[1.5px] border-gm-line-strong bg-card px-4 text-sm font-semibold text-[#D9D1C3] transition-colors hover:border-gm-yellow/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
+  const escritorio = (
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+        <div className="min-w-0">
+          <p className="truncate text-[13.5px] text-muted-foreground">
+            {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-[#6F665A]">· {fechaLarga}</span>
+          </p>
+          <h1 className="mt-1.5 text-[40px] font-bold leading-[1.05] tracking-tight">{barcodeTicketsEnabled ? "Tickets y patentes" : "Entradas y salidas"}</h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <BuscadorRapido
+            inputRef={buscadorRef}
+            activos={activosPorHora}
+            diaActivos={activeDayRegistrations}
+            esDiaVencido={isDayRegistrationOverdue}
+            registros={visibleRegistrations}
+            ahora={now}
+            ticketsHabilitados={barcodeTicketsEnabled}
+            comprobantes={receiptDeliveryEnabled}
+            atajo={atajos}
+            onCobrar={(id) => abrirCobro(id)}
+            onAbrirDia={setOpenDayRegistrationId}
+            onComprobante={(id, kind) => setReceiptTarget({ id, kind })}
+            onEntrada={entrarCon}
+          />
+
+          <span ref={refVisible('precios')} className="inline-flex">
+            <PriceBracketMapDialog brackets={priceBrackets} schedule={schedule} renderTrigger={(abrir) => (
+              <button type="button" onClick={abrir} className={accesoEscritorio}><Map className="size-4 text-gm-yellow" aria-hidden />Ver tarifas</button>
+            )} />
+          </span>
+          {isAdmin && (
+            <Link href="/admin/tarifas" ref={refVisible('admin')} className={accesoEscritorio}><Settings className="size-4 text-gm-yellow" aria-hidden />Administrar tarifas</Link>
+          )}
+        </div>
+      </header>
+
+      <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <aside aria-label="Mostrador" className="flex min-w-0 flex-col gap-3.5">
+          <TarjetaAdentro
+            total={total}
+            porHora={activosPorHora.length}
+            largas={activeDayRegistrations.length}
+            excedidos={excedidos}
+            vencidas={overdueDayRegistrations.length}
+            turno={TURNO_BAR_ENABLED ? <span ref={refVisible('turno')} className="inline-flex"><TurnoBar variant="pill" /></span> : null}
+            filtro={filtroTablero}
+            onFiltro={setFiltroTablero}
+          />
+          <AccionesEscritorio
+            onEntrada={abrirEntrada}
+            onSalida={() => abrirCobro(null)}
+            onEstadia={abrirEstadia}
+            entradaRef={refVisible('entrada')}
+            salidaRef={refVisible('salida')}
+            estadiaRef={refVisible('alta-abono')}
+            ticketsHabilitados={barcodeTicketsEnabled}
+            atajos={atajos}
+          />
+          <UltimosMovimientos
+            refEl={refVisible('ticket')}
+            registros={visibleRegistrations}
+            ahora={now}
+            comprobantes={receiptDeliveryEnabled}
+            onComprobante={(id, kind) => setReceiptTarget({ id, kind })}
+            onTodos={() => irA('comprobantes')}
+          />
+          {lector && <div className="px-1">{lector}</div>}
+          {esEscritorio === true && <OfflineConsultation revision={registrations} />}
+        </aside>
+
+        <TableroPlaya
+          tableroRef={refVisible('occupancy')}
+          estadiasRef={refVisible('abonos')}
+          activos={activosPorHora}
+          ahora={now}
+          diaActivos={activeDayRegistrations}
+          esDiaVencido={isDayRegistrationOverdue}
+          filtro={filtroTablero}
+          onFiltro={setFiltroTablero}
+          onCobrar={(r) => abrirCobro(r.id)}
+          onAbrirDia={setOpenDayRegistrationId}
+          debajo={fichas}
+        />
+      </div>
+    </div>
+  );
+
+  const animacion = cn(
+    "animate-in fade-in-0 duration-300 ease-out motion-reduce:animate-none",
+    direccion === "adelante" ? "slide-in-from-right-8" : "slide-in-from-left-8",
+  );
 
   return (
     <>
-      <header className="mx-auto mb-5 max-w-[1180px] space-y-4 sm:mb-7">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="mb-1 text-xs font-medium text-muted-foreground">Estacionamiento · {todayStr}</p>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{barcodeTicketsEnabled ? "Tickets y patentes" : "Entradas y salidas"}</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Registrá una entrada o cobrá una salida.</p>
+      <div ref={arribaRef} />
+      {barcodeTicketsEnabled && <ScannerButton hideControls isDialogOpen={isDialogOpen} onScanningChange={setIsScanning} onTicketRegistered={() => router.refresh()} />}
+
+      {esEscritorio !== true && (
+        <div className="mx-auto max-w-2xl overflow-x-clip pb-36 lg:hidden">
+          <div key={vista} className={animacion}>
+            {vista === "inicio" ? inicio : vista === "vehiculos" ? vehiculos : comprobantes}
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1">{tour.node}</div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-secondary text-gm-yellow"><Car className="size-5" /></span>
-            <div><p className="text-sm font-medium">{activeHourlyCount + activeDayRegistrations.length} vehículos activos</p><p className="text-xs text-muted-foreground">En esta playa</p></div>
+      )}
+
+      {/* En la computadora el tablero ya muestra todos los vehículos: no hay vista aparte. */}
+      {esEscritorio !== false && (
+        <div className="hidden lg:block">
+          <div key={vista === "comprobantes" ? "comprobantes" : "tablero"} className={animacion}>
+            {vista === "comprobantes" ? <div className="mx-auto max-w-3xl">{comprobantes}</div> : escritorio}
           </div>
-          {TURNO_BAR_ENABLED && <div ref={tour.refFor('turno')} style={tour.isActive('turno') ? { ...tourTransition, ...tourHighlight } : tourTransition}><TurnoBar /></div>}
         </div>
-      </header>
-      <div className="mx-auto mb-3 max-w-[1180px]"><OfflineConsultation revision={registrations} /></div>
+      )}
 
-      <div className="mx-auto mb-4 grid max-w-[1180px] grid-cols-2 gap-1 rounded-2xl border border-border bg-card p-1 sm:hidden" aria-label="Secciones de tickets">
-        <button type="button" aria-pressed={mobileTab === "ingreso"} onClick={() => irATab("ingreso")} className={cn("min-h-12 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileTab === "ingreso" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground")}>Entrada y salida</button>
-        <button type="button" aria-pressed={mobileTab === "activos"} onClick={() => irATab("activos")} className={cn("min-h-12 rounded-xl px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", mobileTab === "activos" ? "bg-gm-yellow text-gm-ink" : "text-muted-foreground")}>Activos <span className="ml-1 rounded-md bg-foreground/10 px-1.5 py-0.5 text-xs">{activeHourlyCount + activeDayRegistrations.length}</span></button>
-      </div>
-
-      <div ref={contenidoRef} className="mx-auto flex max-w-[1180px] flex-wrap items-start gap-5 lg:gap-7">
-        <div className={cn("w-full min-w-0 flex-1 sm:min-w-[320px]", mobileTab !== "ingreso" && "hidden sm:block")}>
-          {barcodeTicketsEnabled && <ScannerButton hideControls isDialogOpen={isDialogOpen} onScanningChange={setIsScanning} onTicketRegistered={() => router.refresh()} />}
-
-          <section aria-label="Registrar entradas y salidas" className="mb-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
-            <h2 className="mb-3 text-base font-semibold">¿Qué necesitás hacer?</h2>
-            <div ref={tour.refFor('salida')} style={tour.isActive('salida') ? { ...tourTransition, ...tourHighlight } : tourTransition} className="grid gap-3 xl:grid-cols-2">
-              <EntryByPlateDialog scanRequest={entryScanRequest} onOpenChange={setEntryDialogOpen} ticketEntryEnabled={barcodeTicketsEnabled} onGoToRegistration={(id) => { setClosePanelTargetId(id); setClosePanelOpen(true); }} onTicketRegistered={() => router.refresh()} triggerRef={(el) => tour.refFor("entrada")(el)} triggerStyle={tour.isActive("entrada") ? { ...tourTransition, ...tourHighlight } : tourTransition} />
-              <button type="button" onClick={() => { setClosePanelTargetId(null); setClosePanelOpen(true); }} className="flex min-h-[88px] w-full min-w-0 items-center gap-3 rounded-xl border border-gm-line-strong bg-secondary px-4 py-4 text-left transition-colors hover:border-gm-yellow/60 hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-background text-gm-yellow"><Banknote className="size-5" /></span>
-                <span className="min-w-0"><span className="block text-base font-semibold">Cobrar salida</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{barcodeTicketsEnabled ? "Buscá la patente o el ticket" : "Buscá por patente o apellido"}</span></span>
-              </button>
-            </div>
-            <div className="mt-3 md:hidden">
-              <ScanPlateAction
-                onBusyChange={setPlateScanBusy}
-                onEntry={plate => setEntryScanRequest(previous => ({ plate, sequence: (previous?.sequence ?? 0) + 1 }))}
-                onHourlyExit={id => { setClosePanelTargetId(id); setClosePanelOpen(true); }}
-                onDailyExit={registration => { setScannedDayRegistration(registration); setOpenDayRegistrationId(registration.id); }}
-              />
-            </div>
-            {barcodeTicketsEnabled && <p role="status" className="mt-3 flex items-center gap-2 text-xs leading-relaxed text-muted-foreground"><Barcode className={cn("size-4 shrink-0", isScanning && "text-gm-yellow")} />{isScanning ? "Leyendo ticket…" : "También podés usar el lector de tickets."}</p>}
-            <div ref={tour.refFor('alta-abono')} style={tour.isActive('alta-abono') ? { ...tourTransition, ...tourHighlight } : tourTransition} className="mt-4 border-t border-border pt-4"><CreateTicketRegistrationDialog isAdmin={isAdmin} setIsDialogOpen={setDayDialogOpen} /></div>
-          </section>
-
-          {!selectedTarget ? (
-            <section ref={(el) => tour.refFor("ticket")(el)} style={tour.isActive("ticket") ? { ...tourTransition, ...tourHighlight } : tourTransition} className="overflow-hidden rounded-2xl border border-border bg-card">
-              <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5"><h2 className="text-sm font-semibold">Último movimiento</h2><Clock className="size-4 text-muted-foreground" /></div>
-              {latestRegistration ? (
-                <div className="space-y-4 p-4 sm:p-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">{isLatestPatenteOrigin ? "Patente / identificación" : "Ticket"}</p><p className="break-words text-3xl font-semibold tracking-tight">{latestRegistration.ticket?.codeBar || latestRegistration.codeBarTicket || latestRegistration.licensePlateOriginal || latestRegistration.lastNameCustomer || "Sin patente"}</p></div>
-                    <Badge variant={isDayTicket ? "green" : "yellow"}>{isDayTicket ? "Entrada registrada" : "Salida registrada"}</Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 rounded-xl bg-secondary/60 p-3 text-sm">
-                    <div><p className="text-xs text-muted-foreground">{isDayTicket ? "Entrada" : "Salida"}</p><p className="mt-1 font-medium tabular-nums">{isDayTicket ? latestRegistration.entryTime : latestRegistration.departureTime}</p><p className="mt-0.5 text-xs text-muted-foreground">{formatDate(isDayTicket ? latestRegistration.entryDay : latestRegistration.departureDay)}</p></div>
-                    <div><p className="text-xs text-muted-foreground">{isDayTicket ? "Vehículo" : "Importe registrado"}</p><p className="mt-1 break-words font-medium">{isDayTicket ? (latestRegistration.vehicleType || latestRegistration.ticket?.vehicleType || "Sin especificar").replaceAll("_", " ") : money(latestRegistration.price)}</p></div>
-                  </div>
-                  {latestRegistration.description && <p className="break-words text-sm text-muted-foreground">{latestRegistration.description}</p>}
-                  {latestRegistration.expectedBracketLabel && <p className="text-sm text-muted-foreground">Duración avisada: <span className="text-foreground">{latestRegistration.expectedBracketLabel}</span></p>}
-                  {latestRegistration.priceBracketLabel && !isDayTicket && <p className="text-sm text-muted-foreground">Tarifa aplicada: {latestRegistration.priceBracketLabel}</p>}
-                  {receiptDeliveryEnabled && <Button variant="outline" className="min-h-11 w-full rounded-xl" onClick={() => setReceiptTarget({ id: latestRegistration.id, kind: isDayTicket ? 'ENTRY' : 'EXIT' })}><QrCode className="mr-2 size-4" />Volver a abrir comprobante</Button>}
-                  {(latestRegistration.exceededExpectedStay || latestRegistration.priceBracketFallbackUsed) && <p className="rounded-xl border border-gm-orange/30 bg-gm-orange/10 p-3 text-sm">{latestRegistration.priceBracketFallbackUsed ? "La estadía superó los precios por duración configurados. Revisá la tarifa aplicada." : "El vehículo superó la duración avisada."}</p>}
-                  {isDayTicket && <Button variant="outline" className="min-h-11 w-full rounded-xl" onClick={() => loadPreview({ id: latestRegistration.id, kind: isLatestPatenteOrigin ? "PLATE" : "BARCODE", codeBar: latestRegistration.ticket?.codeBar || latestRegistration.codeBarTicket, vehicleType: latestRegistration.vehicleType || latestRegistration.ticket?.vehicleType })}>Ver vehículo y consultar importe</Button>}
-                </div>
-              ) : <div className="px-5 py-8 text-center"><span className="mx-auto mb-3 grid size-12 place-items-center rounded-2xl bg-secondary"><Car className="size-6 text-muted-foreground" /></span><p className="font-medium">Todo listo para la primera entrada</p><p className="mt-2 text-sm text-muted-foreground">Tocá “Registrar entrada” para comenzar.</p></div>}
-            </section>
-          ) : (
-            <section ref={selectedDetailRef} className="scroll-mt-5 overflow-hidden rounded-2xl border border-border bg-card">
-              <div className="border-b border-border px-4 py-2 sm:px-5"><button type="button" onClick={clearPreview} className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" />Volver al último movimiento</button></div>
-              {previewLoading || !previewSummary ? <DataLoading label="Cargando vehículo e importe…" className="p-4" /> : (
-                <div className="space-y-5 p-4 sm:p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="mb-1 text-xs text-muted-foreground">{selectedTarget.kind === "BARCODE" ? "Ticket seleccionado" : "Vehículo seleccionado"}</p><h2 className="break-words text-3xl font-semibold tracking-tight">{selectedTarget.kind === "BARCODE" ? selectedTarget.codeBar : previewSummary.registration.licensePlateOriginal || previewSummary.registration.lastNameCustomer || "Sin patente"}</h2></div><Badge variant={isOverdue(previewSummary.registration, now) ? "red" : "green"}>{isOverdue(previewSummary.registration, now) ? "Tiempo avisado superado" : "En la playa"}</Badge></div>
-                  <div className="grid grid-cols-2 gap-4 border-y border-border py-4 text-sm"><div><p className="text-xs text-muted-foreground">Entrada</p><p className="mt-1 font-medium">{previewSummary.registration.entryTime}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(previewSummary.registration.entryDay)}</p></div><div><p className="text-xs text-muted-foreground">Tiempo estacionado</p><p className="mt-1 font-medium">{formatElapsed(previewSummary.elapsedMinutes)}</p></div><div className="col-span-2"><p className="text-xs text-muted-foreground">Tipo de vehículo</p><p className="mt-1 break-words">{(selectedTarget.vehicleType || previewSummary.registration.vehicleType || "Sin especificar").replaceAll("_", " ")}</p></div></div>
-                  {previewSummary.registration.expectedBracketLabel && <p className="text-sm text-muted-foreground">Duración avisada: {previewSummary.registration.expectedBracketLabel}</p>}
-                  {receiptDeliveryEnabled && <Button variant="outline" className="min-h-11 w-full rounded-xl" onClick={() => setReceiptTarget({ id: previewSummary.registration.id, kind: 'ENTRY' })}><QrCode className="mr-2 size-4" />Abrir comprobante de entrada</Button>}
-                  {previewSummary.previewBracket.usedFallback && <p className="rounded-xl bg-gm-orange/10 p-3 text-sm">La estadía superó los precios por duración configurados. Revisá el importe antes de cobrar.</p>}
-                  <div className="rounded-xl border border-gm-yellow/20 bg-gm-yellow/5 p-4"><p className="text-sm text-muted-foreground">Importe a cobrar ahora</p><p className="mt-1 break-words text-4xl font-semibold tracking-tight text-gm-yellow">{money(previewSummary.saldoACobrar)}</p><p className="mt-2 text-xs leading-relaxed text-muted-foreground">{previewSummary.previewBracket.label}</p>{previewSummary.totalCollectedSoFar > 0 && <p className="mt-2 text-sm">Anticipo descontado: {money(previewSummary.totalCollectedSoFar)}</p>}</div>
-                  <div className="space-y-2"><Button className="min-h-12 w-full rounded-xl text-sm" onClick={() => { setClosePanelTargetId(previewSummary.registration.id); setClosePanelOpen(true); }}><Banknote className="mr-2 size-4" />Continuar con el cobro</Button><Button variant="outline" className="min-h-12 w-full whitespace-normal rounded-xl" onClick={() => setAdvanceTarget({ id: previewSummary.registration.id, codeBar: selectedTarget.codeBar ?? "", vehicleType: selectedTarget.vehicleType ?? previewSummary.registration.vehicleType ?? "", existing: previewSummary.registration })}>Registrar anticipo o avisar duración</Button></div>
-                </div>
-              )}
-            </section>
-          )}
-        </div>
-
-        {/* ── Sidebar: vehicles currently parked ───────────────── */}
-        <div
-          ref={(el) => { ['occupancy', 'abonos', 'comprobantes'].forEach(key => tour.refFor(key)(el)); }}
-          style={
-            ['occupancy', 'abonos', 'comprobantes'].some(tour.isActive)
-              ? { ...tourTransition, ...tourHighlight }
-              : tourTransition
-          }
-          className={cn(
-            "w-full sm:w-[300px] shrink-0 rounded-[20px] border border-border bg-card/50 p-5 [@media(max-height:850px)]:p-3.5 sm:sticky sm:top-6",
-            mobileTab !== "activos" && "hidden sm:block",
-          )}
-        >
-          <button
-            onClick={() => {
-              setClosePanelTargetId(null);
-              setClosePanelOpen(true);
-            }}
-            className="sm:hidden mb-4 inline-flex w-full h-[72px] items-center gap-3 rounded-[24px] border border-gm-line-strong bg-card/40 px-6 text-left backdrop-blur-xl transition-all duration-300 hover:border-gm-orange/50 hover:bg-gm-orange/10"
-          >
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-gm-line-strong text-muted-foreground">
-              <Search className="size-[18px]" />
-            </span>
-            <span className="flex flex-col gap-0.5">
-              <span className="gm-display text-[14px] font-semibold text-foreground">{barcodeTicketsEnabled ? "Buscar y cerrar ticket" : "Buscar y cobrar salida"}</span>
-              <span className="text-[11.5px] font-normal normal-case text-muted-foreground">{barcodeTicketsEnabled ? "Patente o código" : "Patente o apellido"}</span>
-            </span>
-          </button>
-
-          <div
-            className={cn(
-              "mb-3 flex items-center gap-4 border-b border-border pb-3",
-              isAdmin ? "justify-between" : "justify-end",
-            )}
-          >
-            {isAdmin && (
-              <Link
-                href="/admin/tarifas"
-                ref={tour.refFor('admin')}
-                style={tour.isActive('admin') ? { ...tourTransition, ...tourHighlight } : tourTransition}
-                className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-gm-yellow"
-              >
-                <Settings className="size-3.5" />
-                Tarifas
-              </Link>
-            )}
-            <div ref={tour.refFor('precios')} style={tour.isActive('precios') ? { ...tourTransition, ...tourHighlight } : tourTransition}><PriceBracketMapDialog brackets={priceBrackets} schedule={schedule} /></div>
-          </div>
-
-          <div role="tablist" aria-label="Vehículos y comprobantes" className="isolate grid min-w-0 grid-cols-2 gap-x-2 gap-y-2 px-1 pb-1">
-            {receiptDeliveryEnabled && <button type="button" role="tab" aria-selected={sidebarTab === 'receipts'} onClick={() => selectSidebarTab('receipts')} className={cn(
-              "relative z-10 col-span-2 mx-auto flex min-h-11 w-[min(70%,180px)] items-center justify-center gap-2 rounded-full px-3 text-xs font-semibold transition-[transform,background-color,box-shadow,color] duration-300 [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] active:translate-y-3 motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              sidebarTab === 'receipts' ? "translate-y-2 bg-gm-yellow text-gm-ink shadow-[0_5px_0_0_hsl(var(--background)),0_9px_18px_-8px_hsl(var(--gm-yellow)/.35)]" : "bg-gm-surface-2 text-muted-foreground hover:bg-gm-yellow/10 hover:text-gm-yellow"
-            )}><QrCode className="size-3.5 shrink-0" />Comprobantes</button>}
-            {([{ value: 'hourly', label: 'Por hora', count: activeHourlyCount }, { value: 'daily', label: 'Día/Sem/Mes', count: activeDayRegistrations.length }] as const).map(item => <button key={item.value} type="button" role="tab" aria-selected={sidebarTab === item.value} onClick={() => selectSidebarTab(item.value)} className={cn(
-              "flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-xs font-semibold transition-[transform,background-color,color] duration-300 [transition-timing-function:cubic-bezier(.34,1.56,.64,1)] motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              sidebarTab === item.value ? "bg-gm-yellow text-gm-ink" : "bg-gm-surface-2 text-muted-foreground hover:text-foreground",
-              sidebarTab === 'receipts' && (item.value === 'hourly' ? "translate-y-1 -rotate-2 scale-y-90 origin-bottom-left" : "translate-y-1 rotate-2 scale-y-90 origin-bottom-right")
-            )}><span className="whitespace-nowrap">{item.label}</span><span className="rounded-full bg-foreground/5 px-1.5 py-0.5 text-[10px] tabular-nums">{item.count}</span></button>)}
-          </div>
-
-          {/* Como pasar la hoja de un libro: la franja entrante gira sobre el borde por el que
-              "entró" (izquierda si se avanzó a Día/Sem/Mes, derecha si se volvió a Por hora). */}
-          <div className="mt-4" style={{ perspective: "1400px" }}>
-          <div
-            key={sidebarTab}
-            style={{
-              transformStyle: "preserve-3d",
-              transformOrigin: flipDirection === "next" ? "left center" : "right center",
-              animation: `${flipDirection === "next" ? "gm-page-flip-next" : "gm-page-flip-prev"} 480ms cubic-bezier(.25,.75,.35,1) both`,
-            }}
-          >
-          {sidebarTab === "hourly" ? (
-          <>
-          <ActiveTicketsList
-            barcodeTicketsEnabled={barcodeTicketsEnabled}
-            ticketCatalog={barcodeTicketsEnabled ? sortedCatalog : []}
-            registrations={visibleRegistrations}
-            now={now}
-            onSelect={(target) =>
-              loadPreview({ id: target.id, kind: "BARCODE", codeBar: target.codeBar, vehicleType: target.vehicleType })
-            }
-            onSelectPlate={(id) => loadPreview({ id, kind: "PLATE" })}
-          />
-          {barcodeTicketsEnabled && (
-            <div className="border-t border-border pt-3.5 mb-4 [@media(max-height:850px)]:pt-2">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-[10.5px] uppercase tracking-[0.08em] font-bold text-muted-foreground">
-                  Vehículos en el playón
-                </h3>
-                <div className="flex items-center gap-2">
-                  {isAdmin && <Link href="/admin/configuracion/operacion#tarjetas" className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow" aria-label="Crear tarjeta física">+ Crear</Link>}
-                <span className="gm-mono text-[10.5px] text-muted-foreground">
-                  {activeTickets.length}/{sortedCatalog.length}
-                </span>
-                </div>
-              </div>
-              <p className="mb-2.5 text-[10px] text-muted-foreground">
-                Ocupación por ticket de código de barras.
-              </p>
-
-              {sortedCatalog.length > 0 && (
-                <>
-                  <div className="h-[6px] rounded-full bg-gm-surface-3 overflow-hidden mb-2">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-gm-yellow to-gm-orange transition-[width] duration-500 ease-out"
-                      style={{ width: `${Math.round((activeTickets.length / sortedCatalog.length) * 100)}%` }}
-                    />
-                  </div>
-                  <p className="mb-4 text-[11px] text-muted-foreground">
-                    {Math.round((activeTickets.length / sortedCatalog.length) * 100)}% de los tickets circulando en el playón
-                  </p>
-                </>
-              )}
-
-              {sortedCatalog.length > 0 ? (
-                <div className="grid grid-cols-5 gap-[7px] mb-4 [@media(max-height:850px)]:mb-2">
-                  {sortedCatalog.map((t) => {
-                    const active = isTicketActive(t, registrations);
-                    const justScanned = t.id === justScannedTicketId;
-                    const activeRegistration = active ? latestRegistrationForTicket(t, registrations) : null;
-                    const overdue = activeRegistration ? isOverdue(activeRegistration, now) : false;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        disabled={!activeRegistration}
-                        onClick={() =>
-                          activeRegistration &&
-                          setAdvanceTarget({
-                            id: activeRegistration.id,
-                            codeBar: t.codeBar,
-                            vehicleType: t.vehicleType,
-                            existing: activeRegistration,
-                          })
-                        }
-                        title={
-                          overdue
-                            ? `Ticket ${t.codeBar} · se pasó de la duración avisada`
-                            : active
-                            ? `Ticket ${t.codeBar} · activo · tocá para avisar duración / cobrar por adelantado`
-                            : `Ticket ${t.codeBar} · inactivo`
-                        }
-                        style={
-                          overdue
-                            ? { animation: "gm-chip-overdue 1.3s ease-in-out infinite" }
-                            : justScanned
-                            ? { animation: "gm-chippulse 1.1s ease-in-out 2" }
-                            : undefined
-                        }
-                        className={cn(
-                          // `min-w-0` es lo que impide que un código largo empuje su
-                          // celda: sin eso el botón crece hasta el ancho del texto,
-                          // se sale de la columna y rompe la grilla.
-                          "h-[30px] [@media(max-height:850px)]:h-[24px] min-w-0 px-1 rounded-[7px] grid place-items-center gm-mono font-bold border transition-shadow duration-300",
-                          // Los tickets suelen ser de 3 dígitos, pero el código de barras
-                          // lo carga el usuario y puede ser largo: se achica la letra en
-                          // vez de recortar, así el operador lo sigue leyendo entero.
-                          t.codeBar.length <= 5 ? "text-[10px]" : t.codeBar.length <= 8 ? "text-[8.5px]" : "text-[7px]",
-                          overdue
-                            ? "text-white bg-gradient-to-br from-destructive to-[hsl(10_78%_40%)] border-destructive/60 cursor-pointer"
-                            : active
-                            ? "text-gm-ink bg-gradient-to-br from-gm-yellow to-gm-orange border-gm-yellow/60 cursor-pointer"
-                            : "text-muted-foreground bg-gm-surface-2 border-border cursor-default",
-                        )}
-                      >
-                        {/* Red de contención: si ni con la letra chica entra, corta con
-                            puntos suspensivos en lugar de desbordar. El código completo
-                            sigue estando en el title del botón. */}
-                        <span className="w-full truncate text-center">{t.codeBar}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-md border border-dashed border-border bg-gm-surface-2/40 p-4 text-center text-[12px] text-muted-foreground mb-4">
-                  No hay tickets registrados.
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2 [@media(max-height:850px)]:gap-1 text-[11.5px] text-muted-foreground border-t border-border pt-3.5 [@media(max-height:850px)]:pt-2">
-            {barcodeTicketsEnabled && (
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded shrink-0 bg-gm-yellow/85 shadow-[0_0_8px_hsl(var(--gm-yellow)/0.5)]" />
-                Activo · sin salida registrada
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded shrink-0 bg-destructive/85 shadow-[0_0_8px_hsl(var(--destructive)/0.5)]" />
-              Activo · se pasó de la duración avisada
-            </div>
-            {barcodeTicketsEnabled && (
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded shrink-0 border border-border bg-gm-surface-2" />
-                Inactivo · con salida registrada
-              </div>
-            )}
-          </div>
-          </>
-          ) : (
-            sidebarTab === 'receipts' && receiptDeliveryEnabled ? <DepartureHistory barcodeTicketsEnabled={barcodeTicketsEnabled} today={dayjs(now).tz(TZ).format('YYYY-MM-DD')} registrations={registrations} dailyRegistrations={registrationsForDay} onReceipt={(id, kind) => setReceiptTarget({ id, kind })} /> : <DayRegistrationsPanel
-              active={activeDayRegistrations}
-              overdue={overdueDayRegistrations}
-              isOverdue={isDayRegistrationOverdue}
-              onSelect={setOpenDayRegistrationId}
+      {esEscritorio !== true && (
+        <MostradorDock
+          onEntrada={abrirEntrada}
+          onSalida={() => abrirCobro(null)}
+          entradaRef={refVisible('entrada')}
+          salidaRef={refVisible('salida')}
+          escanear={puedeEscanear ? (
+            <ScanPlateAction
+              variant="dock"
+              onBusyChange={setPlateScanBusy}
+              onEntry={(plate) => setEntryScanRequest((previous) => ({ plate, sequence: (previous?.sequence ?? 0) + 1 }))}
+              onHourlyExit={(id) => abrirCobro(id)}
+              onDailyExit={(registration) => { setScannedDayRegistration(registration); setOpenDayRegistrationId(registration.id); }}
             />
-          )}
-          </div>
-          </div>
-        </div>
-      </div>
+          ) : null}
+        />
+      )}
+
+      <EntryByPlateDialog
+        showTrigger={false}
+        openSignal={entradaSignal}
+        scanRequest={entryScanRequest}
+        onOpenChange={setEntryDialogOpen}
+        ticketEntryEnabled={barcodeTicketsEnabled}
+        onGoToRegistration={(id) => abrirCobro(id)}
+        onTicketRegistered={() => router.refresh()}
+      />
+      <CreateTicketRegistrationDialog isAdmin={isAdmin} setIsDialogOpen={setDayDialogOpen} showTrigger={false} openSignal={estadiaSignal} />
 
       {receiptTarget && <ParkingReceiptDelivery registrationId={receiptTarget.id} kind={receiptTarget.kind} showDisabledMessage onDismiss={() => setReceiptTarget(null)} />}
 
@@ -681,10 +645,7 @@ export default function CardTicket({
         priceBrackets={priceBrackets}
         open={advanceTarget !== null}
         onOpenChange={(open) => !open && setAdvanceTarget(null)}
-        onSuccess={() => {
-          clearPreview();
-          router.refresh();
-        }}
+        onSuccess={() => router.refresh()}
       />
 
       <ActiveDayTicketDialog
@@ -698,14 +659,12 @@ export default function CardTicket({
         barcodeTicketsEnabled={barcodeTicketsEnabled}
         open={closePanelOpen}
         initialRegistrationId={closePanelTargetId}
+        onAdvance={abrirAnticipo}
         onOpenChange={(open) => {
           setClosePanelOpen(open);
           if (!open) setClosePanelTargetId(null);
         }}
-        onSuccess={() => {
-          clearPreview();
-          router.refresh();
-        }}
+        onSuccess={() => router.refresh()}
       />
     </>
   );

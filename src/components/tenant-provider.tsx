@@ -5,6 +5,7 @@ import {
   selectPlayaAction,
 } from "@/actions/tenancy/context.action";
 import { signOut } from "next-auth/react";
+import { ChevronDown } from "lucide-react";
 const TenantContext = createContext<{
   playaId: string;
   context: OperationalContext;
@@ -40,20 +41,12 @@ export function PlayaSelector() {
   const [pending, setPending] = useState(false),
     [error, setError] = useState("");
   if (!context.empresa || context.playas.length === 0) return null;
-  if (context.role === "USER")
-    return playaId ? (
-      <div className="min-w-0 max-w-md border-l-2 border-gm-yellow pl-3">
-        <div className="flex min-w-0 items-center gap-2 text-[10px] leading-4 text-muted-foreground sm:text-[11px]">
-          <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold uppercase tracking-[0.08em] text-emerald-400">
-            <span className="size-1.5 rounded-full bg-emerald-400" aria-hidden />
-            Operativo
-          </span>
-        </div>
-        <div className="truncate text-[15px] font-semibold leading-5 tracking-tight text-foreground sm:text-base">
-          {context.playas.find((p) => p.id === playaId)?.nombre}
-        </div>
-      </div>
-    ) : null;
+  // El operador trabaja en una sola playa y el administrador puede tener varias: con una, el nombre
+  // solo dice dónde estás; con varias, es un selector (el nativo del navegador, invisible encima del
+  // nombre, así anda igual con teclado y en el celular).
+  const varias = context.role !== "USER" && context.playas.length > 1;
+  const nombre = context.playas.find((p) => p.id === playaId)?.nombre ?? (varias ? "Elegí una playa" : context.playas[0].nombre);
+  if (context.role === "USER" && !playaId) return null;
   async function cambiar(id: string) {
     setPending(true);
     setError("");
@@ -69,39 +62,39 @@ export function PlayaSelector() {
     }
   }
   return (
-    <div className="min-w-0 max-w-md border-l-2 border-gm-yellow pl-3">
-      <div className="flex min-w-0 items-center gap-2 text-[10px] leading-4 text-muted-foreground sm:text-[11px]">
-        <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold uppercase tracking-[0.08em] text-emerald-400">
-          <span className="size-1.5 rounded-full bg-emerald-400" aria-hidden />
-          Administración
-        </span>
+    <div
+      className={`relative flex h-11 min-w-0 max-w-[300px] items-center gap-2 rounded-xl px-2 ${
+        varias ? "transition-colors focus-within:ring-2 focus-within:ring-gm-yellow hover:bg-white/[0.05]" : ""
+      }`}
+    >
+      <div className="min-w-0 leading-tight">
+        <p className="truncate text-[14.5px] font-bold text-foreground sm:text-[15px]">{nombre}</p>
+        {error ? (
+          <p role="alert" className="truncate text-[11.5px] text-destructive">{error}</p>
+        ) : varias ? (
+          <p className="hidden truncate text-[11.5px] text-muted-foreground sm:block">{pending ? "Cambiando…" : "Cambiar de playa"}</p>
+        ) : null}
       </div>
-      {context.playas.length === 1 ? (
-        <div className="truncate text-[15px] font-semibold leading-5 tracking-tight text-foreground sm:text-base">
-          {context.playas[0].nombre}
-        </div>
-      ) : (
-        <select
-          aria-label="Playa en la que estás trabajando"
-          className="mt-0.5 h-8 max-w-full rounded-lg border border-border/70 bg-background px-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow"
-          value={playaId}
-          disabled={pending}
-          onChange={(e) => cambiar(e.target.value)}
-        >
-          <option value="" disabled>
-            Elegí una playa
-          </option>
-          {context.playas.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nombre}
+      {varias && (
+        <>
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <select
+            aria-label="Playa en la que estás trabajando"
+            className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-xl opacity-0 disabled:cursor-wait"
+            value={playaId}
+            disabled={pending}
+            onChange={(e) => cambiar(e.target.value)}
+          >
+            <option value="" disabled>
+              Elegí una playa
             </option>
-          ))}
-        </select>
-      )}
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
+            {context.playas.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre}
+              </option>
+            ))}
+          </select>
+        </>
       )}
     </div>
   );

@@ -1,37 +1,29 @@
 'use client';
 
 import {
-  ArrowLeft,
-  LayoutDashboard,
-  Repeat,
-  Shield,
-  CircleDollarSign,
-  User,
-  Users,
-  Wallet,
-  Settings,
-  CreditCard,
+  Banknote,
+  BookUser,
+  Gauge,
+  ReceiptText,
+  SlidersHorizontal,
+  Tags,
+  UsersRound,
 } from 'lucide-react';
 
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
-  SidebarTrigger,
-  SidebarRail,
   SidebarFooter,
 } from '@/components/ui/sidebar';
-import { NavMain } from './nav-main';
-import { SidebarWatermark } from './sidebar-watermark';
+import { NavAprender, NavMain, NavVolver, PANEL_FLOTANTE, PANEL_MOVIL, PestaniaLateral } from './nav-main';
 import { useSession } from 'next-auth/react';
-import { useTenant } from '@/components/tenant-provider';
 import { SuperAdminSidebar } from './super-admin-sidebar';
 
 export function AdminNavbarSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
-  const { inquilinosEnabled } = useTenant();
   const role = session?.user?.role?.toUpperCase() ?? 'USER';
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const isAdmin = role === 'ADMIN' || isSuperAdmin;
@@ -41,56 +33,35 @@ export function AdminNavbarSidebar({
   // backend, pero no se muestra acá para no mezclar los dos trabajos.
   if (isSuperAdmin) return <SuperAdminSidebar {...props} />;
 
-  const allNavItems = [
-    { title: 'Panel',               url: '/admin/dashboard',              icon: <LayoutDashboard /> },
-    { title: 'Usuarios',                url: '/admin/users',                  icon: <User /> },
-    { title: 'Tarifas',                url: '/admin/tarifas',                icon: <CircleDollarSign /> },
-    { title: 'Frecuentes',              url: '/admin/frecuentes',             icon: <Repeat /> },
-    { title: 'Caja',     url: '/admin/caja',                   icon: <Wallet /> },
-    { title: 'Configuración', url: '/admin/configuracion', icon: <Settings /> },
-    { title: 'Mi plan', url: '/admin/plan', icon: <CreditCard /> },
-    { title: 'Volver',                  url: '/tickets',                       icon: <ArrowLeft /> },
-  ];
-
-  const navItems = isAdmin ? allNavItems : allNavItems.slice(-1);
+  const navItems = isAdmin
+    ? [
+        { title: 'Panel', url: '/admin/dashboard', icon: <Gauge /> },
+        { title: 'Usuarios', url: '/admin/users', icon: <UsersRound /> },
+        { title: 'Tarifas', url: '/admin/tarifas', icon: <Tags /> },
+        { title: 'Frecuentes', url: '/admin/frecuentes', icon: <BookUser /> },
+        { title: 'Caja', url: '/admin/caja', icon: <Banknote /> },
+        { title: 'Configuración', url: '/admin/configuracion', icon: <SlidersHorizontal /> },
+        { title: 'Mi plan', url: '/admin/plan', icon: <ReceiptText /> },
+      ]
+    : [];
 
   return (
-    <Sidebar
-      collapsible="icon"
-      className="group/sidebar border-r border-border bg-gm-surface"
-      {...props}
-    >
-      {/* Stripe that continues from the topbar */}
-      <div className="gm-stripes h-[3px] w-full shrink-0" aria-hidden />
-
-      <SidebarHeader className="h-[75px] shrink-0 border-b border-border bg-gm-surface flex items-center justify-center px-2">
-        <SidebarTrigger className="h-8 w-8 rounded-md hover:bg-gm-surface-2 hover:text-foreground" />
+    <Sidebar variant="floating" collapsible="icon" className={PANEL_FLOTANTE} mobileSide="top" mobileClassName={PANEL_MOVIL} {...props}>
+      <PestaniaLateral />
+      <SidebarHeader className="h-12 shrink-0 flex-row items-center px-4 pb-0 pt-1">
+        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground group-data-[collapsible=icon]:hidden">
+          Administración
+        </span>
       </SidebarHeader>
 
-      <div className="px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground group-data-[collapsible=icon]:hidden">
-        Administración
-      </div>
-
-      <SidebarContent className="relative overflow-hidden bg-gm-surface px-1 py-1">
+      <SidebarContent className="gap-0 px-1">
+        <NavVolver />
         <NavMain items={navItems} />
-        <SidebarWatermark />
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-border bg-gm-surface p-2 group-data-[collapsible=icon]:p-1.5">
-        <div className="group-data-[collapsible=icon]:hidden rounded-md bg-gm-surface-2 border border-border px-3 py-2">
-          <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-            Modo
-          </div>
-          <div className="gm-display mt-0.5 text-[12px] font-bold text-gm-yellow">
-            {isSuperAdmin ? 'Super administrador' : 'Administrador'}
-          </div>
-        </div>
-        <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center py-0.5">
-          <Shield className="size-4 text-gm-yellow" />
-        </div>
+      <SidebarFooter className="border-t border-white/[0.06] p-2">
+        <NavAprender />
       </SidebarFooter>
-
-      <SidebarRail />
     </Sidebar>
   );
 }

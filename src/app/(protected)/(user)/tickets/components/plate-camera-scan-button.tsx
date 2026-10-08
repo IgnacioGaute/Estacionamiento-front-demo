@@ -2,7 +2,7 @@
 import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useEffect, useRef, useState } from 'react';
-import { Camera, ScanLine } from 'lucide-react';
+import { Camera, Scan, ScanLine } from 'lucide-react';
 import { toast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTenant } from '@/components/tenant-provider';
@@ -21,12 +21,17 @@ export function PlateCameraScanButton({
   disabled,
   onRecognized,
   variant = 'field',
+  busy = false,
   onBusyChange,
   notifyRecognition = true,
 }: {
   disabled?: boolean;
   onRecognized: (plate: string) => void | Promise<void>;
-  variant?: 'field' | 'action';
+  // `square`: al lado del campo de patente, del mismo alto (diálogo de entrada).
+  // `dock`: el botón redondo del centro de la barra de abajo del inicio, en el celular.
+  variant?: 'field' | 'action' | 'square' | 'dock';
+  // Además de reconocer la patente, el que lo usa puede estar consultándola (barra del inicio).
+  busy?: boolean;
   onBusyChange?: (busy: boolean) => void;
   notifyRecognition?: boolean;
 }) {
@@ -85,13 +90,42 @@ export function PlateCameraScanButton({
       />
       <button
         type="button"
-        disabled={disabled || isScanning}
+        disabled={disabled || isScanning || busy}
         onClick={abrir}
-        className={variant === 'action'
+        aria-label={variant === 'square' || variant === 'dock' ? 'Escanear patente con la cámara' : undefined}
+        className={variant === 'dock'
+          ? 'relative flex h-[76px] w-[84px] flex-col items-center justify-end pb-2 text-[11px] font-bold tracking-[0.06em] text-gm-yellow focus-visible:outline-none disabled:opacity-70 [&:focus-visible_.gm-dock-scan]:ring-2 [&:focus-visible_.gm-dock-scan]:ring-gm-yellow [&:focus-visible_.gm-dock-scan]:ring-offset-2 [&:focus-visible_.gm-dock-scan]:ring-offset-background'
+          : variant === 'action'
           ? 'flex min-h-[72px] w-full min-w-0 items-center gap-3 rounded-xl border border-gm-line-strong bg-card/40 px-4 py-3 text-left transition-colors hover:border-gm-yellow/50 hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50'
+          : variant === 'square'
+          ? 'flex h-[60px] w-[72px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border-[1.5px] border-gm-yellow/55 bg-gm-yellow/10 text-[11px] font-semibold text-gm-yellow transition-colors hover:bg-gm-yellow/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50 short:h-[52px]'
           : 'mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gm-line-strong text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/30 disabled:opacity-50'}
       >
-        {isScanning ? (
+        {variant === 'dock' ? (
+          <>
+            {/* Recortado sobre la barra: el anillo del color de fondo simula la muesca. */}
+            <span className="absolute -top-[30px] grid size-[76px] place-items-center rounded-full bg-background">
+              <span className={'gm-dock-scan relative grid size-16 place-items-center rounded-full bg-gm-yellow text-gm-ink transition-transform active:scale-95' + (isScanning || busy ? '' : ' gm-dock-scan-pulse')}>
+                {isScanning || busy ? (
+                  <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />
+                ) : (
+                  <>
+                    <Scan className="size-[30px]" strokeWidth={2.2} aria-hidden />
+                    <span aria-hidden className="gm-dock-laser absolute inset-x-[21px] top-[31px] h-0.5 rounded-full bg-gm-ink" />
+                  </>
+                )}
+              </span>
+            </span>
+            {isScanning || busy ? 'LEYENDO…' : 'ESCANEAR'}
+          </>
+        ) : isScanning && variant === 'square' ? (
+          <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />
+        ) : variant === 'square' ? (
+          <>
+            <Camera className="size-[22px]" aria-hidden />
+            Escanear
+          </>
+        ) : isScanning ? (
           <>
             <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />
             Reconociendo patente…

@@ -14,7 +14,7 @@ export default async function TicketPage() {
   const registrationsForDay = await getTicketsRegistrationForDay();
 
   return (
-    <div className="px-3 py-5 sm:px-6 sm:py-7">
+    <div className="py-2 sm:px-6 sm:py-7 lg:px-0 lg:py-2">
       <CardTicket
         initialRegistrations={registrations}
         ticketCatalog={ticketsCatalog?.data || []}

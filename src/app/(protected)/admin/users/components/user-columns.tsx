@@ -17,19 +17,7 @@ import {
 import { User } from "@/types/user.type";
 import { UpdateUserDailog } from "./update-user-dialog";
 import { DeleteUserDialog } from "./delete-user-dialog";
-
-function avatarPalette(seed: string) {
-  const colors = [
-    "bg-gm-orange",
-    "bg-[hsl(120_35%_55%)]",
-    "bg-[hsl(200_60%_60%)]",
-    "bg-gm-yellow text-gm-ink",
-    "bg-[hsl(280_45%_65%)]",
-  ];
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  return colors[h % colors.length];
-}
+import { RolAvatar } from "@/components/rol-avatar";
 
 export const userColumns = (assignments: Record<string, { id: string; nombre: string } | null> | null): ColumnDef<User>[] => [
   {
@@ -39,18 +27,9 @@ export const userColumns = (assignments: Record<string, { id: string; nombre: st
     ),
     cell: ({ row }) => {
       const u = row.original;
-      const initials =
-        `${u.firstName?.[0] ?? ""}${u.lastName?.[0] ?? ""}`.toUpperCase() ||
-        u.username.slice(0, 2).toUpperCase();
       return (
         <div className="flex items-center gap-2.5 min-w-[180px]">
-          <div
-            className={`grid size-8 place-items-center rounded-md font-display font-bold text-[12px] text-white ${avatarPalette(
-              u.email ?? u.username,
-            )}`}
-          >
-            {initials}
-          </div>
+          <RolAvatar role={u.role} className="size-8 rounded-lg" />
           <div className="min-w-0">
             <div className="text-[13px] font-semibold truncate">
               {u.firstName} {u.lastName}

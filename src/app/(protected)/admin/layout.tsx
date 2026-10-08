@@ -15,7 +15,8 @@ export default async function AdminLayout({
   const defaultOpen = cookieStore.get("sidebar:state")?.value === "true";
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
+    // Plegada, la barra lateral deja botones de 44 px (el ancho de íconos por defecto los achica a 32).
+    <SidebarProvider defaultOpen={defaultOpen} style={{ "--sidebar-width-icon": "3.5rem" } as React.CSSProperties}>
       <AppNavbar adminSidebar={<AdminNavbarSidebar/>} userSidebar={<UserNavbarSidebar/>}>
       <div className="admin-mobile flex min-w-0 flex-col flex-1 h-full">
           {/* Cada página admin ya trae su propio "container mx-auto px-4 ..." — sin padding acá

@@ -8,11 +8,18 @@
 // sistema la asocia y registra cobro y salida. Si hay dudas (dos transferencias iguales, dos autos
 // del mismo importe, un pago tardío de un cobro cancelado), NO elige: muestra las opciones y el
 // cajero pregunta quién transfirió. Un error al consultar se dice como error, nunca como «no pagó».
+//
+// Los botones van al pie del diálogo (ActionDialogFooterPortal): en el celular quedan siempre a
+// mano, aunque haya varias transferencias para elegir.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Check, Copy, Flag, Loader2, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { formatPrice } from '@/components/pricing-breakdown';
+import { AlertTriangle, Check, Copy, Info, RefreshCw, RotateCcw } from 'lucide-react';
+import {
+  ActionDialogFooterPortal,
+  ActionDialogPrimaryButton,
+  ActionDialogSecondaryButton,
+} from '@/components/ui/action-dialog';
+import { formatImporte } from '@/components/pricing-breakdown';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { CobroAlias } from '@/types/verificacion-alias.type';
@@ -25,9 +32,6 @@ import {
 
 const SEGUNDOS_ENTRE_CONSULTAS = 4;
 const ZONA = 'America/Argentina/Buenos_Aires';
-
-const hora = (iso: string | null | undefined) =>
-  iso ? new Date(iso).toLocaleTimeString('es-AR', { timeZone: ZONA, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
 
 const abiertos = ['ESPERANDO', 'REVISION'];
 
@@ -44,12 +48,27 @@ const quienYCuando = (cobro: CobroAlias) => {
   return t.nombre ? `Transferencia de ${t.nombre} · ${horaCorta(t.fechaOperacion)}` : `Transferencia de las ${horaCorta(t.fechaOperacion)}`;
 };
 
+// «1:12» desde que se empezó a esperar: el cajero ve que la búsqueda sigue viva.
+const transcurridoDesde = (desde: string) => {
+  const segundos = Math.max(0, Math.floor((Date.now() - new Date(desde).getTime()) / 1000));
+  return `${Math.floor(segundos / 60)}:${String(segundos % 60).padStart(2, '0')}`;
+};
+
+function useTranscurrido(desde: string) {
+  const [texto, setTexto] = useState(() => transcurridoDesde(desde));
+  useEffect(() => {
+    const reloj = setInterval(() => setTexto(transcurridoDesde(desde)), 1000);
+    return () => clearInterval(reloj);
+  }, [desde]);
+  return texto;
+}
+
 const SEGUNDOS_PARA_CERRAR = 4;
 
 /**
  * La confirmación de un cobro por transferencia que registró la salida: queda en el mismo cuadro
- * de cobro, con quién pagó, y el diálogo se cierra solo (o antes, con «Cerrar ahora»). El aviso de
- * abajo es el de siempre, «Salida registrada exitosamente»: lo dispara el panel de cierre.
+ * de cobro, con quién pagó, y el diálogo se cierra solo (o antes, con «Listo»). El aviso de abajo
+ * es el de siempre, «Salida registrada exitosamente»: lo dispara el panel de cierre.
  */
 export function PagoRecibido({ cobro, onCerrar }: { cobro: CobroAlias; onCerrar: () => void }) {
   const [restante, setRestante] = useState(SEGUNDOS_PARA_CERRAR * 1000);
@@ -77,42 +96,33 @@ export function PagoRecibido({ cobro, onCerrar }: { cobro: CobroAlias; onCerrar:
   }, [cerrar]);
 
   return (
-    <div role="status" className="flex flex-col items-center gap-1.5 rounded-2xl border-[1.5px] border-emerald-500/50 bg-emerald-500/10 px-5 pb-4 pt-6 text-center">
-      <span className="grid size-16 place-items-center rounded-full bg-emerald-400/15 text-emerald-400">
-        <Check className="size-9" strokeWidth={2.2} />
-      </span>
-      <p className="mt-1.5 gm-display text-[28px] font-bold tracking-wide text-emerald-400">PAGO RECIBIDO</p>
-      <p className="gm-mono gm-tnum text-3xl font-semibold text-foreground">{formatPrice(cobro.importe)}</p>
-      <p className="mt-0.5 text-sm text-muted-foreground">{quienYCuando(cobro)}</p>
-      <p className="text-xs text-muted-foreground">
-        {cobro.modo === 'MANUAL'
-          ? 'Transferencia elegida por el cajero'
-          : 'Única transferencia de ese importe: se asoció sola'}
-        {cobro.transferencia ? ` · operación ${operacionCorta(cobro.transferencia.operacionId)}` : ''}
-      </p>
-
-      <div className="my-2.5 h-px w-full bg-emerald-400/25" />
-
-      <p className="flex items-center gap-2 text-[15px] font-semibold">
-        <Flag className="size-[18px] text-emerald-400" />
-        Salida registrada
-      </p>
-
-      <div className="mt-2.5 w-full space-y-2">
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-emerald-400/15">
+    <>
+      <div role="status" className="flex flex-col items-center gap-1.5 rounded-[20px] border-[1.5px] border-emerald-500/50 bg-emerald-500/10 px-5 pb-5 pt-6 text-center">
+        <span className="grid size-[72px] place-items-center rounded-full border-2 border-emerald-400/50 bg-emerald-400/15 text-emerald-400">
+          <Check className="size-10" strokeWidth={2.4} />
+        </span>
+        <p className="gm-display mt-2 text-[26px] font-bold tracking-wide text-emerald-400">Pago recibido</p>
+        <p className="gm-mono text-3xl font-semibold text-foreground">{formatImporte(cobro.importe)}</p>
+        <p className="mt-0.5 text-sm text-muted-foreground">{quienYCuando(cobro)}</p>
+        <p className="text-xs text-muted-foreground">
+          {cobro.modo === 'MANUAL'
+            ? 'Transferencia elegida por el cajero'
+            : 'Única transferencia de ese importe: se asoció sola'}
+          {cobro.transferencia ? ` · operación ${operacionCorta(cobro.transferencia.operacionId)}` : ''}
+        </p>
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-emerald-400/15" aria-hidden>
           <div
             className="h-full rounded-full bg-emerald-400 transition-[width] duration-100 ease-linear"
             style={{ width: `${(restante / (SEGUNDOS_PARA_CERRAR * 1000)) * 100}%` }}
           />
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px] text-muted-foreground">Se cierra sola en {Math.ceil(restante / 1000)} s</span>
-          <Button variant="outline" className="min-h-11" onClick={cerrar}>
-            Cerrar ahora
-          </Button>
-        </div>
       </div>
-    </div>
+      <ActionDialogFooterPortal>
+        <ActionDialogPrimaryButton onClick={cerrar} detail={`Se cierra sola en ${Math.ceil(restante / 1000)} s`}>
+          Listo
+        </ActionDialogPrimaryButton>
+      </ActionDialogFooterPortal>
+    </>
   );
 }
 
@@ -140,6 +150,7 @@ export function CobroAliasPanel({
   const alTerminar = useRef(onTerminado);
   alTerminar.current = onTerminado;
   const abierto = abiertos.includes(cobro.estado);
+  const transcurrido = useTranscurrido(cobro.creadoEl);
 
   const actualizar = useCallback((nuevo: CobroAlias) => {
     setCobro(nuevo);
@@ -216,7 +227,7 @@ export function CobroAliasPanel({
         </span>
         <div className="min-w-0 flex-1">
           <p className="gm-display text-lg font-bold tracking-wide text-emerald-400">
-            PAGO RECIBIDO · {formatPrice(cobro.importe)}
+            Pago recibido · <span className="gm-mono">{formatImporte(cobro.importe)}</span>
           </p>
           <p className="text-[13.5px] text-muted-foreground">
             {quienYCuando(cobro)}. La tarifa subió mientras esperaba.
@@ -228,98 +239,98 @@ export function CobroAliasPanel({
   // ── Terminó sin transferencia ─────────────────────────────────────────────
   if (!abierto)
     return (
-      <div role="status" className="space-y-3 rounded-2xl border border-border bg-gm-surface-2 p-4 text-center">
-        <p className="text-sm text-muted-foreground">
+      <div role="status" className="flex items-center gap-3 rounded-2xl border border-border bg-gm-surface-2 p-3.5">
+        <p className="min-w-0 flex-1 text-[13.5px] text-muted-foreground">
           {cobro.estado === 'VENCIDO'
             ? 'Pasaron 15 minutos sin que llegue la transferencia. La estadía sigue sin cobrar.'
             : cobro.estado === 'PAGADO_OTRO_MEDIO'
               ? 'La estadía ya se cobró por otro medio.'
               : 'Se canceló la espera de la transferencia.'}
         </p>
-        <Button variant="outline" className="min-h-11 w-full" onClick={onCancelado}>
-          Elegir otro medio
-        </Button>
+        <button type="button" onClick={onCancelado} className="min-h-11 shrink-0 rounded-xl px-3 text-[13.5px] font-semibold text-gm-yellow">
+          Entendido
+        </button>
       </div>
     );
 
   const fallo = cobro.consulta && cobro.consulta.ok === false ? cobro.consulta : null;
   const revision = cobro.estado === 'REVISION';
+  const opcionElegida = cobro.opciones.find((o) => o.operacionId === elegida);
 
   return (
-    <div className="space-y-4 rounded-2xl border border-gm-yellow/50 bg-gm-surface-2 p-4">
-      <div className="overflow-hidden rounded-2xl border border-border bg-background/40">
-        <div className="px-5 py-5 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Importe a transferir</p>
-          <p className="gm-display gm-tnum mt-2 text-4xl font-bold">{formatPrice(cobro.importe)}</p>
-          <p className="mt-2 text-xs text-muted-foreground">Transferir el importe exacto permite encontrar el pago.</p>
+    <>
+      {/* Para elegir entre varias transferencias el alias ya no hace falta: el lugar es de ellas. */}
+      {!revision && (
+        <div className="overflow-hidden rounded-[20px] border-[1.5px] border-gm-yellow/50 bg-gm-surface-2">
+          <div className="px-4 py-4 text-center short:py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Importe exacto a transferir</p>
+            <p className="gm-mono mt-1 text-[36px] font-bold leading-tight short:text-[30px]">{formatImporte(cobro.importe)}</p>
+          </div>
+          <div className="flex items-center gap-3 border-t border-border bg-gm-yellow/[0.07] py-3 pl-4 pr-3">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Alias de la playa</span>
+              <span className="gm-mono mt-0.5 block break-all text-[22px] font-bold leading-tight">{cobro.alias ?? '—'}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => void copiarAlias()}
+              disabled={!cobro.alias}
+              aria-label={cobro.alias ? 'Copiar alias ' + cobro.alias : 'Alias no disponible'}
+              className="flex h-12 shrink-0 items-center gap-1.5 rounded-xl border-[1.5px] border-gm-yellow px-3.5 text-sm font-bold text-gm-yellow transition-colors hover:bg-gm-yellow/10 disabled:opacity-50"
+            >
+              <Copy className="size-[18px]" aria-hidden />
+              Copiar
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => void copiarAlias()}
-          disabled={!cobro.alias}
-          className="group flex min-h-20 w-full items-center gap-4 border-t border-border bg-gm-yellow/5 px-5 py-4 text-left transition-colors hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow disabled:opacity-50"
-          aria-label={cobro.alias ? 'Copiar alias ' + cobro.alias : 'Alias no disponible'}
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Alias de la playa</span>
-            <span className="gm-mono mt-1 block break-all text-xl font-semibold text-foreground">{cobro.alias ?? '—'}</span>
-          </span>
-          <span className="flex shrink-0 flex-col items-center gap-1 text-gm-yellow">
-            <Copy className="size-5" aria-hidden="true" />
-            <span className="text-xs font-semibold">Copiar</span>
-          </span>
-        </button>
-      </div>
+      )}
 
       {fallo ? (
-        <div role="alert" className="flex gap-2 rounded-xl border border-gm-orange/40 bg-gm-orange/10 p-3 text-sm">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-gm-orange" />
+        <div role="alert" className="flex gap-2.5 rounded-2xl border border-gm-orange/40 bg-gm-orange/10 p-3.5 text-sm">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-gm-orange" aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="font-medium">No se pudo consultar MercadoPago</p>
+            <p className="font-semibold">No se pudo consultar MercadoPago</p>
             <p className="text-muted-foreground">{fallo.error} Esto no quiere decir que no pagó. Se sigue reintentando.</p>
           </div>
-          <Button size="sm" variant="ghost" disabled={ocupado} onClick={() => void consultar()}>
-            <RefreshCw className="size-4" />
-          </Button>
+          <button type="button" aria-label="Consultar de nuevo" disabled={ocupado} onClick={() => void consultar()} className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground hover:text-foreground">
+            <RefreshCw className="size-4" aria-hidden />
+          </button>
         </div>
       ) : revision ? (
-        <div className="space-y-3">
-          <div className="rounded-xl border border-gm-yellow/40 bg-gm-yellow/10 p-3 text-sm">
-            <p className="font-medium">Confirmá cuál es el pago de este auto</p>
-            <p className="text-muted-foreground">{MOTIVOS[cobro.motivoRevision ?? ''] ?? 'Hay más de una posibilidad.'}</p>
+        <>
+          <div className="flex gap-3 rounded-2xl border-[1.5px] border-gm-yellow/45 bg-gm-yellow/[0.08] p-3.5">
+            <Info className="mt-0.5 size-5 shrink-0 text-gm-yellow" aria-hidden />
+            <div className="min-w-0 text-sm">
+              <p className="font-semibold">Confirmá cuál es el pago de este auto</p>
+              <p className="text-[#D9D1C3]">{MOTIVOS[cobro.motivoRevision ?? ''] ?? 'Hay más de una posibilidad.'} Preguntale a nombre de quién transfirió.</p>
+            </div>
           </div>
           {cobro.opciones.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground" role="status">
               La transferencia que coincidía ya se usó en otro cobro. Si el cliente transfirió, su transferencia va a aparecer acá.
             </p>
           ) : (
-            <fieldset className="min-w-0 space-y-3" disabled={ocupado}>
-              <legend className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transferencias disponibles ({cobro.opciones.length})</legend>
+            <fieldset className="min-w-0 space-y-2.5" disabled={ocupado}>
+              <legend className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Transferencias recibidas ({cobro.opciones.length})</legend>
               {cobro.opciones.map((o) => (
                 <label
                   key={o.operacionId}
                   className={cn(
-                    'relative flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-gm-yellow',
-                    elegida === o.operacionId ? 'border-gm-yellow bg-gm-yellow/10' : 'border-border bg-background/30 hover:border-gm-yellow/50',
+                    'flex cursor-pointer items-start gap-3 rounded-2xl border-[1.5px] p-3.5 transition-colors focus-within:ring-2 focus-within:ring-gm-yellow',
+                    elegida === o.operacionId ? 'border-gm-yellow bg-gm-yellow/10 shadow-[inset_0_0_0_1px_hsl(var(--gm-yellow))]' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/50',
                     ocupado && 'pointer-events-none opacity-60',
                   )}
                 >
-                  <input type="radio" name={'transferencia-' + cobro.id} value={o.operacionId} checked={elegida === o.operacionId} onChange={() => setElegida(o.operacionId)} className="mt-1 size-5 shrink-0 accent-yellow-400" />
+                  <input type="radio" name={'transferencia-' + cobro.id} value={o.operacionId} checked={elegida === o.operacionId} onChange={() => setElegida(o.operacionId)} className="mt-0.5 size-5 shrink-0 accent-yellow-400" />
                   <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-start justify-between gap-2">
-                      <span className="min-w-0">
-                        <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pagador</span>
-                        <span className="mt-1 block break-words text-base font-semibold">{o.nombre || o.documento || 'Pagador sin identificar'}</span>
-                        {o.nombre && o.documento && <span className="gm-mono mt-1 block text-sm text-muted-foreground">{o.documento}</span>}
-                      </span>
-                      <span className="gm-mono gm-tnum text-lg font-semibold">{formatPrice(o.importe)}</span>
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 break-words text-base font-bold">{o.nombre || o.documento || 'Pagador sin identificar'}</span>
+                      <span className="gm-mono shrink-0 text-[13px] font-semibold text-[#D9D1C3]">{horaCorta(o.fechaOperacion)}</span>
                     </span>
-                    <span className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-3 text-sm text-muted-foreground">
-                      <span>Recibida a las <span className="gm-mono text-foreground">{hora(o.fechaOperacion)}</span></span>
-                      {o.entidad && <span>{o.entidad}</span>}
+                    {o.nombre && o.documento && <span className="gm-mono block text-[13px] text-muted-foreground">{o.documento}</span>}
+                    <span className="mt-0.5 block break-all text-[11.5px] text-muted-foreground">
+                      {[o.entidad, `Operación ${o.operacionId}`, o.importe !== cobro.importe ? formatImporte(o.importe) : null].filter(Boolean).join(' · ')}
                     </span>
-                    <span className="mt-1 block break-all text-xs text-muted-foreground">Operaci&oacute;n <span className="gm-mono">{o.operacionId}</span></span>
-                    {elegida === o.operacionId && <span className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-gm-yellow"><Check className="size-4" aria-hidden="true" />Seleccionada para este auto</span>}
                   </span>
                 </label>
               ))}
@@ -330,27 +341,57 @@ export function CobroAliasPanel({
               Compará el CUIT o documento del pagador con el comprobante del cliente. Si falta, verificá la hora y el número de operación antes de elegir.
             </p>
           )}
-          <Button className="min-h-12 w-full whitespace-normal" disabled={!elegida || ocupado} onClick={() => void asignar()}>
-            {ocupado ? 'Registrando…' : 'Confirmar pago y registrar salida'}
-          </Button>
-        </div>
+        </>
       ) : (
-        <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground" role="status">
-          <Loader2 className="size-4 animate-spin" />
-          <span>Buscando el pago desde las {hora(cobro.buscarDesde)}<span className="mt-1 block text-xs">Si hay una coincidencia única, se registra automáticamente.</span></span>
-        </p>
+        <div role="status" className="flex items-center gap-3.5 rounded-2xl border border-border bg-gm-surface-2/60 px-4 py-3">
+          <span className="relative grid size-3 shrink-0" aria-hidden>
+            <span className="absolute inset-0 animate-ping rounded-full bg-gm-yellow/70" />
+            <span className="relative size-3 rounded-full bg-gm-yellow" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold">Buscando la transferencia</span>
+            <span className="block text-[12.5px] leading-snug text-muted-foreground">
+              Desde las {horaCorta(cobro.buscarDesde)}. Si llega una sola de {formatImporte(cobro.importe)}, la salida se registra sola.
+            </span>
+          </span>
+          <span className="gm-mono text-[15px] font-semibold text-muted-foreground">{transcurrido}</span>
+        </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {cobro.puedeAmpliar && (
-          <Button variant="outline" className="min-h-11 flex-1" disabled={ocupado} onClick={() => void ampliar()}>
-            Buscar desde 5 min antes
-          </Button>
-        )}
-        <Button variant="ghost" className="min-h-11 flex-1" disabled={ocupado} onClick={() => void cancelar()}>
+      {cobro.puedeAmpliar && !revision && (
+        <button
+          type="button"
+          disabled={ocupado}
+          onClick={() => void ampliar()}
+          className="flex min-h-[54px] w-full shrink-0 items-center gap-3 rounded-2xl border border-dashed border-gm-line-strong px-3.5 py-2 text-left transition-colors hover:border-gm-yellow/50 disabled:opacity-50"
+        >
+          <RotateCcw className="size-5 shrink-0 text-gm-yellow" aria-hidden />
+          <span className="min-w-0">
+            <span className="block text-[14px] font-semibold">Buscar desde 5 min antes</span>
+            <span className="block text-xs text-muted-foreground">Si te dice que transfirió antes de que abrieras esto</span>
+          </span>
+        </button>
+      )}
+
+      <ActionDialogFooterPortal>
+        <ActionDialogSecondaryButton
+          tone={revision ? 'ghost' : 'outline'}
+          className={revision ? 'order-last sm:order-none' : undefined}
+          disabled={ocupado}
+          onClick={() => void cancelar()}
+        >
           Cancelar y cobrar de otra forma
-        </Button>
-      </div>
-    </div>
+        </ActionDialogSecondaryButton>
+        {revision && cobro.opciones.length > 0 && (
+          <ActionDialogPrimaryButton
+            disabled={!elegida || ocupado}
+            onClick={() => void asignar()}
+            detail={opcionElegida ? (opcionElegida.nombre || opcionElegida.documento || `Operación ${operacionCorta(opcionElegida.operacionId)}`) : 'Elegí una transferencia'}
+          >
+            {ocupado ? 'Registrando…' : 'Confirmar pago y salida'}
+          </ActionDialogPrimaryButton>
+        )}
+      </ActionDialogFooterPortal>
+    </>
   );
 }

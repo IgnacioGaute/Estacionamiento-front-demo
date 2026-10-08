@@ -713,3 +713,24 @@ select:not([multiple]):focus-visible {
 }
 select:not([multiple]):disabled { cursor: not-allowed; opacity: 0.5; }
 select option { background: hsl(var(--popover)); color: hsl(var(--popover-foreground)); }
+
+/* Botón de escanear de la barra de abajo del inicio (plate-camera-scan-button, variante dock):
+   una línea que recorre el recuadro y un pulso suave, para que se lea como «apuntá y escaneá». */
+@keyframes gm-dock-laser {
+  0%, 100% { transform: translateY(-9px); opacity: .35; }
+  50%      { transform: translateY(9px);  opacity: 1; }
+}
+@keyframes gm-dock-pulse {
+  0%   { box-shadow: 0 0 0 0 hsl(var(--gm-yellow) / .45); }
+  70%  { box-shadow: 0 0 0 14px hsl(var(--gm-yellow) / 0); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--gm-yellow) / 0); }
+}
+.gm-dock-laser { animation: gm-dock-laser 1.8s ease-in-out infinite; }
+.gm-dock-scan-pulse { animation: gm-dock-pulse 2.4s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .gm-dock-laser, .gm-dock-scan-pulse { animation: none; }
+}
+
+/* Con el menú del celular abierto (la barra lateral baja como panel), la barra de arriba queda por
+   encima del velo: su pestaña es la que cierra el menú y encaja en el hueco del panel. */
+html:has([data-mobile="true"][data-sidebar="sidebar"][data-state="open"]) .barra-superior { z-index: 60; }

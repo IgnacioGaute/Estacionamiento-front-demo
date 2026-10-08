@@ -1,10 +1,13 @@
 'use client';
 
-import { Children, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Children, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 import styles from './animated-scroll-list.module.css';
 
 // Inspired by React Bits Animated List; native buttons retain their normal keyboard behavior.
-export function AnimatedScrollList({ children, label }: { children: ReactNode; label: string }) {
+// `className` cambia el alto de la lista (con `!` para ganarle al del módulo) y `fondo` es el color
+// sobre el que se apoya, para que los degradés de arriba y abajo se fundan con él.
+export function AnimatedScrollList({ children, label, className, fondo }: { children: ReactNode; label: string; className?: string; fondo?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ top: 0, bottom: 0 });
   useEffect(() => {
@@ -26,8 +29,8 @@ export function AnimatedScrollList({ children, label }: { children: ReactNode; l
     resize.observe(root);
     return () => { observer.disconnect(); resize.disconnect(); root.removeEventListener('scroll', updateEdges); };
   }, [children]);
-  return <div className={styles.frame}>
-    <div ref={ref} role="region" aria-label={label} tabIndex={0} className={styles.list}>
+  return <div className={styles.frame} style={fondo ? { '--asl-fondo': fondo } as CSSProperties : undefined}>
+    <div ref={ref} role="region" aria-label={label} tabIndex={0} className={cn(styles.list, className)}>
       {Children.toArray(children).map((child, index) => <div key={(child as { key?: string }).key ?? index} className={styles.item}><div>{child}</div></div>)}
     </div>
     <div aria-hidden className={styles.topFade} style={{ opacity: edges.top }} />

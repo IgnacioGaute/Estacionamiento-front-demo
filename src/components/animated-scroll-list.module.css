@@ -17,7 +17,7 @@
 .item > div { opacity: .5; transform: scale(.96); transition: opacity .2s ease-out .1s, transform .2s ease-out .1s; }
 .item[data-visible="true"] > div, .item:focus-within > div { opacity: 1; transform: scale(1); }
 .topFade, .bottomFade { position: absolute; left: 0; right: 12px; height: 16px; pointer-events: none; transition: opacity .15s; }
-.topFade { top: 0; background: linear-gradient(to bottom, hsl(var(--background)), transparent); }
-.bottomFade { bottom: 0; background: linear-gradient(to top, hsl(var(--background)), transparent); }
+.topFade { top: 0; background: linear-gradient(to bottom, var(--asl-fondo, hsl(var(--background))), transparent); }
+.bottomFade { bottom: 0; background: linear-gradient(to top, var(--asl-fondo, hsl(var(--background))), transparent); }
 @media (prefers-reduced-motion: reduce) { .item > div { opacity: 1; transform: none; transition: none; } }
 .list:focus-visible { outline: 2px solid hsl(var(--gm-yellow)); outline-offset: 3px; border-radius: 12px; }

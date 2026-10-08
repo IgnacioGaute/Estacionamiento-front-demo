@@ -1,7 +1,7 @@
 // Only known UI labels are sent. Never collect input values, table rows or arbitrary text.
 const LABELS = new Set([
   'Tickets', 'Tickets y patentes', 'Registrar entrada', 'Registrar entradas', 'Cobrar salida', 'Cobrar salidas',
-  'Registrar salida y cobrar', 'Patente', 'Ticket', 'Por hora', 'Día/Sem/Mes', 'Consultar precios',
+  'Registrar salida y cobrar', 'Cobrar con QR', 'Transferencia al alias', 'Salida registrada', 'Patente', 'Ticket', 'Por hora', 'Día/Sem/Mes', 'Consultar precios',
   'Administrar tickets', 'Administrar precios', 'Estadía por día, semana o mes', 'Turno actual', 'Abrir turno', 'Cerrar turno', 'Cerrar este turno',
   'Tarifas', 'Por tiempo', 'Editar tarifas', 'Configurar mis tarifas', 'Descartar cambios', 'Aplicar a los próximos ingresos', 'Comparar ejemplo', 'Calcular ejemplo', 'Caja', 'Ingresos y gastos', 'Turnos e historial', 'Planilla diaria', 'Configuración', 'Comprobantes',
   'Precios por duración', 'Cómo cobrar', 'Tipos de vehículo', 'Día / semana / mes',

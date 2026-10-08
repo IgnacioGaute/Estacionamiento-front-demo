@@ -15,7 +15,7 @@ import {
   Table as TanstackTable,
   useReactTable,
 } from '@tanstack/react-table';
-import { ReactNode, useState } from 'react';
+import { Fragment, ReactNode, useState } from 'react';
 import { Search, Inbox } from 'lucide-react';
 import {
   Table,
@@ -144,9 +144,8 @@ export function DataTableShell<TData, TValue>({
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <>
+                  <Fragment key={row.id}>
                     <TableRow
-                      key={row.id}
                       data-state={row.getIsSelected() && 'selected'}
                     >
                       {row.getVisibleCells().map((cell) => (
@@ -165,7 +164,7 @@ export function DataTableShell<TData, TValue>({
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 ))
               ) : (
                 <TableRow>

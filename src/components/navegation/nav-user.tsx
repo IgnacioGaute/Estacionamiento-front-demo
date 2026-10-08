@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { estiloRol } from '@/components/rol-avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,20 +59,26 @@ const SECCIONES_ADMIN = [
   { label: 'Mi plan', url: '/admin/plan' },
 ];
 
-function OperationalNavUser({
+export type UserNav = {
+  name: string;
+  email: string;
+  avatar: string;
+  role: User['role'];
+};
+
+// Los avisos sin leer los trae quien arma la barra (una sola consulta para la pestaña Avisos y
+// para el punto del botón de la cuenta).
+export function OperationalNavUser({
   userNav,
+  notas,
 }: {
-  userNav: {
-    name: string;
-    email: string;
-    avatar: string;
-    role: User['role'];
-  };
+  userNav: UserNav;
+  notas: { hasNewNoteAlert: boolean; clearNoteAlert: () => void };
 }) {
   const [openBoxDialog, setOpenBoxDialog] = useState(false);
   const { inquilinosEnabled } = useTenant();
   const [openPaymentsDialog, setOpenPaymentsDialog] = useState(false);
-  const { hasNewNoteAlert, clearNoteAlert } = useNotifications();
+  const { hasNewNoteAlert, clearNoteAlert } = notas;
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const esAdmin = userNav.role === 'ADMIN';
@@ -111,68 +118,59 @@ function OperationalNavUser({
   )?.value ?? pathname;
   const desktopSection = desktopItems.findIndex(section => section.children?.some(item => item.value === desktopActive));
 
-  const initials = userNav.name
-    .split(' ')
-    .filter(Boolean)
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || 'GM';
+  // Sin foto, una personita del color de su rol (amarillo administrador, naranja operador).
+  const rol = estiloRol(userNav.role);
 
   return (
     <>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
+          {/* En la barra: avatar, nombre y rol (en el celular, solo el avatar). */}
           <button
+            aria-label={`Tu cuenta y el menú: ${userNav.name.trim() || 'Usuario'}${hasNewNoteAlert ? '. Tenés avisos nuevos' : ''}`}
             className={cn(
-              'group relative flex items-center gap-2 rounded-2xl lg:w-[248px] lg:shrink-0 border border-transparent bg-white/[0.04] px-2 py-2 text-left text-sm transition-all duration-200',
-              'hover:bg-white/[0.08]',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-              isOpen && 'bg-white/[0.08] border-border/60',
+              'group flex h-11 shrink-0 items-center gap-2.5 rounded-[14px] p-1 text-left text-sm transition-colors duration-200 lg:pr-3',
+              'hover:bg-white/[0.05]',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
+              isOpen && 'bg-white/[0.07]',
             )}
           >
-            <Avatar className="h-10 w-10 shrink-0 rounded-xl border border-border/60">
-              <AvatarImage src={userNav.avatar} alt={userNav.name} />
-              <AvatarFallback className="rounded-xl bg-gm-orange text-white font-display font-bold text-sm tracking-wider">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <span className="relative shrink-0">
+              <Avatar className="size-9 rounded-xl">
+                <AvatarImage src={userNav.avatar} alt="" />
+                <AvatarFallback className={cn('rounded-xl', rol.fondo)}>
+                  <rol.Icono className="size-5" strokeWidth={2.2} aria-hidden />
+                </AvatarFallback>
+              </Avatar>
+              {hasNewNoteAlert && (
+                <span aria-hidden className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-gm-yellow ring-2 ring-[#0B0A08]" />
+              )}
+            </span>
 
-            <div className="hidden lg:flex min-w-0 flex-1 flex-col leading-tight">
-              <span className="text-sm font-medium text-foreground truncate max-w-[160px]">
+            <span className="hidden min-w-0 flex-col leading-tight lg:flex">
+              <span className="max-w-[150px] truncate text-[13.5px] font-semibold text-foreground">
                 {userNav.name.trim() || 'Usuario'}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[11.5px] text-muted-foreground">
                 {userNav.role === 'ADMIN' ? 'Administrador' : 'Operador'}
               </span>
-            </div>
-
-            {hasNewNoteAlert && (
-              <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-gm-orange ring-2 ring-gm-surface" />
-            )}
-
-            <span
-              className={cn(
-                'hidden lg:flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/60 bg-white/5 text-muted-foreground transition-transform duration-200',
-                isOpen && 'rotate-180',
-              )}
-            >
-              <ChevronDown className="h-4 w-4" />
             </span>
+            <ChevronDown className={cn('hidden size-4 shrink-0 text-muted-foreground transition-transform duration-200 lg:block', isOpen && 'rotate-180')} aria-hidden />
           </button>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
           align="end"
           sideOffset={8}
-          className="max-h-[calc(100dvh-110px)] w-[min(304px,calc(100vw-24px))] overflow-y-auto rounded-xl border border-border/70 bg-card/95 p-1.5 shadow-[0_28px_90px_-35px_rgba(0,0,0,0.65)] backdrop-blur-xl lg:w-[248px] lg:max-w-[calc(100vw-24px)] lg:p-2"
+          // El mismo negro de la barra flotante: el menú se lee como parte de ella.
+          className="max-h-[calc(100dvh-110px)] w-[min(304px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-white/[0.07] bg-[#0B0A08]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl lg:w-[260px] lg:max-w-[calc(100vw-24px)] lg:p-2"
         >
           {/* User info header */}
           <div className="mb-1 flex items-center gap-2.5 rounded-lg bg-white/[0.04] px-2.5 py-2 lg:mb-0.5 lg:px-2 lg:py-1.5">
-            <Avatar className="h-7 w-7 rounded-md border border-border/60">
-              <AvatarImage src={userNav.avatar} alt={userNav.name} />
-              <AvatarFallback className="rounded-md bg-gm-orange text-white font-display font-bold text-[10px] tracking-wider">
-                {initials}
+            <Avatar className="h-7 w-7 rounded-lg">
+              <AvatarImage src={userNav.avatar} alt="" />
+              <AvatarFallback className={cn('rounded-lg', rol.fondo)}>
+                <rol.Icono className="size-4" strokeWidth={2.2} aria-hidden />
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-1 flex-col min-w-0">
@@ -426,7 +424,12 @@ function PlatformNavUser({
   );
 }
 
-export function NavUser(props: { userNav: { name: string; email: string; avatar: string; role: User['role'] } }) {
-  if (props.userNav.role !== 'SUPER_ADMIN') return <OperationalNavUser {...props} />;
+function OperationalNavUserConAvisos(props: { userNav: UserNav }) {
+  const notas = useNotifications();
+  return <OperationalNavUser {...props} notas={notas} />;
+}
+
+export function NavUser(props: { userNav: UserNav }) {
+  if (props.userNav.role !== 'SUPER_ADMIN') return <OperationalNavUserConAvisos {...props} />;
   return <PlatformNavUser {...props} />;
 }

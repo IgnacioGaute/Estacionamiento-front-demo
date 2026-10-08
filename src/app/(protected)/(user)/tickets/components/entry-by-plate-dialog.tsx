@@ -7,20 +7,21 @@ import { VehicleTypeButtons } from '@/components/vehicle-type-options';
 import { useSession } from 'next-auth/react';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+  ActionDialog,
+  ActionDialogBody,
+  ActionDialogContent,
+  ActionDialogFooter,
+  ActionDialogHeader,
+  ActionDialogPrimaryButton,
+  ActionDialogSecondaryButton,
+  ActionDialogTrigger,
+} from '@/components/ui/action-dialog';
+import { PlateChip } from '@/components/plate-chip';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/lib/toast';
-import { AlertTriangle, Barcode, CarFront, CheckCircle2, Search } from 'lucide-react';
+import { AlertTriangle, Barcode, CarFront, ChevronDown, ChevronRight, CircleX, Plus, Search, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { entryByPlateSchema, EntryByPlateSchemaType } from '@/schemas/entry-by-plate.schema';
 import { createRegistrationByPlateAction } from '@/actions/tickets/create-registration-by-plate.action';
@@ -42,7 +43,12 @@ export function EntryByPlateDialog({
   triggerStyle,
   scanRequest,
   onOpenChange,
+  showTrigger = true,
+  openSignal,
 }: {
+  // Sin botón propio: lo abren otros accesos (la barra de abajo del inicio) cambiando `openSignal`.
+  showTrigger?: boolean;
+  openSignal?: number;
   onGoToRegistration?: (id: string) => void;
   // Se dispara cuando la pestaña "Ticket" registra una entrada (mismo endpoint que usa el
   // escáner físico) — el padre re-hace fetch de los registros igual que con el escáner.
@@ -71,6 +77,10 @@ export function EntryByPlateDialog({
   const [frequentLoading, setFrequentLoading] = useState(false);
   const [frequentError, setFrequentError] = useState('');
   const [vehicleValid, setVehicleValid] = useState(false);
+  const [vehicleName, setVehicleName] = useState<string | null>(null);
+  // Apellido y WhatsApp son opcionales: quedan plegados salvo que el operador los abra o ya
+  // traigan algo (un frecuente con datos), así el formulario entra en la pantalla sin desplazar.
+  const [datosAbiertos, setDatosAbiertos] = useState(false);
 
   const form = useForm<EntryByPlateSchemaType>({
     resolver: zodResolver(entryByPlateSchema),
@@ -101,8 +111,14 @@ export function EntryByPlateDialog({
     setMethod('PLATE');
     setSelectedFrequent(null);
     setFrequentQuery(scanRequest.plate);
+    setDatosAbiertos(false);
     setOpen(true);
   }, [scanRequest, form]);
+
+  useEffect(() => {
+    if (!openSignal) return;
+    setOpen(true);
+  }, [openSignal]);
 
   useEffect(() => {
     const query = frequentQuery.trim();
@@ -161,6 +177,7 @@ export function EntryByPlateDialog({
     setSelectedFrequent(null);
     setFrequentCustomers([]);
     setFrequentError('');
+    setDatosAbiertos(false);
   };
 
   const submitTicket = async () => {
@@ -230,9 +247,39 @@ export function EntryByPlateDialog({
     submit(form.getValues(), true);
   };
 
+  const lastNameValue = form.watch('lastNameCustomer') ?? '';
+  const phoneValue = form.watch('phoneCustomer') ?? '';
+  const mostrarDatos = datosAbiertos || !!lastNameValue || !!phoneValue;
+  const cerrar = () => { resetAll(); setOpen(false); };
+  // Hasta tres coincidencias: con más, el diálogo tendría que desplazarse. Se afina escribiendo.
+  const coincidencias = frequentCustomers.slice(0, 3);
+  const entroDuplicada = duplicateError?.entryTime?.slice(0, 5);
+  const etiqueta = 'text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground';
+  const campo = 'h-12 w-full rounded-xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 px-3.5 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-gm-yellow disabled:opacity-60 short:h-11';
+
+  const selectorMetodo = ticketEntryEnabled && (
+    <div role="group" aria-label="Cómo registrar la entrada" className="grid shrink-0 grid-cols-2 gap-1 rounded-xl border border-border bg-gm-surface-2 p-1">
+      {(['PLATE', 'TICKET'] as const).map((value) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={method === value}
+          onClick={() => setMethod(value)}
+          className={cn(
+            'gm-display flex h-10 items-center justify-center gap-2 rounded-lg text-[12.5px] font-semibold tracking-[0.04em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
+            method === value ? 'bg-gm-yellow text-gm-ink' : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          {value === 'PLATE' ? <CarFront className="size-4" aria-hidden /> : <Barcode className="size-4" aria-hidden />}
+          {value === 'PLATE' ? 'Patente' : 'Ticket'}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
-    <><Dialog open={open} onOpenChange={(o) => { if (!o) resetAll(); setOpen(o); }}>
-      <DialogTrigger asChild>
+    <><ActionDialog open={open} onOpenChange={(o) => { if (!o) resetAll(); setOpen(o); }}>
+      {showTrigger && <ActionDialogTrigger asChild>
         <button
           ref={triggerRef}
           style={triggerStyle}
@@ -249,201 +296,283 @@ export function EntryByPlateDialog({
             </span>
           </span>
         </button>
-      </DialogTrigger>
+      </ActionDialogTrigger>}
 
-      <DialogContent ref={dialogRef} onOpenAutoFocus={event => { if (scanRequest && frequentQuery === scanRequest.plate) { event.preventDefault(); dialogRef.current?.focus(); } }} className="w-[calc(100vw-1.5rem)] max-w-md max-h-[90dvh] rounded-2xl sm:max-w-lg">
-        <DialogHeader className="items-center">
-          <DialogTitle>Registrar entrada</DialogTitle>
-          <DialogDescription className="text-center text-xs">Buscá o escaneá la patente y revisá los datos antes de confirmar.</DialogDescription>
-        </DialogHeader>
+      <ActionDialogContent
+        ref={dialogRef}
+        className="sm:max-w-[580px]"
+        onOpenAutoFocus={(event) => {
+          // Desde el escaneo rápido la patente ya está: no se abre el teclado encima.
+          if (scanRequest && frequentQuery === scanRequest.plate) {
+            event.preventDefault();
+            dialogRef.current?.focus();
+          } else if (method === 'PLATE') {
+            event.preventDefault();
+            form.setFocus('licensePlate');
+          }
+        }}
+      >
+        <ActionDialogHeader
+          title="Registrar entrada"
+          description={duplicateError ? 'Revisá antes de seguir' : method === 'TICKET' ? 'Escaneá la tarjeta o escribí su número' : 'Buscá o escaneá la patente'}
+        />
 
         {duplicateError ? (
-          <div className="space-y-4">
-            <div className="flex items-start gap-3 rounded-2xl border border-gm-orange/40 bg-gm-orange/10 p-3 text-sm text-foreground">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-gm-orange mt-0.5" />
-              {duplicateError.message}
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                type="button"
-                className="w-full"
-                onClick={() => {
-                  if (duplicateError.existingRegistrationId) {
-                    onGoToRegistration?.(duplicateError.existingRegistrationId);
-                  }
-                  resetAll();
-                  setOpen(false);
-                }}
-              >
-                Ir a ese ticket
-              </Button>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">O confirmá que es otro vehículo, indicando el motivo:</p>
-                <Input
-                  placeholder="Motivo (ej: la salida anterior no se escaneó)"
+          <>
+            <ActionDialogBody>
+              <div role="alert" className="space-y-3.5 rounded-[18px] border-[1.5px] border-gm-orange/55 bg-gm-orange/10 p-4 short:space-y-3 short:p-3.5">
+                <p className="flex items-center gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gm-orange/20 text-[#F0714A]">
+                    <AlertTriangle className="size-5" aria-hidden />
+                  </span>
+                  <span className="gm-display text-[19px] leading-tight tracking-[0.02em] text-[#F0714A]">Esta patente ya está adentro</span>
+                </p>
+                <div className="flex items-center gap-3.5 rounded-[14px] bg-card p-3">
+                  <PlateChip plate={plateValue || '—'} />
+                  <p className="min-w-0 text-[15px] font-semibold">{entroDuplicada ? `Entró a las ${entroDuplicada}` : duplicateError.message}</p>
+                </div>
+                <p className="text-[13.5px] leading-relaxed text-[#D9D1C3]">
+                  Lo más común: no se registró la salida anterior. Si el auto se está yendo, abrí esa estadía y cobrala.
+                </p>
+              </div>
+
+              <div className="space-y-2.5">
+                <p className={cn(etiqueta, 'flex items-center gap-2.5')}>
+                  <span className="h-px flex-1 bg-border" aria-hidden />
+                  Si es otro vehículo
+                  <span className="h-px flex-1 bg-border" aria-hidden />
+                </p>
+                <label htmlFor="entrada-motivo-duplicada" className="block text-[13px] font-semibold">Motivo para registrarla igual</label>
+                <input
+                  id="entrada-motivo-duplicada"
+                  placeholder="Contá por qué hay dos con la misma patente"
                   value={overrideReason}
                   onChange={(e) => setOverrideReason(e.target.value)}
                   disabled={isPending}
+                  className={campo}
                 />
-                <Button type="button" variant="outline" className="w-full" onClick={onConfirmOverride} disabled={isPending}>
-                  Es otro vehículo — crear igual
-                </Button>
+                <p className="text-xs text-muted-foreground">Queda registrado con tu usuario.</p>
+                <ActionDialogSecondaryButton className="sm:w-full" onClick={onConfirmOverride} disabled={isPending || !overrideReason.trim()}>
+                  {isPending ? 'Registrando…' : 'Registrar la entrada igual'}
+                </ActionDialogSecondaryButton>
               </div>
-              <Button type="button" variant="ghost" className="w-full" onClick={() => setDuplicateError(null)}>
-                Cancelar
-              </Button>
-            </div>
-          </div>
+            </ActionDialogBody>
+            <ActionDialogFooter>
+              <ActionDialogSecondaryButton tone="ghost" className="order-last sm:order-none" onClick={() => setDuplicateError(null)}>
+                Corregir la patente
+              </ActionDialogSecondaryButton>
+              {duplicateError.existingRegistrationId && (
+                <ActionDialogPrimaryButton
+                  detail="Para cobrarla y registrar su salida"
+                  onClick={() => {
+                    onGoToRegistration?.(duplicateError.existingRegistrationId!);
+                    cerrar();
+                  }}
+                >
+                  Ir a esa estadía
+                </ActionDialogPrimaryButton>
+              )}
+            </ActionDialogFooter>
+          </>
+        ) : method === 'TICKET' ? (
+          <>
+            <ActionDialogBody>
+              {selectorMetodo}
+              <div className="space-y-2">
+                <label htmlFor="entrada-ticket" className={etiqueta}>Número de ticket</label>
+                <input
+                  id="entrada-ticket"
+                  autoFocus
+                  inputMode="numeric"
+                  placeholder="0000"
+                  value={ticketCode}
+                  onChange={(e) => setTicketCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      submitTicket();
+                    }
+                  }}
+                  disabled={ticketPending}
+                  className="gm-mono h-16 w-full rounded-2xl border-2 border-gm-line-strong bg-gm-surface-2 text-center text-2xl font-bold tracking-[0.12em] text-foreground outline-none transition-colors focus:border-gm-yellow disabled:opacity-60"
+                />
+                <p className="text-xs text-muted-foreground">Escaneá la tarjeta o escribí el número.</p>
+              </div>
+            </ActionDialogBody>
+            <ActionDialogFooter>
+              <ActionDialogSecondaryButton tone="ghost" className="hidden sm:inline-flex" onClick={cerrar}>Cancelar</ActionDialogSecondaryButton>
+              <ActionDialogPrimaryButton onClick={submitTicket} disabled={ticketPending || !ticketCode} detail={ticketCode ? `Ticket ${ticketCode}` : 'Escribí o escaneá el número'}>
+                {ticketPending ? 'Registrando…' : 'Registrar entrada'}
+              </ActionDialogPrimaryButton>
+            </ActionDialogFooter>
+          </>
         ) : (
-          <div className="space-y-4">
-            {ticketEntryEnabled && (
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setMethod('PLATE')}
-                  className={cn(
-                    'gm-display flex h-11 items-center justify-center gap-2 rounded-xl border text-[12px] font-semibold transition-colors',
-                    method === 'PLATE'
-                      ? 'border-gm-yellow bg-gm-yellow/15 text-gm-yellow'
-                      : 'border-gm-line-strong bg-gm-surface-2 text-foreground',
-                  )}
-                >
-                  <CarFront className="size-4" />
-                  Patente
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMethod('TICKET')}
-                  className={cn(
-                    'gm-display flex h-11 items-center justify-center gap-2 rounded-xl border text-[12px] font-semibold transition-colors',
-                    method === 'TICKET'
-                      ? 'border-gm-yellow bg-gm-yellow/15 text-gm-yellow'
-                      : 'border-gm-line-strong bg-gm-surface-2 text-foreground',
-                  )}
-                >
-                  <Barcode className="size-4" />
-                  Ticket
-                </button>
-              </div>
-            )}
-
-            {method === 'TICKET' ? (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium leading-none">Número de ticket</label>
-                  <Input
-                    autoFocus
-                    inputMode="numeric"
-                    placeholder="0000"
-                    value={ticketCode}
-                    onChange={(e) => setTicketCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        submitTicket();
-                      }
-                    }}
-                    disabled={ticketPending}
-                    className="gm-mono mt-2 h-16 text-center text-2xl md:text-2xl font-bold tracking-[0.12em]"
-                  />
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    Escaneá la tarjeta o escribí el número manualmente.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={submitTicket}
-                  disabled={ticketPending || !ticketCode}
-                  className="gm-display w-full h-[52px] rounded-2xl bg-gradient-to-br from-gm-yellow to-gm-yellow-deep text-sm font-bold text-gm-ink disabled:opacity-50"
-                >
-                  Registrar entrada
-                </button>
-              </div>
-            ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              <div className="space-y-3">
-                <FormField control={form.control} name="licensePlate" render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-center justify-between gap-2">
-                      <FormLabel>Patente o cliente frecuente</FormLabel>
-                      <span className="text-[10px] text-muted-foreground">Buscá o escaneá</span>
-                    </div>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-auto flex-col">
+              <ActionDialogBody>
+                {selectorMetodo}
+                <div className="space-y-2">
+                  <FormField control={form.control} name="licensePlate" render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel className={etiqueta}>Patente, apellido o teléfono</FormLabel>
+                      <div className="flex gap-2">
+                        <div className="relative min-w-0 flex-1">
+                          <FormControl>
+                            <input
+                              {...field}
+                              value={frequentQuery}
+                              disabled={isPending}
+                              autoComplete="off"
+                              spellCheck={false}
+                              maxLength={50}
+                              placeholder="Ej.: AB123CD"
+                              onChange={(event) => changeQuery(event.target.value)}
+                              className="gm-mono h-[60px] w-full rounded-2xl border-2 border-gm-line-strong bg-gm-surface-2 pl-4 pr-12 text-[24px] font-bold uppercase tracking-[0.1em] text-foreground outline-none transition-colors placeholder:font-sans placeholder:text-[15px] placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-muted-foreground focus:border-gm-yellow focus:shadow-[0_0_0_4px_hsl(var(--gm-yellow)/0.14)] disabled:opacity-60 short:h-[52px] short:text-[21px]"
+                            />
+                          </FormControl>
+                          {frequentQuery && (
+                            <button
+                              type="button"
+                              aria-label="Borrar y buscar otra"
+                              disabled={isPending}
+                              onClick={() => { changeQuery(''); form.setFocus('licensePlate'); }}
+                              className="absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              <CircleX className="size-[18px]" aria-hidden />
+                            </button>
+                          )}
+                        </div>
+                        <PlateCameraScanButton variant="square" disabled={isPending} onRecognized={changeQuery} />
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+
+                  <div aria-live="polite" className="space-y-1.5">
+                    {selectedFrequent ? (
+                      <div className="flex items-center gap-3 rounded-2xl border border-emerald-400/35 bg-emerald-400/[0.08] px-3.5 py-2.5">
+                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-400/15 text-emerald-400">
+                          <UserCheck className="size-5" aria-hidden />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[15px] font-semibold">Cliente frecuente identificado</span>
+                          <span className="block truncate text-[12.5px] text-muted-foreground">
+                            {selectedFrequent.lastNameCustomer || selectedFrequent.licensePlateOriginal} · {selectedFrequent.visits} {selectedFrequent.visits === 1 ? 'visita' : 'visitas'} · cargamos sus datos
+                          </span>
+                        </span>
+                      </div>
+                    ) : frequentLoading ? (
+                      <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground"><Search className="size-3.5" aria-hidden />Buscando clientes frecuentes…</p>
+                    ) : frequentError ? (
+                      <p className="text-xs text-gm-orange">{frequentError}</p>
+                    ) : coincidencias.length ? (
+                      <>
+                        <p className={cn(etiqueta, 'flex items-baseline justify-between')}>
+                          <span>Clientes frecuentes</span>
+                          <span className="text-xs font-normal normal-case tracking-normal">{frequentCustomers.length === 1 ? '1 coincide' : `${frequentCustomers.length} coinciden`}</span>
+                        </p>
+                        <div className="overflow-hidden rounded-2xl border border-border bg-gm-surface-2">
+                          {coincidencias.map((customer) => (
+                            <button
+                              key={customer.licensePlateNormalized}
+                              type="button"
+                              disabled={isPending}
+                              onClick={() => chooseFrequent(customer)}
+                              className="flex min-h-14 w-full items-center gap-3 border-b border-border px-3 py-2 text-left transition-colors last:border-0 hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow short:min-h-12 short:py-1.5"
+                            >
+                              <PlateChip plate={customer.licensePlateOriginal} size="sm" highlight={frequentQuery} />
+                              <span className="min-w-0 flex-1">
+                                <span className={cn('block truncate text-[15px] font-semibold', !customer.lastNameCustomer && 'font-normal italic text-muted-foreground')}>
+                                  {customer.lastNameCustomer || 'Sin apellido'}
+                                </span>
+                                <span className="block text-[12.5px] text-muted-foreground">
+                                  {VEHICLE_TYPE_LABEL[customer.vehicleType] || customer.vehicleType} · {customer.visits} visitas
+                                </span>
+                              </span>
+                              <ChevronRight className="size-[18px] shrink-0 text-muted-foreground" aria-hidden />
+                            </button>
+                          ))}
+                        </div>
+                        {frequentCustomers.length > coincidencias.length && (
+                          <p className="text-xs text-muted-foreground">Seguí escribiendo para ver los otros {frequentCustomers.length - coincidencias.length}.</p>
+                        )}
+                      </>
+                    ) : frequentQuery.trim().length >= 2 ? (
+                      <p className="text-xs leading-relaxed text-muted-foreground">Sin coincidencias en frecuentes. Completá los datos y registrá la entrada.</p>
+                    ) : (
+                      <p className="text-xs leading-relaxed text-muted-foreground short:hidden">Al escribir aparecen los clientes frecuentes con sus datos.</p>
+                    )}
+                    {showFormatWarning && <p className="text-xs text-gm-orange">Revisá la patente: el formato no es el habitual. Si buscaste un cliente, elegilo de la lista.</p>}
+                  </div>
+                </div>
+
+                <FormField control={form.control} name="vehicleType" render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <FormLabel className={etiqueta}>Tipo de vehículo</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        value={frequentQuery}
-                        disabled={isPending}
-                        autoComplete="off"
-                        spellCheck={false}
-                        maxLength={50}
-                        placeholder="Patente, apellido o teléfono"
-                        onChange={(event) => changeQuery(event.target.value)}
-                        className="gm-mono h-16 rounded-2xl border-2 border-gm-line-strong bg-gm-surface-2 px-4 text-center text-xl font-bold uppercase tracking-[0.06em] placeholder:font-sans placeholder:text-sm placeholder:font-normal placeholder:normal-case placeholder:tracking-normal md:text-2xl focus-visible:border-gm-yellow"
-                      />
+                      <VehicleTypeButtons value={field.value} onChange={field.onChange} disabled={isPending} onValidityChange={setVehicleValid} onSelectedNameChange={setVehicleName} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
-                <PlateCameraScanButton disabled={isPending} onRecognized={changeQuery} />
-                <div aria-live="polite">
-                  {selectedFrequent ? (
-                    <div className="flex items-start gap-3 rounded-xl border border-gm-yellow/25 bg-gm-yellow/5 p-3">
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-gm-yellow" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold">Cliente frecuente identificado</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{selectedFrequent.lastNameCustomer || selectedFrequent.licensePlateOriginal} · {selectedFrequent.visits} {selectedFrequent.visits === 1 ? 'visita' : 'visitas'}</p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">Cargamos sus datos. Podés revisarlos abajo.</p>
-                      </div>
-                    </div>
-                  ) : frequentLoading ? <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground"><Search className="size-3.5" />Buscando frecuentes…</p>
-                    : frequentError ? <p className="text-xs text-gm-orange">{frequentError}</p>
-                    : frequentCustomers.length ? (
-                    <div className="overflow-hidden rounded-xl border border-gm-line-strong bg-gm-surface-2">
-                      <p className="border-b border-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Clientes que coinciden</p>
-                      <div className="max-h-44 overflow-y-auto">
-                        {frequentCustomers.map(customer => (
-                          <button key={customer.licensePlateNormalized} type="button" disabled={isPending} onClick={() => chooseFrequent(customer)}
-                            className="flex min-h-14 w-full items-center justify-between gap-3 border-b border-border px-3 py-2.5 text-left transition-colors last:border-0 hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow">
-                            <span className="min-w-0"><span className="gm-mono block font-semibold">{customer.licensePlateOriginal}</span><span className="block truncate text-xs text-muted-foreground">{customer.lastNameCustomer || 'Sin apellido'}</span></span>
-                            <span className="shrink-0 text-right"><span className="block text-[11px]">{VEHICLE_TYPE_LABEL[customer.vehicleType] || customer.vehicleType}</span><span className="text-[10px] text-muted-foreground">{customer.visits} visitas</span></span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : <p className="text-[11px] leading-relaxed text-muted-foreground">{frequentQuery.trim().length >= 2 ? 'Sin coincidencias en frecuentes. Completá los datos para registrar la entrada.' : 'Al escribir aparecen sus visitas y datos guardados.'}</p>}
+
+                {!mostrarDatos && (
+                  <button
+                    type="button"
+                    aria-expanded={false}
+                    aria-controls="entrada-datos-cliente"
+                    onClick={() => setDatosAbiertos(true)}
+                    className="flex min-h-[54px] w-full shrink-0 items-center gap-3 rounded-[14px] border-[1.5px] border-dashed border-gm-line-strong px-3.5 text-left transition-colors hover:border-gm-yellow/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow short:min-h-12"
+                  >
+                    <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-gm-surface-3 text-gm-yellow"><Plus className="size-[18px]" aria-hidden /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14.5px] font-semibold">Agregar apellido o WhatsApp</span>
+                      <span className="block truncate text-xs text-muted-foreground">Opcional · lo encontrás más rápido la próxima vez</span>
+                    </span>
+                    <ChevronDown className="size-[18px] shrink-0 text-muted-foreground" aria-hidden />
+                  </button>
+                )}
+                {/* Montados aunque estén plegados: el formulario conserva lo que trajo un frecuente. */}
+                <div id="entrada-datos-cliente" hidden={!mostrarDatos} className="shrink-0 space-y-3 rounded-2xl border border-border bg-gm-surface-2/40 p-3.5 short:p-3">
+                  <p className={cn(etiqueta, 'flex items-baseline justify-between')}>
+                    <span>Datos del cliente</span>
+                    <span className="text-xs font-normal normal-case tracking-normal">Opcionales</span>
+                  </p>
+                  <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+                    <FormField control={form.control} name="lastNameCustomer" render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-[13px] font-semibold">Apellido</FormLabel>
+                        <FormControl><input disabled={isPending} autoComplete="family-name" placeholder="Apellido" {...field} className={campo} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="phoneCustomer" render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-[13px] font-semibold">WhatsApp</FormLabel>
+                        <FormControl><input type="tel" autoComplete="tel" placeholder="+54 9 11 1234 5678" disabled={isPending} {...field} className={cn(campo, 'gm-mono')} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+                  <p className="text-xs leading-relaxed text-muted-foreground short:hidden">WhatsApp con código de país: con su teléfono lo encontrás desde la primera visita.</p>
                 </div>
-                {showFormatWarning && <p className="text-xs text-gm-orange">Revisá la patente: el formato no es el habitual. Si buscaste un cliente, elegilo de la lista.</p>}
-              </div>
+              </ActionDialogBody>
 
-              <FormField control={form.control} name="vehicleType" render={({ field }) => (
-                <FormItem><FormLabel>Tipo de vehículo</FormLabel><FormControl>
-                  <VehicleTypeButtons value={field.value} onChange={field.onChange} disabled={isPending} onValidityChange={setVehicleValid} />
-                </FormControl><FormMessage /></FormItem>
-              )} />
-
-              <div className="space-y-4 rounded-2xl border border-border bg-gm-surface-2/40 p-3.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Datos del cliente · opcionales</p>
-                <FormField control={form.control} name="lastNameCustomer" render={({ field }) => (
-                  <FormItem><FormLabel>Apellido</FormLabel><FormControl><Input disabled={isPending} autoComplete="family-name" placeholder="Apellido del cliente" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="phoneCustomer" render={({ field }) => (
-                  <FormItem><FormLabel>WhatsApp</FormLabel><FormControl><Input type="tel" autoComplete="tel" placeholder="+54 9 11 1234 5678" disabled={isPending} {...field} /></FormControl>
-                    <p className="text-[11px] leading-relaxed text-muted-foreground">Incluí el código de país. Con su teléfono lo encontrás desde la primera visita.</p><FormMessage /></FormItem>
-                )} />
-              </div>
-              <div className="sticky -bottom-6 z-10 border-t border-border bg-card pb-6 pt-3">
-              <button type="submit" disabled={isPending || !vehicleValid || !plateValue.trim()} className="gm-display h-[52px] w-full rounded-2xl bg-gradient-to-br from-gm-yellow to-gm-yellow-deep text-sm font-bold text-gm-ink transition-opacity disabled:opacity-50">
-                {isPending ? 'Registrando entrada…' : 'Registrar entrada'}
-              </button>
-              </div>
+              <ActionDialogFooter>
+                <ActionDialogSecondaryButton tone="ghost" className="hidden sm:inline-flex" onClick={cerrar}>Cancelar</ActionDialogSecondaryButton>
+                <ActionDialogPrimaryButton
+                  type="submit"
+                  disabled={isPending || !vehicleValid || !plateValue.trim()}
+                  detail={plateValue.trim() ? [plateValue, vehicleName].filter(Boolean).join(' · ') : 'Escribí o escaneá la patente'}
+                >
+                  {isPending ? 'Registrando entrada…' : 'Registrar entrada'}
+                </ActionDialogPrimaryButton>
+              </ActionDialogFooter>
             </form>
           </Form>
-            )}
-          </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </ActionDialogContent>
+    </ActionDialog>
     <ParkingReceiptDelivery registrationId={receiptId} kind="ENTRY" onDismiss={() => setReceiptId(null)} />
     </>
   );

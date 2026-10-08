@@ -22,7 +22,11 @@ const money = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency',
 const date = (s: string) => new Date(s).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'short' });
 const amountValid = (s: string) => s !== '' && Number.isInteger(Number(s)) && Number(s) >= 0;
 
-export function TurnoBar({ onUpdated, turnoId, revision = 0 }: { onUpdated?: () => void; turnoId?: string; revision?: number } = {}) {
+const horaApertura = (s: string) => new Date(s).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
+// `pill`: el acceso que va en la tarjeta amarilla del inicio («Turno abierto · 08:02»). Abre el
+// mismo diálogo que el botón de siempre.
+export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' }: { onUpdated?: () => void; turnoId?: string; revision?: number; variant?: 'button' | 'pill' } = {}) {
   const router = useRouter();
   const { data: session } = useSession();
   const [context, setContext] = useState<CashContext | null>(null);
@@ -87,8 +91,16 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0 }: { onUpdated?: () 
   });
   const closingValid = canClose && (!forzando || forcedReason.trim()) && (!arqueo || (amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= Number(counted) && (closingDifference === 0 || notes.trim())));
   const openingValid = !!caja && !context?.legacyOpen && (caja.session ? context?.multipleShiftsEnabled : amountValid(received) && amountValid(added) && (openingDifference === 0 || openingReason.trim()));
+  const abrir = () => { setClosing(!!turnoId); setCounted(''); setWithdrawn('0'); setNotes(''); setForcedReason(''); setOpen(true); startTransition(() => refresh(true)); };
   return <>
-    <Button variant="outline" size="sm" onClick={() => { setClosing(!!turnoId); setCounted(''); setWithdrawn('0'); setNotes(''); setForcedReason(''); setOpen(true); startTransition(() => refresh(true)); }}><Wallet className="size-4" />{turnoId ? 'Cerrar turno' : active ? 'Mi turno' : 'Abrir mi turno'}</Button>
+    {variant === 'pill' ? (
+      <button type="button" onClick={abrir} className="inline-flex h-[34px] items-center gap-2 rounded-full bg-gm-ink px-3.5 text-[12.5px] font-bold text-[#F2EDE3] transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ink focus-visible:ring-offset-2 focus-visible:ring-offset-gm-yellow">
+        <span aria-hidden className={'size-[7px] rounded-full ' + (active ? 'bg-emerald-400' : 'bg-gm-orange')} />
+        {active ? `Turno abierto · ${horaApertura(active.fechaApertura)}` : 'Abrir mi turno'}
+      </button>
+    ) : (
+      <Button variant="outline" size="sm" onClick={abrir}><Wallet className="size-4" />{turnoId ? 'Cerrar turno' : active ? 'Mi turno' : 'Abrir mi turno'}</Button>
+    )}
     <Dialog open={open} onOpenChange={value => { if (!pending) { setOpen(value); if (!value) setClosing(false); } }}>
       <DialogContent className="max-w-lg rounded-2xl">
         <DialogHeader><DialogTitle>{active ? closing ? arqueo ? 'Cerrar turno y caja' : 'Cerrar sólo el turno' : 'Mi turno' : 'Abrir mi turno'}</DialogTitle><DialogDescription>{active ? arqueo ? 'Sos el último operador de esta caja. Contá el efectivo de todos los turnos desde su apertura.' : 'Otros operadores siguen usando esta caja. El último realiza el arqueo.' : 'El turno registra tus operaciones. El fondo se recibe de la caja que vas a usar.'}</DialogDescription></DialogHeader>

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 export default {
   darkMode: ["class"],
@@ -103,5 +104,13 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    // `short:` — celulares bajos (iPhone SE, Safari con sus barras): los diálogos del mostrador se
+    // compactan para entrar sin desplazar. Es una variante y no un `screen` a propósito: un screen
+    // con `raw` desactiva las variantes `min-[…]`/`max-*` de Tailwind en todo el proyecto.
+    plugin(({ addVariant }) => {
+      addVariant("short", "@media (max-height: 720px)");
+    }),
+  ],
 } satisfies Config;

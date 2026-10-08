@@ -12,8 +12,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { formatPrice } from '@/components/pricing-breakdown';
+import { ActionDialogFooterPortal, ActionDialogSecondaryButton } from '@/components/ui/action-dialog';
+import { formatImporte } from '@/components/pricing-breakdown';
 import { CobroMercadoPago } from '@/types/mercadopago.type';
 import {
   cancelarCobroMercadoPagoAction,
@@ -46,6 +46,7 @@ export function CobroQrMercadoPago({
   const [restante, setRestante] = useState(() =>
     cuentaRegresiva(inicial.expiraEl),
   );
+  const [cancelando, setCancelando] = useState(false);
   const yaAviso = useRef(false);
 
   const pendiente = cobro.estado === 'PENDIENTE';
@@ -60,88 +61,87 @@ export function CobroQrMercadoPago({
     }
   }, [cobro.id, onAcreditado]);
 
+  // La cuenta regresiva corre cada segundo; la consulta a MercadoPago, cada pocos.
   useEffect(() => {
     if (!pendiente) return;
-    const reloj = setInterval(() => {
-      setRestante(cuentaRegresiva(cobro.expiraEl));
-      // Se sigue consultando un rato después de vencido: el cliente puede haber apretado pagar
-      // justo sobre la hora y sería absurdo perder ese pago.
-      void consultar();
-    }, SEGUNDOS_ENTRE_CONSULTAS * 1000);
+    const reloj = setInterval(() => setRestante(cuentaRegresiva(cobro.expiraEl)), 1000);
     return () => clearInterval(reloj);
-  }, [pendiente, cobro.expiraEl, consultar]);
+  }, [pendiente, cobro.expiraEl]);
+
+  useEffect(() => {
+    if (!pendiente) return;
+    // Se sigue consultando un rato después de vencido: el cliente puede haber apretado pagar
+    // justo sobre la hora y sería absurdo perder ese pago.
+    const reloj = setInterval(() => void consultar(), SEGUNDOS_ENTRE_CONSULTAS * 1000);
+    return () => clearInterval(reloj);
+  }, [pendiente, consultar]);
 
   // Queda en el lugar donde estaba el QR, para que el cajero vea de un vistazo que ya está pago
   // antes de registrar la salida.
   if (cobro.estado === 'ACREDITADO')
     return (
-      <div
-        role="status"
-        className="rounded-2xl border-[1.5px] border-emerald-500/50 bg-emerald-500/10 p-6 text-center"
-      >
-        <CheckCircle2
-          className="mx-auto size-14 text-emerald-400"
-          strokeWidth={1.75}
-        />
-        <p className="mt-3 gm-display text-2xl font-bold text-emerald-400">
-          PAGADO
-        </p>
-        <p className="gm-mono gm-tnum mt-1 text-lg font-semibold text-foreground">
-          {formatPrice(cobro.monto)}
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          MercadoPago confirmó que el dinero entró a la cuenta.
-        </p>
+      <div role="status" className="flex items-center gap-3.5 rounded-2xl border-[1.5px] border-emerald-500/50 bg-emerald-500/10 p-4">
+        <CheckCircle2 className="size-11 shrink-0 text-emerald-400" strokeWidth={1.75} />
+        <div className="min-w-0">
+          <p className="gm-display text-xl font-bold text-emerald-400">Pagado · <span className="gm-mono">{formatImporte(cobro.monto)}</span></p>
+          <p className="text-[13px] text-muted-foreground">MercadoPago confirmó que el dinero entró a la cuenta.</p>
+        </div>
       </div>
     );
 
   const vencido = cobro.estado === 'VENCIDO' || restante.faltan === 0;
 
   return (
-    <div className="space-y-3 rounded-2xl border border-border bg-gm-surface-2 p-4">
-      <div className="text-center">
-        <p className="text-sm text-muted-foreground">
-          {cobro.interoperable
-            ? 'Que lo escanee con la app de su banco o billetera'
-            : 'Que lo escanee con la cámara o la app de MercadoPago'}
-        </p>
-        <p className="gm-display gm-tnum text-2xl font-bold">
-          {formatPrice(cobro.monto)}
+    <>
+      {/* Fondo blanco siempre: un QR sobre fondo oscuro no lo lee ningún celular. Con caja de la
+          playa es el código estándar (QR interoperable); sin caja, el link de MercadoPago. */}
+      <div className="flex flex-col items-center gap-2 rounded-[22px] bg-[#F7F5EF] px-4 pb-4 pt-3.5 text-[#1A1814] short:gap-1.5 short:pb-3 short:pt-3">
+        <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-[#4A443B]">Escaneá para pagar</p>
+        <p className="gm-mono text-[30px] font-bold leading-none text-[#111] short:text-[26px]">{formatImporte(cobro.monto)}</p>
+        <QRCodeSVG
+          value={cobro.qr || cobro.initPoint}
+          size={224}
+          marginSize={2}
+          className="h-auto w-full max-w-[208px] short:max-w-[172px]"
+          title={cobro.interoperable ? 'Escaneá con cualquier banco o billetera' : 'Escaneá para pagar con MercadoPago'}
+        />
+        <p className="text-center text-[13px] text-[#4A443B]">
+          {cobro.interoperable ? 'Con la app de cualquier banco o billetera' : 'Con la cámara o la app de MercadoPago'}
         </p>
       </div>
 
-      {/* Fondo blanco siempre: un QR sobre fondo oscuro no lo lee ningún celular. Con caja de la
-          playa es el código estándar (QR interoperable); sin caja, el link de MercadoPago. */}
-      <QRCodeSVG
-        value={cobro.qr || cobro.initPoint}
-        size={224}
-        marginSize={4}
-        className="mx-auto h-auto w-full max-w-[220px] rounded bg-white"
-        title={cobro.interoperable ? 'Escaneá con cualquier banco o billetera' : 'Escaneá para pagar con MercadoPago'}
-      />
-
       {vencido ? (
-        <p role="alert" className="text-center text-sm text-gm-orange">
-          El código venció. Cancelalo y generá uno nuevo con el importe
-          actualizado. Si el cliente igual llega a pagarlo, esa plata se
-          descuenta del total.
+        <p role="alert" className="rounded-2xl border border-gm-orange/40 bg-gm-orange/10 p-3.5 text-[13.5px] leading-relaxed">
+          El código venció. Cancelalo y generá uno nuevo con el importe actualizado. Si el cliente
+          igual llega a pagarlo, esa plata se descuenta del total.
         </p>
       ) : (
-        <p className="text-center text-sm text-muted-foreground" role="status">
-          Esperando el pago… el importe vale {restante.texto} min
-        </p>
+        <div role="status" className="flex items-center gap-3.5 rounded-2xl border border-gm-yellow/40 bg-gm-yellow/[0.07] px-4 py-3">
+          <span className="relative grid size-3 shrink-0" aria-hidden>
+            <span className="absolute inset-0 animate-ping rounded-full bg-gm-yellow/70" />
+            <span className="relative size-3 rounded-full bg-gm-yellow" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold">Esperando el pago</span>
+            <span className="block text-[12.5px] text-muted-foreground">Se acredita solo. El importe vale por</span>
+          </span>
+          <span className="gm-mono text-[15px] font-semibold text-muted-foreground">{restante.texto}</span>
+        </div>
       )}
 
-      <Button
-        variant="ghost"
-        className="min-h-11 w-full"
-        onClick={async () => {
-          await cancelarCobroMercadoPagoAction(cobro.id);
-          onCancelar();
-        }}
-      >
-        Cancelar y cobrar de otra forma
-      </Button>
-    </div>
+      <ActionDialogFooterPortal>
+        <ActionDialogSecondaryButton
+          disabled={cancelando}
+          onClick={async () => {
+            setCancelando(true);
+            await cancelarCobroMercadoPagoAction(cobro.id);
+            setCancelando(false);
+            onCancelar();
+          }}
+        >
+          {cancelando ? 'Cancelando…' : 'Cancelar QR y cobrar de otra forma'}
+        </ActionDialogSecondaryButton>
+      </ActionDialogFooterPortal>
+    </>
   );
 }

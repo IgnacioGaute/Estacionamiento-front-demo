@@ -162,6 +162,9 @@ const Sidebar = React.forwardRef<
     side?: "left" | "right"
     variant?: "sidebar" | "floating" | "inset"
     collapsible?: "offcanvas" | "icon" | "none"
+    // En el celular la barra es un panel aparte: desde dónde entra y su estilo propio.
+    mobileSide?: "left" | "right" | "top" | "bottom"
+    mobileClassName?: string
   }
 >(
   (
@@ -169,6 +172,8 @@ const Sidebar = React.forwardRef<
       side = "left",
       variant = "sidebar",
       collapsible = "offcanvas",
+      mobileSide,
+      mobileClassName,
       className,
       children,
       ...props
@@ -198,13 +203,13 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className={cn("w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden", mobileClassName)}
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
               } as React.CSSProperties
             }
-            side={side}
+            side={mobileSide ?? side}
           >
             <SheetTitle className="sr-only">Navegación</SheetTitle>
             <div className="flex h-full w-full flex-col">{children}</div>

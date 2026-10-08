@@ -4,8 +4,11 @@ import Link from 'next/link';
 import { ReactNode } from 'react';
 import { currentUser } from '@/lib/auth';
 import { NavUser } from './nav-user';
+import { BarraOperativa } from './barra-operativa';
+import { PestaniaMovil } from './nav-main';
+import { cn } from '@/lib/utils';
 import { PlatformBar } from './platform-bar';
-import { ParkingMark } from '@/components/brand/logo';
+import { AppIcon } from '@/components/brand/logo';
 import { AssistantWidget } from '@/components/assistant/assistant-widget';
 import { OfflinePreparation } from '@/components/offline-preparation';
 import { AvisoCuenta } from '@/components/aviso-cuenta';
@@ -18,6 +21,14 @@ interface AppNavbarProps {
 
 export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavbarProps) {
   const user = await currentUser();
+  const userNav = {
+    avatar: user?.image ?? '',
+    email: user?.email ?? '',
+    name: `${user?.firstName ?? ''} ${user?.lastName ?? ''}`,
+    role: user?.role || 'USER',
+  };
+  // La barra lateral flotante de la empresa encastra con esta barra; la del super admin es otra.
+  const encastre = !!(adminSidebar || userSidebar) && user?.role !== 'SUPER_ADMIN';
 
   return (
     <>
@@ -29,47 +40,58 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
 
       <SidebarInset className="flex flex-col">
         {/* — TOPBAR — */}
-        <header className="sticky top-0 z-30 border-b border-border/60 bg-gm-surface/80 backdrop-blur-xl supports-[backdrop-filter]:bg-gm-surface/60">
-          {/* Caution-tape accent */}
-          <div className="gm-stripes h-[3px] w-full" aria-hidden />
-
-          <div className="flex h-[74px] shrink-0 items-center gap-2.5 px-3 py-2 sm:gap-4 sm:px-6">
-            {(adminSidebar || userSidebar) && (
-              <SidebarTrigger className="md:hidden -ml-1 h-9 w-9 border border-border/60 bg-white/[0.04] hover:bg-white/[0.08]" />
+        {/* La barra flota separada de los bordes, más oscura que la página. El degradé de atrás tapa
+            lo que pasa por debajo al desplazar, en el espacio entre la barra y el borde. Con la
+            barra lateral, las dos encastran: en computadora la pestaña de la lateral entra en el
+            hueco del extremo izquierdo de esta barra; en el celular la pestaña cuelga del centro
+            de esta barra y abre el menú, que baja y encaja en ella. La sombra es un filtro para que
+            siga esas formas. */}
+        <header className="barra-superior sticky top-0 z-30 bg-gradient-to-b from-background from-60% to-transparent px-2.5 pb-2 pt-2.5 sm:px-4 sm:pt-3">
+          <div className="relative [filter:drop-shadow(0_14px_18px_rgba(0,0,0,0.55))]">
+          <div
+            className={cn(
+              'flex h-14 shrink-0 items-center gap-1.5 rounded-2xl border border-white/[0.07] bg-[#0B0A08]/95 px-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:h-[60px] sm:gap-2 sm:rounded-[18px] sm:px-2.5',
+              // El hueco: 3 px más grande que la pestaña (radio 18) y centrado donde queda ella, a
+              // la altura del centro de la barra y entre los dos bordes.
+              encastre && 'md:pl-5 md:[-webkit-mask-image:radial-gradient(circle_21px_at_-10px_31px,transparent_20.5px,#000_21px)] md:[mask-image:radial-gradient(circle_21px_at_-10px_31px,transparent_20.5px,#000_21px)]',
+            )}
+          >
+            {user?.role === 'SUPER_ADMIN' && (adminSidebar || userSidebar) && (
+              <SidebarTrigger className="md:hidden h-9 w-9 border border-border/60 bg-white/[0.04] hover:bg-white/[0.08]" />
             )}
 
             {/* La barra del super admin trae su marca: con ella abierta, el logo de acá se
-                repetiría al lado. Se muestra cuando está colapsada o en el celular. */}
+                repetiría al lado. Se muestra cuando está colapsada o en el celular. La franja de
+                obra queda como detalle al pie del logo. */}
             <Link
               href={user?.role === 'SUPER_ADMIN' ? '/admin/empresas' : '/tickets'}
-              className={`group hidden shrink-0 items-center gap-2 transition-opacity hover:opacity-90 sm:inline-flex ${
+              aria-label={user?.role === 'SUPER_ADMIN' ? 'Ir a empresas' : 'Ir a Entradas y salidas'}
+              className={`group grid size-10 shrink-0 place-items-center rounded-[9px] transition-[filter] hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow ${
                 user?.role === 'SUPER_ADMIN' ? 'md:[.peer[data-state=expanded]~*_&]:hidden' : ''
               }`}
             >
-              <ParkingMark size="sm" />
+              {/* El mismo ícono que la pestaña y la pantalla de carga. */}
+              <AppIcon className="size-10" />
             </Link>
-
-            {/* Subtle separator */}
-            <div className="hidden md:block h-6 w-px bg-border/40" />
 
             {/* El super admin no opera una playa: en vez del selector lleva la ruta actual, el
                 buscador de la plataforma y su estado. */}
             {user?.role === 'SUPER_ADMIN' ? (
-              <PlatformBar />
+              <>
+                <div className="hidden md:block h-6 w-px bg-border/40" />
+                <PlatformBar />
+                <NavUser userNav={userNav} />
+              </>
             ) : (
-              <div className="min-w-0 flex-1">
-                <PlayaSelector />
-              </div>
+              <>
+                <div className="min-w-0 shrink">
+                  <PlayaSelector />
+                </div>
+                <BarraOperativa userNav={userNav} />
+              </>
             )}
-
-            <NavUser
-              userNav={{
-                avatar: user?.image ?? '',
-                email: user?.email ?? '',
-                name: `${user?.firstName ?? ''} ${user?.lastName ?? ''}`,
-                role: user?.role || 'USER',
-              }}
-            />
+          </div>
+          {encastre && <PestaniaMovil />}
           </div>
         </header>
 

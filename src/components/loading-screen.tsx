@@ -1,4 +1,4 @@
-import { ParkingMark } from './brand/logo';
+import { AppIcon } from './brand/logo';
 import { WaveLoader } from './wave-loader';
 
 /**
@@ -10,7 +10,7 @@ export function LoadingScreen() {
   return (
     <div className="gm-loader" role="status">
       <div className="gm-loader__marca" aria-hidden="true">
-        <ParkingMark size="md" />
+        <AppIcon className="size-9" />
         <span>ESTACIONAMIENTO</span>
       </div>
 

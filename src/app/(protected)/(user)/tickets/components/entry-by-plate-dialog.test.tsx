@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { EntryByPlateDialog } from './entry-by-plate-dialog';
 import { getFrequentCustomersAction } from '@/actions/tickets/get-frequent-customers.action';
 import { getVehicleTypesAction } from '@/actions/tickets/vehicle-types.action';
@@ -29,7 +29,7 @@ async function open() {
   render(<EntryByPlateDialog />);
   fireEvent.click(screen.getByRole('button', { name: /Registrar entrada/ }));
   await screen.findByRole('radio', { name: 'Auto' });
-  return screen.getByLabelText('Patente o cliente frecuente');
+  return screen.getByLabelText('Patente, apellido o teléfono');
 }
 
 test('un solo campo busca frecuentes y permite editar los datos y el vehículo antes de confirmar', async () => {
@@ -44,7 +44,10 @@ test('un solo campo busca frecuentes y permite editar los datos y el vehículo a
   expect(screen.queryByRole('radio', { name: 'Bus' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('radio', { name: 'Utilitario' }));
   fireEvent.change(screen.getByLabelText('Apellido'), { target: { value: 'García' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Registrar entrada' }));
+  // El botón repite qué se registra: «Registrar entrada · AB123CD · Utilitario».
+  const confirmar = within(screen.getByRole('dialog')).getByRole('button', { name: /^Registrar entrada/ });
+  expect(confirmar).toHaveTextContent('AB123CD · Utilitario');
+  fireEvent.click(confirmar);
   await waitFor(() => expect(createRegistrationByPlateAction).toHaveBeenCalledWith(expect.objectContaining({ licensePlate: 'AB123CD', vehicleType: 'VAN', lastNameCustomer: 'García' })));
 });
 
@@ -53,7 +56,7 @@ test('el escaneo identifica automáticamente al frecuente sin crear la entrada',
   await open();
   fireEvent.click(screen.getByRole('button', { name: 'Escanear patente con la cámara' }));
   await screen.findByText('Cliente frecuente identificado');
-  expect(screen.getByLabelText('Patente o cliente frecuente')).toHaveValue('AB123CD');
+  expect(screen.getByLabelText('Patente, apellido o teléfono')).toHaveValue('AB123CD');
   expect(screen.getByLabelText('Apellido')).toHaveValue('Pérez');
   expect(createRegistrationByPlateAction).not.toHaveBeenCalled();
 });
@@ -62,7 +65,7 @@ test('el acceso rápido abre el formulario con la patente y descarta coincidenci
   let finish!: (rows: FrequentCustomer[]) => void;
   jest.mocked(getFrequentCustomersAction).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })).mockResolvedValue([]);
   render(<EntryByPlateDialog scanRequest={{ plate: 'AB123CD', sequence: 1 }} />);
-  const input = await screen.findByLabelText('Patente o cliente frecuente');
+  const input = await screen.findByLabelText('Patente, apellido o teléfono');
   expect(input).toHaveValue('AB123CD');
   await waitFor(() => expect(getFrequentCustomersAction).toHaveBeenCalled());
   fireEvent.change(input, { target: { value: 'ZZ999ZZ' } });
