@@ -5,6 +5,7 @@ import { TicketRegistrationForDay } from "./ticket-registration-for-day.type";
 import { TicketRegistration } from "./ticket-registration.type";
 
 export type BoxList = {
+    resumenCaja?: ResumenCaja;
     id: string;
     date: Date;
     totalPrice: number;
@@ -24,6 +25,16 @@ export type BoxList = {
     // está habilitada en la playa.
     cobrosInquilinos?: CobroInquilinoDia[] | null;
 }
+
+export type ComisionesCaja = { qrPorcentaje: number; transferenciaPorcentaje: number };
+export type ResumenCaja = {
+    criterio: 'PORCENTAJES_ACTUALES';
+    efectivo: number;
+    totalAntesComisiones: number;
+    comisionEstimada: number;
+    totalNetoEstimado: number;
+    medios: { metodo: string; etiqueta: string; porcentaje: number; bruto: number; comision: number; neto: number }[];
+};
 
 export type CobroInquilinoDia = {
     id: string;

@@ -11,6 +11,8 @@ import { PageHeader } from '@/components/page-header';
 import { getEstadoMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import { configuracionAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
 import { ConexionMercadoPago } from './conexion-mercadopago';
+import { getComisionesCajaAction } from '@/actions/box-lists/comisiones.action';
+import { ComisionesCajaForm } from '@/components/comisiones-caja-form';
 
 // Esta ruta es además la URL de retorno registrada en MercadoPago, así que tiene que existir con
 // esta dirección exacta: cambiarla obliga a cambiarla también en el panel de la aplicación.
@@ -20,9 +22,10 @@ export default async function MercadoPagoPage() {
   // adónde va la plata.
   if (user?.role !== 'ADMIN') redirect('/tickets');
 
-  const [{ estado, error }, verificacion] = await Promise.all([
+  const [{ estado, error }, verificacion, comisiones] = await Promise.all([
     getEstadoMercadoPagoAction(),
     configuracionAliasAction(),
+    getComisionesCajaAction(),
   ]);
 
   return (
@@ -56,6 +59,7 @@ export default async function MercadoPagoPage() {
           <ConexionMercadoPago inicial={estado} verificacionAlias={verificacion.datos ?? null} />
         </Suspense>
       )}
+      {comisiones.datos ? <ComisionesCajaForm inicial={comisiones.datos} /> : <p role="alert" className="rounded-xl border border-destructive p-4">{comisiones.error ?? 'No se pudieron cargar las comisiones.'}</p>}
     </div>
   );
 }

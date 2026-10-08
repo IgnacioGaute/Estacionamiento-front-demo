@@ -25,6 +25,7 @@ import timezone from 'dayjs/plugin/timezone';
 import { CalendarDays, ChevronLeft, ChevronRight, FileText, Printer, Wallet, Info } from 'lucide-react';
 import { getShiftsEnabledAction } from '@/actions/turnos/shifts-enabled.action';
 import { CompactPagination } from '@/components/compact-pagination';
+import { ResumenCajaNeto } from '@/components/resumen-caja-neto';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -172,7 +173,7 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
             <div>
               <DialogTitle>Planilla diaria de caja</DialogTitle>
               <DialogDescription className="mt-0.5">
-                Resumen del efectivo registrado en la fecha que elijas.
+                Efectivo, cobros digitales y comisiones estimadas de la fecha que elijas.
               </DialogDescription>
             </div>
           </div>
@@ -211,6 +212,7 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
             </div>
           </div>
           <section className="min-w-0 space-y-4" aria-busy={loading} aria-label="Resumen de caja">
+          {boxData?.resumenCaja && <ResumenCajaNeto resumen={boxData.resumenCaja} />}
           {boxData && (
             <div key={dateKey} className="overflow-hidden rounded-2xl border border-border bg-background/40 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
