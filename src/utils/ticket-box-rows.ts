@@ -13,6 +13,6 @@ export function ticketBoxRows(box: BoxList): TicketRegistration[] {
     price: m.tipo === 'CORTESIA' ? 0 : m.monto,
     dateNow: box.date,
     description: `${labels[m.tipo]} - ${m.ticketRegistration.licensePlateOriginal || m.ticketRegistration.codeBarTicket || m.ticketRegistration.lastNameCustomer || 'Sin patente'}`,
-    movimientos: [{ metodo: m.metodo, tipo: m.tipo, monto: m.monto, medioPagoDetalle: m.medioPagoDetalle }],
+    movimientos: [{ metodo: m.metodo, tipo: m.tipo, monto: m.monto, medioPagoDetalle: m.medioPagoDetalle, comisionPagoEstimada: m.comisionPagoEstimada }],
   }))];
 }

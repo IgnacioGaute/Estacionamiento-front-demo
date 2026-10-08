@@ -1,4 +1,4 @@
-import { BoxList } from "./box-list.type";
+import { BoxList, DetalleComisionPago } from "./box-list.type";
 import { TicketType } from "./ticket.type";
 
 export const TICKET_TIME_TYPE = ['DIA', 'SEMANA', 'SEMANA_Y_DIA', 'MES', 'MES_Y_DIA'] as const;
@@ -22,5 +22,6 @@ export type TicketRegistrationForDay = {
     retiredAt?: string | null;
     paymentMetodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO' | null;
     medioPagoDetalle?: string;
+    comisionPagoEstimada?: DetalleComisionPago;
     boxList: BoxList;
 }

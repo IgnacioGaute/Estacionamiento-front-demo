@@ -4,7 +4,7 @@ import type { BoxList } from '@/types/box-list.type';
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 
-it('genera una planilla válida con el neto y centavos sin cambiar el importe original', async () => {
+it('compensa TR QR y TR Alias por su neto; el total conserva sólo efectivo y omite comisiones cero', async () => {
   const draw = jest.spyOn(PDFPage.prototype, 'drawText');
   const anchor = { click: jest.fn() };
   const windowBefore = global.window;
@@ -12,30 +12,41 @@ it('genera una planilla válida con el neto y centavos sin cambiar el importe or
   Object.defineProperty(global, 'window', { configurable: true, value: { open: () => null } });
   Object.defineProperty(global, 'document', { configurable: true, value: { createElement: () => anchor, body: { appendChild() {}, removeChild() {} } } });
   const url = jest.spyOn(URL, 'createObjectURL').mockReturnValue('blob:prueba');
-  const box = { id: 'caja', date: new Date('2026-10-07T12:00:00Z'), totalPrice: 3000, boxNumber: 1,
+  const registration = { id: 't1', description: 'Auto', licensePlateOriginal: 'ABC123', entryDay: '2026-10-08', departureDay: '2026-10-08', entryTime: '08:00:00', departureTime: '08:30:00' };
+  const box = { id: 'caja', date: new Date('2026-10-08T12:00:00Z'), totalPrice: 50, boxNumber: 1,
     ticketRegistrations: [], ticketMovements: [
-      { id: 'qr', metodo: 'MERCADOPAGO', tipo: 'SALDO', monto: 10000, medioPagoDetalle: 'QR · crédito', ticketRegistration: { id: 't1', description: 'Auto', licensePlateOriginal: 'ABC123' } },
-      { id: 'alias', metodo: 'TRANSFER', tipo: 'SALDO', monto: 2000, medioPagoDetalle: 'Alias MP · crédito', ticketRegistration: { id: 't2', description: 'Auto', licensePlateOriginal: 'DEF456' } },
+      { id: 'qr', metodo: 'MERCADOPAGO', tipo: 'SALDO', monto: 100, medioPagoDetalle: 'QR · saldo / transferencia', comisionPagoEstimada: { bruto: 100, porcentaje: 0.968, comision: 0.97, neto: 99.03, pendiente: false }, ticketRegistration: registration },
+      { id: 'alias', metodo: 'TRANSFER', tipo: 'SALDO', monto: 100, medioPagoDetalle: 'Alias MP · transferencia', comisionPagoEstimada: { bruto: 100, porcentaje: 0, comision: 0, neto: 100, pendiente: false }, ticketRegistration: { ...registration, id: 't2', licensePlateOriginal: 'DEF456' } },
+      { id: 'cash', metodo: 'CASH', tipo: 'SALDO', monto: 50, ticketRegistration: { ...registration, id: 't3', licensePlateOriginal: 'GHI789' } },
     ], ticketRegistrationForDays: [], receipts: [], otherPayments: [], receiptPayments: [], paymentHistoryOnAccount: [], cobrosInquilinos: [],
-    resumenCaja: { criterio: 'PORCENTAJES_ACTUALES', efectivo: 3000, totalAntesComisiones: 15000, comisionEstimada: 745.25, totalNetoEstimado: 14254.75,
+    resumenCaja: { criterio: 'PORCENTAJES_ACTUALES', efectivo: 50, totalAntesComisiones: 250, comisionEstimada: 0.97, totalNetoEstimado: 249.03,
       medios: [
-        { metodo: 'qrCredito', etiqueta: 'QR · crédito', porcentaje: 7.2525, bruto: 10000, comision: 725.25, neto: 9274.75 },
-        { metodo: 'aliasCredito', etiqueta: 'Alias MP · crédito', porcentaje: 1, bruto: 2000, comision: 20, neto: 1980 },
+        { metodo: 'qrSaldo', etiqueta: 'QR · saldo / transferencia', porcentaje: 0.968, bruto: 100, comision: 0.97, neto: 99.03 },
+        { metodo: 'aliasSaldo', etiqueta: 'Alias MP · transferencia', porcentaje: 0, bruto: 100, comision: 0, neto: 100 },
       ] },
   } as unknown as BoxList;
+  const antes = JSON.stringify(box);
   try {
     const bytes = await generateBoxList(box, 'Prueba');
     expect((await PDFDocument.load(bytes)).getPageCount()).toBeGreaterThan(0);
     const textos = draw.mock.calls.map(([texto]) => texto);
-    expect(textos).toContain('TOTAL NETO ESTIMADO');
-    expect(textos).toContain('$ 14.254,75');
-    // Una vez por cada cobro y otra en el resumen: el detalle no se pierde al armar filas.
-    expect(textos).toContain('QR · crédito');
-    expect(textos).toContain('Alias MP · crédito');
-    expect(textos.filter(t => t.startsWith('QR · crédito'))).toHaveLength(2);
-    expect(textos.filter(t => t.startsWith('Alias MP · crédito'))).toHaveLength(2);
-    expect(box.totalPrice).toBe(3000);
-    expect(box.ticketMovements?.map(m => m.monto)).toEqual([10000, 2000]);
+    expect(textos).toContain('TR QR');
+    expect(textos).toContain('TR Alias');
+    expect(textos).toContain('Neto  50');
+    expect(textos).toContain('Entradas  249,03');
+    expect(textos).toContain('Salidas  - 199,03');
+    expect(textos).toContain('EFECTIVO DEL DÍA');
+    expect(textos).toContain('$ 50');
+    expect(textos).not.toContain('TOTAL NETO ESTIMADO');
+    expect(textos).toContain('COMISIONES ESTIMADAS');
+    expect(textos).not.toContain('Alias MP · transferencia');
+    expect(textos.some(t => t.includes('Comisión $ 0,97'))).toBe(true);
+    // Las dos columnas de la fila QR muestran el mismo neto, con centavos.
+    const qrBadge = draw.mock.calls.find(([texto]) => texto === 'TR QR')!;
+    const qrY = qrBadge[1]!.y!;
+    const filaQr = draw.mock.calls.filter(([, opts]) => opts?.y === qrY).map(([texto]) => texto);
+    expect(filaQr.filter(t => t === '99,03')).toHaveLength(2);
+    expect(JSON.stringify(box)).toBe(antes);
     expect(anchor.click).toHaveBeenCalled();
   } finally {
     draw.mockRestore(); url.mockRestore();

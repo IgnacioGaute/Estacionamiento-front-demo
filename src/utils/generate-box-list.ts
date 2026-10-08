@@ -1,5 +1,6 @@
 // src/utils/generate-box-list.ts
 import { ticketBoxRows } from "./ticket-box-rows"
+import { pagoPlanilla, pagoTicketPlanilla, type PagoPlanilla } from './pago-planilla';
 import type { BoxList, CobroInquilinoDia } from "@/types/box-list.type"
 import type { OtherPayment } from "@/types/other-payment.type"
 import type { ReceiptPayment } from "@/types/receipt.type"
@@ -195,15 +196,11 @@ export default async function generateBoxList(boxList: BoxList, userName: string
 
     const numberFmt = new Intl.NumberFormat("es-AR", {
       useGrouping: true,
-      maximumFractionDigits: 0,
+      maximumFractionDigits: 2,
     })
 
     const formatNumber = (num: number): string => {
-      const n = Math.round(Number(num) || 0)
-      if (n === 0) return "0"
-      const s = String(Math.abs(n))
-      const withDots = s.replace(/\B(?=(\d{3})+(?!\d))/g, ".")
-      return n < 0 ? `-${withDots}` : withDots
+      return numberFmt.format(Number(num) || 0)
     }
 
     const formatDate = (fecha: Date) => {
@@ -332,7 +329,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       yPosition -= 6
     }
 
-    const ensureSpace = (neededHeight = 70) => {
+    const ensureSpace = (neededHeight = 70, repeatTableHeader = true) => {
       if (yPosition < neededHeight) {
         drawFooter(page, pdfDoc.getPageCount())
 
@@ -347,7 +344,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
         page.drawLine({ start: { x: marginLeft, y: yPosition }, end: { x: marginRight, y: yPosition }, thickness: 0.75, color: borderLight })
         yPosition -= 26
 
-        drawTableHeader()
+        if (repeatTableHeader) drawTableHeader()
       }
     }
 
@@ -512,26 +509,32 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       title: string,
       items: any[],
       // El medio verificado de Mercado Pago ocupa su propia línea en la planilla.
-      dataExtractor: (item: any) => [string, string, string, string?, string?, string?],
+      dataExtractor: (item: any) => [string, string, string?],
+      pagoExtractor: (item: any) => PagoPlanilla,
     ) => {
       yPosition -= 14
       drawSectionHeaderRow(title)
       const filteredItems = items.filter((i: any) => i.paid === undefined || i.paid)
-      const entradas = filteredItems.reduce((sum, i: any) => sum + Math.max(0, i.price), 0)
-      const salidas = filteredItems.reduce((sum, i: any) => sum + Math.max(0, -i.price), 0)
+      const entradas = filteredItems.reduce((sum, i: any) => sum + pagoExtractor(i).entradas, 0)
+      const salidas = filteredItems.reduce((sum, i: any) => sum + pagoExtractor(i).salidas, 0)
 
       if (items.length > 0) {
         drawTableHeader()
         items.forEach((item: any) => {
-          const [desc, priceStr, dateNow, paymentBadge, subtitle, medioDetalle] = dataExtractor(item)
-          const price = Number(priceStr)
+          const [desc, dateNow, subtitle] = dataExtractor(item)
+          const pago = item.paid === false ? { entradas: 0, salidas: 0, badge: 'PEND', detalle: undefined } : pagoExtractor(item)
+          const paymentBadge = pago.badge
+          const medioDetalle = pago.detalle
           const hasSubtitle = Boolean(subtitle)
           const rowHeight = 18 + (hasSubtitle ? 12 : 0) + (medioDetalle ? 12 : 0)
           ensureSpace(rowHeight + 20)
 
           const nameSize = 9.5
-          const maxDescWidth = descRightEdge - colDescTextX
-          const truncatedDesc = truncateText(desc, maxDescWidth, font, nameSize)
+          const badgeWidth = paymentBadge ? fontBold.widthOfTextAtSize(paymentBadge, 7.5) + 14 : 0
+          const maxDescWidth = descRightEdge - colDescTextX - badgeWidth
+          let truncatedDesc = desc
+          while (font.widthOfTextAtSize(truncatedDesc, nameSize) > maxDescWidth && truncatedDesc.length > 1) truncatedDesc = truncatedDesc.slice(0, -1)
+          if (truncatedDesc !== desc) truncatedDesc = truncatedDesc.slice(0, -3) + '...'
 
           const rowY = yPosition
           page.drawText(dateNow, { x: colFechaX, y: rowY, size: 9, font, color: mutedText2 })
@@ -549,8 +552,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
             page.drawText(medioDetalle, { x: colDescTextX, y: rowY - (hasSubtitle ? 24 : 12), size: 8, font, color: mutedText2 })
           }
 
-          drawRightText(price >= 0 ? formatNumber(price) : "—", entradasRightX, rowY, font, 9.5)
-          drawRightText(price < 0 ? formatNumber(-price) : "—", salidasRightX, rowY, font, 9.5, dashColor)
+          drawRightText(pago.entradas ? formatNumber(pago.entradas) : "—", entradasRightX, rowY, font, 9.5)
+          drawRightText(pago.salidas ? formatNumber(pago.salidas) : "—", salidasRightX, rowY, font, 9.5, pago.salidas ? negativeColor : dashColor)
 
           yPosition -= rowHeight
           drawRowSeparator()
@@ -778,19 +781,6 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       return `${t.entryTime.slice(0, 5)} - ${t.departureTime.slice(0, 5)} (${formatElapsedHM(diffMin)})`
     }
 
-    // El pago de un ticket puede quedar repartido en varios movimientos (anticipo + saldo) —
-    // si todos coinciden se muestra un único medio, si no, "MIX".
-    const ticketPaymentBadge = (t: TicketRegistration): string | undefined => {
-      const movimientos = (t.movimientos ?? []).filter((m) => m.tipo !== "CORTESIA")
-      if (movimientos.length === 0) return t.movimientos?.some((m) => m.tipo === "CORTESIA") ? "CORT" : undefined
-      const metodos = new Set(movimientos.map((m) => m.metodo))
-      if (metodos.size > 1) return "MIX"
-      // MercadoPago va como TR y no como EF: no es plata que quede en el cajón, así que tiene que
-      // caer del mismo lado que una transferencia. Preguntar sólo por TRANSFER lo habría rotulado
-      // como efectivo y descuadrado el arqueo contra la planilla.
-      return metodos.has("TRANSFER") || metodos.has("MERCADOPAGO") ? "TR" : "EF"
-    }
-
     addDataSection("tickets_hora", "ticket x hora", tickets, (ticket: TicketRegistration) => {
       const identifier = ticket.licensePlateOriginal || ticket.codeBarTicket || "—"
       const identifierLabel = ticket.licensePlateOriginal ? "Patente" : "Ticket"
@@ -798,13 +788,10 @@ export default async function generateBoxList(boxList: BoxList, userName: string
 
       return [
         ticket.description,
-        ticket.price.toString(),
         ticket.dateNow ? formatDateA(ticket.dateNow) : "—",
-        ticketPaymentBadge(ticket),
         subtitleParts.join("   ·   "),
-        [...new Set((ticket.movimientos ?? []).map(m => m.medioPagoDetalle).filter(Boolean))].join(' / ') || undefined,
       ]
-    })
+    }, pagoTicketPlanilla)
 
     // ======================================================
     // INQUILINOS: los cobros de la cuenta corriente, solo si la sección está habilitada en la
@@ -833,6 +820,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
         items.forEach((cobro) => {
           ensureSpace(50)
           const medio = MEDIOS_INQUILINOS[cobro.metodo] ?? { badge: cobro.metodo, nombre: cobro.metodo }
+          const pago = pagoPlanilla(cobro.monto, cobro.metodo, cobro.medioPagoDetalle, cobro.comisionPagoEstimada)
           const detalle =
             cobro.tipo === "PAGO"
               ? `Recibo de pago N° ${cobro.numero ?? "—"}`
@@ -845,11 +833,11 @@ export default async function generateBoxList(boxList: BoxList, userName: string
           const rowY = yPosition
           page.drawText(formatDateA(String(date).slice(0, 10)), { x: colFechaX, y: rowY, size: 9, font, color: mutedText2 })
           page.drawText(cobro.cliente, { x: colDescTextX, y: rowY, size: 9.5, font, color: inkColor })
-          drawBadge(medio.badge, colDescTextX + font.widthOfTextAtSize(cobro.cliente, 9.5) + 6, rowY - 1)
+          drawBadge(cobro.metodo === 'CHECK' ? medio.badge : pago.badge, colDescTextX + font.widthOfTextAtSize(cobro.cliente, 9.5) + 6, rowY - 1)
           page.drawText(detalle, { x: colDescTextX, y: rowY - 12, size: 8, font, color: mutedColor })
-          if (cobro.medioPagoDetalle) page.drawText(cobro.medioPagoDetalle, { x: colDescTextX, y: rowY - 24, size: 8, font, color: mutedText2 })
+          if (pago.detalle) page.drawText(pago.detalle, { x: colDescTextX, y: rowY - 24, size: 8, font, color: mutedText2 })
 
-          const monto = Math.abs(cobro.monto)
+          const monto = Math.abs(cobro.comisionPagoEstimada?.neto ?? cobro.monto)
           if (cobro.metodo === "CASH") {
             if (cobro.monto >= 0) {
               entradas += monto
@@ -868,7 +856,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
           }
           porMedio.set(cobro.metodo, (porMedio.get(cobro.metodo) ?? 0) + cobro.monto)
 
-          yPosition -= cobro.medioPagoDetalle ? 42 : 30
+          yPosition -= pago.detalle ? 42 : 30
           drawRowSeparator()
         })
 
@@ -898,13 +886,10 @@ export default async function generateBoxList(boxList: BoxList, userName: string
 
       return [
         ticket.description,
-        ticket.price.toString(),
         ticket.dateNow ? formatDateA(ticket.dateNow) : "—",
-        undefined,
         subtitleParts.join("   ·   "),
-        ticket.medioPagoDetalle,
       ]
-    })
+    }, (ticket: TicketRegistrationForDay) => pagoPlanilla(ticket.price, ticket.paymentMetodo, ticket.medioPagoDetalle, ticket.comisionPagoEstimada))
 
     if (Array.isArray(boxList.cobrosInquilinos)) addSeccionInquilinos(boxList.cobrosInquilinos)
 
@@ -1102,28 +1087,34 @@ export default async function generateBoxList(boxList: BoxList, userName: string
 
     if (boxList.resumenCaja) {
       const resumen = boxList.resumenCaja
+      const medios = resumen.medios.filter(m => m.porcentaje !== 0 && (m.comision !== 0 || (m.pendiente ?? 0) > 0))
+      if (medios.length) {
       const money = (n: number) => `$ ${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      ensureSpace(200 + resumen.medios.length * 18)
-      page.drawText('TOTAL DEL DIA CON COMISIONES ESTIMADAS', { x: marginLeft, y: yPosition, size: 11, font: fontBold, color: inkColor })
-      yPosition -= 22
-      const filas: [string, number][] = [
-        ['Efectivo del dia', resumen.efectivo],
-        ...resumen.medios.map(m => [`${m.etiqueta} - antes de comision`, m.bruto] as [string, number]),
-        ['Total antes de comisiones', resumen.totalAntesComisiones],
-        ['Comisiones estimadas de Mercado Pago', -resumen.comisionEstimada],
-        [resumen.importePendienteComision ? 'NETO ESTIMADO (PARCIAL)' : 'TOTAL NETO ESTIMADO', resumen.totalNetoEstimado],
-      ]
-      for (const [label, amount] of filas) {
-        page.drawText(label, { x: marginLeft, y: yPosition, size: 9, font: fontBold, color: inkColor })
-        drawRightText(money(amount), salidasRightX, yPosition, fontBold, 10)
+      ensureSpace(140 + medios.length * 20, false)
+      page.drawText('COMISIONES ESTIMADAS', { x: marginLeft, y: yPosition, size: 9, font: fontBold, color: mutedText2 })
+      yPosition -= 18
+      page.drawText('MEDIO', { x: marginLeft, y: yPosition, size: 8, font: fontBold, color: mutedColor })
+      drawRightText('BRUTO', resumenEntradasRightX, yPosition, fontBold, 8, mutedColor)
+      drawRightText('COMISIÓN', resumenSalidasRightX, yPosition, fontBold, 8, mutedColor)
+      drawRightText('NETO DIGITAL', resumenNetoRightX, yPosition, fontBold, 8, mutedColor)
+      yPosition -= 18
+      for (const m of medios) {
+        page.drawText(m.etiqueta, { x: marginLeft, y: yPosition, size: 8.5, font, color: mutedText2 })
+        drawRightText(money(m.bruto), resumenEntradasRightX, yPosition, font, 9)
+        drawRightText(m.pendiente ? 'Pendiente' : money(m.comision), resumenSalidasRightX, yPosition, font, 9)
+        drawRightText(money(m.neto), resumenNetoRightX, yPosition, font, 9)
         yPosition -= 18
       }
+      page.drawText('Total de comisión estimada', { x: marginLeft, y: yPosition, size: 8.5, font: fontBold, color: mutedText2 })
+      drawRightText(money(resumen.comisionEstimada), resumenSalidasRightX, yPosition, fontBold, 9)
+      yPosition -= 18
       if (resumen.importePendienteComision) {
         page.drawText(`Comision pendiente sobre ${money(resumen.importePendienteComision)}. Importe incluido sin descuento.`, { x: marginLeft, y: yPosition, size: 8, font, color: mutedColor })
         yPosition -= 18
       }
-      page.drawText('Porcentajes actuales de la empresa. Recalculan fechas anteriores. No modifican los tickets.', { x: marginLeft, y: yPosition, size: 8, font, color: mutedColor })
+      page.drawText('Neto digital en entradas y salidas: no suma efectivo. Porcentajes actuales de la empresa.', { x: marginLeft, y: yPosition, size: 8, font, color: mutedColor })
       yPosition -= 24
+      }
     }
 
     // Pie de página en la última hoja

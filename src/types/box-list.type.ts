@@ -11,7 +11,7 @@ export type BoxList = {
     totalPrice: number;
     boxNumber: number;
     ticketRegistrations: TicketRegistration[];
-    ticketMovements?: { id: string; monto: number; metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; medioPagoDetalle?: string; tipo: 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'CORTESIA'; fechaHora: string; ticketRegistration: TicketRegistration }[];
+    ticketMovements?: { id: string; monto: number; metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; medioPagoDetalle?: string; comisionPagoEstimada?: DetalleComisionPago; tipo: 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'CORTESIA'; fechaHora: string; ticketRegistration: TicketRegistration }[];
     ticketRegistrationForDays: TicketRegistrationForDay[];
     receipts: Receipt[];
     otherPayments: OtherPayment[];
@@ -27,6 +27,7 @@ export type BoxList = {
 }
 
 export type ClaveComision = 'qrSaldo' | 'qrDebito' | 'qrCredito' | 'aliasSaldo' | 'aliasDebito' | 'aliasCredito';
+export type DetalleComisionPago = { bruto: number; porcentaje: number | null; comision: number | null; neto: number; pendiente: boolean };
 export type ComisionesCaja = Record<ClaveComision, number | null>;
 export type ConfiguracionComisiones = { conectada: boolean; tasas: ComisionesCaja; referencia: ComisionesCaja };
 export type ResumenCaja = {
@@ -42,6 +43,7 @@ export type ResumenCaja = {
 export type CobroInquilinoDia = {
     id: string;
     medioPagoDetalle?: string;
+    comisionPagoEstimada?: DetalleComisionPago;
     // ANULACION: la de un pago o devolución de otro día (las del mismo día no vienen: se compensan).
     tipo: 'PAGO' | 'DEVOLUCION' | 'ANULACION';
     tipoOriginal: 'PAGO' | 'DEVOLUCION' | null;
