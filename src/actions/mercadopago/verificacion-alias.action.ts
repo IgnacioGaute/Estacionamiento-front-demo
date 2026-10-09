@@ -27,11 +27,11 @@ export async function disponibilidadAliasAction() {
   return intentar(() => disponibilidadAlias());
 }
 
-export async function iniciarCobroAliasAction(registrationId: string, tipo: 'HORA' | 'ABONO' = 'HORA') {
-  return intentar(() => iniciarCobroAlias(registrationId, tipo));
+export async function iniciarCobroAliasAction(registrationId: string, tipo: 'HORA' | 'ABONO' | 'INQUILINO' = 'HORA', datos?: { monto: number; receiptIds?: string[]; nota?: string }) {
+  return intentar(() => iniciarCobroAlias(registrationId, tipo, datos));
 }
 
-export async function cobroAliasDeEstadiaAction(registrationId: string, tipo: 'HORA' | 'ABONO' = 'HORA') {
+export async function cobroAliasDeEstadiaAction(registrationId: string, tipo: 'HORA' | 'ABONO' | 'INQUILINO' = 'HORA') {
   return intentar(() => cobroAliasDeEstadia(registrationId, tipo));
 }
 

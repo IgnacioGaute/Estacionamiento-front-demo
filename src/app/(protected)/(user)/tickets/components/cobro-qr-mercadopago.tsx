@@ -20,6 +20,7 @@ import {
   consultarCobroMercadoPagoAction,
 } from '@/actions/mercadopago/mercadopago.action';
 import { ConfirmacionDePago } from './pago-recibido';
+import { toast } from '@/lib/toast';
 
 const SEGUNDOS_ENTRE_CONSULTAS = 4;
 
@@ -154,9 +155,13 @@ export function CobroQrMercadoPago({
           disabled={cancelando}
           onClick={async () => {
             setCancelando(true);
-            await cancelarCobroMercadoPagoAction(cobro.id);
+            const r = await cancelarCobroMercadoPagoAction(cobro.id);
             setCancelando(false);
-            onCancelar();
+            if (r.error || !r.cobro) { toast.error(r.error ?? 'No se pudo cancelar el QR.'); return; }
+            setCobro(r.cobro);
+            if (r.cobro.estado === 'ACREDITADO') {
+              if (!yaAviso.current) { yaAviso.current = true; onAcreditado(r.cobro); }
+            } else if (r.cobro.estado === 'CANCELADO' || r.cobro.estado === 'VENCIDO') onCancelar();
           }}
         >
           {cancelando ? 'Cancelando…' : 'Cancelar QR y cobrar de otra forma'}

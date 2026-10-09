@@ -29,7 +29,8 @@ export type OpcionTransferencia = {
 export type CobroAlias = {
   id: string;
   registrationId: string;
-  tipo?: 'HORA' | 'ABONO';
+  tipo?: 'HORA' | 'ABONO' | 'INQUILINO';
+  recibo?: import('./cuenta.type').ResultadoPago | null;
   estado: EstadoCobroAlias;
   importe: number;
   moneda: string;
@@ -59,9 +60,9 @@ export type CobroAlias = {
   opciones: OpcionTransferencia[];
 };
 
-export type DisponibilidadAlias =
+export type DisponibilidadAlias = { qrDisponible?: boolean } & (
   | { disponible: true; alias: string }
-  | { disponible: false; code: string; motivo: string };
+  | { disponible: false; code: string; motivo: string });
 
 // Configuración → MercadoPago (administrador).
 export type ConfiguracionAlias = {

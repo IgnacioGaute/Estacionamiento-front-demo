@@ -156,9 +156,11 @@ export function CobroAliasPanel({
 
   const cancelar = async () => {
     setOcupado(true);
-    await cancelarCobroAliasAction(cobro.id);
+    const r = await cancelarCobroAliasAction(cobro.id);
     setOcupado(false);
-    onCancelado();
+    if (r.error || !r.datos) { toast.error(r.error ?? 'No se pudo cancelar el cobro.'); return; }
+    if (r.datos.estado === 'CONFIRMADO' || r.datos.estado === 'PAGADO_OTRO_MEDIO') actualizar(r.datos);
+    else if (['CANCELADO', 'VENCIDO'].includes(r.datos.estado)) onCancelado();
   };
 
   const copiarAlias = async () => {
@@ -256,8 +258,8 @@ export function CobroAliasPanel({
           <div className="flex gap-3 rounded-2xl border-[1.5px] border-gm-yellow/45 bg-gm-yellow/[0.08] p-3.5">
             <Info className="mt-0.5 size-5 shrink-0 text-gm-yellow" aria-hidden />
             <div className="min-w-0 text-sm">
-              <p className="font-semibold">Confirmá cuál es el pago de este auto</p>
-              <p className="text-[#D9D1C3]">{MOTIVOS[cobro.motivoRevision ?? ''] ?? 'Hay más de una posibilidad.'} Preguntale a nombre de quién transfirió.</p>
+              <p className="font-semibold">Confirmá cuál es el pago de este {cobro.tipo === 'INQUILINO' ? 'inquilino' : 'auto'}</p>
+              <p className="text-[#D9D1C3]">{cobro.tipo === 'INQUILINO' && cobro.motivoRevision === 'VARIOS_COBROS' ? 'Hay más de un cobro esperando una transferencia de este importe.' : MOTIVOS[cobro.motivoRevision ?? ''] ?? 'Hay más de una posibilidad.'} Preguntale a nombre de quién transfirió.</p>
             </div>
           </div>
           {cobro.opciones.length === 0 ? (
@@ -306,7 +308,7 @@ export function CobroAliasPanel({
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold">Buscando la transferencia</span>
             <span className="block text-[12.5px] leading-snug text-muted-foreground">
-              Desde las {horaCorta(cobro.buscarDesde)}. Si llega una sola de {formatImporte(cobro.importe)}, la salida se registra sola.
+              Desde las {horaCorta(cobro.buscarDesde)}. Si llega una sola de {formatImporte(cobro.importe)}, {cobro.tipo === 'INQUILINO' ? 'el pago se registra solo.' : 'la salida se registra sola.'}
             </span>
           </span>
           <span className="gm-mono text-[15px] font-semibold text-muted-foreground">{transcurrido}</span>
@@ -343,7 +345,7 @@ export function CobroAliasPanel({
             onClick={() => void asignar()}
             detail={opcionElegida ? (opcionElegida.nombre || opcionElegida.documento || `Operación ${operacionCorta(opcionElegida.operacionId)}`) : 'Elegí una transferencia'}
           >
-            {ocupado ? 'Registrando…' : 'Confirmar pago y salida'}
+            {ocupado ? 'Registrando…' : cobro.tipo === 'INQUILINO' ? 'Confirmar pago' : 'Confirmar pago y salida'}
           </ActionDialogPrimaryButton>
         )}
       </ActionDialogFooterPortal>

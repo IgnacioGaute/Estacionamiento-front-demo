@@ -7,14 +7,14 @@ import { DataLoading } from '@/components/ui/data-loading';
 //   2. Cuánto: ese total, que se puede cambiar si entrega otra cosa (una parte, o de más:
 //      lo que sobra queda a favor). Cada cargo muestra cómo queda.
 //   3. Cómo: efectivo, transferencia, o las dos; en ese caso se escribe el efectivo y la
-//      transferencia es el resto, así el reparto siempre cierra. O un QR de MercadoPago: ahí no
-//      se declara nada, el pago se asienta solo cuando MercadoPago confirma que la plata entró.
+//      transferencia es el resto, así el reparto siempre cierra. Con QR o alias de MercadoPago
+//      el pago se asienta cuando se verifica el ingreso; ante coincidencias, el cajero elige.
 // La frase que importa —«Recibís $X. Quedan pendientes $Y»— va en el pie, junto al botón.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Pencil, QrCode } from 'lucide-react';
+import { ArrowLeftRight, Check, Pencil, QrCode } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ActionDialog, ActionDialogBody, ActionDialogContent, ActionDialogFooter, ActionDialogHeader, ActionDialogPrimaryButton, ActionDialogSecondaryButton } from '@/components/ui/action-dialog';
 import { plata } from '@/components/plataforma/formato';
 import { useTenant } from '@/components/tenant-provider';
 import { getCuentaMostradorAction, registrarPagoAction } from '@/actions/cuentas/cuentas.action';
@@ -22,16 +22,20 @@ import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.a
 import { DeudaCuenta, ResultadoPago, nombreMetodo } from '@/types/cuenta.type';
 import { CobroMercadoPago } from '@/types/mercadopago.type';
 import { CobroQrMercadoPago } from '@/app/(protected)/(user)/tickets/components/cobro-qr-mercadopago';
+import { CobroAliasPanel } from '@/app/(protected)/(user)/tickets/components/cobro-alias';
+import { cobroAliasDeEstadiaAction, disponibilidadAliasAction, iniciarCobroAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
+import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
 import { CampoImporte } from './campo-importe';
 import { EntregaRecibo } from './entrega-recibo';
 import { colorSaldo, fechaAR, leerImporte, nuevoId, simularImputacion, textoSaldo } from './util';
 
-type Modo = 'CASH' | 'TRANSFER' | 'AMBOS' | 'QR';
+type Modo = 'CASH' | 'TRANSFER' | 'AMBOS' | 'QR' | 'ALIAS';
 const MODOS: { id: Modo; label: string }[] = [
   { id: 'CASH', label: 'Efectivo' },
   { id: 'TRANSFER', label: 'Transferencia' },
-  { id: 'AMBOS', label: 'Las dos' },
-  { id: 'QR', label: 'QR' },
+  { id: 'AMBOS', label: 'Efectivo + transferencia' },
+  { id: 'QR', label: 'QR / celular' },
+  { id: 'ALIAS', label: 'Al alias de MP' },
 ];
 
 const titulo = 'mb-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground';
@@ -71,13 +75,19 @@ export function CobrarDialog({
   const [resultado, setResultado] = useState<ResultadoPago | null>(null);
   const [error, setError] = useState('');
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
+  const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
+  const [disponibilidad, setDisponibilidad] = useState<DisponibilidadAlias | null>(null);
   // Uno por cobro: si la respuesta se pierde y se reintenta, el servidor reconoce el mismo cobro.
   const [solicitud, setSolicitud] = useState('');
 
   useEffect(() => {
     if (!open) return;
+    let vigente = true;
     setResultado(null);
     setCobroQr(null);
+    setCobroAlias(null);
+    setDisponibilidad(null);
+    setPendientes([]); setElegidos([]); setTexto(''); setSaldo(0); setVencido(0);
     setError('');
     setNota('');
     setConNota(false);
@@ -87,7 +97,9 @@ export function CobrarDialog({
     setSolicitud(nuevoId());
     setCargando(true);
     // Lo mismo que ve el operador: deudas y saldo, sin el libro.
-    void getCuentaMostradorAction(customerId).then((r) => {
+    void disponibilidadAliasAction().then(r => { if (vigente) setDisponibilidad(r.datos ?? null); });
+    void Promise.all([getCuentaMostradorAction(customerId), cobroAliasDeEstadiaAction(customerId, 'INQUILINO')]).then(([r, previo]) => {
+      if (!vigente) return;
       setCargando(false);
       if (!r.data) {
         setError(r.error ?? 'No se pudo cargar la cuenta.');
@@ -104,8 +116,13 @@ export function CobrarDialog({
       setElegidos(inicial);
       const suma = sumaDe(inicial, lista);
       setTexto(suma ? String(suma) : '');
+      if (previo.datos && ['ESPERANDO', 'REVISION'].includes(previo.datos.estado)) {
+        setCobroAlias(previo.datos);
+        setTexto(String(previo.datos.importe));
+      }
     });
-  }, [open, customerId, preseleccion]);
+    return () => { vigente = false; };
+  }, [open, customerId, preseleccion, playaId]);
 
   // Marcar o desmarcar un cargo recalcula el total: lo marcado es lo que paga.
   const cambiarSeleccion = (ids: string[]) => {
@@ -142,7 +159,7 @@ export function CobrarDialog({
             : null;
 
   const pagos: { metodo: 'CASH' | 'TRANSFER'; importe: number }[] =
-    !total || modo === 'QR'
+    !total || modo === 'QR' || modo === 'ALIAS'
     ? []
     : modo === 'AMBOS'
       ? [
@@ -152,11 +169,22 @@ export function CobrarDialog({
       : [{ metodo: modo, importe: total }];
 
   const saldoNuevo = saldo - total;
-  const listo = total > 0 && !lecturaTotal.error && !errorReparto && !enviando && !cargando && !error;
+  const medioDisponible = modo === 'QR' ? !!disponibilidad?.qrDisponible : modo === 'ALIAS' ? !!disponibilidad?.disponible : true;
+  const listo = total > 0 && medioDisponible && !lecturaTotal.error && !errorReparto && !enviando && !cargando && !error;
 
   async function confirmar() {
     if (!listo) return;
     setEnviando(true);
+    if (modo === 'ALIAS') {
+      const r = await iniciarCobroAliasAction(customerId, 'INQUILINO', {
+        monto: total, receiptIds: ordenElegidos.length ? ordenElegidos : undefined, nota: nota.trim() || undefined,
+      });
+      setEnviando(false);
+      if (!r.datos) { toast.error(r.error ?? 'No se pudo esperar la transferencia.'); return; }
+      if (r.datos.estado === 'CONFIRMADO' || r.datos.estado === 'PAGADO_OTRO_MEDIO') terminadoAlias(r.datos);
+      else setCobroAlias(r.datos);
+      return;
+    }
     if (modo === 'QR') {
       const q = await crearCobroMercadoPagoAction(customerId, 'INQUILINO', {
         monto: total,
@@ -198,7 +226,21 @@ export function CobrarDialog({
     toast.success(cobro.recibo ? `Pago acreditado · recibo N° ${cobro.recibo.numero}` : 'Pago acreditado.');
     onCobrado?.();
   }
+  function terminadoAlias(cobro: CobroAlias) {
+    setCobroAlias(null);
+    if (cobro.estado === 'CONFIRMADO' && cobro.recibo) {
+      setResultado(cobro.recibo);
+      toast.success(`Transferencia acreditada · recibo N° ${cobro.recibo.numero}`);
+      onCobrado?.();
+    } else {
+      toast.error('Este intento terminó. Volvé a consultar la cuenta antes de cobrar.');
+      onOpenChange(false);
+      onCobrado?.();
+    }
+  }
   const esperandoQr = cobroQr?.estado === 'PENDIENTE';
+  const esperandoAlias = !!cobroAlias && ['ESPERANDO', 'REVISION'].includes(cobroAlias.estado);
+  const modos = MODOS.filter(m => m.id === 'QR' ? disponibilidad?.qrDisponible : m.id === 'ALIAS' ? disponibilidad?.disponible : true);
 
   const playa = context.playas.find((p) => p.id === playaId)?.nombre;
   const comoPaga =
@@ -208,6 +250,8 @@ export function CobrarDialog({
         ? 'en efectivo y por transferencia'
         : modo === 'QR'
           ? 'con MercadoPago (QR)'
+          : modo === 'ALIAS'
+            ? 'al alias de MercadoPago'
           : modo === 'CASH'
           ? 'en efectivo'
           : 'por transferencia';
@@ -220,31 +264,27 @@ export function CobrarDialog({
   const distintoDeLoMarcado = total > 0 && total !== sumaMarcada;
 
   return (
-    <Dialog
+    <ActionDialog
       open={open}
       onOpenChange={(v) => {
         // Con el QR esperando, cerrar dejaría un pago que nadie consulta: se cancela primero.
-        if (!v && esperandoQr) {
-          toast.error('Cancelá el QR antes de cerrar, o esperá a que se acredite.');
+        if (!v && (esperandoQr || esperandoAlias || enviando)) {
+          toast.error(enviando ? 'Esperá a que termine el pedido.' : `Cancelá ${esperandoQr ? 'el QR' : 'el cobro por alias'} antes de cerrar, o esperá a que se acredite.`);
           return;
         }
         onOpenChange(v);
       }}
     >
-      <DialogContent className="w-full max-w-xl">
-        <DialogHeader>
-          <DialogTitle className="pr-8 font-display text-2xl">{resultado ? 'Pago registrado' : `Cobrar a ${nombre}`}</DialogTitle>
-          <DialogDescription>
-            {resultado ? (
+      <ActionDialogContent className="sm:max-w-xl">
+        <ActionDialogHeader title={resultado ? 'Pago registrado' : `Cobrar a ${nombre}`} description={resultado ? (
               `Recibo de pago N° ${resultado.numero}. Entregáselo ahora o más tarde desde la pestaña Pagos.`
             ) : (
               <>
                 Saldo de la cuenta: <strong className={colorSaldo(saldo)}>{textoSaldo(saldo)}</strong>
                 {vencido > 0 && <span className="text-[#FF7A4D]"> · {plata(vencido)} vencido</span>}
               </>
-            )}
-          </DialogDescription>
-        </DialogHeader>
+            )} />
+        <ActionDialogBody>
 
         {cargando && (
           <DataLoading label="Cargando la cuenta…" />
@@ -252,10 +292,11 @@ export function CobrarDialog({
         {error && <p className="py-4 text-sm text-destructive">{error}</p>}
 
         {cobroQr && !resultado && (
-          <CobroQrMercadoPago cobro={cobroQr} onAcreditado={acreditado} onCancelar={() => setCobroQr(null)} />
+          <CobroQrMercadoPago key={cobroQr.id} cobro={cobroQr} onAcreditado={acreditado} onCancelar={() => setCobroQr(null)} />
         )}
+        {cobroAlias && !resultado && <CobroAliasPanel key={cobroAlias.id} cobro={cobroAlias} onTerminado={terminadoAlias} onCancelado={() => setCobroAlias(null)} />}
 
-        {!cargando && !error && !resultado && !cobroQr && (
+        {!cargando && !error && !resultado && !cobroQr && !cobroAlias && (
           <>
             {/* 1 · Qué paga */}
             <section>
@@ -352,21 +393,23 @@ export function CobrarDialog({
             {/* 3 · Cómo paga */}
             <section>
               <h3 className={titulo}>Cómo paga</h3>
-              <div role="radiogroup" aria-label="Medio de pago" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {MODOS.map((o) => (
+              <div role="radiogroup" aria-label="Medio de pago" className="grid grid-cols-2 gap-2">
+                {modos.map((o) => (
                   <button
                     key={o.id}
                     type="button"
                     role="radio"
                     aria-checked={modo === o.id}
                     onClick={() => setModo(o.id)}
-                    className={`flex h-11 items-center justify-center gap-1.5 rounded-xl border px-2 text-[13px] font-semibold transition-colors sm:text-sm ${
+                    disabled={enviando}
+                    className={`flex min-h-12 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[13px] font-semibold leading-tight transition-colors sm:text-sm ${o.id === 'AMBOS' ? 'col-span-2' : ''} ${
                       modo === o.id
                         ? 'border-gm-yellow bg-gm-yellow text-gm-ink'
                         : 'border-border text-muted-foreground hover:bg-gm-surface-2 hover:text-foreground'
                     }`}
                   >
                     {o.id === 'QR' && <QrCode className="size-4" />}
+                    {o.id === 'ALIAS' && <ArrowLeftRight className="size-4" />}
                     {o.label}
                   </button>
                 ))}
@@ -392,6 +435,7 @@ export function CobrarDialog({
                   el pago se registra solo cuando MercadoPago confirma que la plata entró.
                 </p>
               )}
+              {modo === 'ALIAS' && disponibilidad?.disponible && <p className="mt-3 rounded-xl border border-border px-3.5 py-3 text-sm text-muted-foreground">El inquilino transfiere {plata(total)} al alias <strong className="break-all text-foreground">{disponibilidad.alias}</strong>. El sistema registra el pago al detectarlo; si hay coincidencias, te pide elegir por CUIT o documento.</p>}
             </section>
 
             <section>
@@ -457,15 +501,15 @@ export function CobrarDialog({
           </div>
         )}
 
-        {/* Pie fijo abajo del área que se desplaza (compensa el relleno del cuerpo del diálogo): la
-            frase del cobro y el botón siempre a la vista, aunque la lista de cargos sea larga. */}
-        {(!cobroQr || resultado) && (
-        <div className="sticky bottom-[-24px] z-10 -mx-6 -mb-6 border-t border-border bg-card px-6 py-4">
+        </ActionDialogBody>
+        <ActionDialogFooter>
+        {((!cobroQr && !cobroAlias) || resultado) && (
+        <div className="w-full">
           {resultado ? (
             <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" onClick={() => onOpenChange(false)} className="h-11 rounded-xl bg-gm-yellow px-5 text-sm font-bold text-gm-ink hover:bg-[#FFD23A]">
+              <ActionDialogPrimaryButton onClick={() => onOpenChange(false)}>
                 Listo
-              </button>
+              </ActionDialogPrimaryButton>
             </div>
           ) : (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -482,24 +526,26 @@ export function CobrarDialog({
                 )}
               </p>
               <div className="flex shrink-0 justify-end gap-2">
-                <button type="button" onClick={() => onOpenChange(false)} className="h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-gm-surface-2">
+                <ActionDialogSecondaryButton disabled={enviando} onClick={() => onOpenChange(false)}>
                   Cancelar
-                </button>
-                <button
-                  type="button"
+                </ActionDialogSecondaryButton>
+                <ActionDialogPrimaryButton
                   disabled={!listo}
                   onClick={() => void confirmar()}
-                  className="flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-sm font-bold text-gm-ink hover:bg-[#FFD23A] disabled:opacity-50"
+                  detail={modo !== 'QR' && modo !== 'ALIAS' && total ? plata(total) : undefined}
                 >
+                  <span className="flex items-center justify-center gap-2">
                   {enviando ? <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} /> : modo === 'QR' && <QrCode className="size-4" />}
-                  {modo === 'QR' ? 'Generar QR' : total ? `Cobrar ${plata(total)}` : 'Cobrar'}
-                </button>
+                  {modo === 'QR' ? 'Generar QR' : modo === 'ALIAS' ? 'Esperar transferencia' : 'Cobrar'}
+                  </span>
+                </ActionDialogPrimaryButton>
               </div>
             </div>
           )}
         </div>
         )}
-      </DialogContent>
-    </Dialog>
+        </ActionDialogFooter>
+      </ActionDialogContent>
+    </ActionDialog>
   );
 }
