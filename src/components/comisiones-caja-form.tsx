@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { guardarComisionesCajaAction } from '@/actions/box-lists/comisiones.action';
@@ -21,16 +21,25 @@ const campos = grupos.flatMap(g => g.campos);
 const aTexto = (tasas: ComisionesCaja) => Object.fromEntries(campos.map(c => [c.key, tasas[c.key] === null ? '' : String(tasas[c.key])])) as Record<ClaveComision, string>;
 const valido = (v: string) => v === '' || (/^\d{1,3}([.,]\d{1,4})?$/.test(v) && Number(v.replace(',', '.')) <= 100);
 
-export function ComisionesCajaForm({ inicial, referencia }: { inicial: ComisionesCaja; referencia: ComisionesCaja }) {
+// Con `id`, el formulario va dentro de otro flujo (el asistente de Mercado Pago): no muestra su
+// botón de guardar, lo envía el botón final de ese flujo, y `onEstado` le cuenta si hay cambios.
+export function ComisionesCajaForm({ inicial, referencia, id, onEstado }: {
+  inicial: ComisionesCaja; referencia: ComisionesCaja; id?: string;
+  onEstado?: (estado: { cambios: boolean; valido: boolean; guardando: boolean; guardado: ComisionesCaja | null }) => void;
+}) {
   const [valores, setValores] = useState(() => aTexto(inicial));
+  const [base, setBase] = useState(() => JSON.stringify(aTexto(inicial)));
   const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState<ComisionesCaja | null>(null);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const esValido = Object.values(valores).every(valido);
+  const cambios = JSON.stringify(valores) !== base;
+  useEffect(() => { onEstado?.({ cambios, valido: esValido, guardando, guardado }); }, [cambios, esValido, guardando, guardado, onEstado]);
   const textoReferencia = aTexto(referencia);
   const usaReferencia = campos.every(c => valores[c.key].replace(',', '.') === textoReferencia[c.key]);
   const pct = (n: number | null) => n === null ? 'a definir' : new Intl.NumberFormat('es-AR', { maximumFractionDigits: 4 }).format(n) + '%';
-  return <form className="space-y-7" onSubmit={async event => {
+  return <form id={id} className="space-y-7" onSubmit={async event => {
     event.preventDefault();
     if (!esValido || guardando) return;
     setGuardando(true); setError(''); setMensaje('');
@@ -38,7 +47,7 @@ export function ComisionesCajaForm({ inicial, referencia }: { inicial: Comisione
     try {
       const result = await guardarComisionesCajaAction(tasas);
       if (result.error) setError(result.error);
-      else setMensaje('Guardado para todas las playas de esta empresa.');
+      else { setMensaje('Guardado para todas las playas de esta empresa.'); setBase(JSON.stringify(valores)); setGuardado(tasas); }
     } catch { setError('No se pudo guardar. Intentá nuevamente.'); }
     finally { setGuardando(false); }
   }}>
@@ -72,8 +81,8 @@ export function ComisionesCajaForm({ inicial, referencia }: { inicial: Comisione
     {!esValido && <p role="alert" className="text-sm text-destructive">Usá un porcentaje de 0 a 100, con hasta cuatro decimales.</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {mensaje && <p role="status" className="text-sm text-emerald-500">{mensaje}</p>}
-    <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
+    {!id && <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
       <Button type="submit" variant="outline" size="sm" disabled={!esValido || guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</Button>
-    </div>
+    </div>}
   </form>;
 }

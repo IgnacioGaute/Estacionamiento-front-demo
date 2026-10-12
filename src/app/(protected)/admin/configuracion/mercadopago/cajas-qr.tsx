@@ -257,12 +257,17 @@ function FilaPlaya({
   );
 }
 
-export function CajasQrConfig() {
-  const [cajas, setCajas] = useState<CajasQr | null>(null);
+// `inicial` evita volver a pedirlas si la página ya las trajo; `alCambiar` avisa al asistente de
+// Mercado Pago para que el paso muestre cuántas playas tienen su QR.
+export function CajasQrConfig({ inicial = null, alCambiar }: { inicial?: CajasQr | null; alCambiar?: (cajas: CajasQr) => void } = {}) {
+  const [cajas, setCajasState] = useState<CajasQr | null>(inicial);
   const [error, setError] = useState<string | null>(null);
+  const setCajas = (next: CajasQr) => { setCajasState(next); alCambiar?.(next); };
 
   useEffect(() => {
-    void getCajasQrAction().then((r) => (r.error ? setError(r.error) : setCajas(r.cajas ?? null)));
+    if (inicial) return;
+    // Se piden una sola vez al montar.
+    void getCajasQrAction().then((r) => (r.error ? setError(r.error) : r.cajas && setCajas(r.cajas)));
   }, []);
 
   return (

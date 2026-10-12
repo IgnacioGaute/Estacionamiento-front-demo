@@ -32,3 +32,21 @@ test('con la cuenta activa, QR, alias y comisiones son pasos opcionales', async 
   expect(await screen.findByText('Formulario de comisiones')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^Listo/ })).toBeEnabled();
 });
+
+test('con todo configurado, ningún paso aparece como pendiente', () => {
+  const alias = { adicionalHabilitado: true, activa: true, alias: 'playa.mitre', cambiadaEl: null };
+  const qr = { cuentaConectada: true, playas: [{ playaId: 'p1', nombre: 'Mitre', direccion: null, caja: { creadaEl: '2026-10-01T00:00:00Z', direccion: null } }] };
+  const tasas = { qrSaldo: 0.968, qrDebito: 1.6335, qrCredito: 7.2479, aliasSaldo: 0, aliasDebito: 0, aliasCredito: null };
+  render(<ConexionMercadoPago inicial={conectada} verificacionAlias={alias} cajasQr={qr} comisiones={{ conectada: true, tasas, referencia: tasas }} />);
+  expect(screen.getByRole('button', { name: 'Paso 2: QR · Listo' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Paso 3: Alias · Activa' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Paso 4: Comisiones · Configuradas' })).toBeInTheDocument();
+  expect(screen.queryByText(/Pendiente/i)).not.toBeInTheDocument();
+});
+
+test('muestra lo que falta configurar sin llamarlo pendiente', () => {
+  const qr = { cuentaConectada: true, playas: [{ playaId: 'p1', nombre: 'Mitre', direccion: null, caja: { creadaEl: '2026-10-01T00:00:00Z', direccion: null } }, { playaId: 'p2', nombre: 'Colón', direccion: null, caja: null }] };
+  render(<ConexionMercadoPago inicial={conectada} verificacionAlias={{ adicionalHabilitado: false, activa: false, alias: null, cambiadaEl: null }} cajasQr={qr} />);
+  expect(screen.getByRole('button', { name: 'Paso 2: QR · 1 de 2 playas' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Paso 3: Alias · No incluida' })).toBeInTheDocument();
+});

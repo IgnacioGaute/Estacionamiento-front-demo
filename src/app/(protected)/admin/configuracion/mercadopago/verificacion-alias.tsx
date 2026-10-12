@@ -20,7 +20,8 @@ const ALIAS_VALIDO = /^[A-Za-z0-9.-]{6,20}$/;
 const fecha = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 
-export function VerificacionAliasConfig({ inicial }: { inicial: ConfiguracionAlias }) {
+// `alCambiar` avisa al asistente de Mercado Pago para que el paso muestre si quedó activa.
+export function VerificacionAliasConfig({ inicial, alCambiar }: { inicial: ConfiguracionAlias; alCambiar?: (config: ConfiguracionAlias) => void }) {
   const [config, setConfig] = useState(inicial);
   const [alias, setAlias] = useState(inicial.alias ?? '');
   const [activa, setActiva] = useState(inicial.activa);
@@ -37,6 +38,7 @@ export function VerificacionAliasConfig({ inicial }: { inicial: ConfiguracionAli
         return;
       }
       setConfig(r.datos);
+      alCambiar?.(r.datos);
       setActiva(r.datos.activa);
       setAlias(r.datos.alias ?? '');
       toast.success(r.datos.activa ? 'Verificación por alias activada.' : 'Verificación por alias pausada.');

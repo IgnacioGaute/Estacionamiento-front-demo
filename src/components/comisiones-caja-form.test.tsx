@@ -54,3 +54,11 @@ it('muestra errores sin anunciar guardado', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Vinculá');
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
 });
+it('dentro del asistente no muestra su botón y avisa cuando hay cambios', async () => {
+  const onEstado = jest.fn();
+  render(<ComisionesCajaForm id="comisiones-mp" inicial={referencia} referencia={referencia} onEstado={onEstado} />);
+  expect(screen.queryByRole('button', { name: 'Guardar cambios' })).not.toBeInTheDocument();
+  expect(onEstado).toHaveBeenLastCalledWith(expect.objectContaining({ cambios: false, valido: true }));
+  fireEvent.change(screen.getByLabelText('QR · tarjeta de débito'), { target: { value: '2' } });
+  await waitFor(() => expect(onEstado).toHaveBeenLastCalledWith(expect.objectContaining({ cambios: true, valido: true })));
+});

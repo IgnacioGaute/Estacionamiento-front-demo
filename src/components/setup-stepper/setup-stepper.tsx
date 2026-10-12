@@ -34,7 +34,7 @@ const TEMA = {
 export type StepStatus = 'complete' | 'active' | 'upcoming';
 export const STEP_STATES: Record<StepStatus, string> = { complete: 'Listo', active: 'En curso', upcoming: 'Pendiente' };
 
-export function SetupStepper({ titles, step, onStepChange, onComplete, completeLabel, nextLabel = 'Continuar', nextDisabled, locked, disabled, stateLabel, backButtonProps, nextButtonProps, className, children }: {
+export function SetupStepper({ titles, step, onStepChange, onComplete, completeLabel, nextLabel = 'Continuar', nextDisabled, locked, done, disabled, stateLabel, backButtonProps, nextButtonProps, className, children }: {
   titles: string[];
   step: number;
   onStepChange: (step: number) => void;
@@ -44,6 +44,9 @@ export function SetupStepper({ titles, step, onStepChange, onComplete, completeL
   nextDisabled?: boolean;
   // Pasos a los que todavía no se puede saltar (por ejemplo, sin la cuenta vinculada).
   locked?: (step: number) => boolean;
+  // Si se pasa, un paso que no es el actual se marca listo según lo que ya está configurado y no
+  // según si se lo recorrió: con todo configurado, nada aparece como pendiente.
+  done?: (step: number) => boolean;
   disabled?: boolean;
   // Reemplaza el texto de estado de un paso («En curso · 1/2»).
   stateLabel?: (step: number, status: StepStatus) => string | undefined;
@@ -66,7 +69,7 @@ export function SetupStepper({ titles, step, onStepChange, onComplete, completeL
     backButtonProps={{ disabled, ...backButtonProps, className: 'setup-stepper__back' }}
     nextButtonProps={{ ...nextButtonProps, disabled: disabled || nextDisabled, className: 'setup-stepper__next' }}
     renderStepIndicator={({ step: number, currentStep, onStepClick }) => {
-      const status: StepStatus = number < currentStep ? 'complete' : number === currentStep ? 'active' : 'upcoming';
+      const status: StepStatus = number === currentStep ? 'active' : done ? (done(number) ? 'complete' : 'upcoming') : number < currentStep ? 'complete' : 'upcoming';
       const state = stateLabel?.(number, status) ?? STEP_STATES[status];
       const blocked = !!locked?.(number);
       return <button type="button" onClick={() => onStepClick(number)} disabled={disabled || number === currentStep || blocked} aria-current={status === 'active' ? 'step' : undefined} aria-label={`Paso ${number}: ${titles[number - 1]} · ${state}`} className="setup-stepper__indicator" data-status={status}>

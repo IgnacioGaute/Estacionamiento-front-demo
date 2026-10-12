@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { currentUser } from '@/lib/auth';
 import { PageHeader } from '@/components/page-header';
-import { getEstadoMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
+import { getCajasQrAction, getEstadoMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import { configuracionAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
 import { getComisionesCajaAction } from '@/actions/box-lists/comisiones.action';
 import { ConexionMercadoPago } from './conexion-mercadopago';
@@ -21,10 +21,11 @@ export default async function MercadoPagoPage() {
   // adónde va la plata.
   if (user?.role !== 'ADMIN') redirect('/tickets');
 
-  const [{ estado, error }, verificacion, comisiones] = await Promise.all([
+  const [{ estado, error }, verificacion, comisiones, qr] = await Promise.all([
     getEstadoMercadoPagoAction(),
     configuracionAliasAction(),
     getComisionesCajaAction(),
+    getCajasQrAction(),
   ]);
 
   return (
@@ -55,7 +56,7 @@ export default async function MercadoPagoPage() {
             <DataLoading label="Cargando MercadoPago…" />
           }
         >
-          <ConexionMercadoPago inicial={estado} verificacionAlias={verificacion.datos ?? null} comisiones={comisiones.datos?.conectada ? comisiones.datos : null} />
+          <ConexionMercadoPago inicial={estado} verificacionAlias={verificacion.datos ?? null} comisiones={comisiones.datos?.conectada ? comisiones.datos : null} cajasQr={qr.cajas ?? null} />
         </Suspense>
       )}
     </div>

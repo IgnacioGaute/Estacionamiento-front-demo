@@ -5,14 +5,14 @@
 // dirección, y desde acá —ya con la sesión iniciada— se canjean por los tokens. Por eso el canje
 // no necesita ninguna ruta sin autenticación en el backend.
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, ExternalLink, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/lib/toast';
-import { CondicionesMercadoPago, EstadoMercadoPago } from '@/types/mercadopago.type';
+import { CajasQr, CondicionesMercadoPago, EstadoMercadoPago } from '@/types/mercadopago.type';
 import {
   aceptarCondicionesMercadoPagoAction,
   conectarMercadoPagoAction,
@@ -22,7 +22,7 @@ import {
 import { VerificacionAliasConfig } from './verificacion-alias';
 import { CajasQrConfig } from './cajas-qr';
 import { ConfiguracionAlias } from '@/types/verificacion-alias.type';
-import type { ConfiguracionComisiones } from '@/types/box-list.type';
+import type { ComisionesCaja, ConfiguracionComisiones } from '@/types/box-list.type';
 import { ComisionesCajaForm } from '@/components/comisiones-caja-form';
 import { SetupStepHeading, SetupStepper, Step } from '@/components/setup-stepper/setup-stepper';
 
@@ -74,15 +74,28 @@ export function ConexionMercadoPago({
   inicial,
   verificacionAlias,
   comisiones = null,
+  cajasQr = null,
 }: {
   inicial: EstadoMercadoPago;
   // null si no se pudo leer: la sección no se muestra.
   verificacionAlias: ConfiguracionAlias | null;
   // null sin cuenta vinculada o si no se pudo leer: el paso ofrece ir a la pantalla de comisiones.
   comisiones?: ConfiguracionComisiones | null;
+  // Las cajas QR de cada playa, si la página ya las trajo.
+  cajasQr?: CajasQr | null;
 }) {
   const [estado, setEstado] = useState(inicial);
   const [paso, setPaso] = useState(1);
+  // Lo ya configurado de cada sección: el asistente muestra el estado real de cada paso, no
+  // «pendiente» por no haberlo recorrido.
+  const [qr, setQr] = useState(cajasQr);
+  const [alias, setAlias] = useState(verificacionAlias);
+  const [tasas, setTasas] = useState(comisiones?.tasas ?? null);
+  const [formComisiones, setFormComisiones] = useState({ cambios: false, valido: true, guardando: false });
+  const estadoComisiones = useCallback(({ cambios, valido, guardando, guardado }: { cambios: boolean; valido: boolean; guardando: boolean; guardado: ComisionesCaja | null }) => {
+    setFormComisiones({ cambios, valido, guardando });
+    if (guardado) setTasas(guardado);
+  }, []);
   const [pendiente, startTransition] = useTransition();
   const [canjeando, setCanjeando] = useState(false);
   const [acepto, setAcepto] = useState(false);
@@ -166,16 +179,31 @@ export function ConexionMercadoPago({
   const activa = estado.conectada && estado.estado === 'ACTIVA';
   // Sólo la cuenta es obligatoria: sin ella no hay QR, alias ni comisiones que configurar.
   const irA = (paso: number) => { if (activa || paso === 1) setPaso(paso); };
+  const playasConQr = qr?.playas.filter((p) => p.caja).length ?? 0;
+  const playas = qr?.playas.length ?? 0;
+  const listo = [activa, playas > 0 && playasConQr === playas, !!alias?.activa, !!tasas && Object.values(tasas).some((v) => v !== 0)];
+  const estadoPaso = (numero: number) =>
+    numero === 1 ? (activa ? 'Vinculada' : 'Sin vincular')
+      : numero === 2 ? (!qr ? 'Opcional' : listo[1] ? 'Listo' : playasConQr ? `${playasConQr} de ${playas} playas` : 'Sin activar')
+        : numero === 3 ? (!alias?.adicionalHabilitado ? 'No incluida' : listo[2] ? 'Activa' : 'Apagada')
+          : listo[3] ? 'Configuradas' : 'En 0%';
+  // En Comisiones el botón final guarda el formulario si hay cambios; si no, termina.
+  const terminar = () => {
+    if (formComisiones.cambios) (document.getElementById('comisiones-mp') as HTMLFormElement | null)?.requestSubmit();
+    else router.push('/admin/configuracion');
+  };
 
   return (
     <SetupStepper
       titles={['Cuenta', 'QR', 'Alias', 'Comisiones']}
       step={paso}
       onStepChange={irA}
-      onComplete={() => router.push('/admin/configuracion')}
-      completeLabel="Listo"
-      nextDisabled={!activa}
+      onComplete={terminar}
+      completeLabel={formComisiones.cambios ? (formComisiones.guardando ? 'Guardando…' : 'Guardar y terminar') : 'Listo'}
+      nextDisabled={!activa || (paso === 4 && formComisiones.cambios && (!formComisiones.valido || formComisiones.guardando))}
       locked={(numero) => !activa && numero > 1}
+      done={(numero) => listo[numero - 1]}
+      stateLabel={(numero, status) => (status === 'active' ? undefined : estadoPaso(numero))}
     >
       <Step>
         <section className="space-y-4">
@@ -312,7 +340,7 @@ export function ConexionMercadoPago({
             Sin esto, el QR se paga sólo con la app de Mercado Pago. Podés activarlo ahora o más adelante.
           </SetupStepHeading>
           {/* El QR para cualquier banco: con la cuenta activa (crea sucursal y caja por playa). */}
-          {activa && <CajasQrConfig />}
+          {activa && <CajasQrConfig inicial={qr} alCambiar={setQr} />}
         </section>
       </Step>
 
@@ -324,7 +352,7 @@ export function ConexionMercadoPago({
           {/* La verificación por alias: solo con la cuenta activa y las condiciones aceptadas
               (el backend lo vuelve a exigir). */}
           {activa && condicionesAlDia && verificacionAlias ? (
-            <VerificacionAliasConfig inicial={verificacionAlias} />
+            <VerificacionAliasConfig inicial={verificacionAlias} alCambiar={setAlias} />
           ) : !condicionesAlDia ? (
             <div className="space-y-3 rounded-2xl border border-gm-yellow/30 bg-gm-yellow/[0.05] p-4 text-sm">
               <p className="font-semibold">Falta aceptar las condiciones de uso</p>
@@ -345,7 +373,7 @@ export function ConexionMercadoPago({
             Porcentajes por medio de pago para calcular el neto de caja. Arrancan en 0%.
           </SetupStepHeading>
           {comisiones ? (
-            <ComisionesCajaForm inicial={comisiones.tasas} referencia={comisiones.referencia} />
+            <ComisionesCajaForm id="comisiones-mp" inicial={comisiones.tasas} referencia={comisiones.referencia} onEstado={estadoComisiones} />
           ) : (
             <Link href="/admin/configuracion/mercadopago/comisiones" className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <div><p className="text-sm font-medium">Comisiones de Mercado Pago</p><p className="mt-1 text-xs text-muted-foreground">Porcentajes por medio de pago para el neto de caja.</p></div>
