@@ -6,6 +6,9 @@ export type TicketTimeType = (typeof TICKET_TIME_TYPE)[number];
 
 export type TicketRegistrationForDay = {
     id: string;
+    entryOperatorName?: string | null;
+    exitOperatorName?: string | null;
+    paymentOperatorName?: string | null;
     description: string;
     price: number;
     weeks: number;

@@ -20,12 +20,30 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { ArrowUpRight, Banknote, CalendarDays, CalendarPlus, ChevronDown, ChevronRight, Landmark, Minus, Plus } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, CalendarPlus, CheckCircle2, ChevronDown, ChevronRight, Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ticketRegistrationForDaySchema, TicketRegistrationForDaySchemaType } from '@/schemas/ticket-registration-for-day.schema';
 import { createTicketRegistrationForDayAction } from '@/actions/tickets/create-ticket-registration-for-day.action';
+import { updateTicketRegistrationForDayStatusAction } from '@/actions/tickets/update-ticket-registration-for-day-status.action';
+import { cancelarCobroMercadoPagoAction, crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
+import { cancelarCobroAliasAction, disponibilidadAliasAction, iniciarCobroAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
+import { CobroMercadoPago } from '@/types/mercadopago.type';
+import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
 import { sanitizePlateInput } from '@/utils/plate.utils';
 import { PlateCameraScanButton } from '../components/plate-camera-scan-button';
+import { MedioCobro, PaymentMethodChoices } from '../components/payment-method-choices';
+import { CobroQrMercadoPago, PagoQrRecibido } from '../components/cobro-qr-mercadopago';
+import { CobroAliasPanel, PagoRecibido } from '../components/cobro-alias';
+
+const NOMBRE_MEDIO: Record<MedioCobro, string> = {
+  CASH: 'en efectivo',
+  TRANSFER: 'por transferencia',
+  QR: 'con QR',
+  ALIAS: 'al alias',
+};
+
+// Con QR o alias el pago se confirma después de registrar la estadía: no hay medio que guardar.
+const esEnLinea = (medio: MedioCobro) => medio === 'QR' || medio === 'ALIAS';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -102,13 +120,20 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
   const [vehicleValid, setVehicleValid] = useState(false);
   const [vehicleName, setVehicleName] = useState<string | null>(null);
   const [verNombre, setVerNombre] = useState(false);
+  const [medio, setMedio] = useState<MedioCobro>('CASH');
+  const [alias, setAlias] = useState<DisponibilidadAlias | null>(null);
+  // Con QR o alias la estadía se registra primero y después se cobra en la misma ventana: el
+  // cobro necesita su id. Mientras tanto queda sin pagar, como «Paga al retirar».
+  const [registrada, setRegistrada] = useState<{ id: string; patente: string } | null>(null);
+  const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
+  const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
+  const [pagado, setPagado] = useState<{ medio: 'QR'; cobro: CobroMercadoPago } | { medio: 'ALIAS'; cobro: CobroAlias } | null>(null);
 
   const form = useForm<TicketRegistrationForDaySchemaType>({
     resolver: zodResolver(ticketRegistrationForDaySchema),
     defaultValues: DEFAULT_VALUES,
   });
   const isPaid = form.watch('paid');
-  const metodo = form.watch('paymentMetodo');
   const patente = form.watch('vehiclePlateCustomer') ?? '';
 
   // Mantiene el formulario en el formato que espera el backend: solo las cantidades del tipo
@@ -128,6 +153,14 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
     setIsDialogOpen(true);
   }, [openSignal, setIsDialogOpen]);
 
+  // «Al alias» se ofrece solo si la empresa lo tiene habilitado y activado.
+  useEffect(() => {
+    if (!isOpen) return;
+    let vigente = true;
+    void disponibilidadAliasAction().then((r) => { if (vigente) setAlias(r.datos ?? null); });
+    return () => { vigente = false; };
+  }, [isOpen]);
+
   const resetForm = () => {
     form.reset(DEFAULT_VALUES);
     setUnidad('SEMANA');
@@ -135,9 +168,55 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
     setConDias(false);
     setDiasExtra(1);
     setVerNombre(false);
+    setMedio('CASH');
+    setRegistrada(null);
+    setCobroQr(null);
+    setCobroAlias(null);
+    setPagado(null);
   };
 
   const cerrar = () => { setIsOpen(false); setIsDialogOpen(false); resetForm(); };
+
+  // Termina con la estadía registrada: el comprobante de entrada y cerrar.
+  const terminar = (mensaje: string) => {
+    if (!registrada) return;
+    toast.success(mensaje);
+    setReceiptId(registrada.id);
+    cerrar();
+  };
+
+  // Cobra la estadía ya registrada. Efectivo y transferencia se asientan en el momento; QR y
+  // alias esperan a que MercadoPago confirme, y entonces el abono queda pagado (no retirado).
+  const cobrar = async (id: string, elegido: MedioCobro) => {
+    if (elegido === 'QR') {
+      const r = await crearCobroMercadoPagoAction(id, 'ABONO', { alIngresar: true });
+      if (r.error || !r.cobro) toast.error(r.error ?? 'No se pudo generar el QR.');
+      else setCobroQr(r.cobro);
+    } else if (elegido === 'ALIAS') {
+      const r = await iniciarCobroAliasAction(id, 'ABONO', { alIngresar: true });
+      if (r.error || !r.datos) toast.error(r.error ?? 'No se pudo esperar la transferencia.');
+      else if (r.datos.estado === 'CONFIRMADO') setPagado({ medio: 'ALIAS', cobro: r.datos });
+      else setCobroAlias(r.datos);
+    } else {
+      const r = await updateTicketRegistrationForDayStatusAction(id, { paid: true, paymentMetodo: elegido });
+      if ('error' in r && r.error) toast.error(typeof r.error === 'string' ? r.error : 'No se pudo registrar el pago.');
+      else { toast.success('Estadía registrada y cobrada'); setReceiptId(id); cerrar(); }
+    }
+  };
+
+  const terminadoAlias = (cobro: CobroAlias) => {
+    setCobroAlias(null);
+    if (cobro.estado === 'CONFIRMADO') setPagado({ medio: 'ALIAS', cobro });
+    else if (cobro.estado === 'PAGADO_OTRO_MEDIO') terminar('Estadía registrada y cobrada');
+  };
+
+  // Cerrar sin terminar de cobrar: lo que se esperaba se cancela (que no quede un QR pagable) y la
+  // estadía queda para pagar al retirar.
+  const cerrarSinCobrar = async () => {
+    if (cobroQr?.estado === 'PENDIENTE') await cancelarCobroMercadoPagoAction(cobroQr.id);
+    if (cobroAlias && ['ESPERANDO', 'REVISION'].includes(cobroAlias.estado)) await cancelarCobroAliasAction(cobroAlias.id);
+    terminar('Estadía registrada: paga al retirar');
+  };
 
   // Hasta cuándo puede quedarse, con la misma cuenta que usa la lista de estadías largas.
   const hasta = (() => {
@@ -152,12 +231,23 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
 
   const onSubmit = (values: TicketRegistrationForDaySchemaType) => {
     // Si todavía no pagó, no tiene sentido guardar un método — recién se sabe al cobrar,
-    // ya sea acá (si eligen «Cobra ahora») o después al registrar la salida.
-    const payload = { ...values, paymentMetodo: values.paid ? values.paymentMetodo : undefined };
+    // ya sea acá (si eligen «Cobra ahora») o después al registrar la salida. Con QR o alias se
+    // registra sin pagar y el pago se confirma enseguida, en esta misma ventana.
+    const enLinea = !!values.paid && esEnLinea(medio);
+    const payload = {
+      ...values,
+      paid: values.paid && !enLinea,
+      paymentMetodo: values.paid && !enLinea ? (medio as 'CASH' | 'TRANSFER') : undefined,
+    };
     startTransition(async () => {
       const result = await createTicketRegistrationForDayAction(payload);
       if (result && 'error' in result && result.error) {
         toast.error(typeof result.error === 'string' ? result.error : 'Error al registrar la estadía');
+        return;
+      }
+      if (enLinea && result.registrationId) {
+        setRegistrada({ id: result.registrationId, patente: values.vehiclePlateCustomer ?? '' });
+        await cobrar(result.registrationId, medio);
         return;
       }
       toast.success('Estadía registrada exitosamente');
@@ -186,9 +276,56 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
       )}
 
       <ParkingReceiptDelivery registrationId={receiptId} kind="ENTRY" onDismiss={() => setReceiptId(null)} />
-      <ActionDialog open={isOpen} onOpenChange={(open) => { if (!open) cerrar(); else abrir(); }}>
+      <ActionDialog open={isOpen} onOpenChange={(open) => {
+        if (open) { abrir(); return; }
+        if (isPending) return;
+        if (pagado) terminar('Estadía registrada y cobrada');
+        else if (registrada) void cerrarSinCobrar();
+        else cerrar();
+      }}>
         <ActionDialogContent className="sm:max-w-[560px]">
-          <ActionDialogHeader title="Estadía larga" description="Por día, semana o mes, con fecha de salida" />
+          <ActionDialogHeader
+            title={pagado ? 'Estadía cobrada' : registrada ? 'Cobrar estadía' : 'Estadía larga'}
+            description={registrada ? `${registrada.patente} · ya registrada` : 'Por día, semana o mes, con fecha de salida'}
+          />
+          {registrada ? (
+            <>
+              <ActionDialogBody className="gap-3.5">
+                {pagado ? (
+                  pagado.medio === 'QR'
+                    ? <PagoQrRecibido cobro={pagado.cobro} onCerrar={() => terminar('Estadía registrada y cobrada')} />
+                    : <PagoRecibido cobro={pagado.cobro} onCerrar={() => terminar('Estadía registrada y cobrada')} />
+                ) : cobroQr ? (
+                  <CobroQrMercadoPago cobro={cobroQr} onAcreditado={(c) => { setCobroQr(null); setPagado({ medio: 'QR', cobro: c }); }} onCancelar={() => setCobroQr(null)} />
+                ) : cobroAlias ? (
+                  <CobroAliasPanel key={cobroAlias.id} cobro={cobroAlias} onTerminado={terminadoAlias} onCancelado={() => setCobroAlias(null)} />
+                ) : (
+                  // Se canceló el QR o la espera (o no se pudo empezar): la estadía ya está registrada,
+                  // así que se cobra de otra forma o queda para pagar al retirar.
+                  <fieldset className="min-w-0 space-y-2.5">
+                    <legend className="sr-only">¿Cómo paga?</legend>
+                    <p className="flex items-center gap-2 text-[13.5px] text-muted-foreground">
+                      <CheckCircle2 className="size-4 shrink-0 text-emerald-400" aria-hidden />
+                      La estadía ya quedó registrada, sin cobrar.
+                    </p>
+                    <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} />
+                  </fieldset>
+                )}
+              </ActionDialogBody>
+              <ActionDialogFooter>
+                {!pagado && !cobroQr && !cobroAlias && (
+                  <>
+                    <ActionDialogSecondaryButton tone="ghost" disabled={isPending} onClick={() => terminar('Estadía registrada: paga al retirar')}>
+                      Paga al retirar
+                    </ActionDialogSecondaryButton>
+                    <ActionDialogPrimaryButton disabled={isPending} onClick={() => startTransition(() => cobrar(registrada.id, medio))} detail={`${registrada.patente} · ${NOMBRE_MEDIO[medio]}`}>
+                      {isPending ? 'Procesando…' : medio === 'QR' ? 'Mostrar el QR' : medio === 'ALIAS' ? 'Esperar la transferencia' : 'Cobrar'}
+                    </ActionDialogPrimaryButton>
+                  </>
+                )}
+              </ActionDialogFooter>
+            </>
+          ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-auto flex-col">
               <ActionDialogBody className="gap-3.5">
@@ -287,16 +424,9 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
                     ))}
                   </div>
                   {isPaid && (
-                    <div role="group" aria-label="Medio de pago" className="grid grid-cols-2 gap-2">
-                      {([{ id: 'CASH', label: 'Efectivo', Icon: Banknote }, { id: 'TRANSFER', label: 'Transferencia', Icon: Landmark }] as const).map(({ id, label, Icon }) => (
-                        <button key={id} type="button" aria-pressed={metodo === id} disabled={isPending}
-                          onClick={() => form.setValue('paymentMetodo', id)}
-                          className={cn('flex min-h-12 items-center justify-center gap-2 rounded-[14px] border-[1.5px] text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
-                            metodo === id ? 'border-gm-yellow bg-gm-yellow/[0.12] font-bold' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/40')}>
-                          <Icon className={cn('size-[18px]', metodo === id ? 'text-gm-yellow' : 'text-muted-foreground')} aria-hidden />
-                          {label}
-                        </button>
-                      ))}
+                    <div role="group" aria-label="Medio de pago">
+                      <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} />
+                      {medio === 'TRANSFER' && <p className="mt-2 text-xs text-muted-foreground">Confirmá solo si ya viste la transferencia acreditada en la cuenta.</p>}
                     </div>
                   )}
                 </div>
@@ -306,14 +436,21 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
                 <ActionDialogSecondaryButton tone="ghost" className="hidden sm:inline-flex" onClick={cerrar}>Cancelar</ActionDialogSecondaryButton>
                 <ActionDialogPrimaryButton
                   type="submit"
-                  disabled={isPending || !patente.trim() || !vehicleValid || (isPaid && !metodo)}
-                  detail={[patente.trim() || 'Falta la patente', vehicleName, isPaid ? (metodo === 'TRANSFER' ? 'por transferencia' : 'en efectivo') : 'paga al retirar'].filter(Boolean).join(' · ')}
+                  disabled={isPending || !patente.trim() || !vehicleValid}
+                  detail={[patente.trim() || 'Falta la patente', vehicleName, isPaid ? NOMBRE_MEDIO[medio] : 'paga al retirar'].filter(Boolean).join(' · ')}
                 >
-                  {isPending ? 'Registrando…' : 'Registrar estadía'}
+                  {isPending
+                    ? 'Registrando…'
+                    : isPaid && medio === 'QR'
+                      ? 'Registrar y mostrar el QR'
+                      : isPaid && medio === 'ALIAS'
+                        ? 'Registrar y esperar la transferencia'
+                        : 'Registrar estadía'}
                 </ActionDialogPrimaryButton>
               </ActionDialogFooter>
             </form>
           </Form>
+          )}
         </ActionDialogContent>
       </ActionDialog>
     </>

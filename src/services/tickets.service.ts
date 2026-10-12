@@ -1,3 +1,4 @@
+import { DiscountRegistrationPayload } from '@/schemas/discount-registration.schema';
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import type { ReceiptDeliverySettings } from '@/types/parking-receipt.type';
 import type { PricingOptions, PricingPreviewResult } from '@/types/pricing-options.type';
@@ -28,7 +29,7 @@ export async function getFrequentCustomersPage(filters: FrequentCustomersFilters
 export async function getFrequentCustomers(filters: FrequentCustomersFilters, authToken?: string) {
   return (await getFrequentCustomersPage(filters, authToken)).data;
 }
-export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean; shiftsEnabled?: boolean; multipleShiftsEnabled?: boolean; pricingDayTypeBasis?: 'ENTRY' | 'EXIT'; pricingOptions?: PricingOptions | null; receiptDelivery?: ReceiptDeliverySettings };
+export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean; shiftsEnabled?: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldoPorTurno?: number; pricingDayTypeBasis?: 'ENTRY' | 'EXIT'; pricingOptions?: PricingOptions | null; receiptDelivery?: ReceiptDeliverySettings };
 
 
 
@@ -161,7 +162,7 @@ export const getTicketSchedule = async (authToken?: string) => {
   }
 };
 
-export const updateTicketSchedule = async (schedule: Partial<TicketScheduleSchemaType> & { barcodeTicketsEnabled?: boolean; shiftsEnabled?: boolean; multipleShiftsEnabled?: boolean }, authToken?: string) => {
+export const updateTicketSchedule = async (schedule: Partial<TicketScheduleSchemaType> & { barcodeTicketsEnabled?: boolean; shiftsEnabled?: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldoPorTurno?: number }, authToken?: string) => {
   try {
     const response = await fetch(`${BASE_URL}/tickets/schedule-settings`, {
       method: 'PATCH',
@@ -701,4 +702,14 @@ async function getOperationalRecords<T>(endpoint: string, authToken?: string): P
     page++;
   } while (page <= pages);
   return records;
+}
+
+export async function discountRegistration(id: string, payload: DiscountRegistrationPayload): Promise<{ summary?: CloseSummary; error?: string }> {
+  const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/discount`, {
+    method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) return { error: Array.isArray(data.message) ? data.message.join('. ') : data.message || 'No se pudo aplicar el descuento.' };
+  revalidateTag(getCacheTag('tickets', 'all'));
+  return { summary: data as CloseSummary };
 }

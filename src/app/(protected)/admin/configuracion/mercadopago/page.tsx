@@ -10,6 +10,7 @@ import { currentUser } from '@/lib/auth';
 import { PageHeader } from '@/components/page-header';
 import { getEstadoMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import { configuracionAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
+import { getComisionesCajaAction } from '@/actions/box-lists/comisiones.action';
 import { ConexionMercadoPago } from './conexion-mercadopago';
 
 // Esta ruta es además la URL de retorno registrada en MercadoPago, así que tiene que existir con
@@ -20,9 +21,10 @@ export default async function MercadoPagoPage() {
   // adónde va la plata.
   if (user?.role !== 'ADMIN') redirect('/tickets');
 
-  const [{ estado, error }, verificacion] = await Promise.all([
+  const [{ estado, error }, verificacion, comisiones] = await Promise.all([
     getEstadoMercadoPagoAction(),
     configuracionAliasAction(),
+    getComisionesCajaAction(),
   ]);
 
   return (
@@ -53,7 +55,7 @@ export default async function MercadoPagoPage() {
             <DataLoading label="Cargando MercadoPago…" />
           }
         >
-          <ConexionMercadoPago inicial={estado} verificacionAlias={verificacion.datos ?? null} />
+          <ConexionMercadoPago inicial={estado} verificacionAlias={verificacion.datos ?? null} comisiones={comisiones.datos?.conectada ? comisiones.datos : null} />
         </Suspense>
       )}
     </div>

@@ -101,7 +101,7 @@ export async function crearCobroMercadoPago(
   // HORA: estadía que se cobra al salir. ABONO: día, semana o mes, que se paga por adelantado.
   // INQUILINO: un pago a su cuenta corriente.
   tipo: 'HORA' | 'ABONO' | 'INQUILINO' = 'HORA',
-  inquilino?: { monto: number; receiptIds?: string[]; nota?: string },
+  inquilino?: { monto?: number; receiptIds?: string[]; nota?: string; alIngresar?: boolean },
 ): Promise<CobroMercadoPago> {
   const response = await fetch(`${BASE_URL}/mercadopago/cobros`, {
     method: 'POST',

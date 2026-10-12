@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
-  AlertCircle,
-  BellDot,
+  Bell,
   Box,
   Building2,
   ChevronDown,
@@ -67,18 +66,21 @@ export type UserNav = {
 };
 
 // Los avisos sin leer los trae quien arma la barra (una sola consulta para la pestaña Avisos y
-// para el punto del botón de la cuenta).
+// para el contador del botón de la cuenta).
 export function OperationalNavUser({
   userNav,
   notas,
 }: {
   userNav: UserNav;
-  notas: { hasNewNoteAlert: boolean; clearNoteAlert: () => void };
+  notas: Pick<ReturnType<typeof useNotifications>, 'unreadIds' | 'loaded'>;
 }) {
   const [openBoxDialog, setOpenBoxDialog] = useState(false);
   const { inquilinosEnabled } = useTenant();
   const [openPaymentsDialog, setOpenPaymentsDialog] = useState(false);
-  const { hasNewNoteAlert, clearNoteAlert } = notas;
+  const unreadCount = notas.unreadIds.length;
+  const hasNewNoteAlert = unreadCount > 0;
+  const counter = unreadCount > 99 ? '99+' : String(unreadCount);
+  const alertLabel = `Tenés ${unreadCount} ${unreadCount === 1 ? 'aviso' : 'avisos'} sin leer`;
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const esAdmin = userNav.role === 'ADMIN';
@@ -96,11 +98,12 @@ export function OperationalNavUser({
   // vez de obligarte a buscarlo.
   useEffect(() => {
     if (!isOpen) return;
-    if (pathname.startsWith('/renters')) setRama('operacion');
+    if (pathname === '/notes') setRama(hasNewNoteAlert ? null : 'operacion');
+    else if (pathname.startsWith('/renters')) setRama('operacion');
     else if (pathname.startsWith('/admin')) setRama('admin');
     else if (SECCIONES_CLIENTES.some((s) => pathname.startsWith(s.url))) setRama('clientes');
     else setRama('operacion');
-  }, [isOpen, pathname]);
+  }, [isOpen, pathname, hasNewNoteAlert]);
 
   const desktopItems: BranchedMenuItem[] = [
     {
@@ -108,7 +111,7 @@ export function OperationalNavUser({
       children: [
         { value: '/tickets', label: 'Tickets', icon: <TicketIcon /> },
         ...(inquilinosEnabled ? [{ value: '/renters', label: 'Inquilinos', icon: <Users /> }] : []),
-        { value: '/notes', label: 'Avisos', icon: hasNewNoteAlert ? <BellDot className="text-gm-orange" /> : <AlertCircle /> },
+        ...(!hasNewNoteAlert ? [{ value: '/notes', label: 'Avisos', icon: <Bell /> }] : []),
       ],
     },
     ...(esAdmin ? [{ label: 'Administración', children: SECCIONES_ADMIN.map(section => ({ value: section.url, label: section.label })) }] : []),
@@ -127,7 +130,7 @@ export function OperationalNavUser({
         <DropdownMenuTrigger asChild>
           {/* En la barra: avatar, nombre y rol (en el celular, solo el avatar). */}
           <button
-            aria-label={`Tu cuenta y el menú: ${userNav.name.trim() || 'Usuario'}${hasNewNoteAlert ? '. Tenés avisos nuevos' : ''}`}
+            aria-label={`Tu cuenta y el menú: ${userNav.name.trim() || 'Usuario'}${hasNewNoteAlert ? `. ${alertLabel}` : ''}`}
             className={cn(
               'group flex h-11 shrink-0 items-center gap-2.5 rounded-[14px] p-1 text-left text-sm transition-colors duration-200 lg:pr-3',
               'hover:bg-white/[0.05]',
@@ -143,7 +146,7 @@ export function OperationalNavUser({
                 </AvatarFallback>
               </Avatar>
               {hasNewNoteAlert && (
-                <span aria-hidden className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-gm-yellow ring-2 ring-[#0B0A08]" />
+                <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C93630] px-1 text-[11px] font-bold leading-none text-white ring-[3px] ring-[#0B0A08]">{counter}</span>
               )}
             </span>
 
@@ -186,13 +189,25 @@ export function OperationalNavUser({
             </span>
           </div>
 
+          {hasNewNoteAlert && <DropdownMenuItem asChild onSelect={() => setIsOpen(false)} className={cn(
+            'mb-2 mt-2 min-h-12 cursor-pointer gap-3 rounded-xl border px-3 py-2 text-foreground focus:bg-gm-yellow/15',
+            'border-gm-yellow/35 bg-gm-yellow/[0.08]',
+            pathname === '/notes' && 'border-gm-yellow/40',
+          )}>
+            <Link href="/notes" aria-current={pathname === '/notes' ? 'page' : undefined} aria-label={`Avisos. ${alertLabel}`}>
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-gm-yellow/15 text-gm-yellow"><Bell className="size-4" aria-hidden /></span>
+              <span className="min-w-0 flex-1 text-[13.5px] font-semibold">Avisos</span>
+              <span aria-hidden className="shrink-0 rounded-md bg-gm-yellow px-2 py-1 text-[11px] font-bold leading-none text-gm-ink">{counter} sin leer</span>
+            </Link>
+          </DropdownMenuItem>}
+
           <div className="hidden w-full lg:block">
             <DesktopBranchedMenu
+              key={hasNewNoteAlert ? 'pending-notes' : 'no-pending-notes'}
               items={desktopItems}
-              defaultOpen={desktopSection >= 0 ? desktopSection : 0}
+              defaultOpen={pathname === '/notes' && hasNewNoteAlert ? -1 : desktopSection >= 0 ? desktopSection : 0}
               defaultActive={desktopActive}
-              onSelect={value => {
-                if (value === '/notes') clearNoteAlert();
+              onSelect={() => {
                 setIsOpen(false);
               }}
             />
@@ -201,7 +216,7 @@ export function OperationalNavUser({
           <RamaMenu
             label="Operación"
             abierta={rama === 'operacion'}
-            activa={pathname === '/tickets' || pathname.startsWith('/renters') || pathname === '/notes'}
+            activa={pathname === '/tickets' || pathname.startsWith('/renters') || (!hasNewNoteAlert && pathname === '/notes')}
             onAlternar={() => alternarRama('operacion')}
           >
             <Link href="/tickets">
@@ -221,15 +236,14 @@ export function OperationalNavUser({
               </Link>
             )}
 
-            <Link href="/notes">
-              <HojaDeRama activa={pathname === '/notes'} onSelect={clearNoteAlert}>
-                <AlertCircle className="size-3.5" />
-                Avisos
-                {hasNewNoteAlert && (
-                  <BellDot className="ml-auto size-3.5 text-gm-orange" />
-                )}
-              </HojaDeRama>
-            </Link>
+            {!hasNewNoteAlert && (
+              <Link href="/notes">
+                <HojaDeRama activa={pathname === '/notes'}>
+                  <Bell className="size-3.5" />
+                  Avisos
+                </HojaDeRama>
+              </Link>
+            )}
           </RamaMenu>
 
           {/* Clientes y Administración son de encargado: el operador no las ve */}

@@ -27,6 +27,9 @@ export function ComisionesCajaForm({ inicial, referencia }: { inicial: Comisione
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
   const esValido = Object.values(valores).every(valido);
+  const textoReferencia = aTexto(referencia);
+  const usaReferencia = campos.every(c => valores[c.key].replace(',', '.') === textoReferencia[c.key]);
+  const pct = (n: number | null) => n === null ? 'a definir' : new Intl.NumberFormat('es-AR', { maximumFractionDigits: 4 }).format(n) + '%';
   return <form className="space-y-7" onSubmit={async event => {
     event.preventDefault();
     if (!esValido || guardando) return;
@@ -39,6 +42,15 @@ export function ComisionesCajaForm({ inicial, referencia }: { inicial: Comisione
     } catch { setError('No se pudo guardar. Intentá nuevamente.'); }
     finally { setGuardando(false); }
   }}>
+    {/* Arranca en 0: la tasa real depende del plazo de acreditación y de las condiciones de cada
+        cuenta. La referencia pública se carga a pedido y recién se aplica al guardar. */}
+    <section aria-label="Tasas de Mercado Pago" className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gm-yellow/25 bg-gm-yellow/[0.06] p-4 sm:p-5">
+      <div className="min-w-0 max-w-md">
+        <p className="text-sm font-semibold">Tasas publicadas por Mercado Pago</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">QR con acreditación al instante, IVA incluido: saldo {pct(referencia.qrSaldo)} · débito {pct(referencia.qrDebito)} · crédito {pct(referencia.qrCredito)}. Alias: transferencia {pct(referencia.aliasSaldo)}, crédito {pct(referencia.aliasCredito)}. Si elegiste otro plazo de acreditación o tenés tasas especiales, ajustalas.</p>
+      </div>
+      <Button type="button" size="sm" className="rounded-xl font-semibold" disabled={guardando || usaReferencia} onClick={() => { setValores(textoReferencia); setMensaje('Valores de Mercado Pago cargados. Guardá para aplicarlos.'); }}>{usaReferencia ? 'Valores de Mercado Pago en uso' : 'Usar valores de Mercado Pago'}</Button>
+    </section>
     <p className="text-xs text-muted-foreground">Porcentaje final, con IVA incluido si corresponde. 0% = sin descuento. Vacío = a definir.</p>
     {grupos.map(grupo => <fieldset key={grupo.titulo} disabled={guardando} className="min-w-0 rounded-xl border border-border">
       <legend className="ml-4 px-2 text-sm font-medium">{grupo.titulo}</legend>
@@ -51,7 +63,7 @@ export function ComisionesCajaForm({ inicial, referencia }: { inicial: Comisione
       </div>
     </fieldset>)}
     <details className="text-xs text-muted-foreground"><summary className="cursor-pointer py-1 hover:text-foreground">Referencias y forma de cálculo</summary><div className="mt-3 space-y-2 leading-relaxed">
-      <p>QR al instante: saldo 0,80%, débito 1,35% y crédito 5,99%, más IVA del 21%. Los valores iniciales ya incluyen ese IVA. Pueden variar por provincia, plazo y condiciones de tu cuenta.</p>
+      <p>QR al instante: saldo 0,80%, débito 1,35% y crédito 5,99%, más IVA del 21%. «Usar valores de Mercado Pago» carga esas tasas con el IVA incluido. Pueden variar por provincia, plazo y condiciones de tu cuenta.</p>
       <a href="https://www.mercadopago.com.ar/herramientas-para-vender/cobrar-con-qr" target="_blank" rel="noreferrer" className="inline-block underline underline-offset-4">Ver tasas publicadas por Mercado Pago</a>
       <p>Referencia consultada el 08/10/2026. Alias con crédito queda a definir: no se aplica una tarifa de otro país ni un cargo del pagador como si fuera del comercio.</p>
       <p>Se calcula por cada ingreso confirmado. Si falta el medio de pago o el porcentaje, caja lo indica como pendiente. Las transferencias manuales quedan fuera de estas comisiones.</p>
@@ -60,8 +72,7 @@ export function ComisionesCajaForm({ inicial, referencia }: { inicial: Comisione
     {!esValido && <p role="alert" className="text-sm text-destructive">Usá un porcentaje de 0 a 100, con hasta cuatro decimales.</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {mensaje && <p role="status" className="text-sm text-emerald-500">{mensaje}</p>}
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-      <Button type="button" variant="ghost" size="sm" disabled={guardando} onClick={() => { setValores(aTexto(referencia)); setMensaje('Referencias cargadas. Guardá para aplicarlas.'); }}>Usar valores de referencia</Button>
+    <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
       <Button type="submit" variant="outline" size="sm" disabled={!esValido || guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</Button>
     </div>
   </form>;

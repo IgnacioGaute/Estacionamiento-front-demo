@@ -3,14 +3,18 @@ import { useEffect, useId, useState, useTransition } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowDownLeft, ArrowUpRight, ShieldCheck, Wallet } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Banknote, ChevronRight, History, Plus, ShieldCheck, Wallet, Car, Users } from 'lucide-react';
+import { TurnoResumenPanel } from '@/components/turno-resumen';
+import { Etiqueta, Iniciales, Paso, Pill } from '@/components/turno-ui';
+import { cn } from '@/lib/utils';
 import { CashAmountField } from '@/components/cash-amount-field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/lib/toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ActionDialog, ActionDialogBody, ActionDialogContent, ActionDialogFooter, ActionDialogHeader, ActionDialogPrimaryButton } from '@/components/ui/action-dialog';
 import { DataLoading } from '@/components/ui/data-loading';
 import { CashContext } from '@/types/turno.type';
 import { getCashContextAction } from '@/actions/turnos/cash-context.action';
@@ -24,9 +28,9 @@ const amountValid = (s: string) => s !== '' && Number.isInteger(Number(s)) && Nu
 
 const horaApertura = (s: string) => new Date(s).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
-// `pill`: el acceso que va en la tarjeta amarilla del inicio («Turno abierto · 08:02»). Abre el
-// mismo diálogo que el botón de siempre.
-export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' }: { onUpdated?: () => void; turnoId?: string; revision?: number; variant?: 'button' | 'pill' } = {}) {
+// `pill`: el acceso que va en la tarjeta amarilla del inicio («Turno abierto · 08:02»). `primary`:
+// el botón destacado del encabezado de Caja. Los tres abren el mismo diálogo.
+export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' }: { onUpdated?: () => void; turnoId?: string; revision?: number; variant?: 'button' | 'pill' | 'primary' } = {}) {
   const router = useRouter();
   const { data: session } = useSession();
   const [context, setContext] = useState<CashContext | null>(null);
@@ -51,9 +55,21 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' 
   const forzando = !!active && active.usuarioApertura?.id !== session?.user?.id;
   const canClose = !!active && (!forzando || esAdmin);
   const openingExpected = caja?.pending?.efectivoParaSiguiente ?? caja?.legacyPending?.efectivoParaSiguiente ?? 0;
+  const handover = caja?.traspaso;
   const hasPrior = !!(caja?.pending || caja?.legacyPending);
   const openingDifference = hasPrior ? openingExpected - Number(received) : 0;
   const closingDifference = expected - Number(counted);
+  const reserve = active?.fondoObjetivo ?? caja?.fondoObjetivo ?? 15000;
+  const salaryExpected = active?.sueldoPrevisto ?? 0;
+  const salaryBase = arqueo ? (amountValid(counted) ? Number(counted) : 0) : expected;
+  const salary = salaryExpected > 0 && salaryBase - reserve >= salaryExpected ? salaryExpected : 0;
+  const afterSalary = Math.max(0, Number(counted) - salary);
+  const countCash = (value: string) => {
+    setCounted(value);
+    const n = Number(value);
+    const pay = salaryExpected > 0 && n - reserve >= salaryExpected ? salaryExpected : 0;
+    setWithdrawn(String(Math.max(0, n - pay - reserve)));
+  };
 
   const refresh = async (resetOpening = false) => {
     const result = await getCashContextAction();
@@ -68,8 +84,9 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' 
     if (turnoId) return;
     startTransition(() => refresh());
     const update = () => startTransition(() => refresh());
+    const timer = window.setInterval(update, 60000);
     window.addEventListener('parking-shift-changed', update);
-    return () => window.removeEventListener('parking-shift-changed', update);
+    return () => { window.clearInterval(timer); window.removeEventListener('parking-shift-changed', update); };
   }, [turnoId, revision, cajaId]);
   const updated = () => { onUpdated?.(); window.dispatchEvent(new Event('parking-shift-changed')); };
   const submitOpen = () => startTransition(async () => {
@@ -82,16 +99,18 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' 
   });
   const submitClose = () => startTransition(async () => {
     if (!active) return;
-    const result = await closeTurnoAction(active.id, { cerrarCaja: arqueo,
-      ...(arqueo ? { efectivoContado: Number(counted), efectivoEsperado: expected, efectivoParaSiguiente: Number(counted) - Number(withdrawn) } : {}),
+    const result = await closeTurnoAction(active.id, { cerrarCaja: arqueo, sueldoEsperado: salary, efectivoEsperado: expected,
+      ...(arqueo ? { efectivoContado: Number(counted), efectivoEsperado: expected, efectivoParaSiguiente: Number(counted) - salary - Number(withdrawn) } : {}),
       observaciones: notes, motivoCierreForzado: forzando ? forcedReason : undefined });
     if (result.error) { toast.error(typeof result.error === 'string' ? result.error : result.error.message); await refresh(); return; }
+    if (result.turno?.alertaSueldo) toast.error(result.turno.alertaSueldo);
     toast.success(arqueo ? 'Turno y caja cerrados. El fondo queda para el próximo operador.' : 'Turno cerrado. La caja sigue abierta para los demás operadores.');
     setOpen(false); setClosing(false); updated(); await refresh();
   });
-  const closingValid = canClose && (!forzando || forcedReason.trim()) && (!arqueo || (amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= Number(counted) && (closingDifference === 0 || notes.trim())));
+  const closingValid = canClose && (!forzando || forcedReason.trim()) && (!arqueo || (amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= afterSalary && (closingDifference === 0 || notes.trim())));
   const openingValid = !!caja && !context?.legacyOpen && (caja.session ? context?.multipleShiftsEnabled : amountValid(received) && amountValid(added) && (openingDifference === 0 || openingReason.trim()));
   const abrir = () => { setClosing(!!turnoId); setCounted(''); setWithdrawn('0'); setNotes(''); setForcedReason(''); setOpen(true); startTransition(() => refresh(true)); };
+  const enlaceHistorial = esAdmin && <Link href="/admin/caja?tab=turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja?tab=turnos'), 200); }} className="mx-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow"><History className="size-3.5" aria-hidden />Ver turnos e historial</Link>;
   return <>
     {variant === 'pill' ? (
       <button type="button" onClick={abrir} className="inline-flex h-[34px] items-center gap-2 rounded-full bg-gm-ink px-3.5 text-[12.5px] font-bold text-[#F2EDE3] transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ink focus-visible:ring-offset-2 focus-visible:ring-offset-gm-yellow">
@@ -99,45 +118,146 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' 
         {active ? `Turno abierto · ${horaApertura(active.fechaApertura)}` : 'Abrir mi turno'}
       </button>
     ) : (
-      <Button variant="outline" size="sm" onClick={abrir}><Wallet className="size-4" />{turnoId ? 'Cerrar turno' : active ? 'Mi turno' : 'Abrir mi turno'}</Button>
+      <Button variant={variant === 'primary' ? 'default' : 'outline'} size={variant === 'primary' ? 'default' : 'sm'} className={cn(variant === 'primary' && 'h-11 rounded-xl px-5 font-bold')} onClick={abrir}><Wallet className="size-4" />{turnoId ? 'Cerrar turno' : active ? 'Mi turno' : 'Abrir mi turno'}</Button>
     )}
-    <Dialog open={open} onOpenChange={value => { if (!pending) { setOpen(value); if (!value) setClosing(false); } }}>
-      <DialogContent className="max-w-lg rounded-2xl">
-        <DialogHeader><DialogTitle>{active ? closing ? arqueo ? 'Cerrar turno y caja' : 'Cerrar sólo el turno' : 'Mi turno' : 'Abrir mi turno'}</DialogTitle><DialogDescription>{active ? arqueo ? 'Sos el último operador de esta caja. Contá el efectivo de todos los turnos desde su apertura.' : 'Otros operadores siguen usando esta caja. El último realiza el arqueo.' : 'El turno registra tus operaciones. El fondo se recibe de la caja que vas a usar.'}</DialogDescription></DialogHeader>
-        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        {!context ? !error && <DataLoading label="Cargando caja…" /> : active ? closing ? <form onSubmit={e => { e.preventDefault(); submitClose(); }} className="space-y-5">
-          <div className="rounded-xl border border-border bg-secondary/30 p-4"><p className="font-semibold">{active.nombre}</p><p className="mt-1 text-sm text-muted-foreground">{active.caja?.nombre ?? 'Turno anterior'} · {date(active.fechaApertura)}</p></div>
-          {arqueo ? <>
-            <div><p className="text-sm text-muted-foreground">Efectivo esperado de la caja</p><p className="mt-1 text-3xl font-semibold tabular-nums">{money(expected)}</p></div>
-            <CashAmountField id="cash-counted" label="¿Cuánto efectivo contaste?" value={counted} onChange={setCounted} disabled={pending} placeholder="Contá el dinero antes de confirmar" shortcuts={[{ label: 'Conté todo · ' + money(expected), amount: expected, disabled: expected < 0 }, { label: 'No hay efectivo', amount: 0 }]} description="Si contaste el importe esperado, tocá Conté todo. Si hay una diferencia, ingresá el monto real." />
-            {amountValid(counted) && <p className={'border-l-2 pl-3 text-sm ' + (closingDifference === 0 ? 'border-emerald-500 text-emerald-500' : 'border-amber-500 text-amber-500')}>{closingDifference === 0 ? 'El efectivo coincide.' : closingDifference > 0 ? 'Faltan ' + money(closingDifference) : 'Sobran ' + money(-closingDifference)}</p>}
-            <CashAmountField id="cash-withdrawn" label="Efectivo que retirás al cerrar" value={withdrawn} onChange={setWithdrawn} disabled={pending} max={amountValid(counted) ? Number(counted) : undefined} shortcuts={[{ label: 'No retiro efectivo', amount: 0 }, { label: 'Retirar todo' + (amountValid(counted) ? ' · ' + money(Number(counted)) : ''), amount: Number(counted), disabled: !amountValid(counted) }]} description={amountValid(counted) && amountValid(withdrawn) && Number(counted) >= Number(withdrawn) ? 'Quedan ' + money(Number(counted) - Number(withdrawn)) + ' en esta caja para el próximo operador.' : 'Primero indicá cuánto contaste; después podés retirar todo o una parte.'} />
-            {amountValid(counted) && closingDifference !== 0 && <div className="space-y-1.5"><Label htmlFor="cash-notes">Motivo de la diferencia</Label><Input id="cash-notes" value={notes} onChange={e => setNotes(e.target.value)} disabled={pending} required /></div>}
-          </> : <div className="rounded-xl border border-gm-yellow/30 bg-gm-yellow/5 p-4 text-sm"><p className="font-semibold">La caja continúa abierta</p><p className="mt-1 text-muted-foreground">Tus operaciones quedan registradas a tu nombre. El fondo y el efectivo siguen en {active.caja?.nombre ?? 'la caja compartida'}; el cierre de tu turno no retira dinero.</p></div>}
-          {forzando && <div className="space-y-1.5"><Label htmlFor="forced-reason">¿Por qué cerrás el turno de otra persona?</Label><Input id="forced-reason" maxLength={255} value={forcedReason} onChange={e => setForcedReason(e.target.value)} disabled={pending} required placeholder="Ej.: se retiró sin cerrar su turno" /></div>}
-          <Button className="w-full" disabled={pending || !closingValid}>{pending ? 'Cerrando…' : arqueo ? 'Confirmar cierre de turno y caja' : 'Confirmar cierre de turno'}</Button>
-          <Button type="button" variant="ghost" className="w-full" disabled={pending} onClick={() => setClosing(false)}>Volver al turno</Button>
-        </form> : <div className="space-y-5">
-          <div className="rounded-xl border border-border p-4"><p className="text-xs font-semibold text-emerald-500">En curso</p><p className="mt-1 text-xl font-semibold">{active.nombre}</p><p className="mt-1 text-sm text-muted-foreground">{active.caja?.nombre ?? 'Turno anterior'} · Abierto el {date(active.fechaApertura)}</p></div>
-          <dl className="grid grid-cols-2 gap-4"><div><dt className="text-xs text-muted-foreground">Efectivo esperado de la caja</dt><dd className="mt-1 text-2xl font-semibold tabular-nums">{money(expected)}</dd></div><div><dt className="text-xs text-muted-foreground">Efectivo neto de tus operaciones</dt><dd className="mt-1 text-2xl font-semibold tabular-nums">{money(active.efectivoOperado ?? 0)}</dd></div></dl>
-          <p className="text-sm text-muted-foreground">{arqueo ? 'Al terminar, vas a contar y cerrar esta caja.' : 'Compartís esta caja con otros operadores. Podés cerrar sólo tu turno; el último cuenta el efectivo.'}</p>
+    {/* Como registrar entrada o cobrar salida: en el celular sube desde abajo y el botón que
+        confirma queda fijo en el pie, al alcance del pulgar. */}
+    <ActionDialog open={open} onOpenChange={value => { if (!pending) { setOpen(value); if (!value) setClosing(false); } }}>
+      <ActionDialogContent>
+        <ActionDialogHeader
+          title={active ? closing ? arqueo ? 'Cerrar turno y caja' : 'Cerrar sólo el turno' : 'Mi turno' : 'Abrir mi turno'}
+          description={active ? closing ? arqueo ? 'Contá el efectivo de toda la caja' : 'La caja sigue abierta para los demás' : arqueo ? 'Sos el último operador de esta caja' : 'Compartís esta caja con otros operadores' : 'Confirmá lo que recibís antes de empezar'}
+          onBack={active && closing ? () => setClosing(false) : undefined}
+          backLabel="Volver al turno"
+          backDisabled={pending}
+        />
+        {!context ? <ActionDialogBody className="[&>*]:shrink-0">
+          {error ? <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : <DataLoading label="Cargando caja…" />}
+          {enlaceHistorial}
+        </ActionDialogBody> : active ? closing ? <form onSubmit={e => { e.preventDefault(); submitClose(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-5 [&>*]:shrink-0">
+          {arqueo && <p className="text-[13px] leading-relaxed text-muted-foreground">Sos el último operador de esta caja: contá el efectivo de todos los turnos desde su apertura.</p>}
+          <section aria-label="Turno que cerrás" className="overflow-hidden rounded-2xl border border-gm-line bg-gm-surface-2/50">
+            <div className="flex items-center gap-3 p-3.5">
+              <Iniciales nombre={active.nombre} />
+              <div className="min-w-0"><p className="truncate font-semibold">{active.nombre}</p><p className="truncate text-xs text-muted-foreground">{active.caja?.nombre ?? 'Turno anterior'} · desde {date(active.fechaApertura)}</p></div>
+            </div>
+            {arqueo && <div className="flex flex-wrap items-end justify-between gap-2 border-t border-gm-line px-3.5 py-3">
+              <p className="text-xs text-muted-foreground">Efectivo esperado de la caja</p>
+              <p className="font-display text-[30px] font-bold leading-none tracking-tight tabular-nums">{money(expected)}</p>
+            </div>}
+          </section>
+
+          {arqueo ? <ol className="space-y-5">
+            <Paso numero={1} listo={amountValid(counted) && (closingDifference === 0 || !!notes.trim())}>
+              <CashAmountField id="cash-counted" label="¿Cuánto efectivo contaste?" value={counted} onChange={countCash} disabled={pending} placeholder="Contá el dinero antes de confirmar" shortcuts={[{ label: 'Conté todo · ' + money(expected), amount: expected, disabled: expected < 0 }, { label: 'No hay efectivo', amount: 0 }]} description="Si contaste el importe esperado, tocá Conté todo. Si hay una diferencia, ingresá el monto real."
+                status={amountValid(counted) && <Pill tono={closingDifference === 0 ? 'ok' : 'aviso'}>{closingDifference === 0 ? 'Coincide' : closingDifference > 0 ? 'Faltan ' + money(closingDifference) : 'Sobran ' + money(-closingDifference)}</Pill>} />
+            </Paso>
+            <Paso numero={2} listo={amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= afterSalary} ultimo>
+              <CashAmountField id="cash-withdrawn" label="Retiro de recaudación al cerrar (sin sueldo)" value={withdrawn} onChange={setWithdrawn} disabled={pending} max={amountValid(counted) ? afterSalary : undefined} shortcuts={[{ label: 'No retiro efectivo', amount: 0 }, { label: 'Dejar el fondo · ' + money(reserve), amount: Math.max(0, afterSalary - reserve), disabled: !amountValid(counted) }]} description={amountValid(counted) ? 'Retirá todo o una parte. Lo que no retires queda en esta caja para el próximo operador.' : 'Primero indicá cuánto contaste; después podés retirar todo o una parte.'} />
+            </Paso>
+          </ol> : <div className="flex gap-3 rounded-2xl border border-gm-yellow/25 bg-gm-yellow/[0.06] p-4 text-sm"><Users className="mt-0.5 size-4 shrink-0 text-gm-yellow" aria-hidden /><div><p className="font-semibold">La caja continúa abierta</p><p className="mt-1 leading-relaxed text-muted-foreground">Tus operaciones quedan registradas a tu nombre. El fondo y el efectivo siguen en {active.caja?.nombre ?? 'la caja compartida'}; el cierre registra solamente el retiro de sueldo si está configurado y hay efectivo suficiente.</p></div></div>}
+
+          {salaryExpected > 0 && <div className="flex gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] p-4 text-sm">
+            <Banknote className="mt-0.5 size-4 shrink-0 text-amber-400" aria-hidden />
+            <div className="min-w-0">
+              <p>Sueldo previsto: <strong className="tabular-nums">{money(salaryExpected)}</strong> · Fondo protegido: <span className="tabular-nums">{money(reserve)}</span></p>
+              {arqueo && !amountValid(counted) ? <p className="mt-1 text-muted-foreground">Contá el efectivo para comprobar si alcanza.</p> : salary > 0 ? <p className="mt-1 leading-relaxed text-muted-foreground">Se registrará el retiro de {money(salary)}. Retirá físicamente ese importe al confirmar. Está separado del retiro de recaudación.</p> : <p role="alert" className="mt-1 leading-relaxed text-amber-600 dark:text-amber-400">El efectivo no alcanza para preservar el fondo. No se descontará el sueldo y quedará una alerta en el historial.</p>}
+            </div>
+          </div>}
+
+          {arqueo && amountValid(counted) && <section aria-label="Cómo queda la caja" className="overflow-hidden rounded-2xl border border-gm-line">
+            <Etiqueta className="px-4 pt-3.5">Cómo queda la caja</Etiqueta>
+            <dl className="space-y-2 px-4 py-3 text-sm">
+              <Linea label="Contaste" value={money(Number(counted))} />
+              {salaryExpected > 0 && <Linea label="Sueldo" value={salary > 0 ? '− ' + money(salary) : 'No se descuenta'} />}
+              <Linea label="Retiro de recaudación" value={'− ' + money(amountValid(withdrawn) ? Number(withdrawn) : 0)} />
+            </dl>
+            {(() => { const queda = Number(counted) - salary - (amountValid(withdrawn) ? Number(withdrawn) : 0); return <div className={cn('flex items-center justify-between gap-3 border-t border-gm-line px-4 py-3', queda < 0 ? 'bg-destructive/10' : 'bg-emerald-400/[0.06]')}>
+              <span className="text-[13px] font-semibold">{queda < 0 ? 'El retiro supera lo que hay' : 'Queda para el próximo operador'}</span>
+              <strong className={cn('tabular-nums', queda < 0 ? 'text-destructive' : 'text-emerald-400')}>{money(queda)}</strong>
+            </div>; })()}
+          </section>}
+
+          <details className="group rounded-2xl border border-gm-line text-xs">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 font-semibold text-muted-foreground rounded-2xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow [&::-webkit-details-marker]:hidden">Ver resumen del turno<ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden /></summary>
+            <div className="border-t border-gm-line p-3"><TurnoResumenPanel turno={active} /></div>
+          </details>
+          <div className="space-y-1.5"><Label htmlFor="cash-notes">{arqueo && amountValid(counted) && closingDifference !== 0 ? 'Motivo de la diferencia' : 'Nota del turno (opcional)'}</Label><Textarea id="cash-notes" value={notes} onChange={e => setNotes(e.target.value)} disabled={pending} required={arqueo && amountValid(counted) && closingDifference !== 0} placeholder="Algo que deba saber el próximo turno" className="min-h-20" /><p className="text-[11px] text-muted-foreground">Se publica automáticamente en Avisos.</p></div>
+          {forzando && <div className="space-y-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] p-4"><Label htmlFor="forced-reason">¿Por qué cerrás el turno de otra persona?</Label><Input id="forced-reason" maxLength={255} value={forcedReason} onChange={e => setForcedReason(e.target.value)} disabled={pending} required placeholder="Ej.: se retiró sin cerrar su turno" /><p className="text-[11px] text-muted-foreground">Queda en el historial junto a tu nombre.</p></div>}
+          {enlaceHistorial}
+        </ActionDialogBody>
+          <ActionDialogFooter>
+            <ActionDialogPrimaryButton type="submit" disabled={pending || !closingValid}>{pending ? 'Cerrando…' : arqueo ? 'Confirmar cierre de turno y caja' : 'Confirmar cierre de turno'}</ActionDialogPrimaryButton>
+          </ActionDialogFooter>
+        </form> : <><ActionDialogBody className="[&>*]:shrink-0">
+          <section aria-label="Tu turno en curso" className="relative overflow-hidden rounded-[22px] bg-gm-yellow text-gm-ink shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)]">
+            <div aria-hidden className="h-2" style={{ backgroundImage: 'repeating-linear-gradient(135deg, hsl(var(--gm-ink)) 0 9px, hsl(var(--gm-yellow)) 9px 18px)' }} />
+            <Wallet aria-hidden className="pointer-events-none absolute -bottom-8 -right-8 size-[130px] text-gm-ink/[0.06]" strokeWidth={1.5} />
+            <div className="relative space-y-4 px-5 pb-5 pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="inline-flex h-7 items-center gap-2 rounded-full bg-gm-ink px-3 text-[12px] font-bold text-[#F2EDE3]"><span aria-hidden className="size-[7px] rounded-full bg-emerald-400" />En curso · desde {horaApertura(active.fechaApertura)}</span>
+                <span className="text-[12px] font-bold text-gm-ink/70">{active.caja?.nombre ?? 'Turno anterior'}</span>
+              </div>
+              <div><p className="text-lg font-bold leading-tight">{active.nombre}</p><p className="mt-0.5 text-xs font-semibold text-gm-ink/65">Abierto el {date(active.fechaApertura)}</p></div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gm-ink/70">Efectivo esperado en la caja</p>
+                <p className="mt-1 font-display text-[48px] font-bold leading-[0.95] tracking-tight tabular-nums">{money(expected)}</p>
+                <p className="mt-2 pr-16 text-xs font-medium text-gm-ink/70">Incluye el fondo inicial y los movimientos de todos los operadores.</p>
+              </div>
+            </div>
+          </section>
+          <TurnoResumenPanel turno={active} />
           {esAdmin && active.cashSessionId && <CashMovementForm sesionId={active.cashSessionId} expected={expected} onUpdated={() => { updated(); startTransition(() => refresh()); }} />}
-          <Button className="w-full" disabled={pending || !canClose} onClick={() => setClosing(true)}>{arqueo ? 'Cerrar mi turno y contar la caja' : 'Cerrar sólo mi turno'}</Button>
-        </div> : <form onSubmit={e => { e.preventDefault(); submitOpen(); }} className="space-y-5">
-          <div className="rounded-xl border border-border bg-secondary/30 p-4"><p className="text-xs text-muted-foreground">Turno a cargo de</p><p className="mt-1 font-semibold">{nombreUsuario}</p></div>
-          {context.legacyOpen && <p role="alert" className="rounded-xl border border-amber-500/40 p-4 text-sm">Hay turnos del esquema anterior abiertos. El administrador debe cerrarlos antes de empezar a usar cajas compartidas.</p>}
-          {(context.cajas?.length ?? 0) > 1 ? <div className="space-y-1.5"><Label htmlFor="cash-register">¿En qué caja vas a trabajar?</Label><Select value={cajaId} disabled={pending} onValueChange={value => { setCajaId(value); const c = context.cajas?.find(item => item.id === value); setReceived(String(c?.session ? 0 : c?.efectivoDisponible ?? 0)); setAdded('0'); setOpeningReason(''); }}><SelectTrigger id="cash-register"><SelectValue placeholder="Elegí tu caja" /></SelectTrigger><SelectContent>{context.cajas?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre} · {c.session ? 'Abierta' : 'Disponible'}</SelectItem>)}</SelectContent></Select></div> : <p className="text-sm font-semibold">{caja?.nombre ?? 'Caja principal'}</p>}
-          {caja?.session ? <div className="space-y-2 rounded-xl border border-gm-yellow/30 bg-gm-yellow/5 p-4 text-sm"><p className="font-semibold">{context.multipleShiftsEnabled ? 'Te vas a unir a una caja abierta' : 'Esta caja ya tiene un turno abierto'}</p><p className="text-muted-foreground">{caja.operadores.map(o => o.nombre).join(', ')} {caja.operadores.length === 1 ? 'está trabajando' : 'están trabajando'} aquí.</p><p className="text-muted-foreground">{context.multipleShiftsEnabled ? 'El fondo ya está en la caja. Tus cobros se registrarán a tu nombre sin volver a cargar el fondo.' : 'Esperá el cierre del operador actual. Para trabajar al mismo tiempo, el administrador debe activar turnos múltiples.'}</p></div> : <>
-            {hasPrior && <div className="rounded-xl border border-border bg-secondary/30 p-4"><p className="text-sm text-muted-foreground">Efectivo que quedó en esta caja</p><p className="mt-1 text-2xl font-semibold tabular-nums">{money(openingExpected)}</p><p className="mt-2 text-xs text-muted-foreground">Viene del último cierre de esta caja, independientemente de quién trabajó. Contalo antes de empezar.</p></div>}
-            <CashAmountField id="cash-received" label="¿Cuánto efectivo recibiste en la caja?" value={received} onChange={setReceived} disabled={pending} shortcuts={[...(hasPrior ? [{ label: 'Recibí todo · ' + money(openingExpected), amount: openingExpected }] : []), { label: 'Sin efectivo recibido', amount: 0 }]} description="Podés confirmar el fondo completo con un toque o ingresar lo que contaste. Si no coincide, registramos la diferencia." />
-            {openingDifference !== 0 && amountValid(received) && <div className="space-y-1.5"><p className="text-sm text-amber-500">{openingDifference > 0 ? 'Faltan ' + money(openingDifference) : 'Hay ' + money(-openingDifference) + ' adicionales'}</p><Label htmlFor="opening-reason">Motivo de la diferencia al recibir</Label><Input id="opening-reason" maxLength={255} required value={openingReason} onChange={e => setOpeningReason(e.target.value)} disabled={pending} placeholder="Ej.: retiro que no quedó registrado" /></div>}
-            <CashAmountField id="cash-added" label="Cambio que agregás ahora" value={added} onChange={setAdded} disabled={pending} shortcuts={[{ label: 'No agrego cambio', amount: 0 }]} increments description="El cambio que sumás queda separado del fondo recibido y de las ventas. También podés escribir otro importe." />
+          <p className="text-center text-xs text-muted-foreground">{arqueo ? 'Al terminar, vas a contar y cerrar esta caja.' : 'Compartís esta caja con otros operadores. Podés cerrar sólo tu turno; el último cuenta el efectivo.'}</p>
+          {enlaceHistorial}
+        </ActionDialogBody>
+          <ActionDialogFooter>
+            <ActionDialogPrimaryButton disabled={pending || !canClose} onClick={() => setClosing(true)}>{arqueo ? 'Cerrar mi turno y contar la caja' : 'Cerrar sólo mi turno'}</ActionDialogPrimaryButton>
+          </ActionDialogFooter>
+        </> : <form onSubmit={e => { e.preventDefault(); submitOpen(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-5 [&>*]:shrink-0">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-gm-line bg-gm-surface-2/50 p-3">
+            <span className="flex min-w-0 items-center gap-3"><Iniciales nombre={nombreUsuario} className="size-8 text-[11px]" /><span className="min-w-0"><span className="block text-[11px] text-muted-foreground">Tu turno</span><strong className="block truncate text-sm font-semibold">{nombreUsuario}</strong></span></span>
+            {(context.cajas?.length ?? 0) <= 1 && <Pill>{caja?.nombre ?? 'Caja principal'}</Pill>}
+          </div>
+          {context.legacyOpen && <p role="alert" className="rounded-2xl border border-amber-500/40 bg-amber-500/[0.05] p-4 text-sm">Hay turnos del esquema anterior abiertos. El administrador debe cerrarlos antes de empezar a usar cajas compartidas.</p>}
+          {(context.cajas?.length ?? 0) > 1 ? <div className="space-y-1.5"><Label htmlFor="cash-register">¿En qué caja vas a trabajar?</Label><Select value={cajaId} disabled={pending} onValueChange={value => { setCajaId(value); const c = context.cajas?.find(item => item.id === value); setReceived(String(c?.session ? 0 : c?.efectivoDisponible ?? 0)); setAdded('0'); setOpeningReason(''); }}><SelectTrigger id="cash-register" className="h-11"><SelectValue placeholder="Elegí tu caja" /></SelectTrigger><SelectContent>{context.cajas?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre} · {c.session ? 'Abierta' : 'Disponible'}</SelectItem>)}</SelectContent></Select></div> : null}
+          {caja?.session ? <div className="space-y-3 rounded-2xl border border-gm-yellow/25 bg-gm-yellow/[0.06] p-4 text-sm">
+            <p className="font-semibold">{context.multipleShiftsEnabled ? 'Te vas a unir a una caja abierta' : 'Esta caja ya tiene un turno abierto'}</p>
+            <div className="flex items-center gap-3"><span className="flex -space-x-2">{caja.operadores.slice(0, 3).map(o => <Iniciales key={o.turnoId} nombre={o.nombre} className="size-8 border-2 border-card text-[11px]" />)}</span><p className="text-muted-foreground">{caja.operadores.map(o => o.nombre).join(', ')} {caja.operadores.length === 1 ? 'está trabajando' : 'están trabajando'} aquí.</p></div>
+            {handover && <p className="flex items-center gap-2 text-foreground"><Car className="size-4" aria-hidden />{handover.vehiculosActivos} vehículos dentro</p>}
+            <p className="text-muted-foreground">{context.multipleShiftsEnabled ? 'Compartís el efectivo de esta caja.' : 'Esperá a que cierre su turno.'}</p>
+          </div> : <>
+            <section aria-label="Lo que recibís del turno anterior" className="overflow-hidden rounded-2xl border border-gm-line bg-gm-surface-2/50">
+              <div className="flex items-start justify-between gap-3 border-b border-gm-line px-4 py-3">
+                <div className="min-w-0">
+                  <Etiqueta>{hasPrior ? 'Último turno · dejó la caja' : 'Primera apertura de esta caja'}</Etiqueta>
+                  {hasPrior && <p className="mt-1.5 text-sm font-semibold">{handover?.operador ?? 'Responsable no informado'}</p>}
+                </div>
+                {hasPrior && handover?.fechaCierre && <span className="gm-mono shrink-0 pt-0.5 text-[11px] text-muted-foreground">{date(handover.fechaCierre)}</span>}
+              </div>
+              <div className="grid grid-cols-2 divide-x divide-gm-line">
+                <div className="p-4"><p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wallet className="size-3.5 shrink-0" aria-hidden />{hasPrior ? 'Efectivo que dejó' : 'Efectivo inicial'}</p><p className="mt-2 font-display text-[28px] font-bold leading-none tracking-tight tabular-nums">{money(openingExpected)}</p></div>
+                <div className="p-4"><p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Car className="size-3.5 shrink-0" aria-hidden />{handover?.vehiculosDejados != null ? 'Vehículos que dejó dentro' : 'Vehículos dentro ahora'}</p>{(() => { const v = handover?.vehiculosDejados ?? handover?.vehiculosActivos; return v == null ? <p className="mt-2 text-sm font-semibold text-muted-foreground">No informado</p> : <p className="mt-2 font-display text-[28px] font-bold leading-none tabular-nums">{v}</p>; })()}</div>
+              </div>
+              {handover?.vehiculosDejados != null && handover.vehiculosActivos !== handover.vehiculosDejados && <p className="border-t border-gm-line px-4 py-2 text-[11px] text-muted-foreground">Ahora hay {handover.vehiculosActivos} vehículos dentro.</p>}
+            </section>
+            <div className="space-y-3">
+              <CashAmountField id="cash-received" label="Efectivo que recibís" value={received} onChange={setReceived} disabled={pending} shortcuts={[...(hasPrior ? [{ label: 'Recibí todo · ' + money(openingExpected), amount: openingExpected }] : []), { label: 'Sin efectivo recibido', amount: 0 }]} description={<>Contá el dinero y confirmá el importe. Fondo habitual: <span className="tabular-nums">{money(caja?.fondoObjetivo ?? 15000)}</span>.</>} />
+              {openingDifference !== 0 && amountValid(received) && <div className="space-y-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] p-4"><Pill tono="aviso">{openingDifference > 0 ? 'Faltan ' + money(openingDifference) : 'Hay ' + money(-openingDifference) + ' adicionales'}</Pill><div className="space-y-1.5"><Label htmlFor="opening-reason">Motivo de la diferencia al recibir</Label><Input id="opening-reason" maxLength={255} required value={openingReason} onChange={e => setOpeningReason(e.target.value)} disabled={pending} placeholder="Ej.: retiro que no quedó registrado" /></div></div>}
+            </div>
+            <details className="group rounded-2xl border border-dashed border-gm-line-strong text-xs">
+              <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-semibold text-muted-foreground rounded-2xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow [&::-webkit-details-marker]:hidden"><Plus className="size-3.5 transition-transform group-open:rotate-45" aria-hidden />Agregar cambio · opcional</summary>
+              <div className="border-t border-dashed border-gm-line-strong p-4"><CashAmountField id="cash-added" label="Cambio que agregás ahora" value={added} onChange={setAdded} disabled={pending} shortcuts={[{ label: 'No agrego cambio', amount: 0 }]} increments description="Solo si agregás dinero de afuera." /></div>
+            </details>
           </>}
-          <Button className="w-full" disabled={pending || !openingValid}>{pending ? 'Abriendo…' : caja?.session ? 'Abrir mi turno en esta caja' : 'Abrir caja y mi turno'}</Button>
+          {enlaceHistorial}
+        </ActionDialogBody>
+          <ActionDialogFooter>
+            <ActionDialogPrimaryButton type="submit" disabled={pending || !openingValid}>{pending ? 'Abriendo…' : caja?.session ? 'Abrir mi turno en esta caja' : 'Abrir caja y mi turno'}</ActionDialogPrimaryButton>
+          </ActionDialogFooter>
         </form>}
-        {esAdmin && <Link href="/admin/caja?tab=turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja?tab=turnos'), 200); }} className="text-center text-sm text-muted-foreground underline underline-offset-4">Ver cajas, turnos abiertos e historial</Link>}
-      </DialogContent>
-    </Dialog>
+      </ActionDialogContent>
+    </ActionDialog>
   </>;
 }
 
@@ -153,17 +273,21 @@ export function CashMovementForm({ sesionId, expected, onUpdated }: { sesionId: 
   const withdrawal = type === 'RETIRO';
   const valid = amountValid(amount) && Number(amount) > 0 && (!withdrawal || Number(amount) <= expected) && !!reason.trim();
   const nextCash = expected + (withdrawal ? -Number(amount) : Number(amount));
-  return <section aria-label="Movimientos de efectivo" className="overflow-hidden rounded-xl border border-border bg-secondary/20">
-    <div className="space-y-4 p-4">
-      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold">Movimientos de efectivo</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Registrá el dinero que sacás o agregás al cajón durante la jornada.</p></div><ShieldCheck className="mt-0.5 size-4 shrink-0 text-gm-yellow" aria-label="Sólo administración" /></div>
-      <div className="grid grid-cols-2 gap-2">{(['RETIRO', 'APORTE'] as const).map(option => <Button key={option} type="button" variant="outline" disabled={pending} aria-pressed={expanded && type === option} aria-expanded={expanded && type === option} className="h-11 rounded-lg aria-pressed:border-gm-yellow/50 aria-pressed:bg-gm-yellow/10 aria-pressed:text-gm-yellow" onClick={() => { if (type !== option) { setAmount(''); setReason(''); } setType(option); setExpanded(true); }}>{option === 'RETIRO' ? <ArrowUpRight /> : <ArrowDownLeft />}{option === 'RETIRO' ? 'Retirar efectivo' : 'Agregar efectivo'}</Button>)}</div>
+  return <section aria-label="Movimientos de efectivo" className="overflow-hidden rounded-2xl border border-gm-line bg-gm-surface-2/40">
+    <div className="space-y-3.5 p-4">
+      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold">Movimientos de efectivo</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Registrá el dinero que sacás o agregás al cajón durante la jornada.</p></div><span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gm-yellow/10 px-2 py-0.5 text-[10.5px] font-bold text-gm-yellow"><ShieldCheck className="size-3" aria-hidden />Admin</span></div>
+      <div className="grid grid-cols-2 gap-2">{(['RETIRO', 'APORTE'] as const).map(option => <Button key={option} type="button" variant="outline" disabled={pending} aria-pressed={expanded && type === option} aria-expanded={expanded && type === option} className="h-11 rounded-xl border-gm-line-strong aria-pressed:border-gm-yellow/50 aria-pressed:bg-gm-yellow/10 aria-pressed:text-gm-yellow" onClick={() => { if (type !== option) { setAmount(''); setReason(''); } setType(option); setExpanded(true); }}>{option === 'RETIRO' ? <ArrowUpRight /> : <ArrowDownLeft />}{option === 'RETIRO' ? 'Retirar efectivo' : 'Agregar efectivo'}</Button>)}</div>
     </div>
-    {expanded && <form className="space-y-4 border-t border-border p-4" onSubmit={e => { e.preventDefault(); if (!valid || pending) return; startTransition(async () => { const result = await addCashMovementAction(sesionId, { tipo: type, importe: Number(amount), efectivoEsperado: expected, motivo: reason }); if (result.error) { toast.error(result.error); onUpdated(); return; } toast.success(withdrawal ? 'Retiro registrado' : 'Aporte registrado'); setAmount(''); setReason(''); setExpanded(false); onUpdated(); }); }}>
+    {expanded && <form className="space-y-4 border-t border-gm-line p-4" onSubmit={e => { e.preventDefault(); if (!valid || pending) return; startTransition(async () => { const result = await addCashMovementAction(sesionId, { tipo: type, importe: Number(amount), efectivoEsperado: expected, motivo: reason }); if (result.error) { toast.error(result.error); onUpdated(); return; } toast.success(withdrawal ? 'Retiro registrado' : 'Aporte registrado'); setAmount(''); setReason(''); setExpanded(false); onUpdated(); }); }}>
       <CashAmountField id={'movement-amount-' + formId} label={withdrawal ? '¿Cuánto efectivo retirás?' : '¿Cuánto efectivo agregás?'} value={amount} onChange={setAmount} disabled={pending} max={withdrawal ? Math.max(0, expected) : undefined} shortcuts={withdrawal ? [{ label: 'Retirar todo · ' + money(expected), amount: expected, disabled: expected <= 0 }] : []} increments={!withdrawal} />
       <div className="space-y-2"><Label htmlFor={'movement-reason-' + formId}>Motivo del {withdrawal ? 'retiro' : 'aporte'}</Label><Input id={'movement-reason-' + formId} placeholder={withdrawal ? 'Ej.: entrega al encargado' : 'Ej.: reposición de cambio'} maxLength={255} value={reason} onChange={e => setReason(e.target.value)} disabled={pending} required /></div>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-background/40 px-3 py-2.5 text-xs"><span className="text-muted-foreground">{amountValid(amount) && nextCash >= 0 ? 'Efectivo después del movimiento' : 'Efectivo disponible'}</span><span className="font-semibold tabular-nums">{money(amountValid(amount) && nextCash >= 0 ? nextCash : expected)}</span></div>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gm-line bg-background/40 px-3.5 py-3 text-xs"><span className="text-muted-foreground">{amountValid(amount) && nextCash >= 0 ? 'Efectivo después del movimiento' : 'Efectivo disponible'}</span><span className={cn('text-sm font-bold tabular-nums', amountValid(amount) && Number(amount) > 0 && nextCash >= 0 && (withdrawal ? 'text-amber-400' : 'text-emerald-400'))}>{money(amountValid(amount) && nextCash >= 0 ? nextCash : expected)}</span></div>
       <p className="text-xs leading-relaxed text-muted-foreground">Queda registrado con tu nombre y motivo. No modifica las ventas ni los gastos de la planilla.</p>
-      <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" disabled={pending} onClick={() => { setExpanded(false); setAmount(''); setReason(''); }}>Cancelar</Button><Button disabled={pending || !valid}>{pending ? 'Registrando…' : withdrawal ? 'Confirmar retiro' : 'Confirmar aporte'}</Button></div>
+      <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" disabled={pending} onClick={() => { setExpanded(false); setAmount(''); setReason(''); }}>Cancelar</Button><Button className="rounded-xl font-bold" disabled={pending || !valid}>{pending ? 'Registrando…' : withdrawal ? 'Confirmar retiro' : 'Confirmar aporte'}</Button></div>
     </form>}
   </section>;
+}
+
+function Linea({ label, value }: { label: string; value: string }) {
+  return <div className="flex items-center justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className="font-semibold tabular-nums">{value}</dd></div>;
 }

@@ -10,9 +10,13 @@ import { DurationField, MoneyField } from './tariff-form-fields';
 import { TariffSelect, tariffScheduleOptions } from './tariff-select';
 
 type Vehicle = { code: string; name: string; enabled: boolean };
-export function TariffPriceList({ draft, onChange, vehicles, night, onEnableNight }: {
-  draft: TariffDraft; onChange: (draft: TariffDraft) => void; vehicles: Vehicle[]; night: boolean; onEnableNight: () => void;
+// `section` divide el paso de precios en dos partes: primero las duraciones y después qué se cobra
+// si se queda más tiempo. Sin `section` se muestran las dos juntas.
+export function TariffPriceList({ draft, onChange, vehicles, night, onEnableNight, section }: {
+  draft: TariffDraft; onChange: (draft: TariffDraft) => void; vehicles: Vehicle[]; night: boolean; onEnableNight: () => void; section?: 'durations' | 'endings';
 }) {
+  const showDurations = section !== 'endings';
+  const showEndings = section !== 'durations';
   const keys = useRef(new WeakMap<TariffBracket, string>());
   const nextKey = useRef(0);
   const container = useRef<HTMLDivElement>(null);
@@ -73,9 +77,10 @@ export function TariffPriceList({ draft, onChange, vehicles, night, onEnableNigh
   </div>;
 
   return <div ref={container} className="space-y-5">
-    <p className="text-sm leading-relaxed text-muted-foreground">Agregá una fila por duración y cargá su precio en pesos. Se ordenan de menor a mayor duración. Usá el botón de copiar para crear otra fila con el mismo precio.</p>
+    {showDurations && <p className="text-sm leading-relaxed text-muted-foreground">Agregá una fila por duración y cargá su precio en pesos. Se ordenan de menor a mayor duración. Usá el botón de copiar para crear otra fila con el mismo precio.</p>}
+    {section === 'endings' && <p className="text-sm leading-relaxed text-muted-foreground">Qué se cobra cuando la estadía supera la última duración. Podés usar una regla de día y otra de noche, con importes y formas de cobro distintos.</p>}
     {copiedKey && <p role="status" className="text-sm text-amber-600 dark:text-amber-400">Precio copiado. Revisá el horario, la duración y el importe de la nueva fila.</p>}
-    {night && <p className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">Los precios de día o noche reemplazan al de “Todo el día” para la misma duración.</p>}
+    {night && showDurations && <p className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">Los precios de día o noche reemplazan al de “Todo el día” para la misma duración.</p>}
     {vehicles.map(vehicle => {
       const rows = draft.brackets.map((row, index) => ({ row, index })).filter(({ row }) => row.vehicleType === vehicle.code);
       const durations = rows.filter(({ row }) => row.uptoMinutes !== null).sort((a, b) =>
@@ -88,8 +93,8 @@ export function TariffPriceList({ draft, onChange, vehicles, night, onEnableNigh
           <h4 className="font-semibold">{vehicle.name}</h4>
           <span className="text-xs text-muted-foreground">{vehicle.enabled ? 'Importes en pesos argentinos' : 'Vehículo deshabilitado · precios conservados'}</span>
         </div>
-        <div className="px-4 sm:px-5">
-          {!durations.length && <div className="py-6"><p className="text-sm font-medium">Empezá con la primera duración</p><p className="mt-1 text-sm text-muted-foreground">Por ejemplo, el precio de 30 minutos o de 1 hora.</p></div>}
+        {showDurations && <div className="px-4 sm:px-5">
+          {!durations.length &&<div className="py-6"><p className="text-sm font-medium">Empezá con la primera duración</p><p className="mt-1 text-sm text-muted-foreground">Por ejemplo, el precio de 30 minutos o de 1 hora.</p></div>}
           {durations.map(({ row, index }, position) => <div key={keyFor(row)} data-row-key={keyFor(row)} data-tariff-duration className="relative border-b py-4 last:border-0">
             <div className="mb-3 flex items-center justify-between gap-2 sm:hidden"><span className="text-xs font-medium text-muted-foreground">Precio {position + 1}</span>{rowActions(row, index, vehicle)}</div>
             <div className={'grid items-end gap-3 ' + (night ? 'sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_88px] xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_88px]' : 'sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_88px]')}>
@@ -100,9 +105,10 @@ export function TariffPriceList({ draft, onChange, vehicles, night, onEnableNigh
             </div>
           </div>)}
           <div className="pb-4 pt-2"><Button type="button" size="sm" variant="outline" onClick={() => add(vehicle.code, false)}><Plus className="mr-1 size-4" aria-hidden="true" />Agregar duración</Button></div>
-        </div>
-        <div className="space-y-4 border-t bg-muted/15 p-4 sm:p-5">
-          <div><h5 className="text-sm font-semibold">Si se queda más tiempo</h5><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Definí el cobro posterior de este vehículo. Podés usar una regla de día y otra de noche, con importes y formas de cobro distintos.</p></div>
+        </div>}
+        {showEndings && <div className={'space-y-4 p-4 sm:p-5 ' + (showDurations ? 'border-t bg-muted/15' : '')}>
+          {showDurations && <div><h5 className="text-sm font-semibold">Si se queda más tiempo</h5><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Definí el cobro posterior de este vehículo. Podés usar una regla de día y otra de noche, con importes y formas de cobro distintos.</p></div>}
+          {section === 'endings' && durations.length > 0 && <p className="text-xs text-muted-foreground">Última duración: {durations[durations.length - 1].row.label} · {Number.isFinite(durations[durations.length - 1].row.price) ? '$ ' + durations[durations.length - 1].row.price.toLocaleString('es-AR') : 'sin precio'}</p>}
           {!endings.length && <p className="text-sm text-muted-foreground">Sin una regla adicional, se usa el último importe disponible. Comprobá el resultado en el simulador.</p>}
           {endings.map(({ row, index }, position) => <div key={keyFor(row)} data-row-key={keyFor(row)} data-tariff-ending={row.ticketDayType ?? 'ANY'} className="space-y-4 rounded-xl border bg-card p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-amber-600 dark:text-amber-400">
@@ -131,7 +137,7 @@ export function TariffPriceList({ draft, onChange, vehicles, night, onEnableNigh
             {!endings.some(({ row }) => row.ticketDayType === 'NIGHT') && <Button type="button" variant="outline" size="sm" onClick={() => add(vehicle.code, true, 'NIGHT')}><Moon className="mr-2 size-4" aria-hidden="true" />Agregar cobro de noche</Button>}
           </div>
           {endings.some(({ row }) => row.ticketDayType === null) && night && <p className="text-xs text-muted-foreground">La regla de día o noche reemplaza al cobro general en ese horario.</p>}
-        </div>
+        </div>}
       </fieldset>;
     })}
     <p className="text-xs leading-relaxed text-muted-foreground">El cálculo puede combinar duraciones de la lista. Usá el simulador para comprobar cuánto se cobra en cada caso.</p>

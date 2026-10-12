@@ -1,0 +1,161 @@
+/* Ajustes de presentación del Stepper (Tarifas, Mercado Pago, Turnos). El componente queda como vino de React Bits;
+   esto sólo da tamaño al indicador propio (renderStepIndicator), los botones del sistema y el
+   pie fijo: con los pasos largos en el celular, Continuar/Aplicar queda siempre a mano. */
+
+/* El resaltado del paso actual se reubica un cuadro después de un cambio de ancho; mientras tanto
+   no debe ensanchar la página. */
+.setup-stepper .stepper__track { overflow: hidden; }
+
+.setup-stepper .stepper__segment {
+  flex: 1 1 0;
+  justify-content: flex-start;
+  height: 56px;
+  padding: 0;
+}
+
+.setup-stepper__indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--stepper-tile-radius);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.setup-stepper__indicator:disabled { cursor: default; }
+.setup-stepper__indicator[data-status='upcoming']:disabled { opacity: 0.6; }
+.setup-stepper__indicator:focus-visible { outline: 2px solid hsl(var(--gm-yellow)); outline-offset: 2px; }
+
+.setup-stepper__badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--stepper-faint);
+  color: var(--stepper-muted);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+.setup-stepper__badge[data-status='active'] { box-shadow: inset 0 0 0 2px var(--stepper-solid); color: var(--stepper-solid); }
+.setup-stepper__badge[data-status='complete'] { background: var(--stepper-solid); box-shadow: none; color: var(--stepper-solid-ink); }
+
+.setup-stepper__title {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--stepper-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.setup-stepper__title:not([data-status='upcoming']) { color: var(--stepper-ink); }
+
+.setup-stepper__state {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground) / 0.7);
+}
+.setup-stepper__state[data-status='complete'] { color: var(--stepper-solid); }
+.setup-stepper__state[data-status='active'] { color: var(--stepper-muted); }
+
+/* Progreso: una línea por paso al pie de cada segmento. */
+.setup-stepper__bar {
+  position: absolute;
+  right: 10px;
+  bottom: 5px;
+  left: 10px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--stepper-track);
+  overflow: hidden;
+}
+.setup-stepper__bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--stepper-solid);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 560ms var(--stepper-spring);
+}
+.setup-stepper__bar[data-status='active']::after { transform: scaleX(0.5); }
+.setup-stepper__bar[data-status='complete']::after { transform: none; }
+
+@media (max-width: 479px) {
+  .setup-stepper__indicator { gap: 7px; padding: 0 7px; }
+  .setup-stepper__badge { width: 24px; height: 24px; font-size: 11.5px; }
+  .setup-stepper__bar { right: 7px; left: 7px; }
+}
+@media (max-width: 359px) {
+  .setup-stepper__state { display: none; }
+}
+
+/* En el primer paso no hay Atrás: el botón oculto no ocupa lugar y Continuar usa todo el ancho. */
+.setup-stepper .stepper__button--back[data-hidden] { display: none; }
+
+/* Pie fijo: queda pegado al borde inferior mientras el paso se desplaza. */
+.setup-stepper .stepper__footer-wrap {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  margin: 0 calc(var(--stepper-inset) * -1 - var(--stepper-pad)) calc((var(--stepper-inset) + var(--stepper-pad)) * -1);
+}
+.setup-stepper .stepper__footer {
+  margin-top: 20px;
+  padding: 12px calc(var(--stepper-inset) + var(--stepper-pad)) max(env(safe-area-inset-bottom), 14px);
+  border-top: 1px solid hsl(var(--gm-line));
+  border-radius: 0 0 var(--stepper-radius) var(--stepper-radius);
+  background: hsl(var(--gm-surface) / 0.96);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.setup-stepper .setup-stepper__back {
+  height: 48px;
+  padding: 0 16px 0 12px;
+  border-radius: 14px;
+  font-size: 14px;
+}
+.setup-stepper .setup-stepper__next {
+  height: 48px;
+  min-width: 200px;
+  justify-content: center;
+  padding: 0 20px;
+  border-radius: 14px;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 18px -10px hsl(var(--gm-yellow) / 0.55);
+}
+@media (max-width: 639px) {
+  .setup-stepper .setup-stepper__next { flex: 1 1 auto; min-width: 0; }
+}
+
+/* Con 4 pasos en el celular los nombres no entran: los pasos que no son el actual muestran sólo
+   su número y el actual se queda con el resto del ancho. */
+@media (max-width: 479px) {
+  .setup-stepper--compact .stepper__segment:not([data-status='active']) { flex: 0 0 46px; }
+  .setup-stepper--compact .stepper__segment[data-status='active'] { flex: 1 1 auto; }
+  .setup-stepper--compact .setup-stepper__indicator:not([data-status='active']) { justify-content: center; padding: 0; }
+  .setup-stepper--compact .setup-stepper__indicator:not([data-status='active']) > span:nth-child(2) { display: none; }
+}

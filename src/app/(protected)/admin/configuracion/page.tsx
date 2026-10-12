@@ -6,7 +6,7 @@ import { currentUser } from '@/lib/auth';
 import { PageHeader } from '@/components/page-header';
 
 const sections = [
-  { href: '/admin/configuracion/operacion', icon: Settings2, title: 'Operación', description: 'Tipos de vehículo, tarjetas físicas y turnos de caja. Elegí qué necesita esta playa.' },
+  { href: '/admin/configuracion/operacion', icon: Settings2, title: 'Operación', description: 'Turnos de caja y tipos de vehículo. Elegí qué necesita esta playa.' },
   { href: '/admin/configuracion/comprobantes', icon: ReceiptText, title: 'Comprobantes', description: 'Elegí cómo entregar comprobantes y recibos: WhatsApp, QR o impresión.' },
   { href: '/admin/configuracion/mercadopago', icon: CreditCard, title: 'Cobro con MercadoPago', description: 'La cuenta donde entra el dinero de los cobros con QR. Vale para todas las playas de la empresa.' },
 ];

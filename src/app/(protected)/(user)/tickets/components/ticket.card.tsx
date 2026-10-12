@@ -44,9 +44,11 @@ import {
   CalendarDays,
   CalendarPlus,
   ChevronRight,
+  History,
   Map,
   Receipt,
   Settings,
+  SlidersHorizontal,
 } from "lucide-react";
 
 const OVERDUE_CHECK_INTERVAL_MS = 20_000;
@@ -327,6 +329,20 @@ export default function CardTicket({
   const fechaLarga = `${DIAS[hoy.day()]} ${hoy.date()} ${MESES[hoy.month()]}`;
   const puedeEscanear = isMobile && !!reconocimientoPatentes;
   const accesoTarifas = "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-border px-3.5 text-[13px] font-semibold text-[#D9D1C3] transition-colors hover:border-gm-yellow/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
+  // Accesos secundarios del administrador: texto sin borde para no competir con las acciones del mostrador.
+  const atajoSutil = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
+  const atajosAdmin = (alto: string) => isAdmin && (
+    <nav aria-label="Accesos de administración" className="flex shrink-0 flex-wrap items-center gap-0.5">
+      {TURNO_BAR_ENABLED && (
+        <Link href="/admin/caja?tab=turnos#historial" className={cn(alto, atajoSutil)}>
+          <History className="size-3.5" aria-hidden />Historial de turnos
+        </Link>
+      )}
+      <Link href="/admin/configuracion" className={cn(alto, atajoSutil)}>
+        <SlidersHorizontal className="size-3.5" aria-hidden />Configuración
+      </Link>
+    </nav>
+  );
   const lector = barcodeTicketsEnabled && (
     <p role="status" className="flex items-center gap-2 text-xs leading-relaxed text-muted-foreground">
       <Barcode className={cn("size-4 shrink-0", isScanning && "text-gm-yellow")} aria-hidden />
@@ -353,6 +369,7 @@ export default function CardTicket({
           {isAdmin && (
             <Link href="/admin/tarifas" ref={refVisible('admin')} className={accesoTarifas}><Settings className="size-4 text-gm-yellow" aria-hidden />Administrar tarifas</Link>
           )}
+          {atajosAdmin("h-9")}
         </div>
       </header>
 
@@ -494,10 +511,15 @@ export default function CardTicket({
   const escritorio = (
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-        <div className="min-w-0">
-          <p className="truncate text-[13.5px] text-muted-foreground">
-            {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-[#6F665A]">· {fechaLarga}</span>
-          </p>
+        {/* basis-0: los accesos junto al saludo no ensanchan la columna ni bajan el buscador de la derecha. */}
+        <div className="min-w-[20rem] flex-1 basis-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="min-w-0 truncate text-[13.5px] text-muted-foreground">
+              {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-[#6F665A]">· {fechaLarga}</span>
+            </p>
+            {isAdmin && <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden />}
+            {atajosAdmin("h-7 -my-1")}
+          </div>
           <h1 className="mt-1.5 text-[40px] font-bold leading-[1.05] tracking-tight">{barcodeTicketsEnabled ? "Tickets y patentes" : "Entradas y salidas"}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">

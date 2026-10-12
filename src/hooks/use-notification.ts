@@ -26,7 +26,7 @@ export function useNotifications() {
     return () => { active = false; clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('notes-read-changed', refresh); window.removeEventListener('notes-notification', refresh); };
   }, [playaId, userId]);
   useTenantEvent('notification', data => {
-    if (data.type === 'NEW_NOTE' && data.authorId !== userId) window.dispatchEvent(new Event('notes-notification'));
+    if (data.type === 'NEW_NOTE') window.dispatchEvent(new Event('notes-notification'));
   });
   // Navigation alone must never mark messages as read.
   const clearNoteAlert = useCallback(() => {}, []);

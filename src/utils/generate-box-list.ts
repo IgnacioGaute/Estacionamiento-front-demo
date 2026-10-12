@@ -330,7 +330,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     }
 
     const ensureSpace = (neededHeight = 70, repeatTableHeader = true) => {
-      if (yPosition < neededHeight) {
+      if (yPosition < neededHeight + 60) {
         drawFooter(page, pdfDoc.getPageCount())
 
         page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT])
@@ -420,7 +420,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     }
 
     const drawTotalsESNRow = (entradas: number, salidas: number, neto: number) => {
-      ensureSpace(100)
+      ensureSpace(100, false)
       yPosition -= 6
 
       const cardGap = 8
@@ -467,7 +467,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     }
 
     const drawSubtotalsSummary = () => {
-      ensureSpace(220)
+      ensureSpace(220, false)
       yPosition -= 6
 
       page.drawText("RESUMEN", { x: marginLeft, y: yPosition, size: 10.5, font: fontBold, color: brownColor })
@@ -504,6 +504,25 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     //  Secciones de datos
     // ==============================
 
+    // Notas discretas debajo de cada operación, sin invadir los importes.
+    const noteLines = (notes: (string | null | undefined)[]) => notes.filter(Boolean).flatMap(note => {
+      const safe = note!.replace(/[^\x20-\x7e\xa0-\xff]/g, '-');
+      const lines: string[] = [];
+      let line = '';
+      for (const word of safe.split(/\s+/)) {
+        for (const char of (line ? ' ' : '') + word) {
+          if (font.widthOfTextAtSize(line + char, 8) > descRightEdge - colDescTextX) {
+            lines.push(line); line = '';
+          }
+          line += char;
+        }
+      }
+      if (line) lines.push(line);
+      return lines;
+    });
+    const drawNotes = (lines: string[], rowY: number) => lines.forEach((line, i) =>
+      page.drawText(line, { x: colDescTextX, y: rowY - 12 * (i + 1), size: 8, font, color: mutedColor }));
+
     const addDataSection = (
       sectionKey: string,
       title: string,
@@ -525,8 +544,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
           const pago = item.paid === false ? { entradas: 0, salidas: 0, badge: 'PEND', detalle: undefined } : pagoExtractor(item)
           const paymentBadge = pago.badge
           const medioDetalle = pago.detalle
-          const hasSubtitle = Boolean(subtitle)
-          const rowHeight = 18 + (hasSubtitle ? 12 : 0) + (medioDetalle ? 12 : 0)
+          const notes = noteLines([subtitle, item.discountNote, medioDetalle, (item.operatorName || item.paymentOperatorName) ? `Registró ${item.operatorName || item.paymentOperatorName}` : null])
+          const rowHeight = 18 + notes.length * 12
           ensureSpace(rowHeight + 20)
 
           const nameSize = 9.5
@@ -545,12 +564,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
             drawBadge(paymentBadge, colDescTextX + nameW + 6, rowY - 1)
           }
 
-          if (hasSubtitle) {
-            page.drawText(subtitle as string, { x: colDescTextX, y: rowY - 12, size: 8, font, color: mutedColor })
-          }
-          if (medioDetalle) {
-            page.drawText(medioDetalle, { x: colDescTextX, y: rowY - (hasSubtitle ? 24 : 12), size: 8, font, color: mutedText2 })
-          }
+          drawNotes(notes, rowY)
 
           drawRightText(pago.entradas ? formatNumber(pago.entradas) : "—", entradasRightX, rowY, font, 9.5)
           drawRightText(pago.salidas ? formatNumber(pago.salidas) : "—", salidasRightX, rowY, font, 9.5, pago.salidas ? negativeColor : dashColor)
@@ -606,7 +620,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
           const price = Number(priceStr ?? 0)
           const displayType = paymentType === "MIX" ? "AT" : paymentType
           const hasSubtitle = Boolean(vehicleOwner)
-          const rowHeight = hasSubtitle ? 30 : 18
+          const notes = noteLines([vehicleOwner ? (isTercero ? `por cuenta de ${vehicleOwner}` : vehicleOwner) : null, item.operatorName ? `Registró ${item.operatorName}` : null])
+          const rowHeight = 18 + notes.length * 12
 
           ensureSpace(rowHeight + 20)
 
@@ -623,11 +638,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
             drawBadge(displayType, colDescTextX + nameW + 6, rowY - 1)
           }
 
-          if (hasSubtitle) {
-            const subtitleText = isTercero ? `por cuenta de ${vehicleOwner}` : (vehicleOwner as string)
-            const subtitleFont = isTercero ? fontItalic : font
-            page.drawText(subtitleText, { x: colDescTextX, y: rowY - 12, size: 8, font: subtitleFont, color: mutedColor })
-          }
+          drawNotes(notes, rowY)
 
           const treatAsCash =
             paymentType === "EF" ||
@@ -703,7 +714,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       if (items.length > 0) {
         drawTableHeader()
         items.forEach((item) => {
-          ensureSpace(40)
+          const notes = noteLines([item.operatorName ? `Registró ${item.operatorName}` : null])
+          ensureSpace(40 + notes.length * 12)
 
           const [desc, priceStr, dateNow, type, paymentMethod] = dataExtractor(item)
           const price = Number(priceStr)
@@ -740,7 +752,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
             entradas += price
           }
 
-          yPosition -= 18
+          drawNotes(notes, rowY)
+          yPosition -= 18 + notes.length * 12
           drawRowSeparator()
         })
       } else {
@@ -818,7 +831,6 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       if (items.length > 0) {
         drawTableHeader()
         items.forEach((cobro) => {
-          ensureSpace(50)
           const medio = MEDIOS_INQUILINOS[cobro.metodo] ?? { badge: cobro.metodo, nombre: cobro.metodo }
           const pago = pagoPlanilla(cobro.monto, cobro.metodo, cobro.medioPagoDetalle, cobro.comisionPagoEstimada)
           const detalle =
@@ -830,12 +842,13 @@ export default async function generateBoxList(boxList: BoxList, userName: string
                   ? "Anulación de una devolución de otro día"
                   : `Anulación del recibo N° ${cobro.numero ?? "—"}, cobrado otro día`
 
+          const notes = noteLines([detalle, pago.detalle, cobro.operador ? `Registró ${cobro.operador}` : null])
+          ensureSpace(38 + notes.length * 12)
           const rowY = yPosition
-          page.drawText(formatDateA(String(date).slice(0, 10)), { x: colFechaX, y: rowY, size: 9, font, color: mutedText2 })
+          page.drawText(formatDateA(date), { x: colFechaX, y: rowY, size: 9, font, color: mutedText2 })
           page.drawText(cobro.cliente, { x: colDescTextX, y: rowY, size: 9.5, font, color: inkColor })
           drawBadge(cobro.metodo === 'CHECK' ? medio.badge : pago.badge, colDescTextX + font.widthOfTextAtSize(cobro.cliente, 9.5) + 6, rowY - 1)
-          page.drawText(detalle, { x: colDescTextX, y: rowY - 12, size: 8, font, color: mutedColor })
-          if (pago.detalle) page.drawText(pago.detalle, { x: colDescTextX, y: rowY - 24, size: 8, font, color: mutedText2 })
+          drawNotes(notes, rowY)
 
           const monto = Math.abs(cobro.comisionPagoEstimada?.neto ?? cobro.monto)
           if (cobro.metodo === "CASH") {
@@ -856,7 +869,7 @@ export default async function generateBoxList(boxList: BoxList, userName: string
           }
           porMedio.set(cobro.metodo, (porMedio.get(cobro.metodo) ?? 0) + cobro.monto)
 
-          yPosition -= pago.detalle ? 42 : 30
+          yPosition -= 18 + notes.length * 12
           drawRowSeparator()
         })
 
@@ -1115,6 +1128,61 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       page.drawText('Neto digital en entradas y salidas: no suma efectivo. Porcentajes actuales de la empresa.', { x: marginLeft, y: yPosition, size: 8, font, color: mutedColor })
       yPosition -= 24
       }
+    }
+
+    // Las salidas también pueden no tener cobro; conservan su propio responsable.
+    if (boxList.salidasDelDia?.length) {
+      yPosition -= 14;
+      drawSectionHeaderRow('Salidas del día');
+      for (const salida of boxList.salidasDelDia) {
+        const hora = new Date(salida.hora).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' });
+        const notes = noteLines([`${hora} - ${salida.identificacion}`, salida.operador ? `Registró ${salida.operador}` : null]);
+        ensureSpace(18 + notes.length * 12, false);
+        drawNotes(notes, yPosition + 12);
+        yPosition -= notes.length * 12 + 8;
+      }
+    }
+
+    // El mismo resumen del historial queda al pie de la planilla del operador.
+    const summaryMoney = (n: number | null | undefined) => n == null ? 'Sin registro' : `$ ${n.toLocaleString('es-AR')}`
+    const summaryLine = (text: string, bold = false) => {
+      // Helvetica no soporta todos los caracteres Unicode de nombres y observaciones.
+      const safe = text.replace(/[^\x20-\x7e\xa0-\xff]/g, '-')
+      const words = safe.split(/\s+/)
+      let line = ''
+      const fontUsed = bold ? fontBold : font
+      for (const word of words) {
+        const proposed = line ? line + ' ' + word : word
+        if (fontUsed.widthOfTextAtSize(proposed, 8.5) > 480 && line) {
+          ensureSpace(18, false)
+          page.drawText(line, { x: marginLeft, y: yPosition, size: 8.5, font: fontUsed })
+          yPosition -= 14
+          line = word
+        } else line = proposed
+      }
+      if (line) {
+        ensureSpace(18, false)
+        page.drawText(line, { x: marginLeft, y: yPosition, size: 8.5, font: fontUsed })
+        yPosition -= 14
+      }
+    }
+    for (const entry of boxList.turnosDelDia ?? []) {
+      const t = entry.turno
+      const r = t?.resumen
+      if (!t || !r) continue
+      ensureSpace(240, false)
+      yPosition -= 12
+      summaryLine(`RESUMEN DE TURNO - ${t.nombre} - ${t.caja?.nombre ?? 'Caja anterior'}`, true)
+      summaryLine(`${t.fechaOperativa ?? ''} | ${t.cierreAutomatico ? 'Corte de las 00:00 - La caja sigue abierta' : t.estado === 'ABIERTO' ? 'En curso' : 'Cerrado'}`)
+      summaryLine(`Efectivo: ${summaryMoney(r.efectivoCobrado)} | Mercado Pago: ${summaryMoney(r.mercadoPagoAlias + r.mercadoPagoQr)} | Transferencias: ${summaryMoney(r.transferencias)}`, true)
+      summaryLine(`MP Alias: ${summaryMoney(r.mercadoPagoAlias)} | MP QR: ${summaryMoney(r.mercadoPagoQr)}`)
+      summaryLine(`Retirado de caja: ${summaryMoney(r.totalRetirado)} | Gastos: ${summaryMoney(r.gastosEfectivo)} | Sueldo: ${summaryMoney(r.sueldoRetirado)} | Recaudación: ${summaryMoney(r.retirosRecaudacion)}`)
+      summaryLine(`Vehículos recibidos: ${r.vehiculosInicio ?? 'No informado'} | Salidas: ${r.salidas ?? 'No informado'} | Quedan dentro: ${r.vehiculosFin ?? 'Al cerrar'}`)
+      if (r.efectivoParaSiguiente != null) summaryLine(`Deja al siguiente: ${summaryMoney(r.efectivoParaSiguiente)}`, true)
+      else if (t.estado === 'CERRADO') summaryLine('La caja sigue abierta.')
+      if (t.cierreCaja) summaryLine(`Cierre de caja: esperado ${summaryMoney(t.efectivoTeorico)} | contado ${summaryMoney(t.efectivoContado)} | diferencia ${summaryMoney(t.diferencia)}`)
+      if (t.alertaSueldo) summaryLine(t.alertaSueldo, true)
+      summaryLine('Digitales antes de comisiones. Vehículos dentro: total de la playa.')
     }
 
     // Pie de página en la última hoja

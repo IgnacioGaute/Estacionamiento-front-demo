@@ -62,7 +62,7 @@ export function ViewNoteDialog({ note }: { note: Note }) {
             </dt>
             <dd className="mt-0.5 flex items-center gap-1.5 text-foreground">
               <User className="size-3.5 text-muted-foreground" />
-              {note.user.email}
+              {note.user?.email ?? 'Autor no registrado'}
             </dd>
           </div>
         </dl>

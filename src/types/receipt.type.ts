@@ -36,6 +36,9 @@ export type ScannerReceipt ={
 }
 
 export type ReceiptPayment ={
+  id?: string;
+  cuentaMovimientoId?: string | null;
+  operatorName?: string | null;
   paymentType: PaymentType;
   price: number;
   paymentDate: string | null;
@@ -45,6 +48,8 @@ export type ReceiptPayment ={
 }
 
 export type PaymentHistoryOnAccount ={
+  id?: string;
+  operatorName?: string | null;
   paymentType: PaymentType;
   price: number;
   paymentDate: string | null;

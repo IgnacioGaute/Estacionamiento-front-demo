@@ -98,7 +98,7 @@ export async function getCashConfiguration(): Promise<{ cajas: import('@/types/t
   if (!response.ok) throw new Error(data.message || 'No se pudo consultar las cajas.');
   return data;
 }
-export async function saveCaja(payload: { nombre: string; activa?: boolean }, id?: string) {
+export async function saveCaja(payload: { nombre: string; activa?: boolean; fondoObjetivo?: number }, id?: string) {
   const response = await fetch(BASE_URL + '/turnos/cajas' + (id ? '/' + id : ''), { method: id ? 'PATCH' : 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload) });
   const data = await response.json();
   if (!response.ok) throw new Error(data.message || 'No se pudo guardar la caja.');

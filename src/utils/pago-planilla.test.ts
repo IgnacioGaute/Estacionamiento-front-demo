@@ -30,3 +30,8 @@ it('una devolución digital revierte ambas columnas sin presumir reintegro de co
 it('un medio pendiente sigue compensado sin una comisión inventada', () => {
   expect(pagoPlanilla(100, 'MERCADOPAGO', 'QR · medio no informado', { bruto: 100, porcentaje: null, comision: null, neto: 100, pendiente: true })).toMatchObject({ entradas: 100, salidas: 100, detalle: 'medio no informado · Comisión pendiente' });
 });
+
+it('el descuento se informa sin entrar como cobro ni devolución', () => {
+  expect(pagoTicketPlanilla({ price: 700, movimientos: [{ tipo: 'DESCUENTO', monto: 300, metodo: 'CASH' }] } as TicketRegistration)).toMatchObject({ entradas: 0, salidas: 0, badge: 'DESC' });
+  expect(pagoTicketPlanilla({ price: 700, movimientos: [{ tipo: 'DESCUENTO', monto: 300, metodo: 'CASH' }, { tipo: 'SALDO', monto: 700, metodo: 'CASH' }] } as TicketRegistration)).toMatchObject({ entradas: 700, salidas: 0 });
+});

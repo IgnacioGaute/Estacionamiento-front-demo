@@ -4,6 +4,10 @@ import { Ticket } from "./ticket.type";
 
 export type TicketRegistration = {
     id: string;
+    entryOperatorName?: string | null;
+    exitOperatorName?: string | null;
+    operatorName?: string | null;
+    discountNote?: string;
     entryMode?: 'BARCODE' | 'PLATE' | null;
     pricingSnapshot?: { capturedAt: string; brackets: import('./ticket-price-bracket.type').TicketPriceBracket[]; schedule: { pricingDayTypeBasis: 'ENTRY' | 'EXIT'; pricingOptions?: import('./pricing-options.type').PricingOptions | null } } | null;
     description: string;
@@ -38,5 +42,5 @@ export type TicketRegistration = {
     duplicateOfRegistrationId?: string | null;
     // Solo viene poblado cuando el endpoint que lo devuelve pide la relación explícitamente
     // (ej. la planilla de caja) — para mostrar el medio de pago con el que se cobró.
-    movimientos?: { metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; medioPagoDetalle?: string; comisionPagoEstimada?: DetalleComisionPago; tipo?: 'ANTICIPO' | 'SALDO' | 'CORTESIA' | 'AJUSTE'; monto?: number }[];
+    movimientos?: { metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; medioPagoDetalle?: string; comisionPagoEstimada?: DetalleComisionPago; tipo?: 'ANTICIPO' | 'SALDO' | 'CORTESIA' | 'DESCUENTO' | 'AJUSTE'; monto?: number }[];
 }

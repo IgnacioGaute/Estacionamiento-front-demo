@@ -1,4 +1,7 @@
 'use client';
+import { BoxDiscounts } from '@/components/box-discounts';
+import { TurnoResumenPanel } from '@/components/turno-resumen';
+import { Pill } from '@/components/turno-ui';
 import LatticeLoader from '@/components/ui/lattice-loader';
 import { DataLoading } from '@/components/ui/data-loading';
 import { useEffect, useRef, useState } from 'react';
@@ -26,7 +29,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { getShiftsEnabledAction } from '@/actions/turnos/shifts-enabled.action';
 import { CompactPagination } from '@/components/compact-pagination';
 import { ResumenCajaNeto } from '@/components/resumen-caja-neto';
-import { useMediaQuery } from '@/hooks/use-media-query';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -81,7 +84,6 @@ function CobrosInquilinosDelDia({ cobros }: { cobros: CobroInquilinoDia[] }) {
 }
 
 export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
-  const escritorio = useMediaQuery('(min-width: 768px)');
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [boxData, setBoxData] = useState<BoxList | null>(null);
@@ -221,34 +223,44 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
             <CobrosInquilinosDelDia cobros={boxData.cobrosInquilinos} />
           )}
 
-          {shiftsEnabled && boxData && boxData.turnosDelDia && boxData.turnosDelDia.length > 0 && (
-            <details open={escritorio || undefined} className="rounded-2xl border border-border bg-secondary/20 p-3.5">
-              <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">Efectivo por turno <span className="font-normal">· {turns.length} {turns.length === 1 ? 'turno' : 'turnos'}</span></summary>
+          {boxData && <BoxDiscounts box={boxData} />}
+
+          {boxData && boxData.turnosDelDia && boxData.turnosDelDia.length > 0 && (shiftsEnabled || boxData.turnosDelDia.some(t => t.turno)) && (
+            <section aria-label="Turnos del día" className="rounded-2xl border border-border bg-secondary/20 p-3.5">
+              <p className="text-xs font-semibold text-muted-foreground">Turnos del día <span className="font-normal">· {turns.length} {turns.length === 1 ? 'turno' : 'turnos'}</span></p>
               <div className="mt-3 space-y-3">
+              <Accordion key={`${dateKey}-${currentTurnPage}`} type="single" collapsible defaultValue={turns[currentTurnPage * 3]?.turnoId ?? 'sin-turno'} className="space-y-3">
               {turns.slice(currentTurnPage * 3, (currentTurnPage + 1) * 3).map((t) => (
-                <div key={t.turnoId ?? 'sin-turno'} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border/60 bg-background/40 p-3">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-foreground">
-                      {t.turno
-                        ? `${t.turno.nombre} · ${t.turno.usuarioApertura ? `${t.turno.usuarioApertura.firstName} ${t.turno.usuarioApertura.lastName}` : 'Operador no disponible'}`
-                        : 'Sin turno asignado'}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">
-                      {hora(t.desde)} – {hora(t.hasta)} · {t.movimientos} {t.movimientos === 1 ? 'movimiento' : 'movimientos'}
+                <AccordionItem key={t.turnoId ?? 'sin-turno'} value={t.turnoId ?? 'sin-turno'} className="overflow-hidden rounded-2xl border border-border/60 bg-background/40">
+                  <AccordionTrigger className="gap-3 px-4 text-left hover:no-underline [&>svg]:text-muted-foreground">
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                      <span className="text-sm font-semibold text-foreground">
+                        {t.turno
+                          ? t.turno.usuarioApertura ? `${t.turno.usuarioApertura.firstName} ${t.turno.usuarioApertura.lastName}`.trim() || t.turno.nombre : t.turno.nombre
+                          : 'Sin turno asignado'}
+                      </span>
+                      {t.turno && <Pill tono={t.turno.estado === 'ABIERTO' ? 'ok' : 'error'} className="h-5 px-2 text-[10.5px]">{t.turno.estado === 'ABIERTO' ? 'Abierto' : 'Cerrado'}</Pill>}
+                    </span>
+                    <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
+                      {t.turno?.caja?.nombre && `${t.turno.caja.nombre} · `}{hora(t.desde)}{t.turno?.estado === 'ABIERTO' ? ' · En curso' : ` – ${hora(t.hasta)}`}
                       {t.abarcaOtrosDias && ' · abarca otras fechas'}
-                    </div>
-                  </div>
-                  <div className="gm-mono gm-tnum shrink-0 text-[13px] font-semibold text-foreground">
-                    {ars(t.efectivoDelDia)}
-                  </div>
-                </div>
+                    </span>
+                  </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4 px-4">
+                    {!t.turno?.resumen && <p className="text-sm font-semibold tabular-nums">Efectivo: {ars(t.efectivoDelDia)}</p>}
+                    {t.turno && <TurnoResumenPanel turno={t.turno} />}
+                  </AccordionContent>
+                </AccordionItem>
               ))}
+              </Accordion>
               <CompactPagination page={currentTurnPage} total={turns.length} pageSize={3} onChange={setTurnPage} />
               <p className="border-t border-border/60 pt-2 text-[11px] leading-snug text-muted-foreground">
-                Un día puede incluir varios turnos, y un turno puede abarcar varios días. El administrador consulta los cierres en Caja → Turnos e historial.
+                Mercado Pago y transferencias: importes antes de comisiones.
               </p>
               </div>
-            </details>
+            </section>
           )}
 
           {loading && <DataLoading label="Cargando planilla…" />}

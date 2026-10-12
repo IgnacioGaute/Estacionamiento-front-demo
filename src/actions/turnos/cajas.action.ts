@@ -5,9 +5,9 @@ export async function getCashConfigurationAction() {
   try { return { configuration: await getCashConfiguration() }; }
   catch (error) { return { error: error instanceof Error ? error.message : 'No se pudo cargar las cajas.' }; }
 }
-export async function saveCajaAction(payload: { nombre: string; activa?: boolean }, id?: string) {
-  const result = z.object({ nombre: z.string().trim().min(1).max(80), activa: z.boolean().optional() }).safeParse(payload);
-  if (!result.success || (id && !z.string().uuid().safeParse(id).success)) return { error: 'Revisá el nombre de la caja.' };
+export async function saveCajaAction(payload: { nombre: string; activa?: boolean; fondoObjetivo?: number }, id?: string) {
+  const result = z.object({ nombre: z.string().trim().min(1).max(80), activa: z.boolean().optional(), fondoObjetivo: z.number().int().min(0).max(100000000).optional() }).safeParse(payload);
+  if (!result.success || (id && !z.string().uuid().safeParse(id).success)) return { error: 'Revisá el nombre y el fondo objetivo de la caja.' };
   try { return { caja: await saveCaja(result.data, id) }; }
   catch (error) { return { error: error instanceof Error ? error.message : 'No se pudo guardar la caja.' }; }
 }

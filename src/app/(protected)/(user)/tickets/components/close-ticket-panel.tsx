@@ -1,4 +1,6 @@
 'use client';
+import { CashAmountField } from '@/components/cash-amount-field';
+import { discountRegistrationAction } from '@/actions/tickets/discount-registration.action';
 import { DataLoading } from '@/components/ui/data-loading';
 
 import { PricingBreakdown, formatImporte } from '@/components/pricing-breakdown';
@@ -18,7 +20,7 @@ import {
 import { PaymentMethodChoices, MedioCobro } from './payment-method-choices';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
-import { AlertTriangle, Barcode, ChevronDown, ChevronRight, Gift, Search, Timer } from 'lucide-react';
+import { AlertTriangle, Barcode, ChevronDown, ChevronRight, BadgePercent, Search, Timer } from 'lucide-react';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
 import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
@@ -184,8 +186,10 @@ export function CloseTicketPanel({
   const [results, setResults] = useState<TicketRegistration[]>([]);
   const [summary, setSummary] = useState<CloseSummary | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<Medio | null>(null);
-  const [showCourtesy, setShowCourtesy] = useState(false);
-  const [courtesyReason, setCourtesyReason] = useState('');
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [discountReason, setDiscountReason] = useState('');
+  const [discountAmount, setDiscountAmount] = useState('');
+  const [discountMode, setDiscountMode] = useState<'AMOUNT' | 'ALL'>('AMOUNT');
   // En el celular el cálculo reemplaza a los medios de pago en vez de alargar el diálogo.
   const [verCalculo, setVerCalculo] = useState(false);
   // Solo para calcular el vuelto en pantalla: no se manda al backend.
@@ -219,8 +223,10 @@ export function CloseTicketPanel({
 
   const resetCobro = () => {
     setPaymentMethod(null);
-    setShowCourtesy(false);
-    setCourtesyReason('');
+    setShowDiscount(false);
+    setDiscountReason('');
+    setDiscountAmount('');
+    setDiscountMode('AMOUNT');
     setVerCalculo(false);
     setPagaCon(null);
     setOtroImporte('');
@@ -352,12 +358,25 @@ export function CloseTicketPanel({
     handleSearchChange('');
   };
 
-  const handleClose = (closeType: 'PAYMENT' | 'NO_CHARGE' | 'COURTESY', metodo?: 'CASH' | 'TRANSFER', refundMetodo?: 'CASH' | 'TRANSFER') => {
+  const aplicarDescuento = () => {
+    if (!summary || !discountValid) return;
+    startTransition(async () => {
+      const result = await discountRegistrationAction(summary.registration.id, { monto: discount,
+        motivo: discountReason, expectedPrice: summary.previewBracket.price, expectedCollected: summary.totalCollectedSoFar });
+      if (result.error || !result.summary) {
+        toast.error(result.error ?? 'No se pudo aplicar el descuento.');
+        const refreshed = await getCloseSummaryAction(summary.registration.id);
+        if (refreshed) setSummary(refreshed);
+        return;
+      }
+      setSummary(result.summary);
+      resetCobro();
+      toast.success('Descuento aplicado. Confirmá el cobro o la salida.');
+    });
+  };
+
+  const handleClose = (closeType: 'PAYMENT' | 'NO_CHARGE', metodo?: 'CASH' | 'TRANSFER', refundMetodo?: 'CASH' | 'TRANSFER') => {
     if (!summary) return;
-    if (closeType === 'COURTESY' && !courtesyReason.trim()) {
-      toast.error('Ingresá el motivo de la cortesía.');
-      return;
-    }
     startTransition(async () => {
       const data = await closeRegistrationAction(summary.registration.id, {
         closeType,
@@ -365,7 +384,6 @@ export function CloseTicketPanel({
         expectedCollected: summary.totalCollectedSoFar,
         refundMetodo,
         metodo,
-        motivo: closeType === 'COURTESY' ? courtesyReason : undefined,
       });
       if (!data || 'error' in data) {
         const errorMessage = typeof data?.error === 'string' ? data.error : data?.error?.message;
@@ -393,6 +411,8 @@ export function CloseTicketPanel({
   // aparecer para cobrar la diferencia.
   const enEspera = cobroQr?.estado === 'PENDIENTE' || aliasEsperando;
   const saldo = summary?.saldoACobrar ?? 0;
+  const discount = discountMode === 'ALL' ? saldo : Number(discountAmount);
+  const discountValid = Number.isInteger(discount) && discount > 0 && discount <= saldo && !!discountReason.trim();
   const mostrarMedios = !!summary && saldo > 0 && !enEspera && !pagoConSalida;
   const sugeridos = pagosSugeridos(saldo);
   const recibido = pagaCon === 'OTRO' ? (otroImporte ? Number(otroImporte) : null) : pagaCon;
@@ -408,10 +428,10 @@ export function CloseTicketPanel({
 
   const botonPrincipal = (() => {
     if (!summary || pagoConSalida || enEspera) return null;
-    if (saldo > 0 && showCourtesy)
+    if (saldo > 0 && showDiscount)
       return (
-        <ActionDialogPrimaryButton disabled={isPending || !courtesyReason.trim()} onClick={() => handleClose('COURTESY')} detail={`Cortesía de ${formatImporte(saldo)}`}>
-          {isPending ? 'Registrando…' : 'Registrar salida sin cobrar'}
+        <ActionDialogPrimaryButton disabled={isPending || !discountValid} onClick={aplicarDescuento} detail={discountValid ? `${formatImporte(discount)} de descuento · quedan ${formatImporte(saldo - discount)}` : 'Indicá importe y motivo'}>
+          {isPending ? 'Aplicando…' : 'Aplicar descuento'}
         </ActionDialogPrimaryButton>
       );
     if (saldo > 0) {
@@ -526,7 +546,7 @@ export function CloseTicketPanel({
                 <ResumenEstadia
                   summary={summary}
                   compacto={enEspera || !!pagoConSalida}
-                  compactoEnBajas={(!!paymentMethod || showCourtesy) && !verCalculo}
+                  compactoEnBajas={(!!paymentMethod || showDiscount) && !verCalculo}
                   calculoAbierto={verCalculo}
                   onVerCalculo={() => setVerCalculo((v) => !v)}
                 />
@@ -566,26 +586,19 @@ export function CloseTicketPanel({
 
                     {verCalculo ? (
                       <div className="md:hidden"><Calculo summary={summary} /></div>
-                    ) : mostrarMedios && showCourtesy ? (
-                      <div className="space-y-2.5 rounded-2xl border border-border bg-gm-surface-2/50 p-3.5">
-                        <p className="flex items-center gap-2 text-[14.5px] font-semibold">
-                          <Gift className="size-[18px] text-gm-yellow" aria-hidden />
-                          Cortesía: sale sin cobrar
-                        </p>
-                        <label htmlFor="cortesia-motivo" className="block text-[13px] font-semibold">Motivo (obligatorio)</label>
-                        <input
-                          id="cortesia-motivo"
-                          autoFocus
-                          value={courtesyReason}
-                          onChange={(e) => setCourtesyReason(e.target.value)}
-                          disabled={isPending}
-                          placeholder="Por qué no se le cobra"
-                          className="h-12 w-full rounded-xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 px-3.5 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-gm-yellow"
-                        />
-                        <p className="text-xs text-muted-foreground">Queda registrado con tu usuario.</p>
-                        <ActionDialogSecondaryButton tone="ghost" className="sm:w-full" disabled={isPending} onClick={() => { setShowCourtesy(false); setCourtesyReason(''); }}>
-                          Volver a cobrar
-                        </ActionDialogSecondaryButton>
+                    ) : mostrarMedios && showDiscount ? (
+                      <div className="space-y-3 rounded-2xl border border-border bg-gm-surface-2/50 p-3.5">
+                        <p className="flex items-center gap-2 text-sm font-semibold"><BadgePercent className="size-[18px] text-gm-yellow" aria-hidden />Descuento</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {([{ id: 'AMOUNT', label: 'Un importe' }, { id: 'ALL', label: 'Todo el saldo' }] as const).map(option =>
+                            <button key={option.id} type="button" disabled={isPending} aria-pressed={discountMode === option.id} onClick={() => setDiscountMode(option.id)} className="min-h-11 rounded-xl border border-border px-3 text-sm font-semibold aria-pressed:border-gm-yellow/50 aria-pressed:bg-gm-yellow/10 aria-pressed:text-gm-yellow">{option.label}</button>)}
+                        </div>
+                        {discountMode === 'AMOUNT' ? <CashAmountField id="discount-amount" label="Importe del descuento" value={discountAmount} onChange={setDiscountAmount} disabled={isPending} max={saldo} /> : <p className="text-sm text-muted-foreground">Se descuentan {formatImporte(saldo)} de saldo pendiente.</p>}
+                        <label htmlFor="discount-reason" className="block text-xs font-semibold">Motivo del descuento</label>
+                        <input id="discount-reason" value={discountReason} onChange={e => setDiscountReason(e.target.value)} disabled={isPending} maxLength={255} placeholder="Ej.: beneficio para cliente frecuente" className="h-12 w-full rounded-xl border border-gm-line-strong bg-gm-surface-2 px-3 text-base outline-none focus:border-gm-yellow" />
+                        {discount > 0 && discount <= saldo && <p className="text-sm font-semibold">Quedan por cobrar: {formatImporte(saldo - discount)}</p>}
+                        <p className="text-xs text-muted-foreground">El descuento queda registrado con tu nombre. Después confirmás el cobro o la salida.</p>
+                        <ActionDialogSecondaryButton tone="ghost" className="sm:w-full" disabled={isPending} onClick={() => { setShowDiscount(false); setDiscountReason(''); setDiscountAmount(''); }}>Volver a cobrar</ActionDialogSecondaryButton>
                       </div>
                     ) : mostrarMedios ? (
                       <>
@@ -607,11 +620,11 @@ export function CloseTicketPanel({
                             <button
                               type="button"
                               disabled={isPending}
-                              onClick={() => { setShowCourtesy(true); setPaymentMethod(null); }}
+                              onClick={() => { setShowDiscount(true); setPaymentMethod(null); }}
                               className="-my-2 -mr-1 inline-flex min-h-11 items-center gap-1.5 px-1 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
                             >
-                              <Gift className="size-4" aria-hidden />
-                              Cortesía
+                              <BadgePercent className="size-4" aria-hidden />
+                              Descuento
                             </button>
                           </div>
                           <PaymentMethodChoices value={paymentMethod} onChange={setPaymentMethod} disabled={isPending} aliasDisponible={!!alias?.disponible} />

@@ -26,7 +26,7 @@ export function NotesTable({ data }: { columns: ColumnDef<Note>[]; data: Note[] 
   const { unreadIds, loaded } = useNotifications();
   const { data: session } = useSession();
   useEffect(() => {
-    const refresh = () => setRevision(v => v + 1);
+    const refresh = () => { setPage(1); setRevision(v => v + 1); };
     window.addEventListener('new-note-created', refresh);
     window.addEventListener('notes-notification', refresh);
     return () => { window.removeEventListener('new-note-created', refresh); window.removeEventListener('notes-notification', refresh); };
@@ -45,13 +45,13 @@ export function NotesTable({ data }: { columns: ColumnDef<Note>[]; data: Note[] 
   }, [page, search, revision]);
   async function read(id: string) {
     setReading(id);
-    try { await readNoteAction(id); window.dispatchEvent(new Event('notes-read-changed')); }
+    try { await readNoteAction(id); setRevision(v => v + 1); window.dispatchEvent(new Event('notes-read-changed')); }
     catch { setError('No se pudo guardar la lectura. Volvé a intentar.'); }
     finally { setReading(null); }
   }
   return <div className="space-y-5">
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-gm-surface-2 p-4">
-      <div><h2 className="font-semibold">Cartelera del equipo</h2><p className="text-sm text-muted-foreground">Los avisos son de esta playa. Cada persona confirma su lectura.</p></div>
+      <div><h2 className="font-semibold">Cartelera del equipo</h2><p className="text-sm text-muted-foreground">Primero los avisos sin leer, del más reciente al más antiguo.</p></div>
       <span data-tour="avisos-crear"><CreateNoteDialog /></span>
     </div>
     <label data-tour="avisos-filtro" className="block space-y-2 text-sm"><span>Buscar un aviso</span><input className="h-11 w-full rounded-lg border border-border bg-background px-3" placeholder="Escribí una palabra o una fecha…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} /></label>
@@ -61,9 +61,10 @@ export function NotesTable({ data }: { columns: ColumnDef<Note>[]; data: Note[] 
         const own = note.user?.id === session?.user?.id;
         const unread = !own && unreadIds.includes(note.id);
         return <article key={note.id} className={`min-w-0 rounded-xl border p-4 sm:p-5 ${unread ? 'border-gm-yellow/60 bg-gm-yellow/5' : 'border-border bg-gm-surface-2/40'}`}>
-          <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="break-words font-semibold">{own ? 'Vos' : [note.user?.firstName, note.user?.lastName].filter(Boolean).join(' ') || 'Equipo'}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(note.createdAt).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'short' })}</p></div>
-            <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Acciones del aviso"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><UpdateNoteDialog note={note} /><DeleteNoteDialog note={note} /></DropdownMenuContent></DropdownMenu>
+          <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="break-words font-semibold">{own ? 'Vos' : [note.user?.firstName, note.user?.lastName].filter(Boolean).join(' ') || (note.sourceKey ? 'Autor no registrado' : 'Equipo')}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(note.createdAt).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'short' })}</p></div>
+            {!note.sourceKey && <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Acciones del aviso"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><UpdateNoteDialog note={note} /><DeleteNoteDialog note={note} /></DropdownMenuContent></DropdownMenu>}
           </div>
+          {note.origin && <div className="mt-4 rounded-lg border border-border/60 bg-background/30 px-3 py-2"><p className="text-xs font-semibold text-gm-yellow">{note.origin}</p>{note.context && <p className="mt-1 break-words text-xs text-muted-foreground">{note.context}</p>}</div>}
           <p className="my-5 whitespace-pre-wrap break-words text-sm leading-relaxed">{note.description}</p>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3"><span className={`text-xs font-medium ${unread ? 'text-gm-yellow' : 'text-muted-foreground'}`}>{own ? 'Publicado por vos' : !loaded ? 'Consultando lectura...' : unread ? 'Pendiente de leer' : 'Leído'}</span>{unread && <Button size="sm" variant="outline" disabled={reading !== null} onClick={() => read(note.id)}>{reading === note.id ? 'Guardando…' : 'Marcar como leído'}</Button>}</div>
         </article>;

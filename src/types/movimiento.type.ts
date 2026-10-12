@@ -3,7 +3,7 @@ import { User } from './user.type';
 export const MOVIMIENTO_METODO = ['CASH', 'TRANSFER'] as const;
 export type MovimientoMetodo = (typeof MOVIMIENTO_METODO)[number];
 
-export const MOVIMIENTO_TIPO = ['ANTICIPO', 'SALDO', 'AJUSTE', 'CORTESIA'] as const;
+export const MOVIMIENTO_TIPO = ['ANTICIPO', 'SALDO', 'AJUSTE', 'CORTESIA', 'DESCUENTO'] as const;
 export type MovimientoTipo = (typeof MOVIMIENTO_TIPO)[number];
 
 export type Movimiento = {

@@ -59,7 +59,7 @@ function Hora() {
 }
 
 export function BarraOperativa({ userNav }: { userNav: UserNav }) {
-  // Una sola consulta de avisos sin leer, para el punto de la cuenta.
+  // Una sola consulta de avisos sin leer, para el contador de la cuenta.
   const notas = useNotifications();
   return (
     <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">

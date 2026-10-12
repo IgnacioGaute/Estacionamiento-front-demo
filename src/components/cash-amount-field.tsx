@@ -1,21 +1,58 @@
 'use client';
-import { ReactNode } from 'react';
-import { Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { ReactNode, useRef, useState } from 'react';
+import { Check, Plus } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 export const cashMoney = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+const miles = (n: number) => new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n);
 type Shortcut = { label: string; amount: number; disabled?: boolean };
-export function CashAmountField({ id, label, value, onChange, disabled, max, placeholder, shortcuts = [], increments = false, description }: {
+
+// Un importe de caja: la cifra grande con separador de miles y, pegados abajo, los atajos («Conté
+// todo», «No hay efectivo»…) como una bandeja del mismo recuadro. El input sigue siendo numérico;
+// mientras no tiene foco se muestra la cifra formateada encima, y al escribir aparecen los dígitos.
+export function CashAmountField({ id, label, value, onChange, disabled, max, placeholder, shortcuts = [], increments = false, description, status }: {
   id: string; label: string; value: string; onChange: (value: string) => void;
   disabled?: boolean; max?: number; placeholder?: string; shortcuts?: Shortcut[]; increments?: boolean; description?: ReactNode;
+  // Estado del importe (p. ej. «El efectivo coincide»), a la derecha de la cifra.
+  status?: ReactNode;
 }) {
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const numero = value !== '' && Number.isInteger(Number(value)) && Number(value) >= 0 ? Number(value) : null;
+  const formateado = !focused && numero !== null;
   return <div className="space-y-2.5">
-    <Label htmlFor={id}>{label}</Label>
-    <div className="relative"><span aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">$</span><Input id={id} type="number" inputMode="numeric" min="0" step="1" max={max} required value={value} onChange={e => onChange(e.target.value)} disabled={disabled} placeholder={placeholder ?? 'Otro importe'} aria-describedby={description ? id + '-help' : undefined} className="h-11 pl-8 text-base font-semibold tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></div>
-    {!!shortcuts.length && <div className="flex flex-wrap gap-2" role="group" aria-label={'Opciones rápidas: ' + label}>{shortcuts.map((shortcut, index) => <Button key={index} type="button" size="sm" variant="outline" className="h-auto min-h-9 whitespace-normal rounded-lg py-2 text-left aria-pressed:border-gm-yellow/50 aria-pressed:bg-gm-yellow/10 aria-pressed:text-gm-yellow" disabled={disabled || shortcut.disabled} aria-pressed={value !== '' && Number(value) === shortcut.amount} onClick={() => onChange(String(shortcut.amount))}>{shortcut.label}</Button>)}</div>}
-    {increments && <div className="space-y-1.5"><p className="text-xs text-muted-foreground">Sumá con un toque</p><div className="flex flex-wrap gap-1.5" role="group" aria-label={'Sumar importes: ' + label}>{[500, 1000, 2000, 5000, 10000].map(amount => <Button key={amount} type="button" size="sm" variant="secondary" className="min-h-9 rounded-lg px-2.5 tabular-nums" disabled={disabled || (max !== undefined && Number(value || 0) + amount > max)} onClick={() => onChange(String((Number.isInteger(Number(value)) && Number(value) >= 0 ? Number(value) : 0) + amount))}><Plus className="size-3" />{cashMoney(amount)}</Button>)}</div></div>}
+    <Label htmlFor={id} className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</Label>
+    <div className={cn('overflow-hidden rounded-2xl border bg-gm-surface-2/60 transition-[border-color,box-shadow]', focused ? 'border-gm-yellow/60 shadow-[0_0_0_4px_hsl(var(--gm-yellow)/0.10)]' : 'border-gm-line-strong', disabled && 'opacity-60')}>
+      <div onClick={() => inputRef.current?.focus()} className="flex cursor-text items-baseline gap-2 px-4 pb-3 pt-3.5">
+        <span aria-hidden className="font-display text-2xl font-bold text-muted-foreground">$</span>
+        <span className="relative min-w-0 flex-1">
+          <input ref={inputRef} id={id} type="number" inputMode="numeric" min="0" step="1" max={max} required value={value} onChange={e => onChange(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} disabled={disabled} placeholder={placeholder ?? 'Otro importe'} aria-describedby={description ? id + '-help' : undefined}
+            className={cn('h-10 w-full bg-transparent font-display text-[34px] font-bold leading-none tracking-tight tabular-nums outline-none placeholder:font-sans placeholder:text-[15px] placeholder:font-medium placeholder:tracking-normal placeholder:text-muted-foreground/70 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none', formateado && 'text-transparent')} />
+          {formateado && <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 flex items-center font-display text-[34px] font-bold leading-none tracking-tight tabular-nums">{miles(numero)}</span>}
+        </span>
+        {status && <span className="shrink-0 self-center">{status}</span>}
+      </div>
+      {!!shortcuts.length && <div role="group" aria-label={'Opciones rápidas: ' + label} className="grid divide-x divide-gm-line border-t border-gm-line" style={{ gridTemplateColumns: `repeat(${shortcuts.length}, minmax(0, 1fr))` }}>
+        {shortcuts.map((shortcut, index) => {
+          const elegido = value !== '' && Number(value) === shortcut.amount;
+          const [nombre, importe] = shortcut.label.split(' · ');
+          return <button key={index} type="button" disabled={disabled || shortcut.disabled} aria-pressed={elegido} onClick={() => onChange(String(shortcut.amount))}
+            className={cn('flex min-h-14 min-w-0 items-center justify-between gap-2 px-4 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow disabled:cursor-not-allowed disabled:opacity-40', elegido ? 'bg-gm-yellow/10 text-gm-yellow' : 'hover:bg-gm-surface-3/70')}>
+            <span className="min-w-0">
+              <span className="block text-[13px] font-semibold leading-tight">{nombre}</span>
+              {importe && <span className={cn('mt-0.5 block text-xs tabular-nums', elegido ? 'text-gm-yellow/80' : 'text-muted-foreground')}>{importe}</span>}
+            </span>
+            <span aria-hidden className={cn('grid size-5 shrink-0 place-items-center rounded-full border transition-colors', elegido ? 'border-gm-yellow bg-gm-yellow text-gm-ink' : 'border-gm-line-strong')}>{elegido && <Check className="size-3" strokeWidth={3} />}</span>
+          </button>;
+        })}
+      </div>}
+    </div>
+    {increments && <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={'Sumar importes: ' + label}>
+      <span className="mr-1 text-xs text-muted-foreground">Sumá</span>
+      {[500, 1000, 2000, 5000, 10000].map(amount => <button key={amount} type="button" disabled={disabled || (max !== undefined && Number(value || 0) + amount > max)} onClick={() => onChange(String((Number.isInteger(Number(value)) && Number(value) >= 0 ? Number(value) : 0) + amount))}
+        className="inline-flex h-8 items-center gap-1 rounded-full border border-gm-line-strong bg-gm-surface-3/60 px-3 text-xs font-semibold tabular-nums transition-colors hover:border-gm-yellow/40 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:cursor-not-allowed disabled:opacity-40"><Plus className="size-3" aria-hidden />{cashMoney(amount)}</button>)}
+    </div>}
     {description && <p id={id + '-help'} className="text-xs leading-relaxed text-muted-foreground">{description}</p>}
   </div>;
 }

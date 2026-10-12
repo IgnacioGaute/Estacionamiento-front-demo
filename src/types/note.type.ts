@@ -4,8 +4,13 @@ export type Note = {
 
     id: string;
     description: string;
+    sourceKey?: string | null;
+    origin?: string | null;
+    sourceType?: string | null;
+    sourceId?: string | null;
+    context?: string | null;
     date: string | null;
     hours: string | null;
-    user: User;
+    user: User | null;
     createdAt: Date;
 }

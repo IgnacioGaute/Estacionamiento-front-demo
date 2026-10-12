@@ -8,6 +8,7 @@ export type PaymentMethod = (typeof PAYMENT_METHOD)[number];
 
 export type OtherPayment = {
     id: string;
+    operatorName?: string | null;
     description: string;
     price: number;
     type: PaymentType;

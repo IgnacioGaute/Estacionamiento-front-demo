@@ -30,9 +30,22 @@ it('permite cero explícito, dejar a definir y restablecer referencias sin guard
   expect(screen.getByLabelText('QR · tarjeta de crédito')).toHaveValue('0');
   fireEvent.change(screen.getByLabelText('QR · tarjeta de débito'), { target: { value: '' } });
   expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeEnabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Usar valores de referencia' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Usar valores de Mercado Pago' }));
   expect(screen.getByLabelText('QR · tarjeta de crédito')).toHaveValue('7.2479');
+  expect(screen.getByRole('button', { name: 'Valores de Mercado Pago en uso' })).toBeDisabled();
   expect(guardar).not.toHaveBeenCalled();
+});
+it('arranca en cero y carga las tasas de Mercado Pago recién al guardar', async () => {
+  const cero = { qrSaldo: 0, qrDebito: 0, qrCredito: 0, aliasSaldo: 0, aliasDebito: 0, aliasCredito: 0 };
+  guardar.mockResolvedValue({ datos: { conectada: true, tasas: referencia, referencia } });
+  render(<ComisionesCajaForm inicial={cero} referencia={referencia} />);
+  expect(screen.getByLabelText('QR · saldo o transferencia')).toHaveValue('0');
+  fireEvent.click(screen.getByRole('button', { name: 'Usar valores de Mercado Pago' }));
+  expect(screen.getByLabelText('QR · saldo o transferencia')).toHaveValue('0.968');
+  expect(screen.getByLabelText('Alias · crédito')).toHaveValue('');
+  expect(guardar).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+  await waitFor(() => expect(guardar).toHaveBeenCalledWith(referencia));
 });
 it('muestra errores sin anunciar guardado', async () => {
   guardar.mockResolvedValue({ error: 'Vinculá una cuenta.' });

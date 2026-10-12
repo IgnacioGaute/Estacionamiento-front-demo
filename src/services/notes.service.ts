@@ -12,7 +12,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const getNotes = async (authToken?: string, page = 1, search = '') => {
     try {
-      const response = await fetch(`${BASE_URL}/notes?page=${page}&limit=6&search=${encodeURIComponent(search)}`, {
+      const response = await fetch(`${BASE_URL}/notes?page=${page}&limit=6&sortBy=createdAt:DESC&sortBy=id:DESC&search=${encodeURIComponent(search)}`, {
         cache: 'no-store',
         headers: await getAuthHeaders(authToken),
         next: {

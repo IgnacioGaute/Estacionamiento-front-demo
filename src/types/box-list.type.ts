@@ -11,16 +11,17 @@ export type BoxList = {
     totalPrice: number;
     boxNumber: number;
     ticketRegistrations: TicketRegistration[];
-    ticketMovements?: { id: string; monto: number; metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; medioPagoDetalle?: string; comisionPagoEstimada?: DetalleComisionPago; tipo: 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'CORTESIA'; fechaHora: string; ticketRegistration: TicketRegistration }[];
+    ticketMovements?: { id: string; monto: number; metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; medioPagoDetalle?: string; comisionPagoEstimada?: DetalleComisionPago; tipo: 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'CORTESIA' | 'DESCUENTO'; operador?: string | null; motivo?: string | null; fechaHora: string; ticketRegistration: TicketRegistration }[];
     ticketRegistrationForDays: TicketRegistrationForDay[];
     receipts: Receipt[];
     otherPayments: OtherPayment[];
     receiptPayments: ReceiptPayment[];
     paymentHistoryOnAccount: PaymentHistoryOnAccount[]
-    // Un turno puede tocar varios días, así que aparece en la planilla de cada uno con la
-    // parte del efectivo que cayó en ese día. `turno: null` es el efectivo registrado antes
-    // de adoptar la caja por turnos; va en su propia fila para que el total siga cuadrando.
+    // Turnos de la fecha elegida: abiertos primero, luego cierres del más reciente al más
+    // antiguo. Los turnos históricos sin fecha operativa pertenecen al día de apertura.
+    // `turno: null` agrupa el efectivo del día registrado sin turno asignado.
     turnosDelDia?: TurnoDelDia[];
+    salidasDelDia?: { id: string; identificacion: string; hora: string; operador: string | null }[];
     // Cobros a inquilinos del día (cuenta corriente), cada medio en su fila; null si la sección no
     // está habilitada en la playa.
     cobrosInquilinos?: CobroInquilinoDia[] | null;
@@ -54,16 +55,12 @@ export type CobroInquilinoDia = {
     cliente: string;
     aFavor: number;
     hora: string;
+    operador?: string | null;
 }
 
 export type TurnoDelDia = {
     turnoId: string | null;
-    turno: {
-        id: string;
-        nombre: string;
-        estado: 'ABIERTO' | 'CERRADO';
-        usuarioApertura: { firstName: string; lastName: string };
-    } | null;
+    turno: import('./turno.type').Turno | null;
     efectivoDelDia: number;
     movimientos: number;
     desde: string;

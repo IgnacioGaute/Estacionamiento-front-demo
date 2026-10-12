@@ -24,8 +24,9 @@ export function pagoPlanilla(monto: number, metodo?: string | null, medio?: stri
 }
 
 export function pagoTicketPlanilla(ticket: TicketRegistration): PagoPlanilla {
-  const movimientos = (ticket.movimientos ?? []).filter(m => m.tipo !== 'CORTESIA');
-  if (!movimientos.length) return { ...pagoPlanilla(ticket.price), badge: ticket.movimientos?.some(m => m.tipo === 'CORTESIA') ? 'CORT' : '' };
+  const movimientos = (ticket.movimientos ?? []).filter(m => m.tipo !== 'CORTESIA' && m.tipo !== 'DESCUENTO');
+  if (!movimientos.length) return ticket.movimientos?.some(m => m.tipo === 'CORTESIA' || m.tipo === 'DESCUENTO')
+    ? { entradas: 0, salidas: 0, badge: 'DESC' } : { ...pagoPlanilla(ticket.price), badge: '' };
   if (movimientos.length > 1 && movimientos.some(m => m.monto === undefined)) {
     // La API histórica puede informar sólo métodos, sin el reparto de importes.
     // Conserva el monto completo; nunca lo pierde por tomar los faltantes como cero.
