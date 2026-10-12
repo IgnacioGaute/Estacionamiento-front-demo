@@ -48,5 +48,11 @@ test('muestra lo que falta configurar sin llamarlo pendiente', () => {
   const qr = { cuentaConectada: true, playas: [{ playaId: 'p1', nombre: 'Mitre', direccion: null, caja: { creadaEl: '2026-10-01T00:00:00Z', direccion: null } }, { playaId: 'p2', nombre: 'Colón', direccion: null, caja: null }] };
   render(<ConexionMercadoPago inicial={conectada} verificacionAlias={{ adicionalHabilitado: false, activa: false, alias: null, cambiadaEl: null }} cajasQr={qr} />);
   expect(screen.getByRole('button', { name: 'Paso 2: QR · 1 de 2 playas' })).toBeInTheDocument();
+  expect(screen.queryByText(/Pendiente/i)).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Paso 3: Alias · No incluida' })).toBeInTheDocument();
+});
+
+test('sin la cuenta, los pasos opcionales dicen que la requieren', () => {
+  render(<ConexionMercadoPago inicial={{ conectada: false, condicionesVigentes: condiciones }} verificacionAlias={null} />);
+  expect(screen.getByRole('button', { name: 'Paso 3: Alias · Requiere la cuenta' })).toBeDisabled();
 });

@@ -84,3 +84,16 @@ test('los tickets por código de barras se guardan aparte', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ barcodeTicketsEnabled: true }));
 });
+
+test('con turnos activos, las opciones apagadas no aparecen como pendientes', () => {
+  render(<OperationSettings shiftsEnabled sueldoAutomatico={false} />);
+  expect(screen.getByRole('button', { name: 'Paso 2: Modo · Simple' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Paso 3: Cajas · Caja principal' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Paso 4: Sueldo · Sin retiro' })).toBeInTheDocument();
+  expect(screen.queryByText(/Pendiente/i)).not.toBeInTheDocument();
+});
+
+test('sin turnos, los pasos siguientes explican qué falta', () => {
+  render(<OperationSettings shiftsEnabled={false} />);
+  expect(screen.getByRole('button', { name: 'Paso 2: Modo · Requiere turnos' })).toBeDisabled();
+});

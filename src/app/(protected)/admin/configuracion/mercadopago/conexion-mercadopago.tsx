@@ -184,6 +184,7 @@ export function ConexionMercadoPago({
   const listo = [activa, playas > 0 && playasConQr === playas, !!alias?.activa, !!tasas && Object.values(tasas).some((v) => v !== 0)];
   const estadoPaso = (numero: number) =>
     numero === 1 ? (activa ? 'Vinculada' : 'Sin vincular')
+      : !activa ? 'Requiere la cuenta'
       : numero === 2 ? (!qr ? 'Opcional' : listo[1] ? 'Listo' : playasConQr ? `${playasConQr} de ${playas} playas` : 'Sin activar')
         : numero === 3 ? (!alias?.adicionalHabilitado ? 'No incluida' : listo[2] ? 'Activa' : 'Apagada')
           : listo[3] ? 'Configuradas' : 'En 0%';
@@ -202,7 +203,9 @@ export function ConexionMercadoPago({
       completeLabel={formComisiones.cambios ? (formComisiones.guardando ? 'Guardando…' : 'Guardar y terminar') : 'Listo'}
       nextDisabled={!activa || (paso === 4 && formComisiones.cambios && (!formComisiones.valido || formComisiones.guardando))}
       locked={(numero) => !activa && numero > 1}
-      done={(numero) => listo[numero - 1]}
+      // Con la cuenta vinculada, QR, alias y comisiones ya quedan decididos aunque estén apagados o en
+      // 0%: el estado lo dice, pero no aparecen como pendientes. Sólo la cuenta puede faltar.
+      done={() => activa}
       stateLabel={(numero, status) => (status === 'active' ? undefined : estadoPaso(numero))}
     >
       <Step>

@@ -64,6 +64,15 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
     disabled={pending}
     nextDisabled={(step === 1 && !shifts && !savedShifts) || (step === 4 && !salaryValid)}
     locked={number => !savedShifts && number > 1}
+    // Con los turnos activos, modo, cajas y sueldo ya tienen un valor elegido (aunque sea «simple» o
+    // «sin retiro»): no quedan pendientes. Sólo activar puede faltar.
+    done={() => savedShifts}
+    stateLabel={(number, status) => status === 'active' ? undefined
+      : number === 1 ? (savedShifts ? 'Activos' : 'Apagados')
+        : !savedShifts ? 'Requiere turnos'
+          : number === 2 ? (savedMultiple ? 'Múltiples' : 'Simple')
+            : number === 3 ? (savedMultiple ? 'Varias cajas' : 'Caja principal')
+              : props.sueldoAutomatico ? '$ ' + (props.sueldoPorTurno ?? 0).toLocaleString('es-AR') + ' por jornada' : 'Sin retiro'}
     nextButtonProps={{ onClick: next }}
   >
     <Step>
