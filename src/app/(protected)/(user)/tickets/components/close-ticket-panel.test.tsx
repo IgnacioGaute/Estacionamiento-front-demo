@@ -10,6 +10,7 @@ jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelive
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn() }));
 jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn() }));
 jest.mock('@/actions/tickets/discount-registration.action', () => ({ discountRegistrationAction: jest.fn() }));
+jest.mock('@/actions/tickets/corregir-entrada.action', () => ({ corregirEntradaAction: jest.fn() }));
 jest.mock('@/actions/tickets/close-registration.action', () => ({ closeRegistrationAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/mercadopago.action', () => ({ crearCobroMercadoPagoAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/verificacion-alias.action', () => ({ disponibilidadAliasAction: async () => ({ datos: null }), cobroAliasDeEstadiaAction: async () => ({ cobro: null }), iniciarCobroAliasAction: jest.fn() }));

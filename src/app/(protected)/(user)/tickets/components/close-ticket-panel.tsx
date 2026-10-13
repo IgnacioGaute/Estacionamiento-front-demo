@@ -39,6 +39,7 @@ import { CloseSummary } from '@/services/tickets.service';
 import { minutesSinceEntry, isOverdue, isBarcodeOrigin } from '@/utils/ticket-registration.utils';
 import { calcularVuelto, pagosSugeridos } from '@/utils/vuelto';
 import { cuandoEntro, formatEstadia as formatElapsed } from '@/utils/estadia';
+import { CorregirEntrada } from './corregir-entrada';
 
 // Efectivo y transferencia los declara el cajero; QR y alias los verifica el sistema contra
 // MercadoPago. Los cuatro se eligen igual (tocar y confirmar abajo) para que el botón principal
@@ -94,8 +95,11 @@ function ResumenEstadia({
   compactoEnBajas,
   onVerCalculo,
   calculoAbierto,
+  onCorregido,
 }: {
   summary: CloseSummary;
+  // Solo cuando se puede corregir la entrada (no mientras se espera un QR o una transferencia).
+  onCorregido?: (summary: CloseSummary) => void;
   compacto: boolean;
   // Solo en celulares bajos: con el medio ya elegido el importe está en el botón de abajo, y la
   // línea deja lugar para el vuelto.
@@ -126,6 +130,7 @@ function ResumenEstadia({
             <p className="truncate text-[12.5px] text-muted-foreground">{detalle}</p>
           </div>
         </div>
+        {onCorregido && <CorregirEntrada summary={summary} onCorregido={onCorregido} />}
         <div className="my-3 h-px bg-border short:my-2.5" />
         {/* Con importes muy largos el botón baja a otra línea en vez de pisar el número. */}
         <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
@@ -549,6 +554,7 @@ export function CloseTicketPanel({
                   compactoEnBajas={(!!paymentMethod || showDiscount) && !verCalculo}
                   calculoAbierto={verCalculo}
                   onVerCalculo={() => setVerCalculo((v) => !v)}
+                  onCorregido={enEspera || pagoConSalida ? undefined : setSummary}
                 />
                 {/* En computadora hay lugar: el cálculo queda siempre a la vista. */}
                 <div className="hidden md:block"><Calculo summary={summary} /></div>

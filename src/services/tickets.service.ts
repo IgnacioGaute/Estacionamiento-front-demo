@@ -704,6 +704,17 @@ async function getOperationalRecords<T>(endpoint: string, authToken?: string): P
   return records;
 }
 
+// La entrada que se cargó tarde: pone la hora real en que entró y devuelve el cobro recalculado.
+export async function corregirEntrada(id: string, entrada: string): Promise<{ summary?: CloseSummary; error?: string }> {
+  const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/entrada`, {
+    method: 'PATCH', headers: await getAuthHeaders(), body: JSON.stringify({ entrada }),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) return { error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudo corregir la entrada.' };
+  revalidateTag(getCacheTag('tickets', 'all'));
+  return { summary: data.summary as CloseSummary };
+}
+
 export async function discountRegistration(id: string, payload: DiscountRegistrationPayload): Promise<{ summary?: CloseSummary; error?: string }> {
   const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/discount`, {
     method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload),
