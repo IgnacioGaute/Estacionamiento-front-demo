@@ -20,6 +20,8 @@ export type TariffDraft = {
   };
   brackets: TariffBracket[];
 };
-export type TariffPlan = TariffDraft & { revision: string };
+// activeStays: vehículos adentro, para ofrecer pasarlos a la tarifa nueva al aplicar.
+// estadiasActualizadas: cuántos pasaron en el último guardado.
+export type TariffPlan = TariffDraft & { revision: string; activeStays?: number; estadiasActualizadas?: number };
 export type TariffMethod = 'STARTED' | 'COMPLETED' | 'PROPORTIONAL' | 'CUSTOM';
 

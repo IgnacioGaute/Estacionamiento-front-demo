@@ -6,6 +6,7 @@ import { ArrowLeft, ChevronDown, FlaskConical, Pencil, X } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { DataLoading } from '@/components/ui/data-loading';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useVehicleTypes } from '@/components/vehicle-type-options';
 import { toast } from '@/lib/toast';
@@ -32,13 +33,16 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
   const [conflict, setConflict] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [step, setStep] = useState(1);
+  // Pasar también a la tarifa nueva los vehículos que están adentro: se decide en cada aplicación.
+  const [aplicarActivos, setAplicarActivos] = useState(false);
   const [pending, startTransition] = useTransition();
   const { types: vehicles, loading, error: vehicleError } = useVehicleTypes();
   const previousInitial = useRef(initialPlan?.revision);
   const dirty = draft !== null && JSON.stringify(draft) !== baseDraft;
   const retiredMethod = draft !== null && !['CUSTOM', 'STARTED'].includes(tariffMethod(draft));
   const errors = draft ? [...(retiredMethod ? ['Elegí Lista de precios o Por hora o fracción para continuar.'] : []), ...validateTariffDraft(draft, vehicles)] : [];
-  const canApply = !pending && !loading && !vehicleError && dirty && errors.length === 0 && !conflict;
+  const activeStays = current?.activeStays ?? 0;
+  const canApply =!pending && !loading && !vehicleError && dirty && errors.length === 0 && !conflict;
   const hasPrices = current &&(current.schedule.pricingOptions.charging.enabled ? current.schedule.pricingOptions.charging.rates.length : current.brackets.length) > 0;
 
   useEffect(() => {
@@ -70,7 +74,7 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
     if (!current) return;
     const saved = copyDraft(current);
     const next = !saved.brackets.length && !saved.schedule.pricingOptions.charging.rates.length ? changeMethod(saved, 'CUSTOM') : saved;
-    setDraft(next); setBaseDraft(JSON.stringify(next)); setBaseRevision(current.revision); setConflict(false); setError(''); setStep(1);
+    setDraft(next); setBaseDraft(JSON.stringify(next)); setBaseRevision(current.revision); setConflict(false); setError(''); setStep(1); setAplicarActivos(false);
     window.scrollTo({ top: 0 });
   };
   const discard = () => {
@@ -90,7 +94,7 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
     if (!draft || errors.length || conflict) return;
     startTransition(async () => {
       setError('');
-      const result = await saveTariffPlanAction(baseRevision, draft);
+      const result = await saveTariffPlanAction(baseRevision, draft, aplicarActivos && activeStays > 0);
       if (result.error) {
         setError(result.error);
         if (result.conflict) {
@@ -101,8 +105,9 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
         return;
       }
       if (result.plan) {
-        setCurrent(result.plan); setBaseRevision(result.plan.revision); setDraft(null); setConflict(false);
-        toast.success('Tarifas aplicadas a los próximos ingresos.'); router.refresh();
+        const actualizadas = result.plan.estadiasActualizadas ?? 0;
+        setCurrent(result.plan); setBaseRevision(result.plan.revision); setDraft(null); setConflict(false); setAplicarActivos(false);
+        toast.success(actualizadas ? `Tarifas aplicadas a los próximos ingresos y a ${actualizadas === 1 ? 'el vehículo que está adentro' : `los ${actualizadas} vehículos que están adentro`}.` : 'Tarifas aplicadas a los próximos ingresos.'); router.refresh();
       }
     });
   };
@@ -127,9 +132,18 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
         <p className="text-xs text-muted-foreground">Luego podrás aplicar tu borrador completo. Si otra persona vuelve a modificar las tarifas, te avisaremos nuevamente.</p></div>}
       {loading ? <DataLoading label="Cargando tipos de vehículo…" /> : <fieldset disabled={pending || !!vehicleError} className="min-w-0">
         <TariffEditor draft={draft} onChange={next => { setDraft(next); setError(''); }} vehicles={vehicles} step={step} onStepChange={setStep} canApply={canApply} applying={pending} onApply={save} disabled={pending || !!vehicleError}
-          notice={errors.length > 0 ? <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm" role="status"><p className="font-medium">Para poder aplicar el borrador:</p><ul className="mt-2 list-disc space-y-1 pl-5">{errors.map(message => <li key={message}>{message}</li>)}</ul></div>
-            : conflict ? <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm" role="status">Revisá el aviso de arriba antes de aplicar.</p>
-            : <p className="text-xs text-muted-foreground">{dirty ? 'Las estadías con tarifa fijada al ingresar conservan sus precios.' : 'Todavía no hay cambios para aplicar.'}</p>} />
+          notice={<>
+            {activeStays > 0 && <label className={'flex cursor-pointer items-start gap-3 rounded-2xl border p-4 text-sm transition-colors ' + (aplicarActivos ? 'border-gm-yellow/50 bg-gm-yellow/[0.06]' : 'border-gm-line bg-gm-surface-2')}>
+              <Checkbox checked={aplicarActivos} onCheckedChange={value => setAplicarActivos(value === true)} className="mt-0.5" aria-describedby="aplicar-activos-ayuda" />
+              <span className="min-w-0">
+                <span className="block font-semibold">{activeStays === 1 ? 'Aplicar también al vehículo que está adentro' : `Aplicar también a los ${activeStays} vehículos que están adentro`}</span>
+                <span id="aplicar-activos-ayuda" className="mt-1 block text-xs leading-relaxed text-muted-foreground">Se recalcula toda su estadía con la tarifa nueva, desde que entraron. Lo que ya pagaron se descuenta y, si pagaron de más, se devuelve al cobrar la salida. Sin marcarlo, siguen con la tarifa con la que entraron.</span>
+              </span>
+            </label>}
+            {errors.length > 0 ? <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm" role="status"><p className="font-medium">Para poder aplicar el borrador:</p><ul className="mt-2 list-disc space-y-1 pl-5">{errors.map(message => <li key={message}>{message}</li>)}</ul></div>
+              : conflict ? <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm" role="status">Revisá el aviso de arriba antes de aplicar.</p>
+              : <p className="text-xs text-muted-foreground">{!dirty ? 'Todavía no hay cambios para aplicar.' : aplicarActivos ? 'Los nuevos ingresos y los vehículos que están adentro usan la tarifa nueva.' : 'Las estadías con tarifa fijada al ingresar conservan sus precios.'}</p>}
+          </>} />
       </fieldset>}
       {!loading && <details data-tariff-try className="group rounded-2xl border border-gm-line">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-sm font-semibold transition-colors hover:bg-gm-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><FlaskConical className="size-4 text-gm-yellow" aria-hidden="true" />Probar cuánto cobrarías</span><ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" /></summary>

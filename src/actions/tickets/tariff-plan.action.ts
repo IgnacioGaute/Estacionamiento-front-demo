@@ -20,12 +20,12 @@ export async function getTariffPlanAction(): Promise<PlanResponse> {
     return { plan: data };
   } catch { return { error: 'No se pudieron cargar las tarifas. Revisá la conexión e intentá nuevamente.' }; }
 }
-export async function saveTariffPlanAction(expectedRevision: string, plan: TariffDraft): Promise<PlanResponse> {
+export async function saveTariffPlanAction(expectedRevision: string, plan: TariffDraft, aplicarAActivos = false): Promise<PlanResponse> {
   const errors = validateTariffDraft(plan);
   if (errors.length || !pricingOptionsSchema.safeParse(plan.schedule.pricingOptions).success) return { error: errors[0] || 'Revisá los precios y las reglas de cobro.' };
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tickets/tariff-plan`, {
-      method: 'PATCH', headers: await getAuthHeaders(), body: JSON.stringify({ expectedRevision, schedule: plan.schedule, brackets: plan.brackets }),
+      method: 'PATCH', headers: await getAuthHeaders(), body: JSON.stringify({ expectedRevision, schedule: plan.schedule, brackets: plan.brackets, ...(aplicarAActivos ? { aplicarAActivos: true } : {}) }),
     });
     const data = await response.json();
     if (!response.ok) return { error: message(data, 'No se pudieron aplicar las tarifas.'), conflict: response.status === 409 };
