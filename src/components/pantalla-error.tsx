@@ -8,7 +8,30 @@
 // hoja de estilos de la app siga cargada.
 
 import { useEffect, useState } from 'react';
-import { esDeOtraVersion, esDeRed, recargarUnaVez } from '@/lib/version-app';
+import { VERSION_APP, esDeOtraVersion, esDeRed, recargarUnaVez } from '@/lib/version-app';
+
+// Manda el error al servidor del front (queda en sus logs como [error-cliente], ver
+// app/api/errores). keepalive: si la pantalla recarga enseguida, el aviso igual sale. Si falla, no
+// hay nada que hacer: la pantalla sigue mostrando el detalle para sacarle una foto.
+function informar(error: Error & { digest?: string }) {
+  try {
+    void fetch('/api/errores', {
+      method: 'POST',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: error.name,
+        mensaje: error.message,
+        digest: error.digest,
+        pila: error.stack?.slice(0, 2500),
+        ruta: window.location.pathname,
+        version: VERSION_APP,
+      }),
+    }).catch(() => undefined);
+  } catch {
+    // Sin fetch o sin red: queda el detalle en pantalla.
+  }
+}
 
 const AMARILLO = '#F5C219';
 
@@ -18,6 +41,7 @@ export function PantallaError({ error, reset }: { error: Error & { digest?: stri
 
   useEffect(() => {
     console.error(error);
+    informar(error);
     if (esDeOtraVersion(error) && recargarUnaVez()) setRecargando(true);
   }, [error]);
 
@@ -103,9 +127,38 @@ export function PantallaError({ error, reset }: { error: Error & { digest?: stri
                 Ir a Entradas y salidas
               </a>
             </div>
-            {error.digest && (
-              <p style={{ margin: '16px 0 0', fontSize: 11, color: '#7D7365' }}>Código para soporte: {error.digest}</p>
-            )}
+            {/* Lo que el celular no deja ver de otra forma: con una foto de esto se sabe qué falló. */}
+            <details style={{ marginTop: 18, textAlign: 'left' }}>
+              <summary style={{ cursor: 'pointer', fontSize: 12.5, color: '#A59B8D', textAlign: 'center' }}>
+                Ver detalle del error
+              </summary>
+              <pre
+                style={{
+                  margin: '10px 0 0',
+                  padding: 12,
+                  borderRadius: 12,
+                  background: '#16130F',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  color: '#D9D1C3',
+                  fontSize: 11.5,
+                  lineHeight: 1.5,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  maxHeight: 220,
+                  overflow: 'auto',
+                }}
+              >
+                {[
+                  `${error.name || 'Error'}: ${error.message || '(sin mensaje)'}`,
+                  error.digest ? `Código: ${error.digest}` : null,
+                  typeof window !== 'undefined' ? `Pantalla: ${window.location.pathname}` : null,
+                  `Versión: ${VERSION_APP.slice(0, 7)}`,
+                  `Hora: ${new Date().toLocaleString('es-AR')}`,
+                ]
+                  .filter(Boolean)
+                  .join('\n')}
+              </pre>
+            </details>
           </>
         )}
       </div>

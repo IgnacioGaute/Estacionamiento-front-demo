@@ -9,7 +9,10 @@ export const VERSION_APP = process.env.NEXT_PUBLIC_VERSION_APP ?? 'dev';
 // despliegue. Recargar lo resuelve.
 export function esDeOtraVersion(error: unknown): boolean {
   const texto = error instanceof Error ? `${error.name} ${error.message}` : String(error ?? '');
-  return /ChunkLoadError|Loading (CSS )?chunk|Failed to fetch dynamically imported module|Importing a module script failed|Failed to find Server Action|older or newer deployment/i.test(
+  // En el teléfono, una acción de servidor de otra versión llega como UnrecognizedActionError
+  // («Server Action "…" was not found on the server»); en el log del servidor dice «Failed to find
+  // Server Action … older or newer deployment».
+  return /ChunkLoadError|Loading (CSS )?chunk|Failed to fetch dynamically imported module|Importing a module script failed|UnrecognizedActionError|was not found on the server|Failed to find Server Action|older or newer deployment/i.test(
     texto,
   );
 }

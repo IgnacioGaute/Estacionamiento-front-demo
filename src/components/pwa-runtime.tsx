@@ -28,8 +28,17 @@ export function PwaRuntime() {
     // un despliegue nuevo: la página vieja pide JavaScript y acciones que ya no existen y termina
     // en «Application error». Recargar antes de tocar nada lo evita. Una consulta por minuto como
     // mucho, y nunca sin conexión (ahí manda el modo sin conexión).
+    //
+    // Con la app abierta y en pantalla durante un despliegue no hay «volver»: se consulta además
+    // cada 5 minutos. Ahí sí se cuida no cortar un trabajo: solo recarga si no hay un diálogo
+    // abierto ni un campo en uso; si no, espera a la consulta siguiente.
     let ultimaConsulta = 0;
-    const revisarVersion = async () => {
+    const trabajando = () => {
+      const activo = document.activeElement;
+      return !!document.querySelector('[role="dialog"], [role="alertdialog"]')
+        || activo instanceof HTMLInputElement || activo instanceof HTMLTextAreaElement || activo instanceof HTMLSelectElement;
+    };
+    const revisarVersion = async (cuidarTrabajo: boolean) => {
       if (document.visibilityState !== 'visible' || !navigator.onLine) return;
       if (Date.now() - ultimaConsulta < 60_000) return;
       ultimaConsulta = Date.now();
@@ -37,12 +46,13 @@ export function PwaRuntime() {
         const respuesta = await fetch('/api/version', { cache: 'no-store' });
         if (!respuesta.ok) return;
         const { version } = (await respuesta.json()) as { version?: string };
-        if (version && version !== VERSION_APP) recargarUnaVez();
+        if (version && version !== VERSION_APP && !(cuidarTrabajo && trabajando())) recargarUnaVez();
       } catch {
         // Sin respuesta no se sabe nada: se sigue con la página como está.
       }
     };
-    const alVolver = () => void revisarVersion();
+    const alVolver = () => void revisarVersion(false);
+    const periodica = window.setInterval(() => void revisarVersion(true), 5 * 60_000);
     document.addEventListener('visibilitychange', alVolver);
     window.addEventListener('pageshow', alVolver);
     window.addEventListener('online', alVolver);
@@ -51,7 +61,7 @@ export function PwaRuntime() {
         // Preparation checks registration separately and reports failure to the user.
       });
     }
-    return () => { document.removeEventListener('visibilitychange', alVolver); window.removeEventListener('pageshow', alVolver); window.removeEventListener('online', alVolver); window.removeEventListener('online', update); window.removeEventListener('offline', update); window.removeEventListener('beforeinstallprompt', install); window.removeEventListener('appinstalled', installed); };
+    return () => { window.clearInterval(periodica); document.removeEventListener('visibilitychange', alVolver); window.removeEventListener('pageshow', alVolver); window.removeEventListener('online', alVolver); window.removeEventListener('online', update); window.removeEventListener('offline', update); window.removeEventListener('beforeinstallprompt', install); window.removeEventListener('appinstalled', installed); };
   }, []);
   if (!offline) return null;
   return <div role="status" className="px-4 py-2"><a className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-secondary/40 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground" href="/offline.html"><WifiOff className="size-3.5" />Abrir modo sin conexión</a></div>;
