@@ -224,11 +224,17 @@ $('receipt-reset').onclick = () => {
 };
 $('receipt-prev').onclick = () => { if (receiptPage > 1 && state) { receiptPage--; renderReceipts(); } };
 $('receipt-next').onclick = () => { if (state) { receiptPage++; renderReceipts(); } };
-$('return-online').addEventListener('click', async event => {
+// El botón está arriba y abajo de la página: los dos hacen lo mismo y muestran el estado en su
+// propio texto, así se ve qué pasa aunque el mensaje de arriba quede fuera de la pantalla.
+const returnLinks = [...document.querySelectorAll('[data-return-online]')];
+const returnBusy = on => returnLinks.forEach(l => {
+  if (on) l.setAttribute('aria-busy', 'true'); else l.removeAttribute('aria-busy');
+  l.querySelector('[data-return-label]').textContent = on ? 'Comprobando conexión…' : 'Volver al sistema';
+});
+returnLinks.forEach(link => link.addEventListener('click', async event => {
   event.preventDefault();
-  if (busy) return;
-  const link = $('return-online');
-  link.setAttribute('aria-busy', 'true');
+  if (busy || link.getAttribute('aria-busy') === 'true') return;
+  returnBusy(true);
   message('Comprobando acceso al sistema…');
   try {
     // Un fetch normal no usa el fallback de navegación del service worker.
@@ -249,9 +255,10 @@ $('return-online').addEventListener('click', async event => {
     message(error instanceof Error && error.message.startsWith('El sistema todavía')
       ? error.message
       : 'No se pudo conectar con el sistema. Tus movimientos siguen guardados acá; probá de nuevo cuando vuelva la conexión.');
-    link.removeAttribute('aria-busy');
+    returnBusy(false);
+    $('status').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
-});
+}));
 function connection() { $('connection').textContent = navigator.onLine ? 'Modo local · conexión disponible' : 'Sin conexión · guardado automático'; }
 window.addEventListener('online', () => { connection(); sync(); }); window.addEventListener('offline', connection); connection();
 setInterval(() => { if (state && state.pending.length) sync(); }, 30000);
