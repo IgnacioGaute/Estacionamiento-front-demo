@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { ArrowRight, X } from "lucide-react";
 import { useTenant } from "@/components/tenant-provider";
-import { cadaPeriodo, cuentaConAlerta, diaAR, pesos } from "@/components/plataforma/cuenta";
+import { cuentaConAlerta, diaAR, pesos } from "@/components/plataforma/cuenta";
 import type { SituacionCuenta } from "@/types/suscripcion.type";
 
 const AMARILLO = "#F5C219";
@@ -37,18 +37,13 @@ function avisoDe(c: SituacionCuenta): Aviso | null {
   if (!cuentaConAlerta(c)) return null;
   const importe = c.aPagar ? pesos(c.aPagar) : null;
   const corte = c.suspendeEl ? ` · se suspende el ${diaAR(c.suspendeEl, false)}` : "";
-  // Con pago trimestral o anual, lo que paga es por ese período.
-  const cada = cadaPeriodo(c.periodoMeses ?? 1);
   switch (c.estado) {
     case "PRUEBA":
       return {
         acento: AMARILLO,
         titulo: `La prueba gratis termina ${cuandoEs((c.diasParaVencer ?? 1) - 1)}`,
-        detalle: c.conDebito
-          ? `después se cobra solo de tu tarjeta${importe ? `, ${importe} ${cada}` : ""}`
-          : importe
-            ? `después, ${importe} ${cada}`
-            : "elegí tu plan para seguir",
+        // `aPagar` es, en prueba, el primer pago: lo que queda del mes cuando termina la prueba.
+        detalle: importe ? `después, tu primer pago: ${importe} por lo que queda del mes` : "elegí tu plan para seguir",
         accion: "Ver planes",
         destino: "/admin/plan",
         cerrable: true,
@@ -84,7 +79,7 @@ function avisoDe(c: SituacionCuenta): Aviso | null {
         : c.diasDeAtraso
           ? `El pago del sistema tiene ${enDias(c.diasDeAtraso)} de atraso`
           : "Hoy vence el plan del sistema";
-      const que = c.enPrueba ? "el primer mes" : "el mes";
+      const que = c.enPrueba ? "el primer pago" : "el mes";
       const detalle = c.enPrueba
         ? c.diasDeAtraso
           ? `${que}${importe ? ` (${importe})` : ""} tiene ${enDias(c.diasDeAtraso)} de atraso${corte}`

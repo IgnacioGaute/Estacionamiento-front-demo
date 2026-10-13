@@ -68,8 +68,11 @@ export function FormasDePago({
   clavePublica: string | null;
 }) {
   const debitoActivo = cuenta.debito?.estado === 'authorized';
-  // Con el débito activo o algo vencido queda una sola opción para elegir: pagar una vez.
-  const soloPagar = debe || debitoActivo;
+  // El débito cobra siempre lo mismo el día 1: se activa después del primer pago, que es
+  // proporcional (lo que queda del mes cuando termina la prueba).
+  const sinPrimerPago = !cuenta.pagadoHasta && !debitoActivo;
+  // Con el débito activo, algo vencido o sin el primer pago queda una sola opción: pagar una vez.
+  const soloPagar = debe || debitoActivo || sinPrimerPago;
   const [metodo, setMetodo] = useState<'debito' | 'unaVez'>(soloPagar ? 'unaVez' : 'debito');
   // Con débito activo y nada vencido no hace falta pagar a mano: se cobra solo.
   const ofrecerPago = importe > 0 && (debe || !debitoActivo);
@@ -82,13 +85,15 @@ export function FormasDePago({
 
       {debitoActivo ? (
         <DebitoActivo cuenta={cuenta} debe={debe} />
-      ) : debe ? (
+      ) : debe || sinPrimerPago ? (
         <div className="flex items-start gap-4 rounded-[20px] border border-dashed border-[#3A342B] bg-[#15120E] px-[22px] py-5">
           <span aria-hidden className="mt-px size-[22px] shrink-0 rounded-full border-2 border-[#3A342B]" />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-[16.5px] font-semibold text-[#A79E8F]">Débito automático</span>
             <span className="text-sm leading-normal text-[#8F8676]">
-              Lo activás apenas pagues lo pendiente, y arranca con el mes que sigue.
+              {debe
+                ? 'Lo activás apenas pagues lo pendiente, y arranca con el mes que sigue.'
+                : 'Lo activás después de tu primer pago, y desde ahí se cobra solo el día 1 de cada mes.'}
             </span>
           </span>
           <Lock aria-hidden className="mt-0.5 size-[18px] shrink-0 text-[#6E6457]" strokeWidth={1.9} />

@@ -90,8 +90,10 @@ function aPagarDe(plan: MiPlan) {
   const { cuenta } = plan;
   const hoy = hoyAR();
   const pendiente = cuenta.facturaPendiente && cuenta.facturaPendiente.desde <= hoy ? cuenta.facturaPendiente : null;
-  const adelanto = !pendiente && ['PRUEBA', 'AL_DIA'].includes(cuenta.estado) && cuenta.importePeriodo > 0;
-  const importe = pendiente?.importe ?? (adelanto ? cuenta.importePeriodo : 0);
+  // Por adelantado: la próxima factura (en prueba, el primer pago proporcional).
+  const proxima = cuenta.proximaFactura?.importe ?? cuenta.importePeriodo;
+  const adelanto = !pendiente && ['PRUEBA', 'AL_DIA'].includes(cuenta.estado) && proxima > 0;
+  const importe = pendiente?.importe ?? (adelanto ? proxima : 0);
   const debe = !!pendiente || cuenta.estado === 'VENCIDA' || cuenta.estado === 'SUSPENDIDA';
   const debitara = cuenta.debito?.estado === 'authorized' && !debe;
   return { pendiente, importe, debe, debitara };
@@ -116,12 +118,19 @@ const descripcionPlan = (nombre: string) =>
 function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
   const { cuenta } = plan;
   const { pendiente, importe, debe, debitara } = aPagarDe(plan);
-  const desde = pendiente?.desde ?? cuenta.proximoVencimiento;
-  // Lo que cubre: el período de lo vencido o, por adelantado, el que sigue a lo cubierto (mismo
-  // cálculo que el backend). Con sus meses y su descuento.
-  const meses = pendiente?.meses ?? cuenta.periodo.meses;
+  // El primer pago: lo que queda del mes desde que terminó la prueba, proporcional y en un tramo.
+  const primero = !cuenta.pagadoHasta;
+  // Cuándo vence (o venció): el día siguiente a lo cubierto o a la prueba.
+  const vence = cuenta.proximoVencimiento;
+  // Lo que cubre: el período de lo vencido o, por adelantado, la próxima factura (mismo cálculo
+  // que el backend). Con sus meses y su descuento.
+  const desde = pendiente?.desde ?? cuenta.proximaFactura?.desde ?? vence;
+  const meses = primero ? 1 : (pendiente?.meses ?? cuenta.periodo.meses);
   const descuento = pendiente?.descuento ?? cuenta.periodo.descuento;
-  const hasta = pendiente?.hasta ?? (cuenta.venceEl ? sumarMesesAR(cuenta.venceEl, meses) : null);
+  const hasta =
+    pendiente?.hasta ??
+    cuenta.proximaFactura?.hasta ??
+    (cuenta.venceEl ? sumarMesesAR(cuenta.venceEl, meses) : null);
   const ultimoDia = cuenta.suspendeEl ? sumarDiasAR(cuenta.suspendeEl, -1) : null;
   const whatsapp = plan.contacto
     ? `https://wa.me/${plan.contacto.replace(/\D/g, '')}?text=${encodeURIComponent(
@@ -157,18 +166,15 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
     : plan.playas
         .filter((p) => p.plan)
         .map((p) => ({ id: p.playaId, nombre: p.nombre, plan: p.plan!.plan, precio: p.plan!.precio }));
-  const concepto =
-    meses === 1
-      ? !cuenta.pagadoHasta
-        ? 'Tu primer mes'
-        : pendiente && cuenta.diasDeAtraso
+  const concepto = primero
+    ? 'Tu primer pago · lo que queda del mes'
+    : meses === 1
+      ? pendiente && cuenta.diasDeAtraso
           ? 'Tu último mes'
           : 'Tu próximo mes'
-      : !cuenta.pagadoHasta
-        ? `Tus primeros ${meses} meses`
-        : pendiente && cuenta.diasDeAtraso
-          ? `Tus últimos ${meses} meses`
-          : `Tus próximos ${meses} meses`;
+      : pendiente && cuenta.diasDeAtraso
+        ? `Tus últimos ${meses} meses`
+        : `Tus próximos ${meses} meses`;
   // Con un período largo: lo de lista por los meses, y el descuento aparte para que se vea el ahorro.
   const lista = lineas.reduce((n, l) => n + l.precio, 0) * meses;
   const ahorro = meses > 1 && descuento > 0 ? lista - importe : 0;
@@ -178,10 +184,12 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
       : debe
         ? cuenta.debeSuspenderse
           ? 'Ya pasaron los días de margen: apenas se acredita el pago, todo sigue como siempre.'
-          : `${cuenta.diasDeAtraso ? `Venció el ${fechaLarga(desde)}` : 'Vence hoy'}. Tenés tiempo hasta el ${fechaLarga(ultimoDia)}: apenas se acredita el pago, todo sigue como siempre.`
+          : `${cuenta.diasDeAtraso ? `Venció el ${fechaLarga(vence)}` : 'Vence hoy'}. Tenés tiempo hasta el ${fechaLarga(ultimoDia)}: apenas se acredita el pago, todo sigue como siempre.`
         : debitara
-          ? `Con el débito automático se cobra solo el ${fechaLarga(desde)}. No tenés que hacer nada.`
-          : `Vence el ${fechaLarga(desde)}. ${
+          ? `Con el débito automático se cobra solo el ${fechaLarga(vence)}. No tenés que hacer nada.`
+          : primero
+            ? `Vence el ${fechaLarga(vence)}, cuando termina tu prueba. Es solo lo que queda del mes: desde el día 1 siguiente, el plan completo.`
+            : `Vence el ${fechaLarga(vence)}. ${
               plan.mercadoPago
                 ? 'Si preferís, dejá el débito automático listo o adelantalo ahora.'
                 : 'Si querés, podés pagarlo antes.'

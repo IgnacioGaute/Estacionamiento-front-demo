@@ -119,6 +119,10 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
       const total = diasEntreAR(cuenta.alta, cuenta.pruebaHasta ?? hoy) + 1;
       const dia = Math.min(total, Math.max(1, diasEntreAR(cuenta.alta, hoy) + 1));
       const quedan = diasEntreAR(hoy, cuenta.pruebaHasta ?? hoy);
+      // La prueba es gratis. Si sigue, el primer pago es solo lo que queda de ese mes; después,
+      // el plan completo el día 1.
+      const primerPago = cuenta.mensual ? cuenta.proximaFactura : null;
+      const desdeElUno = primerPago ? sumarDiasAR(primerPago.hasta, 1) : null;
       return {
         acento: AMARILLO,
         Icono: Gift,
@@ -126,35 +130,30 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
         titulo: total === 7 ? 'Estás en tu semana de prueba' : 'Estás en tu prueba gratis',
         texto:
           quedan <= 0
-            ? `Hoy es tu último día de prueba. Tu primer ${mes} arranca mañana, ${fechaLarga(proximo)}.`
-            : `Usá todo el sistema con tranquilidad: te ${quedan === 1 ? 'queda 1 día' : `quedan ${quedan} días`}. Tu primer ${mes} recién arranca el ${fechaLarga(proximo)}.`,
+            ? 'Hoy es tu último día de prueba. Si seguís, mañana vence tu primer pago, que es solo lo que queda del mes.'
+            : `Usá todo el sistema con tranquilidad: te ${quedan === 1 ? 'queda 1 día' : `quedan ${quedan} días`}. Si seguís, tu primer pago es solo lo que queda del mes, y después pagás el plan completo el día 1.`,
         barra: {
           titulo: `Día ${dia} de ${total}`,
           fraccion: dia / total,
           desde: fechaLarga(cuenta.alta),
           hasta: fechaLarga(cuenta.pruebaHasta),
         },
-        monto: cuenta.mensual
+        monto: primerPago
           ? {
-              etiqueta: `Tu plan desde el ${fechaLarga(proximo)}`,
-              valor: pesos(cuenta.importePeriodo),
-              sufijo: sufijoPeriodo(meses),
-              detalle: plan,
+              etiqueta: 'Si seguís, tu primer pago',
+              valor: pesos(primerPago.importe),
+              detalle: `Del ${fechaLarga(primerPago.desde)} al ${fechaLarga(primerPago.hasta)}, lo que queda del mes`,
             }
           : undefined,
         boton: cuenta.mensual ? verFormas : undefined,
         nota: !cuenta.mensual
           ? 'Antes de que termine, elegimos juntos el plan que mejor te quede.'
-          : debito
-            ? `El ${fechaLarga(proximo)} se cobra solo de tu tarjeta, con el débito automático.`
-            : mercadoPago
-              ? 'Si querés, dejá el débito automático listo antes de que termine la prueba.'
-              : 'Si querés, podés pagar antes de que termine la prueba.',
+          : `A partir del ${fechaLarga(desdeElUno)}, abonás el plan completo el día 1: ${pesos(cuenta.importePeriodo)}${sufijoPeriodo(meses)}.`,
       };
     }
     case 'VENCIDA': {
       const monto = {
-        etiqueta: atraso ? 'A pagar' : nuncaPago ? `Tu primer ${mes}` : `Tu próximo ${mes}`,
+        etiqueta: atraso ? 'A pagar' : nuncaPago ? 'Tu primer pago' : `Tu próximo ${mes}`,
         valor: pesos(aPagar),
         detalle: pendiente ? `Del ${fechaLarga(pendiente.desde)} al ${fechaLarga(pendiente.hasta)}` : plan,
       };
@@ -167,7 +166,7 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
           texto: debito
             ? `${nuncaPago ? 'Ojalá te haya servido. ' : ''}Hoy se cobra solo de tu tarjeta. Apenas MercadoPago nos confirme, tu cuenta queda al día.`
             : nuncaPago
-              ? `Ojalá te haya servido. Para seguir usando el sistema sin cortes, hoy vence tu primer ${mes}.`
+              ? 'Ojalá te haya servido. Para seguir usando el sistema sin cortes, hoy vence tu primer pago: solo lo que queda del mes.'
               : `Para seguir sin cortes, hoy vence el próximo ${mes} de tu plan.`,
           barra: {
             titulo: debito
@@ -186,7 +185,7 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
         Icono: Clock,
         pastilla: 'Pago pendiente',
         titulo: 'Tenés un pago pendiente',
-        texto: `${nuncaPago ? `Tu primer ${mes}` : `Tu último ${mes}`} venció el ${fechaLarga(proximo)}.${
+        texto: `${nuncaPago ? 'Tu primer pago' : `Tu último ${mes}`} venció el ${fechaLarga(proximo)}.${
           debito ? ' MercadoPago todavía no pudo cobrarlo de tu tarjeta y lo vuelve a intentar estos días.' : ''
         } ${
           cuenta.debeSuspenderse
@@ -208,8 +207,11 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
     }
     case 'AL_DIA': {
       const pagado = cuenta.pagadoHasta ?? hoy;
-      // Lo que cubrió el último pago: un mes, o tres si paga trimestral.
-      const inicio = sumarDiasAR(sumarMesesAR(pagado, -meses), 1);
+      // Lo que cubrió el último pago: un mes, o tres si paga trimestral. El primer pago arranca
+      // al terminar la prueba (es solo lo que quedaba del mes).
+      const porPeriodo = sumarDiasAR(sumarMesesAR(pagado, -meses), 1);
+      const finPrueba = cuenta.pruebaHasta ? sumarDiasAR(cuenta.pruebaHasta, 1) : cuenta.alta;
+      const inicio = finPrueba > porPeriodo ? finPrueba : porPeriodo;
       const total = diasEntreAR(inicio, pagado) + 1;
       const transcurridos = Math.min(total, Math.max(0, diasEntreAR(inicio, hoy) + 1));
       const faltan = diasEntreAR(hoy, proximo ?? hoy);
@@ -256,7 +258,7 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
               etiqueta: 'Para volver a la normalidad',
               valor: pesos(aPagar),
               detalle: pendiente
-                ? `${nuncaPago ? `Primer ${mes}` : `Último ${mes}`} · venció el ${fechaLarga(pendiente.desde)}`
+                ? `${nuncaPago ? 'Primer pago' : `Último ${mes}`} · venció el ${fechaLarga(proximo)}`
                 : plan,
             },
             boton: { texto: 'Pagar y reactivar', href: '/admin/plan/pagar', principal: true },

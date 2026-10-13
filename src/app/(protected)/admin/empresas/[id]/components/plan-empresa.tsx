@@ -233,7 +233,11 @@ function EstadoDeCuenta({
         const quedan = diasEntreAR(hoy, cuenta.pruebaHasta ?? hoy);
         return {
           titular: "Prueba gratis",
-          bajada: `Termina el ${diaAR(cuenta.pruebaHasta)} (${quedan <= 0 ? "hoy" : `quedan ${enDias(quedan)}`}). El ${diaAR(cuenta.proximoVencimiento)} se factura ${losMeses(meses, true)}${cuenta.importePeriodo ? ` por ${pesos(cuenta.importePeriodo)}` : ""} y desde ese día se cuentan los días de atraso.${conDebito ? " Tiene débito automático: ese día MercadoPago lo cobra de su tarjeta." : ""}${sinPlan ? " Todavía falta elegir el plan." : ""}`,
+          bajada: `Termina el ${diaAR(cuenta.pruebaHasta)} (${quedan <= 0 ? "hoy" : `quedan ${enDias(quedan)}`}). El ${diaAR(cuenta.proximoVencimiento)} vence el primer pago${
+            cuenta.proximaFactura && cuenta.proximaFactura.importe
+              ? `, del ${diaAR(cuenta.proximaFactura.desde)} al ${diaAR(cuenta.proximaFactura.hasta)} por ${pesos(cuenta.proximaFactura.importe)} (proporcional)`
+              : ""
+          } y desde ese día se cuentan los días de atraso. Después, el plan completo el día 1${meses > 1 ? `, cada ${meses} meses` : ""}.${conDebito ? " Tiene débito automático: ese día MercadoPago lo cobra de su tarjeta." : ""}${sinPlan ? " Todavía falta elegir el plan." : ""}`,
         };
       }
       case "AL_DIA":
@@ -1078,7 +1082,7 @@ function AccionDialog({
   const titulos: Record<Accion["tipo"], [string, string]> = {
     alta: [
       cuenta.estado === "SIN_ACTIVAR" ? "Dar de alta la cuenta" : "Cambiar la prueba",
-      "Desde qué día es cliente y cuántos días de prueba gratis tiene. Al terminar la prueba se factura el primer mes. No hace falta tener el plan elegido.",
+      "Desde qué día es cliente y cuántos días de prueba gratis tiene. Al terminar la prueba se factura el primer pago: lo que queda de ese mes, proporcional. Después, el plan completo el día 1. No hace falta tener el plan elegido.",
     ],
     fechaAlta: [
       "Fecha de alta",
@@ -1090,7 +1094,7 @@ function AccionDialog({
       "Días extra",
       yaPago
         ? "Más tiempo sin pagar antes de suspenderla. El vencimiento no se mueve y los días de atraso se siguen contando."
-        : "Más días de prueba gratis: la primera factura se corre al día siguiente.",
+        : "Más días de prueba gratis: el primer pago se corre al día siguiente y cubre lo que quede de ese mes.",
     ],
     pago: ["Registrar pago", "Una transferencia, efectivo o lo que te pagaron por fuera del sistema."],
     pagadoHasta: [
@@ -1118,7 +1122,7 @@ function AccionDialog({
       switch (accion.tipo) {
         case "alta":
           r = await activarCuentaAction(empresa.id, alta, conPrueba ? diasPrueba : 0);
-          aviso = conPrueba ? `Alta con prueba gratis hasta el ${diaAR(finPrueba)}.` : "Alta sin prueba: se factura desde hoy.";
+          aviso = conPrueba ? `Alta con prueba gratis hasta el ${diaAR(finPrueba)}.` : "Alta sin prueba: se factura desde hoy hasta fin de mes.";
           break;
         case "fechaAlta":
           r = await editarSuscripcionAction(empresa.id, { alta });
@@ -1236,12 +1240,13 @@ function AccionDialog({
                 conPrueba ? (
                   <>
                     Prueba gratis del <b>{diaAR(alta)}</b> al <b>{diaAR(finPrueba)}</b>. El{" "}
-                    <b>{diaAR(sumarDiasAR(finPrueba, 1))}</b> se factura el primer mes; con más de {DIAS_DE_GRACIA} días de
-                    atraso se suspende.
+                    <b>{diaAR(sumarDiasAR(finPrueba, 1))}</b> vence el primer pago: lo que queda de ese mes,
+                    proporcional. Con más de {DIAS_DE_GRACIA} días de atraso se suspende.
                   </>
                 ) : (
                   <>
-                    Sin prueba: el primer mes se factura el <b>{diaAR(alta)}</b> y vence ese mismo día.
+                    Sin prueba: el primer pago (del alta a fin de mes, proporcional) se factura el{" "}
+                    <b>{diaAR(alta)}</b> y vence ese mismo día.
                   </>
                 ),
                 finPrueba < hoy ? "alerta" : "ok",
