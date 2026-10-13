@@ -33,7 +33,9 @@ export const apiAuthPrefix = '/api/auth';
  * List of public API routes that do not require authentication.
  * @type {string[]}
  */
-export const publicApiRoutes = [];
+export const publicApiRoutes = [
+  '/api/version', // La consulta una página vieja (quizá con la sesión vencida) para saber si recargar.
+];
 
 /**
  * The default path to redirect users after they successfully log in.
