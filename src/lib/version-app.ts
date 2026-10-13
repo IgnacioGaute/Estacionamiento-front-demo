@@ -14,6 +14,14 @@ export function esDeOtraVersion(error: unknown): boolean {
   );
 }
 
+// Una consulta que no llegó al servidor (sin red, o la red todavía volviendo al desbloquear el
+// celular). No es un error de la aplicación: alcanza con reintentar cuando vuelva la conexión.
+// Chrome dice «Failed to fetch», Safari «Load failed» y Firefox «NetworkError…».
+export function esDeRed(error: unknown): boolean {
+  const texto = error instanceof Error ? `${error.name} ${error.message}` : String(error ?? '');
+  return /Failed to fetch|Load failed|NetworkError|Network request failed|ERR_NETWORK|ERR_INTERNET_DISCONNECTED/i.test(texto);
+}
+
 // Recarga una sola vez por minuto: si después de recargar sigue fallando, el problema es otro y
 // recargar en bucle dejaría la pantalla parpadeando.
 export function recargarUnaVez(): boolean {

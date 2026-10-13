@@ -1,4 +1,13 @@
-import { esDeOtraVersion } from './version-app';
+import { esDeOtraVersion, esDeRed } from './version-app';
+
+describe('esDeRed', () => {
+  it('reconoce una consulta que no llegó al servidor en cada navegador', () => {
+    expect(esDeRed(new TypeError('Failed to fetch'))).toBe(true);
+    expect(esDeRed(new TypeError('Load failed'))).toBe(true);
+    expect(esDeRed(new TypeError('NetworkError when attempting to fetch resource.'))).toBe(true);
+    expect(esDeRed(new Error('No se pudo cargar la caja.'))).toBe(false);
+  });
+});
 
 describe('esDeOtraVersion', () => {
   it('reconoce los errores de una página vieja después de un despliegue', () => {

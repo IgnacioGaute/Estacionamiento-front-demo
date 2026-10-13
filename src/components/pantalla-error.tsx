@@ -8,17 +8,29 @@
 // hoja de estilos de la app siga cargada.
 
 import { useEffect, useState } from 'react';
-import { esDeOtraVersion, recargarUnaVez } from '@/lib/version-app';
+import { esDeOtraVersion, esDeRed, recargarUnaVez } from '@/lib/version-app';
 
 const AMARILLO = '#F5C219';
 
-export function PantallaError({ error }: { error: Error & { digest?: string } }) {
+export function PantallaError({ error, reset }: { error: Error & { digest?: string }; reset?: () => void }) {
   const [recargando, setRecargando] = useState(false);
+  const deRed = esDeRed(error);
 
   useEffect(() => {
     console.error(error);
     if (esDeOtraVersion(error) && recargarUnaVez()) setRecargando(true);
   }, [error]);
+
+  // Sin red no hay nada roto: se vuelve a dibujar la pantalla sola apenas hay conexión (un momento
+  // después, para que la red termine de levantar), sin recargar ni perder lo que estaba abierto.
+  useEffect(() => {
+    if (!deRed || !reset) return;
+    let espera: number | undefined;
+    const reintentar = () => { espera = window.setTimeout(reset, 1500); };
+    if (navigator.onLine) reintentar();
+    else window.addEventListener('online', reintentar, { once: true });
+    return () => { window.clearTimeout(espera); window.removeEventListener('online', reintentar); };
+  }, [deRed, reset]);
 
   return (
     <div
@@ -45,20 +57,22 @@ export function PantallaError({ error }: { error: Error & { digest?: string } })
         }}
       >
         <p style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: '0.16em', color: '#A59B8D' }}>
-          {recargando ? 'ACTUALIZANDO' : 'ALGO FALLÓ'}
+          {recargando ? 'ACTUALIZANDO' : deRed ? 'SIN CONEXIÓN' : 'ALGO FALLÓ'}
         </p>
         <h1 style={{ margin: '10px 0 0', fontSize: 24, lineHeight: 1.2 }}>
-          {recargando ? 'Cargando la versión nueva…' : 'La aplicación tuvo un error'}
+          {recargando ? 'Cargando la versión nueva…' : deRed ? 'Se cortó la conexión' : 'La aplicación tuvo un error'}
         </h1>
         {!recargando && (
           <>
             <p style={{ margin: '12px 0 0', fontSize: 14, lineHeight: 1.5, color: '#A59B8D' }}>
-              Volvé a cargar para seguir. Lo que ya guardaste no se pierde.
+              {deRed
+                ? 'Vuelve sola apenas haya internet. Lo que ya guardaste no se pierde.'
+                : 'Volvé a cargar para seguir. Lo que ya guardaste no se pierde.'}
             </p>
             <div style={{ display: 'grid', gap: 10, marginTop: 22 }}>
               <button
                 type="button"
-                onClick={() => window.location.reload()}
+                onClick={() => (deRed && reset ? reset() : window.location.reload())}
                 style={{
                   height: 50,
                   border: 0,
@@ -70,7 +84,7 @@ export function PantallaError({ error }: { error: Error & { digest?: string } })
                   cursor: 'pointer',
                 }}
               >
-                Volver a cargar
+                {deRed ? 'Reintentar' : 'Volver a cargar'}
               </button>
               <a
                 href="/tickets"

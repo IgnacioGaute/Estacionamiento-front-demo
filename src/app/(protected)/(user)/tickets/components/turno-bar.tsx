@@ -72,7 +72,16 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' 
   };
 
   const refresh = async (resetOpening = false) => {
-    const result = await getCashContextAction();
+    let result: Awaited<ReturnType<typeof getCashContextAction>>;
+    // Corre dentro de una transición, y React manda cualquier error de una transición a la pantalla
+    // de error. Al desbloquear el celular el reloj de un minuto dispara enseguida, antes de que
+    // vuelva la red, y el «Failed to fetch» tiraba la app entera. Sin respuesta se queda lo que
+    // estaba en pantalla y se reintenta en el próximo ciclo o al volver la conexión.
+    try {
+      result = await getCashContextAction();
+    } catch {
+      return;
+    }
     if (result.error || !result.context) { setContext(null); setError(result.error ?? 'No se pudo cargar la caja.'); return; }
     const next = result.context;
     if (turnoId && !next.openTurnos.some(t => t.id === turnoId)) { setContext(null); setError('Este turno ya no está abierto. Actualizá la lista de turnos.'); return; }
@@ -86,7 +95,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' 
     const update = () => startTransition(() => refresh());
     const timer = window.setInterval(update, 60000);
     window.addEventListener('parking-shift-changed', update);
-    return () => { window.clearInterval(timer); window.removeEventListener('parking-shift-changed', update); };
+    window.addEventListener('online', update);
+    return () => { window.clearInterval(timer); window.removeEventListener('parking-shift-changed', update); window.removeEventListener('online', update); };
   }, [turnoId, revision, cajaId]);
   const updated = () => { onUpdated?.(); window.dispatchEvent(new Event('parking-shift-changed')); };
   const submitOpen = () => startTransition(async () => {

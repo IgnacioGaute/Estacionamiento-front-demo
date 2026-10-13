@@ -1,4 +1,5 @@
 /** @jest-environment jsdom */
+import React from 'react';
 import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { writeFileSync } from 'node:fs';
 import { useSession } from 'next-auth/react';
@@ -184,4 +185,24 @@ test('cierre con efectivo coincidente permite dejar una nota para el próximo tu
   expect(screen.getByText('Se publica automáticamente en Avisos.')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' }));
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith('yo-turno', expect.objectContaining({ efectivoContado: 900, observaciones: 'Revisar la camioneta que quedó dentro' })));
+});
+
+// Al desbloquear el celular el reloj de la caja dispara antes de que vuelva la red. La consulta que
+// falla con «Failed to fetch» corre en una transición: si se escapaba, React la mandaba a la
+// pantalla de error y la app entera quedaba en «La aplicación tuvo un error».
+test('una consulta de la caja que falla por la red no tira la pantalla de error', async () => {
+  class Atrapa extends React.Component<{ children: React.ReactNode }, { roto: boolean }> {
+    state = { roto: false };
+    static getDerivedStateFromError() { return { roto: true }; }
+    render() { return this.state.roto ? <p>pantalla de error</p> : this.props.children; }
+  }
+  render(<Atrapa><TurnoBar /></Atrapa>);
+  expect(await screen.findByRole('button', { name: 'Abrir mi turno' })).toBeInTheDocument();
+  const antes = jest.mocked(getCashContextAction).mock.calls.length;
+  jest.mocked(getCashContextAction).mockRejectedValue(new TypeError('Failed to fetch'));
+  window.dispatchEvent(new Event('online'));
+  await waitFor(() => expect(jest.mocked(getCashContextAction).mock.calls.length).toBeGreaterThan(antes));
+  await new Promise((r) => setTimeout(r, 50));
+  expect(screen.queryByText('pantalla de error')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Abrir mi turno' })).toBeInTheDocument();
 });
