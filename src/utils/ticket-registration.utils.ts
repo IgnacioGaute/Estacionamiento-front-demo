@@ -35,8 +35,10 @@ export function isTicketActive(t: Ticket, registrations: TicketRegistration[]) {
 // la red, tape un dato más fresco que ya haya llegado por otro camino (ej. router.refresh()).
 export function upsertRegistration(
   list: TicketRegistration[],
-  incoming: TicketRegistration
+  incoming: TicketRegistration & { eliminada?: boolean }
 ): TicketRegistration[] {
+  // Una estadía cargada por error que el administrador eliminó: sale de la lista.
+  if (incoming.eliminada) return list.filter((r) => r.id !== incoming.id);
   const index = list.findIndex((r) => r.id === incoming.id);
   if (index === -1) {
     return [...list, incoming];

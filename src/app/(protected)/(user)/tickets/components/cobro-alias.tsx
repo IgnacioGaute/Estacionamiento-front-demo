@@ -22,7 +22,7 @@ import {
 import { formatImporte } from '@/components/pricing-breakdown';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
-import { CobroAlias } from '@/types/verificacion-alias.type';
+import { CobroAlias, OpcionTransferencia } from '@/types/verificacion-alias.type';
 import { ConfirmacionDePago } from './pago-recibido';
 import {
   ampliarCobroAliasAction,
@@ -87,6 +87,52 @@ const MOTIVOS: Record<string, string> = {
   YA_EN_REVISION: 'Esta transferencia quedó para revisar.',
 };
 
+// Transferencias para elegir: en revisión (varias posibles) o las que entraron antes de abrir el
+// cobro. Lo primero es a nombre de quién, para preguntarle al cliente.
+function ListaDeTransferencias({
+  titulo,
+  opciones,
+  cobro,
+  elegida,
+  onElegir,
+  ocupado,
+}: {
+  titulo: string;
+  opciones: OpcionTransferencia[];
+  cobro: CobroAlias;
+  elegida: string | null;
+  onElegir: (operacionId: string) => void;
+  ocupado: boolean;
+}) {
+  return (
+    <fieldset className="min-w-0 space-y-2.5" disabled={ocupado}>
+      <legend className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{titulo}</legend>
+      {opciones.map((o) => (
+        <label
+          key={o.operacionId}
+          className={cn(
+            'flex cursor-pointer items-start gap-3 rounded-2xl border-[1.5px] p-3.5 transition-colors focus-within:ring-2 focus-within:ring-gm-yellow',
+            elegida === o.operacionId ? 'border-gm-yellow bg-gm-yellow/10 shadow-[inset_0_0_0_1px_hsl(var(--gm-yellow))]' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/50',
+            ocupado && 'pointer-events-none opacity-60',
+          )}
+        >
+          <input type="radio" name={'transferencia-' + cobro.id} value={o.operacionId} checked={elegida === o.operacionId} onChange={() => onElegir(o.operacionId)} className="mt-0.5 size-5 shrink-0 accent-yellow-400" />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="min-w-0 break-words text-base font-bold">{o.nombre || o.documento || 'Pagador sin identificar'}</span>
+              <span className="gm-mono shrink-0 text-[13px] font-semibold text-[#D9D1C3]">{horaCorta(o.fechaOperacion)}</span>
+            </span>
+            {o.nombre && o.documento && <span className="gm-mono block text-[13px] text-muted-foreground">{o.documento}</span>}
+            <span className="mt-0.5 block break-all text-[11.5px] text-muted-foreground">
+              {[o.entidad, `Operación ${o.operacionId}`, o.importe !== cobro.importe ? formatImporte(o.importe) : null].filter(Boolean).join(' · ')}
+            </span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
 export function CobroAliasPanel({
   cobro: inicial,
   onTerminado,
@@ -106,6 +152,7 @@ export function CobroAliasPanel({
   alTerminar.current = onTerminado;
   const abierto = abiertos.includes(cobro.estado);
   const transcurrido = useTranscurrido(cobro.creadoEl);
+  const anteriores = cobro.anteriores ?? [];
 
   const actualizar = useCallback((nuevo: CobroAlias) => {
     setCobro(nuevo);
@@ -128,10 +175,11 @@ export function CobroAliasPanel({
     return () => clearInterval(reloj);
   }, [abierto, consultar]);
 
-  // Si la opción elegida desapareció (la usó otra caja), se deselecciona.
+  // Si la opción elegida desapareció (la usó otra caja, o llegó otro auto del mismo importe y ya
+  // no se puede ofrecer), se deselecciona.
   useEffect(() => {
-    if (elegida && !cobro.opciones.some((o) => o.operacionId === elegida)) setElegida(null);
-  }, [cobro.opciones, elegida]);
+    if (elegida && ![...cobro.opciones, ...(cobro.anteriores ?? [])].some((o) => o.operacionId === elegida)) setElegida(null);
+  }, [cobro.opciones, cobro.anteriores, elegida]);
 
   const asignar = async () => {
     if (!elegida) return;
@@ -212,7 +260,7 @@ export function CobroAliasPanel({
 
   const fallo = cobro.consulta && cobro.consulta.ok === false ? cobro.consulta : null;
   const revision = cobro.estado === 'REVISION';
-  const opcionElegida = cobro.opciones.find((o) => o.operacionId === elegida);
+  const opcionElegida = [...cobro.opciones, ...anteriores].find((o) => o.operacionId === elegida);
 
   return (
     <>
@@ -267,31 +315,14 @@ export function CobroAliasPanel({
               La transferencia que coincidía ya se usó en otro cobro. Si el cliente transfirió, su transferencia va a aparecer acá.
             </p>
           ) : (
-            <fieldset className="min-w-0 space-y-2.5" disabled={ocupado}>
-              <legend className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Transferencias recibidas ({cobro.opciones.length})</legend>
-              {cobro.opciones.map((o) => (
-                <label
-                  key={o.operacionId}
-                  className={cn(
-                    'flex cursor-pointer items-start gap-3 rounded-2xl border-[1.5px] p-3.5 transition-colors focus-within:ring-2 focus-within:ring-gm-yellow',
-                    elegida === o.operacionId ? 'border-gm-yellow bg-gm-yellow/10 shadow-[inset_0_0_0_1px_hsl(var(--gm-yellow))]' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/50',
-                    ocupado && 'pointer-events-none opacity-60',
-                  )}
-                >
-                  <input type="radio" name={'transferencia-' + cobro.id} value={o.operacionId} checked={elegida === o.operacionId} onChange={() => setElegida(o.operacionId)} className="mt-0.5 size-5 shrink-0 accent-yellow-400" />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="min-w-0 break-words text-base font-bold">{o.nombre || o.documento || 'Pagador sin identificar'}</span>
-                      <span className="gm-mono shrink-0 text-[13px] font-semibold text-[#D9D1C3]">{horaCorta(o.fechaOperacion)}</span>
-                    </span>
-                    {o.nombre && o.documento && <span className="gm-mono block text-[13px] text-muted-foreground">{o.documento}</span>}
-                    <span className="mt-0.5 block break-all text-[11.5px] text-muted-foreground">
-                      {[o.entidad, `Operación ${o.operacionId}`, o.importe !== cobro.importe ? formatImporte(o.importe) : null].filter(Boolean).join(' · ')}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </fieldset>
+            <ListaDeTransferencias
+              titulo={`Transferencias recibidas (${cobro.opciones.length})`}
+              opciones={cobro.opciones}
+              cobro={cobro}
+              elegida={elegida}
+              onElegir={setElegida}
+              ocupado={ocupado}
+            />
           )}
           {cobro.opciones.length > 0 && cobro.opciones.every((o) => !o.nombre) && (
             <p className="text-xs text-muted-foreground">
@@ -313,6 +344,29 @@ export function CobroAliasPanel({
           </span>
           <span className="gm-mono text-[15px] font-semibold text-muted-foreground">{transcurrido}</span>
         </div>
+      )}
+
+      {/* Transferencias del mismo importe que entraron antes de abrir esto: nunca se asocian solas.
+          El cajero pregunta a nombre de quién transfirió y elige la suya. */}
+      {!revision && !fallo && anteriores.length > 0 && (
+        <>
+          <div className="flex gap-3 rounded-2xl border border-gm-yellow/35 bg-gm-yellow/[0.06] p-3.5">
+            <Info className="mt-0.5 size-5 shrink-0 text-gm-yellow" aria-hidden />
+            <p className="min-w-0 text-sm text-[#D9D1C3]">
+              <span className="font-semibold text-foreground">¿Transfirió antes de que abrieras esto?</span> Entró{' '}
+              {anteriores.length === 1 ? 'esta transferencia' : 'estas transferencias'} de {formatImporte(cobro.importe)} un rato
+              antes. Preguntale a nombre de quién transfirió y elegí la suya.
+            </p>
+          </div>
+          <ListaDeTransferencias
+            titulo="Recibidas antes"
+            opciones={anteriores}
+            cobro={cobro}
+            elegida={elegida}
+            onElegir={setElegida}
+            ocupado={ocupado}
+          />
+        </>
       )}
 
       {cobro.puedeAmpliar && !revision && (
@@ -339,7 +393,7 @@ export function CobroAliasPanel({
         >
           Cancelar y cobrar de otra forma
         </ActionDialogSecondaryButton>
-        {revision && cobro.opciones.length > 0 && (
+        {(revision ? cobro.opciones.length > 0 : !!opcionElegida) && (
           <ActionDialogPrimaryButton
             disabled={!elegida || ocupado}
             onClick={() => void asignar()}

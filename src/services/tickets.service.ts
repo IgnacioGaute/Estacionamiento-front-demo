@@ -715,6 +715,18 @@ export async function corregirEntrada(id: string, entrada: string): Promise<{ su
   return { summary: data.summary as CloseSummary };
 }
 
+// Una estadía abierta y sin cobros que se cargó por error (solo el administrador). El backend
+// rechaza si tiene cobros, anticipos o un QR o alias esperando el pago.
+export async function eliminarEstadia(id: string): Promise<{ ok?: true; error?: string }> {
+  const response = await fetch(`${BASE_URL}/tickets/registrations/${id}`, {
+    method: 'DELETE', headers: await getAuthHeaders(),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) return { error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudo eliminar la estadía.' };
+  revalidateTag(getCacheTag('tickets', 'all'));
+  return { ok: true };
+}
+
 export async function discountRegistration(id: string, payload: DiscountRegistrationPayload): Promise<{ summary?: CloseSummary; error?: string }> {
   const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/discount`, {
     method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload),

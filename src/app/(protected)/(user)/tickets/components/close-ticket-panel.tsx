@@ -40,6 +40,7 @@ import { minutesSinceEntry, isOverdue, isBarcodeOrigin } from '@/utils/ticket-re
 import { calcularVuelto, pagosSugeridos } from '@/utils/vuelto';
 import { cuandoEntro, formatEstadia as formatElapsed } from '@/utils/estadia';
 import { CorregirEntrada } from './corregir-entrada';
+import { EliminarEstadia } from './eliminar-estadia';
 
 // Efectivo y transferencia los declara el cajero; QR y alias los verifica el sistema contra
 // MercadoPago. Los cuatro se eligen igual (tocar y confirmar abajo) para que el botón principal
@@ -558,6 +559,17 @@ export function CloseTicketPanel({
                 />
                 {/* En computadora hay lugar: el cálculo queda siempre a la vista. */}
                 <div className="hidden md:block"><Calculo summary={summary} /></div>
+                {/* Al costado y apagado: solo el administrador, sin cobros, y no mientras cobra. */}
+                {!enEspera && !pagoConSalida && !paymentMethod && !showDiscount && (
+                  <EliminarEstadia
+                    summary={summary}
+                    onEliminada={() => {
+                      toast.success('Estadía eliminada');
+                      onOpenChange(false);
+                      onSuccess?.();
+                    }}
+                  />
+                )}
               </div>
 
               <div className="flex min-w-0 flex-col gap-4 short:gap-3">

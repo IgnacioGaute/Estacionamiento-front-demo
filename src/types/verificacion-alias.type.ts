@@ -58,6 +58,9 @@ export type CobroAlias = {
   consulta: { ok: true; consultadoEl: string } | { ok: false; code: string; error: string } | null;
   motivoRevision: 'VARIAS_TRANSFERENCIAS' | 'VARIOS_COBROS' | 'YA_EN_REVISION' | null;
   opciones: OpcionTransferencia[];
+  // Mientras espera: las del mismo importe que entraron hasta 30 minutos antes de abrir el cobro.
+  // Nunca se asocian solas; no aparecen si otro cobro del mismo importe podría reclamarlas.
+  anteriores?: OpcionTransferencia[];
 };
 
 export type DisponibilidadAlias = { qrDisponible?: boolean } & (

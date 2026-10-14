@@ -175,6 +175,13 @@ const ACCIONES: Record<
     Icono: Clock3,
     detalle: (d) => `${d.patente ? `${d.patente}: ` : ""}entró ${d.entrada ?? "?"} (figuraba ${d.entradaAnterior ?? "?"})`,
   },
+  ESTADIA_ELIMINADA: {
+    texto: "Eliminó una estadía cargada por error",
+    categoria: "tarifas",
+    Icono: Trash2,
+    destructiva: true,
+    detalle: (d) => `${d.patente ?? "Sin patente"}${d.entrada ? ` · había entrado ${d.entrada}` : ""}`,
+  },
   USUARIO_CREADO: { texto: "Dio de alta un usuario", categoria: "cuentas", Icono: UserCog },
   USUARIO_EDITADO: { texto: "Editó un usuario", categoria: "cuentas", Icono: UserCog },
   USUARIO_CONTRASENA: { texto: "Cambió una contraseña", categoria: "cuentas", Icono: UserCog },

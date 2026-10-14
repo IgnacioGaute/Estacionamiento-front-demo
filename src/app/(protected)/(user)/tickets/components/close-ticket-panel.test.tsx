@@ -16,6 +16,7 @@ jest.mock('@/actions/mercadopago/mercadopago.action', () => ({ crearCobroMercado
 jest.mock('@/actions/mercadopago/verificacion-alias.action', () => ({ disponibilidadAliasAction: async () => ({ datos: null }), cobroAliasDeEstadiaAction: async () => ({ cobro: null }), iniciarCobroAliasAction: jest.fn() }));
 jest.mock('./cobro-qr-mercadopago', () => ({ CobroQrMercadoPago: () => null }));
 jest.mock('./cobro-alias', () => ({ CobroAliasPanel: () => null }));
+jest.mock('./eliminar-estadia', () => ({ EliminarEstadia: () => null }));
 jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 const summary = (price = 1000, collected = 0) => ({ registration: { id: 'reg', vehicleType: 'AUTO', entryMode: 'PLATE', licensePlateOriginal: 'AB123CD', entryDay: '2026-10-10', entryTime: '10:00:00' }, elapsedMinutes: 30, previewBracket: { price }, saldoACobrar: price - collected, cambioARetornar: 0, totalCollectedSoFar: collected, pricingDayTypeBasis: 'ENTRY' } as CloseSummary);
 beforeEach(() => {
