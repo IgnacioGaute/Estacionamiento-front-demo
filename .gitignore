@@ -35,8 +35,11 @@ yarn-error.log*
 .playwright-mcp
 
 # AI agent tooling
-.claude
-
+.claude/settings.local.json
+.claude/worktrees/
+.claude/agent-memory-local/
+CLAUDE.local.md
+.worktrees/
 # vercel
 .vercel
 
