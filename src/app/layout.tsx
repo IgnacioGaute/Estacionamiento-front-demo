@@ -1,5 +1,5 @@
 import './globals.css';
-import { Oswald, Archivo, JetBrains_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
@@ -8,24 +8,28 @@ import { Metadata, Viewport } from 'next';
 import { NavigationLoader } from '@/components/navigation-loader';
 import { PwaRuntime } from '@/components/pwa-runtime';
 
-const archivo = Archivo({
-  subsets: ['latin'],
+// Las tipografías viven en el repo (src/fonts, subconjunto latino de Google Fonts, versiones
+// variables): con next/font/google la compilación las descargaba y, cuando Google no respondía,
+// fallaba («Cannot read properties of null») o se quedaba colgada en Railway. Mismos pesos y
+// variables CSS que antes.
+const archivo = localFont({
+  src: '../fonts/archivo-latin.woff2',
+  weight: '400 800',
   display: 'swap',
-  weight: ['400', '500', '600', '700', '800'],
   variable: '--font-sans',
 });
 
-const oswald = Oswald({
-  subsets: ['latin'],
+const oswald = localFont({
+  src: '../fonts/oswald-latin.woff2',
+  weight: '400 700',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
   variable: '--font-display',
 });
 
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
+const mono = localFont({
+  src: '../fonts/jetbrains-mono-latin.woff2',
+  weight: '400 600',
   display: 'swap',
-  weight: ['400', '500', '600'],
   variable: '--font-mono',
 });
 
