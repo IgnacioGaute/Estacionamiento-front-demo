@@ -198,7 +198,8 @@ export function CloseTicketPanel({
   const [showDiscount, setShowDiscount] = useState(false);
   const [discountReason, setDiscountReason] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
-  const [discountMode, setDiscountMode] = useState<'AMOUNT' | 'ALL'>('AMOUNT');
+  // PREV: cobrar la tarifa anterior (pagó tarde y la estadía pasó de escalón).
+  const [discountMode, setDiscountMode] = useState<'AMOUNT' | 'ALL' | 'PREV'>('AMOUNT');
   // En el celular el cálculo reemplaza a los medios de pago en vez de alargar el diálogo.
   const [verCalculo, setVerCalculo] = useState(false);
   // Solo para calcular el vuelto en pantalla: no se manda al backend.
@@ -420,7 +421,15 @@ export function CloseTicketPanel({
   // aparecer para cobrar la diferencia.
   const enEspera = cobroQr?.estado === 'PENDIENTE' || aliasEsperando;
   const saldo = summary?.saldoACobrar ?? 0;
-  const discount = discountMode === 'ALL' ? saldo : Number(discountAmount);
+  const tarifaAnterior = summary?.tarifaAnterior ?? null;
+  const motivoTarifaAnterior = tarifaAnterior ? `Se cobra la tarifa anterior (${tarifaAnterior.etiqueta}): demoró en pagar` : '';
+  const elegirDescuento = (modo: 'AMOUNT' | 'ALL' | 'PREV') => {
+    setDiscountMode(modo);
+    // El motivo sugerido acompaña a la tarifa anterior; si el cajero escribió otro, se respeta.
+    if (modo === 'PREV' && !discountReason.trim()) setDiscountReason(motivoTarifaAnterior);
+    if (modo !== 'PREV' && discountReason === motivoTarifaAnterior) setDiscountReason('');
+  };
+  const discount = discountMode === 'ALL' ? saldo : discountMode === 'PREV' ? tarifaAnterior?.descuento ?? 0 : Number(discountAmount);
   const discountValid = Number.isInteger(discount) && discount > 0 && discount <= saldo && !!discountReason.trim();
   const mostrarMedios = !!summary && saldo > 0 && !enEspera && !pagoConSalida;
   const sugeridos = pagosSugeridos(saldo);
@@ -617,11 +626,19 @@ export function CloseTicketPanel({
                     ) : mostrarMedios && showDiscount ? (
                       <div className="space-y-3 rounded-2xl border border-border bg-gm-surface-2/50 p-3.5">
                         <p className="flex items-center gap-2 text-sm font-semibold"><BadgePercent className="size-[18px] text-gm-yellow" aria-hidden />Descuento</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {([{ id: 'AMOUNT', label: 'Un importe' }, { id: 'ALL', label: 'Todo el saldo' }] as const).map(option =>
-                            <button key={option.id} type="button" disabled={isPending} aria-pressed={discountMode === option.id} onClick={() => setDiscountMode(option.id)} className="min-h-11 rounded-xl border border-border px-3 text-sm font-semibold aria-pressed:border-gm-yellow/50 aria-pressed:bg-gm-yellow/10 aria-pressed:text-gm-yellow">{option.label}</button>)}
+                        <div className={cn('grid gap-2', tarifaAnterior ? 'grid-cols-3' : 'grid-cols-2')}>
+                          {([...(tarifaAnterior ? [{ id: 'PREV', label: 'Tarifa anterior' }] : []), { id: 'AMOUNT', label: 'Un importe' }, { id: 'ALL', label: 'Todo el saldo' }] as { id: 'AMOUNT' | 'ALL' | 'PREV'; label: string }[]).map(option =>
+                            <button key={option.id} type="button" disabled={isPending} aria-pressed={discountMode === option.id} onClick={() => elegirDescuento(option.id)} className="min-h-11 rounded-xl border border-border px-2 text-sm font-semibold leading-tight aria-pressed:border-gm-yellow/50 aria-pressed:bg-gm-yellow/10 aria-pressed:text-gm-yellow">{option.label}</button>)}
                         </div>
-                        {discountMode === 'AMOUNT' ? <CashAmountField id="discount-amount" label="Importe del descuento" value={discountAmount} onChange={setDiscountAmount} disabled={isPending} max={saldo} /> : <p className="text-sm text-muted-foreground">Se descuentan {formatImporte(saldo)} de saldo pendiente.</p>}
+                        {discountMode === 'PREV' && tarifaAnterior ? (
+                          <div className="flex items-center justify-between gap-3 rounded-xl border border-gm-line-strong bg-card px-3.5 py-3">
+                            <div className="min-w-0">
+                              <p className="text-[13px] font-semibold">Se cobra {tarifaAnterior.etiqueta}</p>
+                              <p className="text-xs text-muted-foreground">Descuento de {formatImporte(tarifaAnterior.descuento)} sobre {formatImporte(summary!.previewBracket.price)}</p>
+                            </div>
+                            <strong className="gm-mono shrink-0 text-lg">{formatImporte(tarifaAnterior.precio)}</strong>
+                          </div>
+                        ) : discountMode === 'AMOUNT' ? <CashAmountField id="discount-amount" label="Importe del descuento" value={discountAmount} onChange={setDiscountAmount} disabled={isPending} max={saldo} /> : <p className="text-sm text-muted-foreground">Se descuentan {formatImporte(saldo)} de saldo pendiente.</p>}
                         <label htmlFor="discount-reason" className="block text-xs font-semibold">Motivo del descuento</label>
                         <input id="discount-reason" value={discountReason} onChange={e => setDiscountReason(e.target.value)} disabled={isPending} maxLength={255} placeholder="Ej.: beneficio para cliente frecuente" className="h-12 w-full rounded-xl border border-gm-line-strong bg-gm-surface-2 px-3 text-base outline-none focus:border-gm-yellow" />
                         {discount > 0 && discount <= saldo && <p className="text-sm font-semibold">Quedan por cobrar: {formatImporte(saldo - discount)}</p>}
@@ -648,7 +665,7 @@ export function CloseTicketPanel({
                             <button
                               type="button"
                               disabled={isPending}
-                              onClick={() => { setShowDiscount(true); setPaymentMethod(null); }}
+                              onClick={() => { setShowDiscount(true); setPaymentMethod(null); elegirDescuento(tarifaAnterior ? 'PREV' : 'AMOUNT'); }}
                               className="-my-2 -mr-1 inline-flex min-h-11 items-center gap-1.5 px-1 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
                             >
                               <BadgePercent className="size-4" aria-hidden />

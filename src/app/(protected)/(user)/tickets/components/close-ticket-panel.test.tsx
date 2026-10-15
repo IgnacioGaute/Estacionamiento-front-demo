@@ -59,3 +59,17 @@ test('todo el saldo respeta el anticipo y después permite confirmar la salida s
   fireEvent.click(await screen.findByRole('button', { name: /Registrar salida/ }));
   await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({ closeType: 'NO_CHARGE', expectedPrice: 400, expectedCollected: 400 })));
 });
+
+test('tarifa anterior: si pagó tarde, el descuento deja el precio del escalón anterior con un toque', async () => {
+  jest.mocked(getCloseSummaryAction).mockResolvedValue({ ...summary(7000), tarifaAnterior: { precio: 3500, etiqueta: 'Hasta 1 hora', hastaMinutos: 70, descuento: 3500 } });
+  jest.mocked(discountRegistrationAction).mockResolvedValue({ summary: summary(3500) });
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
+  const button = await screen.findByRole('button', { name: 'Descuento' });
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.click(button);
+  expect(await screen.findByRole('button', { name: 'Tarifa anterior' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByText('Se cobra Hasta 1 hora')).toBeInTheDocument();
+  expect(screen.getByLabelText('Motivo del descuento')).toHaveValue('Se cobra la tarifa anterior (Hasta 1 hora): demoró en pagar');
+  fireEvent.click(screen.getByRole('button', { name: /Aplicar descuento/ }));
+  await waitFor(() => expect(discountRegistrationAction).toHaveBeenCalledWith('reg', { monto: 3500, motivo: 'Se cobra la tarifa anterior (Hasta 1 hora): demoró en pagar', expectedPrice: 7000, expectedCollected: 0 }));
+});

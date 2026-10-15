@@ -498,6 +498,9 @@ export type CloseSummary = {
   totalCollectedSoFar: number;
   saldoACobrar: number;
   cambioARetornar: number;
+  // El escalón anterior y el descuento que deja la estadía en ese precio (pagó tarde y pasó de
+  // escalón). null en el primer escalón o sin saldo; ausente con un backend anterior.
+  tarifaAnterior?: { precio: number; etiqueta: string; hastaMinutos: number; descuento: number } | null;
   pricingDayType?: 'DAY' | 'NIGHT' | 'MIXED';
   pricingDayTypeBasis?: 'ENTRY' | 'EXIT' | 'SPLIT';
   tariffSnapshotUsed?: boolean;
