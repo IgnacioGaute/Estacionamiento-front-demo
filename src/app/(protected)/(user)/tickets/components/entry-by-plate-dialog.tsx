@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils';
 import { entryByPlateSchema, EntryByPlateSchemaType } from '@/schemas/entry-by-plate.schema';
 import { createRegistrationByPlateAction } from '@/actions/tickets/create-registration-by-plate.action';
 import { getFrequentCustomersAction } from '@/actions/tickets/get-frequent-customers.action';
+import { getPlateStatusAction } from '@/actions/tickets/get-plate-status.action';
+import type { TicketRegistration } from '@/types/ticket-registration.type';
 import { startScanner } from '@/services/scanner.service';
 import { looksLikeKnownPlateFormat, sanitizePlateInput } from '@/utils/plate.utils';
 import { FrequentCustomer } from '@/types/frequent-customer.type';
@@ -56,7 +58,8 @@ export function EntryByPlateDialog({
   ticketEntryEnabled?: boolean;
   triggerRef?: (el: HTMLElement | null) => void;
   triggerStyle?: React.CSSProperties;
-  scanRequest?: { plate: string; sequence: number } | null;
+  // `parecidasRevisadas`: el escaneo ya ofreció las patentes parecidas y el operador dijo que es otro.
+  scanRequest?: { plate: string; sequence: number; parecidasRevisadas?: boolean } | null;
   onOpenChange?: (open: boolean) => void;
 }) {
   const { playaId } = useTenant();
@@ -68,6 +71,8 @@ export function EntryByPlateDialog({
   const [isPending, startTransition] = useTransition();
   const [duplicateError, setDuplicateError] = useState<DuplicateError | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
+  // Patentes parecidas que ya están adentro: el auto puede ser uno de ellos mal leído.
+  const [parecidas, setParecidas] = useState<TicketRegistration[] | null>(null);
   const [method, setMethod] = useState<'PLATE' | 'TICKET'>('PLATE');
   const [ticketCode, setTicketCode] = useState('');
   const [ticketPending, setTicketPending] = useState(false);
@@ -108,6 +113,7 @@ export function EntryByPlateDialog({
     form.reset({ licensePlate: scanRequest.plate, vehicleType: 'AUTO', casilleroNumber: '', lastNameCustomer: '', phoneCustomer: '' });
     setDuplicateError(null);
     setOverrideReason('');
+    setParecidas(null);
     setMethod('PLATE');
     setSelectedFrequent(null);
     setFrequentQuery(scanRequest.plate);
@@ -171,6 +177,7 @@ export function EntryByPlateDialog({
     form.reset();
     setDuplicateError(null);
     setOverrideReason('');
+    setParecidas(null);
     setMethod('PLATE');
     setTicketCode('');
     setFrequentQuery('');
@@ -209,8 +216,20 @@ export function EntryByPlateDialog({
     if (data.registrationId) setReceiptId(data.registrationId);
   };
 
-  const submit = (values: EntryByPlateSchemaType, override?: boolean) => {
+  const submit = (values: EntryByPlateSchemaType, override?: boolean, parecidasRevisadas = false) => {
     startTransition(async () => {
+      // Antes de una entrada nueva, si adentro hay una patente a un carácter de distancia se
+      // pregunta: registrarla igual dejaría la otra abierta para siempre. Si la consulta falla no
+      // se traba la entrada.
+      const patente = values.licensePlate ?? '';
+      const yaRevisadas = parecidasRevisadas || (!!scanRequest?.parecidasRevisadas && sanitizePlateInput(patente) === scanRequest.plate);
+      if (!override && !yaRevisadas && patente) {
+        const estado = await getPlateStatusAction(patente);
+        if (estado.data?.similares?.length) {
+          setParecidas(estado.data.similares);
+          return;
+        }
+      }
       const data = await createRegistrationByPlateAction({
         ...values,
         noPlate: false,
@@ -314,7 +333,7 @@ export function EntryByPlateDialog({
       >
         <ActionDialogHeader
           title="Registrar entrada"
-          description={duplicateError ? 'Revisá antes de seguir' : method === 'TICKET' ? 'Escaneá la tarjeta o escribí su número' : 'Buscá o escaneá la patente'}
+          description={duplicateError || parecidas ? 'Revisá antes de seguir' : method === 'TICKET' ? 'Escaneá la tarjeta o escribí su número' : 'Buscá o escaneá la patente'}
         />
 
         {duplicateError ? (
@@ -372,6 +391,54 @@ export function EntryByPlateDialog({
                   Ir a esa estadía
                 </ActionDialogPrimaryButton>
               )}
+            </ActionDialogFooter>
+          </>
+        ) : parecidas ? (
+          <>
+            <ActionDialogBody>
+              <div role="alert" className="space-y-3 rounded-[18px] border-[1.5px] border-gm-yellow/50 bg-gm-yellow/[0.07] p-4 short:space-y-2.5 short:p-3.5">
+                <p className="flex items-center gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gm-yellow/15 text-gm-yellow">
+                    <AlertTriangle className="size-5" aria-hidden />
+                  </span>
+                  <span className="gm-display text-[19px] leading-tight tracking-[0.02em] text-gm-yellow">
+                    {parecidas.length === 1 ? 'Hay una patente parecida adentro' : 'Hay patentes parecidas adentro'}
+                  </span>
+                </p>
+                <p className="text-[13.5px] leading-relaxed text-[#D9D1C3]">
+                  Puede ser el mismo auto con un carácter mal leído. Si se está yendo, cobrá esa estadía en lugar de registrar una entrada nueva.
+                </p>
+              </div>
+              <ul className="space-y-2">
+                {parecidas.map((r) => (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => { onGoToRegistration?.(r.id); cerrar(); }}
+                      className="flex min-h-14 w-full items-center gap-3.5 rounded-[14px] border border-border bg-card p-3 text-left transition-colors hover:border-gm-yellow/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow"
+                    >
+                      <PlateChip plate={r.licensePlateOriginal || '—'} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] font-semibold">Entró a las {r.entryTime?.slice(0, 5)}</span>
+                        <span className="block text-xs text-muted-foreground">Es este: cobrar su salida</span>
+                      </span>
+                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </ActionDialogBody>
+            <ActionDialogFooter>
+              <ActionDialogSecondaryButton tone="ghost" className="order-last sm:order-none" onClick={() => setParecidas(null)}>
+                Corregir la patente
+              </ActionDialogSecondaryButton>
+              <ActionDialogPrimaryButton
+                detail={`Es otro auto: ${plateValue}`}
+                disabled={isPending}
+                onClick={() => { setParecidas(null); submit(form.getValues(), false, true); }}
+              >
+                {isPending ? 'Registrando…' : 'Registrar la entrada'}
+              </ActionDialogPrimaryButton>
             </ActionDialogFooter>
           </>
         ) : method === 'TICKET' ? (

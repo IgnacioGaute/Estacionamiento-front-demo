@@ -57,7 +57,7 @@ export async function conectarMercadoPagoAction(code: string, state: string) {
 export async function crearCobroMercadoPagoAction(
   registrationId: string,
   tipo: 'HORA' | 'ABONO' | 'INQUILINO' = 'HORA',
-  inquilino?: { monto?: number; receiptIds?: string[]; nota?: string; alIngresar?: boolean },
+  inquilino?: { monto?: number; receiptIds?: string[]; nota?: string; alIngresar?: boolean; anticipoMinutos?: number; anticipoEtiqueta?: string },
 ) {
   try {
     return { cobro: await crearCobroMercadoPago(registrationId, tipo, inquilino) };

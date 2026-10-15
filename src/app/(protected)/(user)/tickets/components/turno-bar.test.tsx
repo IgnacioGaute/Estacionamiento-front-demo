@@ -9,6 +9,7 @@ import { openTurnoAction } from '@/actions/turnos/open-turno.action';
 import { CashContext, CajaContext, OpenTurno } from '@/types/turno.type';
 import { TurnoBar, CashMovementForm } from './turno-bar';
 import { addCashMovementAction } from '@/actions/turnos/cajas.action';
+import { getEstadiasAbiertasTurnoAction } from '@/actions/turnos/estadias-abiertas.action';
 jest.mock('next-auth/react', () => ({ useSession: jest.fn() }));
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), usePathname: () => '/tickets' }));
 jest.mock('@/actions/turnos/cash-context.action', () => ({ getCashContextAction: jest.fn() }));
@@ -16,6 +17,7 @@ jest.mock('@/actions/turnos/close-turno.action', () => ({ closeTurnoAction: jest
 jest.mock('@/actions/turnos/open-turno.action', () => ({ openTurnoAction: jest.fn() }));
 jest.mock('@/actions/turnos/cajas.action', () => ({ addCashMovementAction: jest.fn() }));
 jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+jest.mock('@/actions/turnos/estadias-abiertas.action', () => ({ getEstadiasAbiertasTurnoAction: jest.fn().mockResolvedValue([]) }));
 // Con la suite completa corriendo en paralelo, recargar la caja puede tardar más de 1 s.
 configure({ asyncUtilTimeout: 4000 });
 const user = { id: 'yo', email: 'yo@test', firstName: 'Ana', lastName: 'López', role: 'ADMIN' };
@@ -64,9 +66,28 @@ test('si comparte caja cierra sólo su turno sin pedir efectivo contado', async 
   jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift(user, true)) });
   render(<TurnoBar />); fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
   const close = await screen.findByRole('button', { name: 'Cerrar sólo mi turno' }); await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
-  expect(screen.queryByLabelText('¿Cuánto efectivo contaste?')).not.toBeInTheDocument(); fireEvent.click(screen.getByRole('button', { name: 'Confirmar cierre de turno' }));
+  expect(screen.queryByLabelText('¿Cuánto efectivo contaste?')).not.toBeInTheDocument();
+  // Se habilita cuando terminó de cargar el repaso de los vehículos que siguen adentro.
+  const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno' }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith('yo-turno', expect.objectContaining({ cerrarCaja: false })));
   expect(jest.mocked(closeTurnoAction).mock.calls[0][1]).not.toHaveProperty('efectivoContado');
+});
+
+test('para cerrar hay que confirmar los vehículos que registró y siguen adentro, o cobrarlos', async () => {
+  jest.mocked(getEstadiasAbiertasTurnoAction).mockResolvedValueOnce([
+    { id: 'vieja', patente: 'AF876EB', vehicleType: 'AUTO', entryDay: '2026-10-05', entryTime: '07:11:00', anticipo: 0 },
+  ]);
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift(user, true)) });
+  const onCobrarEstadia = jest.fn();
+  render(<TurnoBar onCobrarEstadia={onCobrarEstadia} />); fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar sólo mi turno' }); await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  expect(await screen.findByText(/Vehículos que registraste y siguen adentro · 1/)).toBeInTheDocument();
+  const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno' });
+  expect(confirmar).toBeDisabled();
+  fireEvent.click(screen.getByLabelText('Confirmo que este vehículo sigue en la playa'));
+  await waitFor(() => expect(confirmar).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Se fue: cobrar' }));
+  expect(onCobrarEstadia).toHaveBeenCalledWith('vieja');
 });
 
 test('el administrador cierra el último turno con arqueo y motivo, preservando el formulario si falla', async () => {
@@ -170,7 +191,7 @@ test.each([{ counted: 105000, salary: 25000, withdrawn: 65000 }, { counted: 2300
   expect(screen.getByLabelText('Retiro de recaudación al cerrar (sin sueldo)')).toHaveValue(withdrawn);
   if (!salary) expect(screen.getByRole('alert')).toHaveTextContent('No se descontará el sueldo');
   if (process.env.TURNOS_VISUAL_QA) writeFileSync(`../estacionamiento-back-demo/.tmp/sueldo-${counted}.html`, document.body.innerHTML);
-  fireEvent.click(screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' }));
+  const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: salary, efectivoParaSiguiente: 15000 })));
 });
 

@@ -6,14 +6,15 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CarFront, ChevronLeft, ChevronRight, Search, Banknote } from 'lucide-react';
+import { CarFront, ChevronLeft, ChevronRight, Search, Banknote, Wallet } from 'lucide-react';
+import { formatImporte } from '@/components/pricing-breakdown';
 import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { PlateChip } from '@/components/plate-chip';
 import { cn } from '@/lib/utils';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { Ticket } from '@/types/ticket.type';
 import { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
-import { isBarcodeOrigin, isOverdue, isTicketActive, latestRegistrationForTicket, minutesSinceEntry } from '@/utils/ticket-registration.utils';
+import { anticipoDe, isBarcodeOrigin, isOverdue, isTicketActive, latestRegistrationForTicket, minutesSinceEntry } from '@/utils/ticket-registration.utils';
 import { cuandoEntro, formatEstadia, progresoEnTramo, tramoDe, tramoInfo, TRAMOS } from '@/utils/estadia';
 import { DayRegistrationsPanel } from './day-registrations-panel';
 
@@ -173,6 +174,27 @@ function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration
 
 // ── Un vehículo ───────────────────────────────────────────────────────────────
 
+// La franja de una estadía con anticipo: verde mientras lo pagado alcanza, naranja cuando se pasó.
+// Siempre recuerda que la salida hay que registrarla igual.
+export function AvisoAnticipo({ r, ahora }: { r: TicketRegistration; ahora: number }) {
+  const anticipo = anticipoDe(r, ahora);
+  if (!anticipo) return null;
+  return (
+    <span className={cn(
+      'flex w-full min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 text-[11.5px] font-semibold',
+      anticipo.vencido ? 'bg-[#F0714A]/15 text-[#F0714A]' : 'bg-emerald-400/12 text-emerald-300',
+    )}>
+      <Wallet className="size-3.5 shrink-0" aria-hidden />
+      <span className="min-w-0 truncate">
+        <strong className="font-bold">Anticipo {formatImporte(anticipo.monto)}</strong>
+        {anticipo.vencido
+          ? ` · se pasó${anticipo.hasta ? ` de las ${anticipo.hasta}` : ''}: cobrá la diferencia`
+          : `${anticipo.hasta ? ` · hasta ${anticipo.hasta}` : ''} · registrá la salida al irse`}
+      </span>
+    </span>
+  );
+}
+
 export function VehiculoFila({ r, ahora, onSelect, resaltar }: {
   r: TicketRegistration;
   ahora: number;
@@ -208,6 +230,7 @@ export function VehiculoFila({ r, ahora, onSelect, resaltar }: {
           {pasado && <span className="sr-only">, superó el tiempo avisado</span>}
         </span>
         <span className="block truncate text-[12.5px] text-muted-foreground">{detalle}</span>
+        <span className="mt-1 block empty:hidden"><AvisoAnticipo r={r} ahora={ahora} /></span>
       </span>
       <ChevronRight className="size-[18px] shrink-0 text-[#6F665A]" aria-hidden />
       <LineaTramo minutos={minutos} pasado={pasado} />

@@ -4,8 +4,11 @@ import { EntryByPlateDialog } from './entry-by-plate-dialog';
 import { getFrequentCustomersAction } from '@/actions/tickets/get-frequent-customers.action';
 import { getVehicleTypesAction } from '@/actions/tickets/vehicle-types.action';
 import { createRegistrationByPlateAction } from '@/actions/tickets/create-registration-by-plate.action';
+import { getPlateStatusAction } from '@/actions/tickets/get-plate-status.action';
 import type { FrequentCustomer } from '@/types/frequent-customer.type';
+import type { PlateStatus } from '@/types/plate-status.type';
 jest.mock('next/navigation', () => ({ usePathname: () => '/tickets' }));
+jest.mock('@/actions/tickets/get-plate-status.action', () => ({ getPlateStatusAction: jest.fn() }));
 jest.mock('next-auth/react', () => ({ useSession: () => ({ data: { token: 'test' } }) }));
 jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ playaId: 'playa' }) }));
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
@@ -24,6 +27,7 @@ beforeEach(() => {
     { code: 'VAN', name: 'Utilitario', enabled: true }, { code: 'BUS', name: 'Bus', enabled: false },
   ]);
   jest.mocked(createRegistrationByPlateAction).mockResolvedValue({ success: 'Entrada registrada', registrationId: 'created' });
+  jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'AB123CD', hourly: [], daily: [], similares: [] } });
 });
 async function open() {
   render(<EntryByPlateDialog />);
@@ -73,4 +77,34 @@ test('el acceso rápido abre el formulario con la patente y descarta coincidenci
   expect(input).toHaveValue('ZZ999ZZ');
   expect(screen.getByLabelText('Apellido')).toHaveValue('');
   expect(screen.queryByText('Cliente frecuente identificado')).not.toBeInTheDocument();
+});
+
+test('una patente parecida adentro se ofrece antes de registrar la entrada', async () => {
+  jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'AB123CD', hourly: [], daily: [], similares: [
+    { id: 'parecida', licensePlateOriginal: 'AB128CD', entryTime: '14:02:00' },
+  ] } as unknown as PlateStatus });
+  const onGoToRegistration = jest.fn();
+  render(<EntryByPlateDialog onGoToRegistration={onGoToRegistration} />);
+  fireEvent.click(screen.getByRole('button', { name: /Registrar entrada/ }));
+  await screen.findByRole('radio', { name: 'Auto' });
+  fireEvent.change(screen.getByLabelText('Patente, apellido o teléfono'), { target: { value: 'AB123CD' } });
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Registrar entrada/ }));
+  await screen.findByText('Hay una patente parecida adentro', undefined, { timeout: 4000 });
+  expect(createRegistrationByPlateAction).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: /Entró a las 14:02/ }));
+  expect(onGoToRegistration).toHaveBeenCalledWith('parecida');
+});
+
+test('si la parecida es otro auto, la entrada se registra igual', async () => {
+  jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'AB123CD', hourly: [], daily: [], similares: [
+    { id: 'parecida', licensePlateOriginal: 'AB128CD', entryTime: '14:02:00' },
+  ] } as unknown as PlateStatus });
+  const input = await open();
+  fireEvent.change(input, { target: { value: 'AB123CD' } });
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Registrar entrada/ }));
+  // Aparece mientras termina la consulta anterior: se toca cuando ya está habilitado.
+  const esOtro = await screen.findByRole('button', { name: /Es otro auto/ }, { timeout: 4000 });
+  await waitFor(() => expect(esOtro).toBeEnabled(), { timeout: 4000 });
+  fireEvent.click(esOtro);
+  await waitFor(() => expect(createRegistrationByPlateAction).toHaveBeenCalledWith(expect.objectContaining({ licensePlate: 'AB123CD' })), { timeout: 4000 });
 });

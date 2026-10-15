@@ -45,6 +45,29 @@ test('una consulta fallida nunca se interpreta como vehículo nuevo y permite re
   await waitFor(() => expect(handlers.onEntry).toHaveBeenCalledWith('AB123CD'));
 });
 
+test('sin coincidencia exacta, una patente parecida adentro se ofrece antes de abrir una entrada', async () => {
+  jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'AB123CD', hourly: [], daily: [], similares: [
+    { id: 'parecida', licensePlateOriginal: 'AB128CD', entryDay: '2026-10-14', entryTime: '14:02:00' },
+  ] } as unknown as PlateStatus });
+  const handlers = callbacks(); render(<ScanPlateAction {...handlers} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente' }));
+  await screen.findByRole('dialog');
+  expect(handlers.onEntry).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: /AB128CD/ }));
+  expect(handlers.onHourlyExit).toHaveBeenCalledWith('parecida');
+});
+
+test('si la parecida es otro auto, se registra la entrada de la patente leída', async () => {
+  jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'AB123CD', hourly: [], daily: [], similares: [
+    { id: 'parecida', licensePlateOriginal: 'AB128CD', entryDay: '2026-10-14', entryTime: '14:02:00' },
+  ] } as unknown as PlateStatus });
+  const handlers = callbacks(); render(<ScanPlateAction {...handlers} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente' }));
+  fireEvent.click(await screen.findByRole('button', { name: /No, es otro/ }));
+  expect(handlers.onEntry).toHaveBeenCalledWith('AB123CD', true);
+  expect(handlers.onHourlyExit).not.toHaveBeenCalled();
+});
+
 test('varios registros con la misma patente requieren elegir la estadía', async () => {
   jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'AB123CD', hourly: [
     { id: 'one', licensePlateOriginal: 'AB123CD', entryDay: '2026-10-06', entryTime: '08:00' },
@@ -56,4 +79,23 @@ test('varios registros con la misma patente requieren elegir la estadía', async
   expect(handlers.onHourlyExit).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: /09:00/ }));
   expect(handlers.onHourlyExit).toHaveBeenCalledWith('two');
+});
+
+test('una patente que no está adentro pregunta si entra o se va antes de abrir la entrada', async () => {
+  jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'AB123CD', hourly: [], daily: [], similares: [] } });
+  const handlers = { ...callbacks(), onSalidaSinEntrada: jest.fn() }; render(<ScanPlateAction {...handlers} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente' }));
+  await screen.findByText('AB123CD no está adentro');
+  expect(handlers.onEntry).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: /Está entrando/ }));
+  expect(handlers.onEntry).toHaveBeenCalledWith('AB123CD');
+});
+
+test('si se está yendo sin entrada, se cobra igual en vez de registrar una entrada', async () => {
+  jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'AB123CD', hourly: [], daily: [], similares: [] } });
+  const handlers = { ...callbacks(), onSalidaSinEntrada: jest.fn() }; render(<ScanPlateAction {...handlers} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente' }));
+  fireEvent.click(await screen.findByRole('button', { name: /Se está yendo/ }));
+  expect(handlers.onSalidaSinEntrada).toHaveBeenCalledWith('AB123CD');
+  expect(handlers.onEntry).not.toHaveBeenCalled();
 });

@@ -27,7 +27,7 @@ export async function disponibilidadAliasAction() {
   return intentar(() => disponibilidadAlias());
 }
 
-export async function iniciarCobroAliasAction(registrationId: string, tipo: 'HORA' | 'ABONO' | 'INQUILINO' = 'HORA', datos?: { monto?: number; receiptIds?: string[]; nota?: string; alIngresar?: boolean }) {
+export async function iniciarCobroAliasAction(registrationId: string, tipo: 'HORA' | 'ABONO' | 'INQUILINO' = 'HORA', datos?: { monto?: number; receiptIds?: string[]; nota?: string; alIngresar?: boolean; anticipoMinutos?: number; anticipoEtiqueta?: string }) {
   return intentar(() => iniciarCobroAlias(registrationId, tipo, datos));
 }
 

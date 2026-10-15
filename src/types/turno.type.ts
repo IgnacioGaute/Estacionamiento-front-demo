@@ -51,3 +51,6 @@ export type TurnoResumen = {
   salidas: number | null; vehiculosInicio: number | null; vehiculosFin: number | null; efectivoParaSiguiente: number | null;
   movimientos: { id: string; tipo: string; amount: number; motivo: string; createdAt: string; operador: string }[];
 };
+
+// Una estadía que el operador registró en su turno y sigue abierta (GET /turnos/:id/estadias-abiertas).
+export type EstadiaAbiertaTurno = { id: string; patente: string | null; vehicleType: string | null; entryDay: string; entryTime: string; anticipo: number };

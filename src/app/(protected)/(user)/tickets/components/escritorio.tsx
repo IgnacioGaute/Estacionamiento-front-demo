@@ -18,8 +18,8 @@ import type { TicketRegistration } from '@/types/ticket-registration.type';
 import type { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
 import { cuandoEntro, formatEstadia, minutosDeEstadia, tramoDe, tramoInfo, TRAMOS } from '@/utils/estadia';
 import { UNIDAD_ESTADIA_LARGA, vencimientoEstadiaLarga } from '@/utils/estadia-larga';
-import { formatElapsed, isBarcodeOrigin, isOverdue, minutesSinceEntry } from '@/utils/ticket-registration.utils';
-import { estaAdentro, LineaTramo, NARANJA_AVISO, normalizar } from './inicio';
+import { anticipoDe, formatElapsed, isBarcodeOrigin, isOverdue, minutesSinceEntry } from '@/utils/ticket-registration.utils';
+import { AvisoAnticipo, estaAdentro, LineaTramo, NARANJA_AVISO, normalizar } from './inicio';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -299,8 +299,9 @@ function Columna({ titulo, color, caption, cantidad, total, atenuada, vacio, ref
   );
 }
 
-function TarjetaTablero({ r, minutos, pasado, onSelect }: { r: TicketRegistration; minutos: number; pasado: boolean; onSelect: (r: TicketRegistration) => void }) {
+function TarjetaTablero({ r, minutos, pasado, ahora, onSelect }: { r: TicketRegistration; minutos: number; pasado: boolean; ahora: number; onSelect: (r: TicketRegistration) => void }) {
   const detalle = [`Entró ${cuandoEntro(r)}`, r.lastNameCustomer || null, r.casilleroNumber ? `Casillero ${r.casilleroNumber}` : null].filter(Boolean).join(' · ');
+  const conAnticipo = !!anticipoDe(r, ahora);
   return (
     <button
       type="button"
@@ -308,7 +309,9 @@ function TarjetaTablero({ r, minutos, pasado, onSelect }: { r: TicketRegistratio
       className={cn(
         'group relative flex w-full flex-col gap-1.5 overflow-hidden rounded-[14px] border p-2.5 pb-3 text-left transition-colors',
         enfoque,
-        pasado ? 'border-[#F0714A]/50 bg-[#F0714A]/[0.08] hover:bg-[#F0714A]/[0.14]' : 'border-gm-line bg-gm-surface-2 hover:border-gm-line-strong hover:bg-gm-surface-3',
+        pasado ? 'border-[#F0714A]/50 bg-[#F0714A]/[0.08] hover:bg-[#F0714A]/[0.14]'
+          : conAnticipo ? 'border-emerald-400/45 bg-emerald-400/[0.05] hover:bg-emerald-400/[0.09]'
+          : 'border-gm-line bg-gm-surface-2 hover:border-gm-line-strong hover:bg-gm-surface-3',
       )}
     >
       <span className="sr-only">Cobrar salida:</span>
@@ -323,7 +326,8 @@ function TarjetaTablero({ r, minutos, pasado, onSelect }: { r: TicketRegistratio
         {pasado && <span className="sr-only">, superó el tiempo avisado</span>}
       </span>
       <span className="truncate text-xs text-muted-foreground">{detalle}</span>
-      {pasado && (
+      <AvisoAnticipo r={r} ahora={ahora} />
+      {pasado && !conAnticipo && (
         <span className="flex min-w-0 items-center gap-1.5 text-xs font-bold text-[#F0714A]">
           <Clock3 className="size-3.5 shrink-0" aria-hidden />
           <span className="truncate">{avisoDe(r, minutos)}</span>
@@ -456,7 +460,7 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
             atenuada={filtro !== 'todos' && c.visibles.length === 0}
             vacio={filtro === 'todos' ? 'Ningún vehículo en este tramo.' : 'Ninguno con aviso en este tramo.'}
           >
-            {c.visibles.map((v) => <TarjetaTablero key={v.r.id} r={v.r} minutos={v.minutos} pasado={v.pasado} onSelect={onCobrar} />)}
+            {c.visibles.map((v) => <TarjetaTablero key={v.r.id} r={v.r} minutos={v.minutos} pasado={v.pasado} ahora={ahora} onSelect={onCobrar} />)}
           </Columna>
         ))}
         <Columna

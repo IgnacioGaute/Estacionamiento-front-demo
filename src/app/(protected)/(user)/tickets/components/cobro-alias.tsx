@@ -339,7 +339,7 @@ export function CobroAliasPanel({
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold">Buscando la transferencia</span>
             <span className="block text-[12.5px] leading-snug text-muted-foreground">
-              Desde las {horaCorta(cobro.buscarDesde)}. Si llega una sola de {formatImporte(cobro.importe)}, {cobro.tipo === 'INQUILINO' ? 'el pago se registra solo.' : 'la salida se registra sola.'}
+              Desde las {horaCorta(cobro.buscarDesde)}. Si llega una sola de {formatImporte(cobro.importe)}, {cobro.tipo === 'INQUILINO' ? 'el pago se registra solo.' : cobro.anticipo ? 'el anticipo se registra solo.' : 'la salida se registra sola.'}
             </span>
           </span>
           <span className="gm-mono text-[15px] font-semibold text-muted-foreground">{transcurrido}</span>
@@ -399,7 +399,7 @@ export function CobroAliasPanel({
             onClick={() => void asignar()}
             detail={opcionElegida ? (opcionElegida.nombre || opcionElegida.documento || `Operación ${operacionCorta(opcionElegida.operacionId)}`) : 'Elegí una transferencia'}
           >
-            {ocupado ? 'Registrando…' : cobro.tipo === 'INQUILINO' ? 'Confirmar pago' : 'Confirmar pago y salida'}
+            {ocupado ? 'Registrando…' : cobro.tipo === 'INQUILINO' ? 'Confirmar pago' : cobro.anticipo ? 'Confirmar anticipo' : 'Confirmar pago y salida'}
           </ActionDialogPrimaryButton>
         )}
       </ActionDialogFooterPortal>

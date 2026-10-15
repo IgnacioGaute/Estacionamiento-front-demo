@@ -1,24 +1,45 @@
 'use client';
-import LatticeLoader from '@/components/ui/lattice-loader';
+
+// El anticipo: se elige cuánto se va a quedar y se cobra ahora, con cualquiera de los medios del
+// cobro de salida. Ya no existe «cobrar al salir»: guardar una duración sin cobrar nada no servía.
+// Con QR o alias el importe lo calcula el servidor y, al acreditarse, queda como anticipo sin
+// registrar la salida. Si el auto se queda más de lo pagado, la diferencia se cobra al salir.
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { Clock3, CreditCard, Wallet } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { Plus } from 'lucide-react';
+import LatticeLoader from '@/components/ui/lattice-loader';
+import {
+  ActionDialog,
+  ActionDialogBody,
+  ActionDialogContent,
+  ActionDialogFooter,
+  ActionDialogHeader,
+  ActionDialogPrimaryButton,
+} from '@/components/ui/action-dialog';
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
-import { advancePaymentSchema, AdvancePaymentSchemaType } from '@/schemas/ticket-price-bracket.schema';
+import { formatImporte } from '@/components/pricing-breakdown';
 import { addAdvancePaymentAction } from '@/actions/tickets/add-advance-payment.action';
 import { previewPlannedStayAction } from '@/actions/tickets/preview-price.action';
-import { TicketPriceBracket } from '@/types/ticket-price-bracket.type';
-import { TicketRegistration } from '@/types/ticket-registration.type';
+import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
+import { disponibilidadAliasAction, iniciarCobroAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
+import type { TicketPriceBracket } from '@/types/ticket-price-bracket.type';
+import type { TicketRegistration } from '@/types/ticket-registration.type';
+import type { CobroMercadoPago } from '@/types/mercadopago.type';
+import type { CobroAlias } from '@/types/verificacion-alias.type';
 import { formatMinutesLabel } from '@/utils/ticket-price-bracket.utils';
+import { PaymentMethodChoices, type MedioCobro } from './payment-method-choices';
+import { CobroQrMercadoPago } from './cobro-qr-mercadopago';
+import { CobroAliasPanel } from './cobro-alias';
 
-const money = (amount: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(amount);
 type DurationChoice = { id: string; label: string; minutes: number };
+
+const ACCION: Record<MedioCobro, (importe: string) => { texto: string; detalle: string }> = {
+  CASH: (importe) => ({ texto: `Cobrar ${importe}`, detalle: 'en efectivo' }),
+  TRANSFER: (importe) => ({ texto: `Cobrar ${importe}`, detalle: 'por transferencia ya verificada' }),
+  QR: (importe) => ({ texto: 'Mostrar el QR', detalle: importe }),
+  ALIAS: (importe) => ({ texto: 'Esperar la transferencia', detalle: `${importe} al alias` }),
+};
 
 export function AdvancePaymentDialog({
   registrationId, codeBar, vehicleType, existingRegistration, priceBrackets, open, onOpenChange, onSuccess,
@@ -34,12 +55,15 @@ export function AdvancePaymentDialog({
 }) {
   const [isPending, startTransition] = useTransition();
   const [selectedMinutes, setSelectedMinutes] = useState<number | null>(null);
-  const [paymentChoice, setPaymentChoice] = useState<'LATER' | 'FULL'>('LATER');
-  const [metodo, setMetodo] = useState<'CASH' | 'TRANSFER'>('CASH');
+  const [medio, setMedio] = useState<MedioCobro | null>(null);
   const [preview, setPreview] = useState<{ price: number; ticketDayType: 'DAY' | 'NIGHT' | 'MIXED' } | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [unmatchedExistingLabel, setUnmatchedExistingLabel] = useState<string | null>(null);
+  const [lastName, setLastName] = useState('');
+  const [verApellido, setVerApellido] = useState(false);
+  const [aliasDisponible, setAliasDisponible] = useState(false);
+  const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
+  const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
 
   const choices = useMemo<DurationChoice[]>(() => {
     const brackets = (existingRegistration?.pricingSnapshot?.brackets ?? priceBrackets)
@@ -66,20 +90,18 @@ export function AdvancePaymentDialog({
   const collected = existingRegistration?.advancePaidAmount ?? 0;
   const dueNow = preview ? Math.max(0, preview.price - collected) : null;
   const exceedsTariff = preview !== null && collected > preview.price;
-  const form = useForm<AdvancePaymentSchemaType>({
-    resolver: zodResolver(advancePaymentSchema),
-    defaultValues: { lastNameCustomer: '' },
-  });
+  const cobrando = !!cobroQr || !!cobroAlias;
 
   useEffect(() => {
     if (!open) return;
-    form.reset({ lastNameCustomer: existingRegistration?.lastNameCustomer ?? '' });
     const savedMinutes = existingRegistration?.expectedUptoMinutes;
-    const match = choices.find((choice) => choice.minutes === savedMinutes);
-    setSelectedMinutes(match?.minutes ?? null);
-    setUnmatchedExistingLabel(savedMinutes && !match ? existingRegistration?.expectedBracketLabel ?? formatMinutesLabel(savedMinutes) : null);
-    setPaymentChoice('LATER');
-    setMetodo('CASH');
+    setSelectedMinutes(choices.find((choice) => choice.minutes === savedMinutes)?.minutes ?? null);
+    setMedio(null);
+    setLastName(existingRegistration?.lastNameCustomer ?? '');
+    setVerApellido(!!existingRegistration?.lastNameCustomer);
+    setCobroQr(null);
+    setCobroAlias(null);
+    void disponibilidadAliasAction().then((r) => setAliasDisponible(!!r.datos?.disponible));
     // Se precarga una sola vez por apertura; cambiar de opción no debe reiniciar la elección.
   }, [open, existingRegistration?.id]);
 
@@ -103,90 +125,158 @@ export function AdvancePaymentDialog({
     return () => { cancelled = true; };
   }, [open, registrationId, selectedMinutes]);
 
-  const onSubmit = (values: AdvancePaymentSchemaType) => {
-    if (!registrationId) return;
-    if (paymentChoice === 'FULL' && (!selectedChoice || !preview || exceedsTariff)) return;
+  const terminar = (mensaje: string) => {
+    toast.success(mensaje);
+    onOpenChange(false);
+    onSuccess?.();
+  };
+
+  // El apellido viaja con el anticipo en efectivo o transferencia; con QR o alias se guarda antes
+  // de pedir el pago (sin cobrar nada), porque la acreditación llega después y por otro camino.
+  const guardarApellido = async () => {
+    if (!registrationId || lastName.trim() === (existingRegistration?.lastNameCustomer ?? '')) return true;
+    const r = await addAdvancePaymentAction(registrationId, { lastNameCustomer: lastName.trim() });
+    if (!r || r.error) {
+      toast.error((typeof r?.error === 'string' ? r.error : r?.error?.message) ?? 'No se pudo guardar el apellido.');
+      return false;
+    }
+    return true;
+  };
+
+  const confirmar = () => {
+    if (!registrationId || !selectedChoice || !preview || exceedsTariff) return;
+    const anticipo = { anticipoMinutos: selectedChoice.minutes, anticipoEtiqueta: selectedChoice.label };
     startTransition(async () => {
-      const data = await addAdvancePaymentAction(registrationId, {
-        lastNameCustomer: values.lastNameCustomer,
-        expectedBracketLabel: selectedChoice?.label ?? null,
-        expectedUptoMinutes: selectedChoice?.minutes ?? null,
-        chargeFullPlannedStay: paymentChoice === 'FULL',
-        metodo: paymentChoice === 'FULL' && dueNow !== null && dueNow > 0 ? metodo : undefined,
-      });
-      if (!data || data.error) {
-        const errorMessage = typeof data?.error === 'string' ? data.error : data?.error?.message;
-        toast.error(errorMessage ?? 'No se pudo guardar la estadía.');
+      if (dueNow === 0 || medio === 'CASH' || medio === 'TRANSFER') {
+        const data = await addAdvancePaymentAction(registrationId, {
+          lastNameCustomer: lastName.trim(),
+          expectedBracketLabel: selectedChoice.label,
+          expectedUptoMinutes: selectedChoice.minutes,
+          chargeFullPlannedStay: true,
+          metodo: dueNow ? medio as 'CASH' | 'TRANSFER' : undefined,
+        });
+        if (!data || data.error) {
+          toast.error((typeof data?.error === 'string' ? data.error : data?.error?.message) ?? 'No se pudo cobrar el anticipo.');
+          return;
+        }
+        terminar(dueNow ? `Anticipo de ${formatImporte(dueNow)} cobrado.` : 'Duración guardada: ya estaba pagada.');
         return;
       }
-      toast.success(paymentChoice === 'FULL' ? 'Tarifa cobrada y estadía planificada guardada.' : 'Estadía planificada guardada.');
-      onOpenChange(false);
-      onSuccess?.();
+      if (!(await guardarApellido())) return;
+      if (medio === 'QR') {
+        const r = await crearCobroMercadoPagoAction(registrationId, 'HORA', anticipo);
+        if (r.error || !r.cobro) toast.error(r.error ?? 'No se pudo generar el QR.');
+        else setCobroQr(r.cobro);
+      } else if (medio === 'ALIAS') {
+        const r = await iniciarCobroAliasAction(registrationId, 'HORA', anticipo);
+        if (r.error || !r.datos) toast.error(r.error ?? 'No se pudo empezar a esperar la transferencia.');
+        else if (r.datos.estado === 'CONFIRMADO') terminar('Anticipo cobrado por transferencia al alias.');
+        else setCobroAlias(r.datos);
+      }
     });
   };
 
+  const importe = dueNow !== null ? formatImporte(dueNow) : '';
+  const accion = dueNow === 0 ? { texto: 'Guardar duración', detalle: 'Ya está pagada' } : medio ? ACCION[medio](importe) : null;
+  const listo = !!selectedChoice && !!preview && !exceedsTariff && (dueNow === 0 || !!medio);
+  const horario = preview?.ticketDayType === 'NIGHT' ? 'De noche' : preview?.ticketDayType === 'DAY' ? 'De día' : preview?.ticketDayType === 'MIXED' ? 'Día y noche' : null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(92dvh,850px)] w-[calc(100vw-24px)] max-w-[680px] flex-col gap-0 overflow-hidden p-0">
-        <DialogHeader className="border-b border-gm-line-strong px-6 py-5 text-left sm:px-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gm-yellow">Estadía planificada{codeBar ? ` · Ticket ${codeBar}` : ''}</p>
-          <DialogTitle className="gm-display text-2xl">Elegí una duración y cómo cobrarla</DialogTitle>
-          <p className="text-sm text-muted-foreground">El importe se calcula con las tarifas de este ticket. Al salir se ajustará según el tiempo real.</p>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
-            <div className="space-y-6 overflow-y-auto px-6 py-6 sm:px-8">
-              <section>
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold"><Clock3 className="h-4 w-4 text-gm-yellow" /> Duración prevista</div>
-                {unmatchedExistingLabel && <p className="mb-3 rounded-lg border border-gm-yellow/30 bg-gm-yellow/10 p-3 text-sm">Duración anterior: {unmatchedExistingLabel}. Elegí una nueva para actualizarla.</p>}
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Duración prevista">
-                  <button type="button" disabled={isPending} aria-pressed={selectedMinutes === null} onClick={() => { setSelectedMinutes(null); setPaymentChoice('LATER'); }} className={cn('min-h-20 rounded-xl border p-3 text-left transition-colors', selectedMinutes === null ? 'border-gm-yellow bg-gm-yellow/10' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/50')}>
-                    <span className="block font-semibold">Sin definir</span><span className="text-xs text-muted-foreground">Se cobra al salir</span>
-                  </button>
-                  {choices.map((choice) => <button key={choice.id} type="button" disabled={isPending} aria-pressed={selectedMinutes === choice.minutes} onClick={() => setSelectedMinutes(choice.minutes)} className={cn('min-h-20 rounded-xl border p-3 text-left transition-colors', selectedMinutes === choice.minutes ? 'border-gm-yellow bg-gm-yellow/10 shadow-[inset_0_0_0_1px_rgba(250,204,21,.3)]' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/50')}>
-                    <span className="block font-semibold">{choice.label}</span><span className="text-xs text-muted-foreground">{formatMinutesLabel(choice.minutes)}</span>
-                  </button>)}
-                </div>
-                {choices.length === 0 && <p className="mt-3 text-sm text-muted-foreground">No hay duraciones configuradas para este vehículo.</p>}
-                <p className="mt-3 text-xs text-muted-foreground">Si supera lo previsto, el operador verá un aviso al registrar la salida.</p>
-              </section>
-
-              {selectedChoice && <section className="rounded-2xl border border-gm-line-strong bg-gm-surface-2 p-4 sm:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tarifa de {selectedChoice.label}</p><p className="mt-1 text-sm text-muted-foreground">{preview?.ticketDayType === 'NIGHT' ? 'Horario nocturno' : preview?.ticketDayType === 'DAY' ? 'Horario diurno' : preview?.ticketDayType === 'MIXED' ? 'Día y noche' : 'Según el horario del ticket'}</p></div>
-                  <p className="text-2xl font-bold tabular-nums text-gm-yellow">{previewLoading ? <span className="inline-flex items-center gap-2"><LatticeLoader compact label="Calculando…" showTimer={false} cellSize={4} gap={1} /></span> : preview ? money(preview.price) : '—'}</p>
-                </div>
-                {previewError && <p className="mt-3 text-sm text-red-400" role="alert">{previewError}</p>}
-                {collected > 0 && <p className="mt-3 border-t border-gm-line-strong pt-3 text-sm text-muted-foreground">Ya cobrado: {money(collected)}{dueNow !== null ? ` · Falta para esta tarifa: ${money(dueNow)}` : ''}</p>}
-              </section>}
-
-              <section>
-                <p className="mb-3 text-sm font-semibold">Cobro</p>
-                <div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="Cuándo cobrar">
-                  <button type="button" disabled={isPending} aria-pressed={paymentChoice === 'LATER'} onClick={() => setPaymentChoice('LATER')} className={cn('flex min-h-20 items-center gap-3 rounded-xl border p-4 text-left transition-colors', paymentChoice === 'LATER' ? 'border-gm-yellow bg-gm-yellow/10' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/50')}>
-                    <Clock3 className="h-5 w-5 shrink-0 text-gm-yellow" /><span><strong className="block text-sm">{collected > 0 ? 'Sin nuevo cobro' : 'Cobrar al salir'}</strong><small className="text-muted-foreground">Guardar sólo la duración</small></span>
-                  </button>
-                  <button type="button" disabled={isPending || !selectedChoice || !preview || exceedsTariff} aria-pressed={paymentChoice === 'FULL'} onClick={() => setPaymentChoice('FULL')} className={cn('flex min-h-20 items-center gap-3 rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-45', paymentChoice === 'FULL' ? 'border-gm-yellow bg-gm-yellow/10' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/50')}>
-                    <Wallet className="h-5 w-5 shrink-0 text-gm-yellow" /><span><strong className="block text-sm">Cobrar tarifa completa</strong><small className="text-muted-foreground">{preview ? `${money(dueNow ?? 0)} ahora` : 'Elegí una duración'}</small></span>
-                  </button>
-                </div>
-                {exceedsTariff && <p className="mt-2 text-sm text-gm-yellow">Lo ya cobrado supera esta tarifa. Podés guardar la duración; la devolución se gestiona aparte.</p>}
-                {paymentChoice === 'FULL' && dueNow !== null && dueNow > 0 && <div className="mt-4">
-                  <p className="mb-2 text-sm font-semibold">Medio de pago · {money(dueNow)}</p>
-                  <div className="grid grid-cols-2 gap-2" role="group" aria-label="Medio de pago">
-                    {(['CASH', 'TRANSFER'] as const).map((method) => <button key={method} type="button" disabled={isPending} aria-pressed={metodo === method} onClick={() => setMetodo(method)} className={cn('flex h-12 items-center justify-center gap-2 rounded-xl border font-semibold transition-colors', metodo === method ? 'border-gm-yellow bg-gm-yellow/10 text-gm-yellow' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/50')}><CreditCard className="h-4 w-4" />{method === 'CASH' ? 'Efectivo' : 'Transferencia'}</button>)}
+    <ActionDialog open={open} onOpenChange={onOpenChange}>
+      <ActionDialogContent className="sm:max-w-[560px]">
+        <ActionDialogHeader title="Cobrar anticipo" description={`Elegí cuánto se queda y cobralo ahora${codeBar ? ` · Ticket ${codeBar}` : ''}`} />
+        <ActionDialogBody>
+          {cobroQr ? (
+            <CobroQrMercadoPago
+              cobro={cobroQr}
+              onAcreditado={() => terminar('Anticipo cobrado con QR.')}
+              onCancelar={() => setCobroQr(null)}
+            />
+          ) : cobroAlias ? (
+            <CobroAliasPanel
+              key={cobroAlias.id}
+              cobro={cobroAlias}
+              onTerminado={(cobro) => (cobro.estado === 'CONFIRMADO' ? terminar('Anticipo cobrado por transferencia al alias.') : terminar('El anticipo se cobró por otro medio.'))}
+              onCancelado={() => setCobroAlias(null)}
+            />
+          ) : (
+            <>
+              <section aria-labelledby="anticipo-duracion" className="space-y-2">
+                <h3 id="anticipo-duracion" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">¿Cuánto se queda?</h3>
+                {choices.length ? (
+                  <div role="group" aria-label="Duración" className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {choices.map((choice) => (
+                      <button
+                        key={choice.id}
+                        type="button"
+                        disabled={isPending}
+                        aria-pressed={selectedMinutes === choice.minutes}
+                        onClick={() => setSelectedMinutes(choice.minutes)}
+                        className={cn(
+                          'min-h-12 rounded-xl border-[1.5px] px-2 text-[14px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
+                          selectedMinutes === choice.minutes ? 'border-gm-yellow bg-gm-yellow/[0.12] text-foreground' : 'border-gm-line-strong bg-gm-surface-2 text-[#D9D1C3] hover:border-gm-yellow/40',
+                        )}
+                      >
+                        {choice.label}
+                      </button>
+                    ))}
                   </div>
-                </div>}
+                ) : (
+                  <p className="text-sm text-muted-foreground">No hay duraciones configuradas para este vehículo.</p>
+                )}
               </section>
 
-              <FormField control={form.control} name="lastNameCustomer" render={({ field }) => <FormItem><FormLabel>Apellido del cliente <span className="font-normal text-muted-foreground">(opcional)</span></FormLabel><FormControl><Input disabled={isPending} placeholder="Apellido" {...field} className="h-12 rounded-xl bg-gm-surface-2" /></FormControl><FormMessage /></FormItem>} />
-            </div>
-            <div className="border-t border-gm-line-strong bg-gm-surface-2 px-6 py-4 sm:px-8">
-              <button type="submit" disabled={isPending || (paymentChoice === 'FULL' && (!preview || exceedsTariff))} className="gm-display h-12 w-full rounded-xl bg-gm-yellow font-bold text-gm-ink transition-opacity disabled:opacity-50">{isPending ? 'Guardando…' : paymentChoice === 'FULL' && dueNow !== null && dueNow > 0 ? `Cobrar ${money(dueNow)} y guardar` : 'Guardar estadía'}</button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              {selectedChoice && (
+                <div aria-live="polite" className="flex items-center justify-between gap-3 rounded-2xl border border-gm-line-strong bg-gm-surface-2 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-semibold">Hasta {selectedChoice.label}{horario ? ` · ${horario}` : ''}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {collected > 0 ? `Ya cobrado ${formatImporte(collected)} · falta ${dueNow !== null ? formatImporte(dueNow) : '—'}` : 'Si se queda más, la diferencia se cobra al salir'}
+                    </p>
+                  </div>
+                  <p className="gm-display shrink-0 text-[26px] font-bold leading-none text-gm-yellow">
+                    {previewLoading ? <LatticeLoader compact label="Calculando…" showTimer={false} cellSize={4} gap={1} /> : dueNow !== null ? formatImporte(dueNow) : '—'}
+                  </p>
+                </div>
+              )}
+              {previewError && <p className="text-sm text-red-400" role="alert">{previewError}</p>}
+              {exceedsTariff && <p className="text-sm text-gm-yellow">Lo ya cobrado supera esta tarifa. Elegí una duración mayor; la devolución se gestiona al salir.</p>}
+
+              {selectedChoice && preview && !exceedsTariff && dueNow! > 0 && (
+                <section aria-labelledby="anticipo-medio" className="space-y-2">
+                  <h3 id="anticipo-medio" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">¿Cómo paga?</h3>
+                  <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={aliasDisponible} />
+                </section>
+              )}
+
+              {verApellido ? (
+                <div className="space-y-1.5">
+                  <label htmlFor="anticipo-apellido" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Apellido <span className="font-normal normal-case tracking-normal">(opcional)</span></label>
+                  <input
+                    id="anticipo-apellido"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    disabled={isPending}
+                    placeholder="Apellido"
+                    className="h-11 w-full rounded-xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 px-3.5 text-base outline-none transition-colors focus:border-gm-yellow"
+                  />
+                </div>
+              ) : (
+                <button type="button" onClick={() => setVerApellido(true)} className="inline-flex min-h-11 items-center gap-1.5 self-start text-[13px] font-semibold text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
+                  <Plus className="size-4" aria-hidden />Agregar apellido
+                </button>
+              )}
+            </>
+          )}
+        </ActionDialogBody>
+        {!cobrando && (
+          <ActionDialogFooter>
+            <ActionDialogPrimaryButton disabled={isPending || !listo} onClick={confirmar} detail={accion?.detalle}>
+              {isPending ? 'Procesando…' : accion?.texto ?? (selectedChoice ? 'Elegí cómo paga' : 'Elegí la duración')}
+            </ActionDialogPrimaryButton>
+          </ActionDialogFooter>
+        )}
+      </ActionDialogContent>
+    </ActionDialog>
   );
 }

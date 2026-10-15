@@ -40,7 +40,7 @@ const enviar = (body?: unknown): RequestInit => ({
 
 export const disponibilidadAlias = () => pedir<DisponibilidadAlias>('/mercadopago/alias/disponibilidad');
 
-export const iniciarCobroAlias = (registrationId: string, tipo: 'HORA' | 'ABONO' | 'INQUILINO' = 'HORA', datos?: { monto?: number; receiptIds?: string[]; nota?: string; alIngresar?: boolean }) =>
+export const iniciarCobroAlias = (registrationId: string, tipo: 'HORA' | 'ABONO' | 'INQUILINO' = 'HORA', datos?: { monto?: number; receiptIds?: string[]; nota?: string; alIngresar?: boolean; anticipoMinutos?: number; anticipoEtiqueta?: string }) =>
   pedir<CobroAlias>('/mercadopago/alias/cobros', enviar({ ...datos, registrationId, tipo }));
 
 // null si la estadía nunca esperó una transferencia.

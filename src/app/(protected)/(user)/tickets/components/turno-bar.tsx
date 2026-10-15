@@ -16,7 +16,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ActionDialog, ActionDialogBody, ActionDialogContent, ActionDialogFooter, ActionDialogHeader, ActionDialogPrimaryButton } from '@/components/ui/action-dialog';
 import { DataLoading } from '@/components/ui/data-loading';
-import { CashContext } from '@/types/turno.type';
+import { CashContext, EstadiaAbiertaTurno } from '@/types/turno.type';
+import { getEstadiasAbiertasTurnoAction } from '@/actions/turnos/estadias-abiertas.action';
+import { RepasoEstadias } from './repaso-estadias';
 import { getCashContextAction } from '@/actions/turnos/cash-context.action';
 import { openTurnoAction } from '@/actions/turnos/open-turno.action';
 import { closeTurnoAction } from '@/actions/turnos/close-turno.action';
@@ -30,7 +32,9 @@ const horaApertura = (s: string) => new Date(s).toLocaleTimeString('es-AR', { ti
 
 // `pill`: el acceso que va en la tarjeta amarilla del inicio («Turno abierto · 08:02»). `primary`:
 // el botón destacado del encabezado de Caja. Los tres abren el mismo diálogo.
-export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' }: { onUpdated?: () => void; turnoId?: string; revision?: number; variant?: 'button' | 'pill' | 'primary' } = {}) {
+// `onCobrarEstadia`: desde el repaso del cierre, abre el cobro de una estadía que ya se fue (solo
+// donde existe el panel de cobro; en Caja del administrador no se ofrece).
+export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button', onCobrarEstadia }: { onUpdated?: () => void; turnoId?: string; revision?: number; variant?: 'button' | 'pill' | 'primary'; onCobrarEstadia?: (id: string) => void } = {}) {
   const router = useRouter();
   const { data: session } = useSession();
   const [context, setContext] = useState<CashContext | null>(null);
@@ -46,6 +50,9 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' 
   const [withdrawn, setWithdrawn] = useState('0');
   const [notes, setNotes] = useState('');
   const [forcedReason, setForcedReason] = useState('');
+  // Las entradas del operador que siguen abiertas: hay que confirmarlas para cerrar el turno.
+  const [estadias, setEstadias] = useState<EstadiaAbiertaTurno[] | null>(null);
+  const [estadiasConfirmadas, setEstadiasConfirmadas] = useState(false);
   const esAdmin = session?.user?.role === 'ADMIN';
   const nombreUsuario = [session?.user?.firstName, session?.user?.lastName].filter(Boolean).join(' ').trim() || session?.user?.username || 'Tu usuario';
   const active = turnoId ? context?.openTurnos.find(t => t.id === turnoId) : context?.active;
@@ -98,6 +105,17 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' 
     window.addEventListener('online', update);
     return () => { window.clearInterval(timer); window.removeEventListener('parking-shift-changed', update); window.removeEventListener('online', update); };
   }, [turnoId, revision, cajaId]);
+  // Se consultan al entrar al cierre. Si la consulta falla no se traba el cierre.
+  const activeId = active?.id;
+  useEffect(() => {
+    if (!open || !closing || !activeId) return;
+    let vigente = true;
+    setEstadias(null);
+    setEstadiasConfirmadas(false);
+    void getEstadiasAbiertasTurnoAction(activeId).then(lista => { if (vigente) setEstadias(lista ?? []); });
+    return () => { vigente = false; };
+  }, [open, closing, activeId]);
+  const cobrarEstadia = onCobrarEstadia && ((id: string) => { setOpen(false); setClosing(false); onCobrarEstadia(id); });
   const updated = () => { onUpdated?.(); window.dispatchEvent(new Event('parking-shift-changed')); };
   const submitOpen = () => startTransition(async () => {
     if (!caja) return;
@@ -117,7 +135,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' 
     toast.success(arqueo ? 'Turno y caja cerrados. El fondo queda para el próximo operador.' : 'Turno cerrado. La caja sigue abierta para los demás operadores.');
     setOpen(false); setClosing(false); updated(); await refresh();
   });
-  const closingValid = canClose && (!forzando || forcedReason.trim()) && (!arqueo || (amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= afterSalary && (closingDifference === 0 || notes.trim())));
+  const closingValid = canClose && estadias !== null && (!estadias.length || estadiasConfirmadas) &&(!forzando || forcedReason.trim()) && (!arqueo ||(amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= afterSalary && (closingDifference === 0 || notes.trim())));
   const openingValid = !!caja && !context?.legacyOpen && (caja.session ? context?.multipleShiftsEnabled : amountValid(received) && amountValid(added) && (openingDifference === 0 || openingReason.trim()));
   const abrir = () => { setClosing(!!turnoId); setCounted(''); setWithdrawn('0'); setNotes(''); setForcedReason(''); setOpen(true); startTransition(() => refresh(true)); };
   const enlaceHistorial = esAdmin && <Link href="/admin/caja?tab=turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja?tab=turnos'), 200); }} className="mx-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow"><History className="size-3.5" aria-hidden />Ver turnos e historial</Link>;
@@ -146,6 +164,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button' 
           {enlaceHistorial}
         </ActionDialogBody> : active ? closing ? <form onSubmit={e => { e.preventDefault(); submitClose(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-5 [&>*]:shrink-0">
           {arqueo && <p className="text-[13px] leading-relaxed text-muted-foreground">Sos el último operador de esta caja: contá el efectivo de todos los turnos desde su apertura.</p>}
+          {estadias && <RepasoEstadias estadias={estadias} ahora={Date.now()} confirmado={estadiasConfirmadas} onConfirmar={setEstadiasConfirmadas} onCobrar={cobrarEstadia} disabled={pending} />}
           <section aria-label="Turno que cerrás" className="overflow-hidden rounded-2xl border border-gm-line bg-gm-surface-2/50">
             <div className="flex items-center gap-3 p-3.5">
               <Iniciales nombre={active.nombre} />

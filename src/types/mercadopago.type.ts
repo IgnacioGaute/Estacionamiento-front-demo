@@ -41,6 +41,8 @@ export type CobroMercadoPago = {
   acreditadoEl: string | null;
   // Con el pago la estadía o el abono quedaron cerrados: el sistema registró la salida solo.
   salidaRegistrada?: boolean;
+  // Un anticipo al entrar por esta duración: al acreditarse queda pagado y nunca registra la salida.
+  anticipo?: { minutos: number; etiqueta?: string | null } | null;
   // Solo en un cobro de inquilino ya acreditado: el recibo del pago que quedó asentado.
   recibo?: import('./cuenta.type').ResultadoPago | null;
 };

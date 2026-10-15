@@ -174,12 +174,15 @@ export function CloseTicketPanel({
   initialRegistrationId,
   barcodeTicketsEnabled = true,
   onAdvance,
+  onSalidaSinEntrada,
 }: {
   open: boolean;
   barcodeTicketsEnabled?: boolean;
   // Registrar un anticipo o avisar la duración en vez de cobrar ahora: cierra el cobro y lo abre el
   // que usa el panel (el inicio, con su diálogo de anticipos).
   onAdvance?: (registration: TicketRegistration) => void;
+  // La patente buscada no está adentro: el auto se va sin entrada registrada y se cobra igual.
+  onSalidaSinEntrada?: (plate: string) => void;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
   initialRegistrationId?: string | null;
@@ -539,11 +542,18 @@ export function CloseTicketPanel({
                 </ul>
               </>
             )}
-            {results.length === 0 && (isPending ? <DataLoading label="Buscando vehículos…" /> :
+            {results.length === 0 && (isPending ? <DataLoading label="Buscando vehículos…" /> : <>
               <p className="py-6 text-center text-sm text-muted-foreground">
                 {query.trim() ? (barcodeTicketsEnabled ? 'No encontramos ese vehículo. Revisá la patente o el número de ticket.' : 'No encontramos ese vehículo. Revisá la patente o el apellido.') : 'No hay vehículos adentro.'}
               </p>
-            )}
+              {/* Un auto que se va sin entrada registrada: se cobra igual con la hora en que llegó. */}
+              {onSalidaSinEntrada && query.replace(/[^A-Za-z0-9]/g, '').length >= 5 && (
+                <button type="button" onClick={() => onSalidaSinEntrada(query.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                  className="mx-auto inline-flex min-h-11 items-center gap-2 rounded-xl border border-gm-line-strong px-4 text-[13px] font-semibold transition-colors hover:border-gm-yellow/50 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
+                  Se está yendo sin entrada: cobrar {query.toUpperCase().replace(/[^A-Z0-9]/g, '')}
+                </button>
+              )}
+            </>)}
           </ActionDialogBody>
         ) : (
           <>

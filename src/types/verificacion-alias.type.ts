@@ -44,8 +44,10 @@ export type CobroAlias = {
   // AUTOMATICO_COINCIDENCIA_UNICA no identifica a quien pagó: es la regla de coincidencia única.
   modo: 'AUTOMATICO_COINCIDENCIA_UNICA' | 'MANUAL' | null;
   salidaRegistrada: boolean;
-  // Si la tarifa subió mientras se esperaba, lo que quedó por cobrar.
+  // Si se pagó menos de lo pedido, lo que quedó por cobrar.
   saldoPendiente: number | null;
+  // Un anticipo al entrar por esta duración: al confirmarse queda pagado y nunca registra la salida.
+  anticipo?: { minutos: number; etiqueta?: string | null } | null;
   // `nombre`: quién transfirió, solo en la respuesta que la confirma (no se guarda).
   transferencia: {
     operacionId: string;

@@ -26,13 +26,15 @@ import { ActiveDayTicketDialog } from "./active-day-ticket-dialog";
 import { PriceBracketMapDialog } from "./price-bracket-map-dialog";
 import { AdvancePaymentDialog } from "./advance-payment-dialog";
 import { ScanPlateAction } from './scan-plate-action';
+import { SalidaSinEntradaDialog } from './salida-sin-entrada-dialog';
 import { EntryByPlateDialog } from "./entry-by-plate-dialog";
 import { CloseTicketPanel } from "./close-ticket-panel";
 import { TurnoBar } from "./turno-bar";
 import { useTour } from "./ticket-tour";
 import { useTicketRealtime } from "@/hooks/use-ticket-realtime";
+import { useResincronizar } from "@/hooks/use-resincronizar";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { isBarcodeOrigin, isOverdue, minutesSinceEntry, upsertRegistration } from "@/utils/ticket-registration.utils";
+import { isBarcodeOrigin, isOverdue, mergeServerSnapshot, minutesSinceEntry, upsertRegistration } from "@/utils/ticket-registration.utils";
 import { estadiaLargaActiva as isDayRegistrationActive, estadiaLargaVencida as isDayRegistrationOverdue } from "@/utils/estadia-larga";
 import { EncabezadoVista, estaAdentro, FichasEnElPlayon, InicioHero, MostradorDock, normalizar, TodosLosVehiculos, VehiculoFila, type FiltroVehiculos } from "./inicio";
 import { AccionesEscritorio, BuscadorRapido, TableroPlaya, TarjetaAdentro, UltimosMovimientos, type FiltroTablero } from "./escritorio";
@@ -92,7 +94,7 @@ export default function CardTicket({
     vehicleType: string;
     existing: TicketRegistration | null;
   } | null>(null);
-  const [entryScanRequest, setEntryScanRequest] = useState<{ plate: string; sequence: number } | null>(null);
+  const [entryScanRequest, setEntryScanRequest] = useState<{ plate: string; sequence: number; parecidasRevisadas?: boolean } | null>(null);
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
   const [plateScanBusy, setPlateScanBusy] = useState(false);
   const [scannedDayRegistration, setScannedDayRegistration] = useState<TicketRegistrationForDay | null>(null);
@@ -105,7 +107,9 @@ export default function CardTicket({
   // El diálogo de alta por día/semana/mes también tiene que silenciar el lector USB mientras
   // está abierto — si no, tipear la patente dispara el escáner.
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
-  const isDialogOpen = entryDialogOpen || plateScanBusy || advanceTarget !== null || closePanelOpen || dayDialogOpen || receiptTarget !== null;
+  // Un auto que se va sin entrada registrada (desde el escaneo o la búsqueda del cobro).
+  const [salidaSinEntrada, setSalidaSinEntrada] = useState<string | null>(null);
+  const isDialogOpen = entryDialogOpen || plateScanBusy || advanceTarget !== null || closePanelOpen || dayDialogOpen || receiptTarget !== null || salidaSinEntrada !== null;
 
   // El inicio, la lista completa y el historial de comprobantes son tres vistas de la misma
   // pantalla: se pasa de una a otra con un deslizamiento (hacia la derecha al entrar, a la
@@ -184,17 +188,20 @@ export default function CardTicket({
   // router.refresh() re-renders the server-fetched props in place — sync
   // them into state so the update actually shows up (state initializers only
   // run once on mount, they don't pick up later prop changes on their own).
+  // Se combina en vez de reemplazar: el servidor no trae las salidas anteriores a la última.
   useEffect(() => {
-    setRegistrations(initialRegistrations);
+    setRegistrations((prev) => mergeServerSnapshot(prev, initialRegistrations));
   }, [initialRegistrations]);
 
   // Actualizaciones en vivo por websocket (entrada, salida, o estadía planificada guardada
   // desde cualquier pestaña/dispositivo) — se mezclan sin pisar algo más nuevo que ya haya
-  // llegado por router.refresh().
+  // llegado por router.refresh(). Como un aviso perdido no vuelve, también se pide todo de
+  // nuevo al conectar el socket, al volver a la pestaña y cada minuto.
   const handleRealtimeUpdate = useCallback((incoming: TicketRegistration) => {
     setRegistrations((prev) => upsertRegistration(prev, incoming));
   }, []);
-  useTicketRealtime(handleRealtimeUpdate);
+  const resincronizar = useResincronizar(() => router.refresh());
+  useTicketRealtime(handleRealtimeUpdate, resincronizar);
 
   // Si el flujo por código de barras está apagado desde Admin, no se muestra nada de él acá.
   const visibleRegistrations = barcodeTicketsEnabled
@@ -379,7 +386,7 @@ export default function CardTicket({
         ahora={now}
         excedidos={excedidos}
         vencidas={overdueDayRegistrations.length}
-        turno={TURNO_BAR_ENABLED ? <span ref={refVisible('turno')} className="inline-flex"><TurnoBar variant="pill" /></span> : null}
+        turno={TURNO_BAR_ENABLED ? <span ref={refVisible('turno')} className="inline-flex"><TurnoBar variant="pill" onCobrarEstadia={abrirCobro} /></span> : null}
         onExcedidos={() => irA('vehiculos', 'excedidos')}
         onVencidas={() => irA('vehiculos', 'dia')}
         onZona={() => irA('vehiculos', 'hora')}
@@ -558,7 +565,7 @@ export default function CardTicket({
             largas={activeDayRegistrations.length}
             excedidos={excedidos}
             vencidas={overdueDayRegistrations.length}
-            turno={TURNO_BAR_ENABLED ? <span ref={refVisible('turno')} className="inline-flex"><TurnoBar variant="pill" /></span> : null}
+            turno={TURNO_BAR_ENABLED ? <span ref={refVisible('turno')} className="inline-flex"><TurnoBar variant="pill" onCobrarEstadia={abrirCobro} /></span> : null}
             filtro={filtroTablero}
             onFiltro={setFiltroTablero}
           />
@@ -638,8 +645,9 @@ export default function CardTicket({
             <ScanPlateAction
               variant="dock"
               onBusyChange={setPlateScanBusy}
-              onEntry={(plate) => setEntryScanRequest((previous) => ({ plate, sequence: (previous?.sequence ?? 0) + 1 }))}
+              onEntry={(plate, parecidasRevisadas) => setEntryScanRequest((previous) => ({ plate, sequence: (previous?.sequence ?? 0) + 1, parecidasRevisadas }))}
               onHourlyExit={(id) => abrirCobro(id)}
+              onSalidaSinEntrada={setSalidaSinEntrada}
               onDailyExit={(registration) => { setScannedDayRegistration(registration); setOpenDayRegistrationId(registration.id); }}
             />
           ) : null}
@@ -687,6 +695,14 @@ export default function CardTicket({
           if (!open) setClosePanelTargetId(null);
         }}
         onSuccess={() => router.refresh()}
+        onSalidaSinEntrada={(plate) => { setClosePanelOpen(false); setClosePanelTargetId(null); setSalidaSinEntrada(plate); }}
+      />
+
+      <SalidaSinEntradaDialog
+        plate={salidaSinEntrada}
+        onClose={() => setSalidaSinEntrada(null)}
+        onCobrar={(id) => abrirCobro(id)}
+        onRegistrada={() => router.refresh()}
       />
     </>
   );

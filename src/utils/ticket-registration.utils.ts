@@ -52,6 +52,28 @@ export function upsertRegistration(
   return next;
 }
 
+// Junta la lista que acaba de traer el servidor con la local. El servidor devuelve los vehículos
+// adentro más el último movimiento de la playa, así que manda sobre quién está adentro: un
+// vehículo que acá figura adentro y allá no, salió o se eliminó mientras se perdían avisos. De lo
+// que solo está acá se conservan las salidas (alimentan «Últimos movimientos») y lo que cambió
+// después de esa foto, que llegó por websocket mientras se pedía la lista. La foto es el
+// `updatedAt` más nuevo que trae el servidor: incluye el último movimiento de toda la playa.
+export function mergeServerSnapshot(local: TicketRegistration[], server: TicketRegistration[]): TicketRegistration[] {
+  const at = (r: TicketRegistration) => new Date(r.updatedAt).getTime();
+  const foto = server.reduce((max, r) => Math.max(max, at(r)), -Infinity);
+  const locales = new Map(local.map((r) => [r.id, r]));
+  const merged = server.map((r) => {
+    const propio = locales.get(r.id);
+    return propio && at(propio) > at(r) ? propio : r;
+  });
+  const enServidor = new Set(server.map((r) => r.id));
+  for (const r of local) {
+    if (enServidor.has(r.id)) continue;
+    if (at(r) > foto || r.departureTime || r.departureDay) merged.push(r);
+  }
+  return merged;
+}
+
 // true si un registro activo (sin salida) avisó una duración esperada y ya la superó, según
 // la hora actual del navegador. No depende del servidor: entryDay/entryTime/expectedUptoMinutes
 // ya viajan en cada registro, así que alcanza con comparar contra `nowMs`.
@@ -73,6 +95,21 @@ export function isOverdue(registration: TicketRegistration, nowMs: number): bool
 
 // Minutos transcurridos desde la entrada, contra la hora actual del navegador — para mostrar
 // "hace X min" en la lista de activos sin pedirle nada al servidor.
+// Una estadía que ya pagó un anticipo: el operador tiende a dejarla ir sin registrar la salida
+// («ya pagó») y queda abierta para siempre. El tablero la marca: cuánto pagó, hasta qué hora le
+// alcanza (si avisó una duración) y si ya se pasó. El cierre sigue siendo manual: el auto puede
+// quedarse más de lo pagado y hay que cobrarle la diferencia.
+export function anticipoDe(registration: TicketRegistration, nowMs: number): { monto: number; hasta: string | null; vencido: boolean } | null {
+  const monto = Number(registration.advancePaidAmount ?? 0);
+  if (!(monto > 0) || registration.departureTime || registration.departureDay) return null;
+  let hasta: string | null = null;
+  if (registration.expectedUptoMinutes != null && registration.entryDay && registration.entryTime) {
+    const entryAt = dayjs.tz(`${registration.entryDay} ${registration.entryTime}`, 'YYYY-MM-DD HH:mm:ss', TZ);
+    if (entryAt.isValid()) hasta = entryAt.add(registration.expectedUptoMinutes, 'minute').format('HH:mm');
+  }
+  return { monto, hasta, vencido: isOverdue(registration, nowMs) };
+}
+
 export function minutesSinceEntry(registration: TicketRegistration, nowMs: number): number | null {
   if (!registration.entryDay || !registration.entryTime) return null;
   const entryAt = dayjs.tz(
