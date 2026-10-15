@@ -47,8 +47,9 @@ export const createOtherPayment = async (
           revalidateTag(getCacheTag('expenses', 'all'));
         return data as OtherPayment;
       } else {
+        // El motivo del backend (por ejemplo, de qué caja sale el efectivo) llega a la pantalla.
         console.error('Error en la respuesta:', data);
-        return null;
+        return { error: { code: data?.code || 'UNKNOWN_ERROR', message: mensajeDeError(data) } };
       }
     } catch (error) {
       console.error('Error en create pago:', error);
@@ -56,14 +57,21 @@ export const createOtherPayment = async (
     }
   };
 
+// El mensaje de un error del backend: texto, o la lista de la validación de los DTO.
+export function mensajeDeError(data: { message?: string | string[] } | null | undefined): string {
+  const m = data?.message;
+  return Array.isArray(m) ? m.join('. ') : m || 'Error desconocido';
+}
+
   
     export const updateExpense = async (
       id: string,
       customer: Partial<updateOtherPaymentSchemaType>, authToken?: string
     ) => {
       try {
+        // PUT, como lo declara el backend: con PATCH la ruta no existía y editar nunca funcionó.
         const response = await fetch(`${BASE_URL}/box-lists/otherPayment/${id}`, {
-          method: 'PATCH',
+          method: 'PUT',
           headers: await getAuthHeaders(authToken),
           body: JSON.stringify(customer),
         });
@@ -77,7 +85,7 @@ export const createOtherPayment = async (
           return {
             error: {
               code: data.code || 'UNKNOWN_ERROR',
-              message: data.message || 'Error desconocido'
+              message: mensajeDeError(data)
             },
           };
         }
@@ -103,7 +111,7 @@ export const createOtherPayment = async (
           return {
             error: {
               code: data.code || 'UNKNOWN_ERROR',
-              message: data.message || 'Error desconocido'
+              message: mensajeDeError(data)
             },
           };
         }
