@@ -26,7 +26,15 @@ export function RepasoEstadias({ estadias, ahora, confirmado, onConfirmar, onCob
   disabled?: boolean;
 }) {
   if (!estadias.length) return null;
-  const filas = estadias.map((e) => ({ ...e, minutos: minutesSinceEntry(e as unknown as TicketRegistration, ahora) ?? 0 }));
+  // Fecha «YYYY-MM-DD» y hora «HH:mm:ss» aunque lleguen como fecha ISO completa (un backend anterior
+  // las mandaba así): con el formato equivocado el cálculo de la hora rompía la pantalla de cierre.
+  const filas = estadias.map((e) => {
+    const entryDay = String(e.entryDay ?? '').slice(0, 10);
+    const hora = String(e.entryTime ?? '').slice(0, 8);
+    const entryTime = /^\d{2}:\d{2}$/.test(hora) ? `${hora}:00` : hora;
+    const valida = /^\d{4}-\d{2}-\d{2}$/.test(entryDay) && /^\d{2}:\d{2}:\d{2}$/.test(entryTime);
+    return { ...e, entryDay, entryTime, minutos: valida ? minutesSinceEntry({ entryDay, entryTime } as unknown as TicketRegistration, ahora) ?? 0 : 0 };
+  });
   const largas = filas.filter((f) => f.minutos >= HORAS_PARA_REVISAR * 60).length;
   return (
     <section aria-labelledby="repaso-estadias" className="overflow-hidden rounded-2xl border border-gm-line">
