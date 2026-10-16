@@ -73,7 +73,7 @@ test('si comparte caja cierra sólo su turno sin pedir efectivo contado', async 
   expect(jest.mocked(closeTurnoAction).mock.calls[0][1]).not.toHaveProperty('efectivoContado');
 });
 
-test('para cerrar hay que confirmar los vehículos que registró y siguen adentro, o cobrarlos', async () => {
+test('para cerrar hay que marcar los autos de más de 4 horas como que siguen, o cobrarlos', async () => {
   jest.mocked(getEstadiasAbiertasTurnoAction).mockResolvedValueOnce([
     { id: 'vieja', patente: 'AF876EB', vehicleType: 'AUTO', entryDay: '2026-10-05', entryTime: '07:11:00', anticipo: 0 },
   ]);
@@ -81,10 +81,10 @@ test('para cerrar hay que confirmar los vehículos que registró y siguen adentr
   const onCobrarEstadia = jest.fn();
   render(<TurnoBar onCobrarEstadia={onCobrarEstadia} />); fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
   const close = await screen.findByRole('button', { name: 'Cerrar sólo mi turno' }); await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
-  expect(await screen.findByText(/Vehículos que registraste y siguen adentro · 1/)).toBeInTheDocument();
+  expect(await screen.findByText('Un auto lleva más de 4 h')).toBeInTheDocument();
   const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno' });
   expect(confirmar).toBeDisabled();
-  fireEvent.click(screen.getByLabelText('Confirmo que este vehículo sigue en la playa'));
+  fireEvent.click(screen.getByRole('button', { name: /Sigue en la playa/ }));
   await waitFor(() => expect(confirmar).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'Se fue: cobrar' }));
   expect(onCobrarEstadia).toHaveBeenCalledWith('vieja');

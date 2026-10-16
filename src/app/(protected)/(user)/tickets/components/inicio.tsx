@@ -6,7 +6,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CarFront, ChevronLeft, ChevronRight, Search, Banknote, Wallet, Hourglass } from 'lucide-react';
+import { CarFront, ChevronDown, ChevronLeft, ChevronRight, Search, Banknote, Wallet } from 'lucide-react';
 import { formatImporte } from '@/components/pricing-breakdown';
 import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { PlateChip } from '@/components/plate-chip';
@@ -190,15 +190,16 @@ export function estadiasLargas(registros: TicketRegistration[], ahora: number) {
     .sort((a, b) => b.minutos - a.minutos);
 }
 
-// Violeta, como «Más de 4 h» del tablero, y con un punto que late: no es una alarma de tiempo
-// vencido (eso es naranja) sino un «fijate si sigue adentro». Pensado para el celular, donde no se
-// ve el tablero entero. «Siguen adentro» lo silencia dos horas en este dispositivo para esos autos.
+// Discreto: una línea con un punto violeta (el color de «Más de 4 h» del tablero), sin alarma; no es
+// un tiempo vencido (eso es naranja) sino un «fijate si sigue adentro». Al tocarla se despliegan los
+// autos para cobrarlos. «Siguen adentro» la oculta dos horas en este dispositivo para esos autos.
 export function AvisoEstadiasLargas({ registros, ahora, onCobrar }: {
   registros: TicketRegistration[];
   ahora: number;
   onCobrar: (id: string) => void;
 }) {
   const [silenciadas, setSilenciadas] = useState<Record<string, number>>({});
+  const [abierto, setAbierto] = useState(false);
   useEffect(() => {
     try { setSilenciadas(JSON.parse(localStorage.getItem(CLAVE_SILENCIO) ?? '{}')); } catch { /* sin almacenamiento: no se silencia */ }
   }, []);
@@ -209,53 +210,44 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar }: {
     const vigentes = Object.fromEntries(Object.entries(silenciadas).filter(([, h]) => h > Date.now()));
     const nuevas = { ...vigentes, ...Object.fromEntries(largas.map(({ r }) => [r.id, hasta])) };
     setSilenciadas(nuevas);
-    try { localStorage.setItem(CLAVE_SILENCIO, JSON.stringify(nuevas)); } catch { /* queda silenciado solo en esta pantalla */ }
+    setAbierto(false);
+    try { localStorage.setItem(CLAVE_SILENCIO, JSON.stringify(nuevas)); } catch { /* queda oculto solo en esta pantalla */ }
   };
   const [primera] = largas;
   const patente = (r: TicketRegistration) => r.licensePlateOriginal || r.lastNameCustomer || 'Sin patente';
   return (
-    <section role="status" aria-live="polite" className="rounded-[20px] border border-violet-400/45 bg-violet-500/[0.1] p-3.5">
-      <div className="flex items-start gap-3">
-        <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-violet-400/20 text-violet-200">
-          <Hourglass className="size-5" aria-hidden />
-          <span aria-hidden className="absolute -right-0.5 -top-0.5 flex size-3">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-violet-300 opacity-75 motion-reduce:animate-none" />
-            <span className="relative inline-flex size-3 rounded-full bg-violet-300" />
-          </span>
+    <section aria-label="Autos con más de 4 horas" className="overflow-hidden rounded-2xl border border-violet-400/20 bg-violet-400/[0.05]">
+      <button type="button" aria-expanded={abierto} onClick={() => setAbierto((v) => !v)}
+        className="flex min-h-11 w-full items-center gap-2.5 px-3.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300">
+        <span aria-hidden className="size-2 shrink-0 rounded-full bg-violet-300" />
+        <span className="min-w-0 flex-1 truncate text-[13px] text-[#D9D1C3]">
+          {largas.length === 1
+            ? <><strong className="gm-mono font-semibold text-violet-100">{patente(primera.r)}</strong> lleva {formatEstadia(primera.minutos)} en la playa</>
+            : <><strong className="font-semibold text-violet-100">{largas.length} autos</strong> con más de {HORAS_ESTADIA_LARGA} h en la playa</>}
         </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-bold leading-snug text-violet-100">
-            {largas.length === 1
-              ? `${patente(primera.r)} lleva ${formatEstadia(primera.minutos)} en la playa`
-              : `${largas.length} vehículos llevan más de ${HORAS_ESTADIA_LARGA} h en la playa`}
-          </p>
-          <p className="mt-0.5 text-[12.5px] leading-snug text-violet-200/85">¿Siguen adentro? Si se fueron, registrá la salida.</p>
-          {largas.length > 1 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {largas.slice(0, 4).map(({ r, minutos }) => (
-                <button key={r.id} type="button" onClick={() => onCobrar(r.id)}
-                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-violet-400/40 bg-card px-2.5 text-[12.5px] font-semibold transition-colors hover:border-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
-                  <span className="gm-mono font-bold">{patente(r)}</span>
-                  <span className="text-violet-200/80">{formatEstadia(minutos)}</span>
+        <span className="shrink-0 text-[12.5px] font-semibold text-violet-200">Revisar</span>
+        <ChevronDown aria-hidden className={cn('size-4 shrink-0 text-violet-200 transition-transform', abierto && 'rotate-180')} />
+      </button>
+      {abierto && (
+        <div className="border-t border-violet-400/15 px-2 pb-2 pt-1">
+          <ul>
+            {largas.map(({ r, minutos }) => (
+              <li key={r.id}>
+                <button type="button" onClick={() => onCobrar(r.id)}
+                  className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-1.5 text-left transition-colors hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+                  <span className="gm-mono min-w-0 flex-1 truncate text-[13px] font-bold">{patente(r)}</span>
+                  <span className="gm-mono shrink-0 text-[12.5px] text-violet-200">{formatEstadia(minutos)}</span>
+                  <span className="shrink-0 text-[12.5px] font-semibold text-gm-yellow">Cobrar</span>
                 </button>
-              ))}
-              {largas.length > 4 && <span className="self-center text-[12px] text-violet-200/80">y {largas.length - 4} más</span>}
-            </div>
-          )}
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {largas.length === 1 && (
-              <button type="button" onClick={() => onCobrar(primera.r.id)}
-                className="min-h-11 rounded-xl bg-violet-400 px-4 text-[13px] font-bold text-violet-950 transition-colors hover:bg-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-200">
-                Cobrar salida
-              </button>
-            )}
-            <button type="button" onClick={silenciar}
-              className="min-h-11 rounded-xl border border-violet-400/40 px-4 text-[13px] font-semibold text-violet-100 transition-colors hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
-              {largas.length === 1 ? 'Sigue adentro' : 'Siguen adentro'}
-            </button>
-          </div>
+              </li>
+            ))}
+          </ul>
+          <button type="button" onClick={silenciar}
+            className="mt-1 min-h-10 w-full rounded-xl text-[12.5px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+            {largas.length === 1 ? 'Sigue adentro · ocultar 2 h' : 'Siguen adentro · ocultar 2 h'}
+          </button>
         </div>
-      </div>
+      )}
     </section>
   );
 }

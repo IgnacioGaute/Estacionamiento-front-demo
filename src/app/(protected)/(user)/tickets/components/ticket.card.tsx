@@ -283,7 +283,7 @@ export default function CardTicket({
       toast(`${r.licensePlateOriginal || r.lastNameCustomer || 'Un vehículo'} lleva más de ${HORAS_ESTADIA_LARGA} h en la playa`, {
         description: '¿Sigue adentro? Si se fue, registrá la salida.',
         icon: <Hourglass className="size-4 text-violet-300" aria-hidden />,
-        duration: 12_000,
+        duration: 8_000,
         action: { label: 'Cobrar', onClick: () => abrirCobro(r.id) },
       });
     }
