@@ -40,6 +40,7 @@ import { minutesSinceEntry, isOverdue, isBarcodeOrigin } from '@/utils/ticket-re
 import { calcularVuelto, pagosSugeridos } from '@/utils/vuelto';
 import { cuandoEntro, formatEstadia as formatElapsed } from '@/utils/estadia';
 import { CorregirEntrada } from './corregir-entrada';
+import { EditarDatosEstadia } from './editar-datos-estadia';
 import { EliminarEstadia } from './eliminar-estadia';
 
 // Efectivo y transferencia los declara el cajero; QR y alias los verifica el sistema contra
@@ -132,6 +133,7 @@ function ResumenEstadia({
           </div>
         </div>
         {onCorregido && <CorregirEntrada summary={summary} onCorregido={onCorregido} />}
+        {onCorregido && <EditarDatosEstadia key={summary.registration.id} summary={summary} onCorregido={onCorregido} />}
         <div className="my-3 h-px bg-border short:my-2.5" />
         {/* Con importes muy largos el botón baja a otra línea en vez de pisar el número. */}
         <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">

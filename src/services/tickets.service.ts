@@ -718,6 +718,18 @@ export async function corregirEntrada(id: string, entrada: string): Promise<{ su
   return { summary: data.summary as CloseSummary };
 }
 
+// La patente o el tipo de vehículo cargados mal, desde el cobro: devuelve el cobro recalculado con
+// la tarifa del tipo elegido. `code` DUPLICATE_ACTIVE_PLATE si la patente ya está adentro en otra.
+export async function corregirDatosEstadia(id: string, cambios: { licensePlate?: string; vehicleType?: string }): Promise<{ summary?: CloseSummary; error?: string; code?: string }> {
+  const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/datos`, {
+    method: 'PATCH', headers: await getAuthHeaders(), body: JSON.stringify(cambios),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) return { code: data?.code, error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudo corregir la estadía.' };
+  revalidateTag(getCacheTag('tickets', 'all'));
+  return { summary: data.summary as CloseSummary };
+}
+
 // Una estadía abierta y sin cobros que se cargó por error (solo el administrador). El backend
 // rechaza si tiene cobros, anticipos o un QR o alias esperando el pago.
 export async function eliminarEstadia(id: string): Promise<{ ok?: true; error?: string }> {

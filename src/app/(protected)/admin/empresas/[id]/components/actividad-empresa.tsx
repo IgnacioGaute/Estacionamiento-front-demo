@@ -28,6 +28,7 @@ import {
   ScrollText,
   Settings,
   Tag,
+  Pencil,
   Ticket,
   Trash2,
   Unplug,
@@ -174,6 +175,12 @@ const ACCIONES: Record<
     categoria: "tarifas",
     Icono: Clock3,
     detalle: (d) => `${d.patente ? `${d.patente}: ` : ""}entró ${d.entrada ?? "?"} (figuraba ${d.entradaAnterior ?? "?"})`,
+  },
+  ESTADIA_DATOS_CORREGIDOS: {
+    texto: "Corrigió la patente o el tipo de una estadía",
+    categoria: "tarifas",
+    Icono: Pencil,
+    detalle: (d) => [d.patenteAnterior && d.patente && d.patenteAnterior !== d.patente ? `patente ${d.patenteAnterior} → ${d.patente}` : d.patente, d.tipoAnterior && d.tipo && d.tipoAnterior !== d.tipo ? `tipo ${d.tipoAnterior} → ${d.tipo}` : null].filter(Boolean).join(" · "),
   },
   ESTADIA_ELIMINADA: {
     texto: "Eliminó una estadía cargada por error",
