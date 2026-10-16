@@ -12,6 +12,7 @@ import timezone from 'dayjs/plugin/timezone';
 import { ArrowDownLeft, ArrowRight, ArrowUpRight, Banknote, CalendarDays, CalendarPlus, CarFront, Check, ChevronRight, Clock3, LogIn, Receipt, Search } from 'lucide-react';
 import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { PlateChip } from '@/components/plate-chip';
+import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
 import { formatImporte } from '@/components/pricing-breakdown';
 import { cn } from '@/lib/utils';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
@@ -321,9 +322,12 @@ function TarjetaTablero({ r, minutos, pasado, ahora, onSelect }: { r: TicketRegi
           <ArrowRight className="size-4" />
         </span>
       </span>
-      <span className="gm-mono text-[17px] font-bold leading-tight" style={{ color: pasado ? NARANJA_AVISO : tramoInfo(minutos).color }}>
-        {formatEstadia(minutos)}
-        {pasado && <span className="sr-only">, superó el tiempo avisado</span>}
+      <span className="flex w-full flex-wrap items-center justify-between gap-2">
+        <span className="gm-mono text-[17px] font-bold leading-tight" style={{ color: pasado ? NARANJA_AVISO : tramoInfo(minutos).color }}>
+          {formatEstadia(minutos)}
+          {pasado && <span className="sr-only">, superó el tiempo avisado</span>}
+        </span>
+        <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} />
       </span>
       <span className="truncate text-xs text-muted-foreground">{detalle}</span>
       <AvisoAnticipo r={r} ahora={ahora} />
@@ -358,6 +362,7 @@ function TarjetaEstadiaLarga({ r, vence, vencida, ahora, onSelect }: { r: Ticket
         )}
         <span className="rounded-md bg-gm-yellow/15 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-gm-yellow">{UNIDAD_ESTADIA_LARGA[r.ticketTimeType] ?? r.ticketTimeType}</span>
       </span>
+      <VehicleTypeBadge code={r.vehicleType} />
       {r.lastNameCustomer && <span className="truncate text-xs text-muted-foreground">{r.lastNameCustomer}</span>}
       <span className="flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs">
         <span className={cn(vencida ? 'font-bold text-[#F0714A]' : 'text-muted-foreground')}>

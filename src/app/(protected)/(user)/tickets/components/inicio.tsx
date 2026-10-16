@@ -10,6 +10,7 @@ import { CarFront, ChevronDown, ChevronLeft, ChevronRight, Search, Banknote, Wal
 import { formatImporte } from '@/components/pricing-breakdown';
 import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { PlateChip } from '@/components/plate-chip';
+import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
 import { cn } from '@/lib/utils';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { Ticket } from '@/types/ticket.type';
@@ -294,13 +295,16 @@ export function VehiculoFila({ r, ahora, onSelect, resaltar }: {
       onClick={() => onSelect(r)}
       className="relative flex min-h-[68px] w-full items-center gap-3.5 overflow-hidden rounded-[20px] border border-[#2A2620] bg-card py-2.5 pl-3 pr-3.5 text-left transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.99]"
     >
-      {ficha ? (
-        <span className="gm-mono inline-flex h-[33px] min-w-[96px] shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 px-2 text-[13.5px] font-bold">Ficha {ficha}</span>
-      ) : r.noPlate ? (
-        <span className="inline-flex h-[33px] min-w-[96px] shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sin patente</span>
-      ) : (
-        <PlateChip plate={r.licensePlateOriginal || '—'} size="sm" highlight={resaltar} />
-      )}
+      <span className="flex max-w-[120px] shrink-0 flex-col items-start gap-1.5">
+        {ficha ? (
+          <span className="gm-mono inline-flex h-[33px] min-w-[96px] shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 px-2 text-[13.5px] font-bold">Ficha {ficha}</span>
+        ) : r.noPlate ? (
+          <span className="inline-flex h-[33px] min-w-[96px] shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sin patente</span>
+        ) : (
+          <PlateChip plate={r.licensePlateOriginal || '—'} size="sm" highlight={resaltar} />
+        )}
+        <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} />
+      </span>
       <span className="min-w-0 flex-1">
         <span className="gm-mono flex items-center gap-1.5 text-base font-bold" style={{ color: pasado ? NARANJA_AVISO : tramoInfo(minutos).color }}>
           {pasado && <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" />}

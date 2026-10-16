@@ -7,6 +7,7 @@ import { CompactPagination } from "@/components/compact-pagination";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
 import { Button } from "@/components/ui/button";
 import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
 import { cn } from "@/lib/utils";
@@ -97,15 +98,18 @@ export function DayRegistrationsPanel({
                       : "border-gm-yellow/40 bg-gm-yellow/10 hover:bg-gm-yellow/20",
                   )}
                 >
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    <span className="gm-mono text-[11.5px] font-bold text-foreground truncate">
-                      {r.vehiclePlateCustomer || "Sin patente"}
+                  <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="gm-mono text-[11.5px] font-bold text-foreground truncate">
+                        {r.vehiclePlateCustomer || "Sin patente"}
+                      </span>
+                      {isLate && (
+                        <Badge variant="red" className="shrink-0 px-1.5 py-0 text-[9px]">
+                          Vencido
+                        </Badge>
+                      )}
                     </span>
-                    {isLate && (
-                      <Badge variant="red" className="shrink-0 px-1.5 py-0 text-[9px]">
-                        Vencido
-                      </Badge>
-                    )}
+                    <VehicleTypeBadge code={r.vehicleType} />
                   </span>
                   <span className="max-w-[45%] truncate text-[10.5px] text-muted-foreground">
                     {r.lastNameCustomer || "—"}

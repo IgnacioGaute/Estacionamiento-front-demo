@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Ticket } from "@/types/ticket.type";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
 import { Barcode, Car, ChevronRight, Timer, Search } from "lucide-react";
 import {
   formatElapsed,
@@ -104,7 +105,7 @@ export function ActiveTicketsList({
                 : registration.noPlate
                 ? registration.lastNameCustomer ?? "Sin patente"
                 : registration.licensePlateOriginal ?? "—";
-            const vehicleType = row.kind === "BARCODE" ? row.ticket.vehicleType : registration.vehicleType;
+            const vehicleType = registration.vehicleType ?? (row.kind === "BARCODE" ? row.ticket.vehicleType : undefined);
 
             return (
               <button
@@ -141,12 +142,6 @@ export function ActiveTicketsList({
                   <span className="flex items-center gap-1.5 mt-0.5 text-[10.5px] text-muted-foreground">
                     <Timer className="size-2.5 shrink-0" />
                     <span className="gm-mono gm-tnum">{elapsed !== null ? `hace ${formatElapsed(elapsed)}` : "—"}</span>
-                    {vehicleType && (
-                      <>
-                        <span>·</span>
-                        <span>{vehicleType === "AUTO" ? "Auto" : "Camioneta"}</span>
-                      </>
-                    )}
                     {row.kind === "PLATE" && registration.casilleroNumber && (
                       <>
                         <span>·</span>
@@ -160,6 +155,7 @@ export function ActiveTicketsList({
                       </>
                     )}
                   </span>
+                  <span className="mt-1.5 flex"><VehicleTypeBadge code={vehicleType} /></span>
                   {registration.expectedBracketLabel && !overdue && (
                     <span className="block mt-0.5 text-[10px] text-muted-foreground truncate">
                       Avisó: <span className="text-foreground">{registration.expectedBracketLabel}</span>

@@ -13,6 +13,8 @@ import { ParkingReceiptDelivery } from "@/components/parking-receipt-delivery";
 import { formatImporte } from "@/components/pricing-breakdown";
 import { useTenant } from "@/components/tenant-provider";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useVehicleTypes } from '@/components/vehicle-type-options';
+import { VehicleTypeLabelsContext } from '@/components/vehicle-type-badge';
 import { DepartureHistory } from './departure-history';
 import { cn } from "@/lib/utils";
 import { TicketRegistration } from "@/types/ticket-registration.type";
@@ -83,6 +85,7 @@ export default function CardTicket({
   isAdmin: boolean;
   barcodeTicketsEnabled: boolean;
 }) {
+  const { types: vehicleTypes } = useVehicleTypes();
   const [registrations, setRegistrations] = useState<TicketRegistration[]>(initialRegistrations);
   const TURNO_BAR_ENABLED = schedule?.shiftsEnabled === true;
   const [isScanning, setIsScanning] = useState(false);
@@ -636,7 +639,7 @@ export default function CardTicket({
   );
 
   return (
-    <>
+    <VehicleTypeLabelsContext.Provider value={vehicleTypes}>
       <div ref={arribaRef} />
       {barcodeTicketsEnabled && <ScannerButton hideControls isDialogOpen={isDialogOpen} onScanningChange={setIsScanning} onTicketRegistered={() => router.refresh()} />}
 
@@ -726,6 +729,6 @@ export default function CardTicket({
         onCobrar={(id) => abrirCobro(id)}
         onRegistrada={() => router.refresh()}
       />
-    </>
+    </VehicleTypeLabelsContext.Provider>
   );
 }
