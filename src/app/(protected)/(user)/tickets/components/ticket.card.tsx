@@ -36,7 +36,7 @@ import { useResincronizar } from "@/hooks/use-resincronizar";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { isBarcodeOrigin, isOverdue, mergeServerSnapshot, minutesSinceEntry, upsertRegistration } from "@/utils/ticket-registration.utils";
 import { estadiaLargaActiva as isDayRegistrationActive, estadiaLargaVencida as isDayRegistrationOverdue } from "@/utils/estadia-larga";
-import { EncabezadoVista, estaAdentro, FichasEnElPlayon, InicioHero, MostradorDock, normalizar, TodosLosVehiculos, VehiculoFila, type FiltroVehiculos } from "./inicio";
+import { AvisoEstadiasLargas, EncabezadoVista, estaAdentro, estadiasLargas, FichasEnElPlayon, HORAS_ESTADIA_LARGA, InicioHero, MostradorDock, normalizar, TodosLosVehiculos, VehiculoFila, type FiltroVehiculos } from "./inicio";
 import { AccionesEscritorio, BuscadorRapido, TableroPlaya, TarjetaAdentro, UltimosMovimientos, type FiltroTablero } from "./escritorio";
 import {
   ArrowDownLeft,
@@ -47,6 +47,7 @@ import {
   CalendarPlus,
   ChevronRight,
   History,
+  Hourglass,
   Map,
   Receipt,
   Settings,
@@ -269,6 +270,24 @@ export default function CardTicket({
     setClosePanelTargetId(id);
     setClosePanelOpen(true);
   };
+
+  // Un aviso cuando un auto cruza las 4 horas adentro (una vez por auto; lo que ya
+  // estaba al abrir la pantalla lo muestra la franja violeta, sin repetirlo como aviso).
+  const largasAvisadasRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const largas = estadiasLargas(visibleRegistrations, now);
+    if (!largasAvisadasRef.current) { largasAvisadasRef.current = new Set(largas.map(({ r }) => r.id)); return; }
+    for (const { r } of largas) {
+      if (largasAvisadasRef.current.has(r.id)) continue;
+      largasAvisadasRef.current.add(r.id);
+      toast(`${r.licensePlateOriginal || r.lastNameCustomer || 'Un vehículo'} lleva más de ${HORAS_ESTADIA_LARGA} h en la playa`, {
+        description: '¿Sigue adentro? Si se fue, registrá la salida.',
+        icon: <Hourglass className="size-4 text-violet-300" aria-hidden />,
+        duration: 12_000,
+        action: { label: 'Cobrar', onClick: () => abrirCobro(r.id) },
+      });
+    }
+  }, [visibleRegistrations, now]);
   const abrirEntrada = () => setEntradaSignal((n) => n + 1);
   const abrirEstadia = () => setEstadiaSignal((n) => n + 1);
   const abrirAnticipo = (r: TicketRegistration) => setAdvanceTarget({
@@ -391,6 +410,8 @@ export default function CardTicket({
         onVencidas={() => irA('vehiculos', 'dia')}
         onZona={() => irA('vehiculos', 'hora')}
       />
+
+      <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} />
 
       {latestRegistration && (
         <div ref={refVisible('ticket')} className="flex min-h-12 items-center gap-2.5 px-1">
@@ -569,6 +590,7 @@ export default function CardTicket({
             filtro={filtroTablero}
             onFiltro={setFiltroTablero}
           />
+          <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} />
           <AccionesEscritorio
             onEntrada={abrirEntrada}
             onSalida={() => abrirCobro(null)}

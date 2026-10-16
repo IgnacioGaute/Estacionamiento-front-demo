@@ -112,9 +112,11 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     let vigente = true;
     setEstadias(null);
     setEstadiasConfirmadas(false);
-    void getEstadiasAbiertasTurnoAction(activeId).then(lista => { if (vigente) setEstadias(lista ?? []); });
+    // Quien cuenta la caja al final repasa todas las de la playa, no solo las suyas: autos que
+    // registró otro turno y se fueron sin registrar la salida no le aparecían a nadie.
+    void getEstadiasAbiertasTurnoAction(activeId, arqueo).then(lista => { if (vigente) setEstadias(lista ?? []); });
     return () => { vigente = false; };
-  }, [open, closing, activeId]);
+  }, [open, closing, activeId, arqueo]);
   const cobrarEstadia = onCobrarEstadia && ((id: string) => { setOpen(false); setClosing(false); onCobrarEstadia(id); });
   const updated = () => { onUpdated?.(); window.dispatchEvent(new Event('parking-shift-changed')); };
   const submitOpen = () => startTransition(async () => {
@@ -164,7 +166,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           {enlaceHistorial}
         </ActionDialogBody> : active ? closing ? <form onSubmit={e => { e.preventDefault(); submitClose(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-5 [&>*]:shrink-0">
           {arqueo && <p className="text-[13px] leading-relaxed text-muted-foreground">Sos el último operador de esta caja: contá el efectivo de todos los turnos desde su apertura.</p>}
-          {estadias && <RepasoEstadias estadias={estadias} ahora={Date.now()} confirmado={estadiasConfirmadas} onConfirmar={setEstadiasConfirmadas} onCobrar={cobrarEstadia} disabled={pending} />}
+          {estadias && <RepasoEstadias estadias={estadias} todas={arqueo} sobrante={arqueo && amountValid(counted) && closingDifference < 0 ? -closingDifference : 0} ahora={Date.now()} confirmado={estadiasConfirmadas} onConfirmar={setEstadiasConfirmadas} onCobrar={cobrarEstadia} disabled={pending} />}
           <section aria-label="Turno que cerrás" className="overflow-hidden rounded-2xl border border-gm-line bg-gm-surface-2/50">
             <div className="flex items-center gap-3 p-3.5">
               <Iniciales nombre={active.nombre} />

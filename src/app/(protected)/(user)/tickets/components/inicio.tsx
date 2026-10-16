@@ -6,7 +6,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CarFront, ChevronLeft, ChevronRight, Search, Banknote, Wallet } from 'lucide-react';
+import { CarFront, ChevronLeft, ChevronRight, Search, Banknote, Wallet, Hourglass } from 'lucide-react';
 import { formatImporte } from '@/components/pricing-breakdown';
 import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { PlateChip } from '@/components/plate-chip';
@@ -173,6 +173,92 @@ function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration
 }
 
 // ── Un vehículo ───────────────────────────────────────────────────────────────
+
+// ── Aviso de estadías largas ──────────────────────────────────────────────────
+
+// Un auto por hora que lleva más de estas horas casi siempre es uno que se fue sin registrar la
+// salida (o se quedó y hay que cobrarle más). Pasó con seis autos en un día que nadie miró el tablero.
+export const HORAS_ESTADIA_LARGA = 4;
+const SILENCIO_MS = 2 * 60 * 60 * 1000;
+const CLAVE_SILENCIO = 'aviso-estadias-largas';
+
+export function estadiasLargas(registros: TicketRegistration[], ahora: number) {
+  return registros
+    .filter(estaAdentro)
+    .map((r) => ({ r, minutos: minutesSinceEntry(r, ahora) ?? 0 }))
+    .filter((e) => e.minutos >= HORAS_ESTADIA_LARGA * 60)
+    .sort((a, b) => b.minutos - a.minutos);
+}
+
+// Violeta, como «Más de 4 h» del tablero, y con un punto que late: no es una alarma de tiempo
+// vencido (eso es naranja) sino un «fijate si sigue adentro». Pensado para el celular, donde no se
+// ve el tablero entero. «Siguen adentro» lo silencia dos horas en este dispositivo para esos autos.
+export function AvisoEstadiasLargas({ registros, ahora, onCobrar }: {
+  registros: TicketRegistration[];
+  ahora: number;
+  onCobrar: (id: string) => void;
+}) {
+  const [silenciadas, setSilenciadas] = useState<Record<string, number>>({});
+  useEffect(() => {
+    try { setSilenciadas(JSON.parse(localStorage.getItem(CLAVE_SILENCIO) ?? '{}')); } catch { /* sin almacenamiento: no se silencia */ }
+  }, []);
+  const largas = estadiasLargas(registros, ahora).filter(({ r }) => !(silenciadas[r.id] > ahora));
+  if (!largas.length) return null;
+  const silenciar = () => {
+    const hasta = Date.now() + SILENCIO_MS;
+    const vigentes = Object.fromEntries(Object.entries(silenciadas).filter(([, h]) => h > Date.now()));
+    const nuevas = { ...vigentes, ...Object.fromEntries(largas.map(({ r }) => [r.id, hasta])) };
+    setSilenciadas(nuevas);
+    try { localStorage.setItem(CLAVE_SILENCIO, JSON.stringify(nuevas)); } catch { /* queda silenciado solo en esta pantalla */ }
+  };
+  const [primera] = largas;
+  const patente = (r: TicketRegistration) => r.licensePlateOriginal || r.lastNameCustomer || 'Sin patente';
+  return (
+    <section role="status" aria-live="polite" className="rounded-[20px] border border-violet-400/45 bg-violet-500/[0.1] p-3.5">
+      <div className="flex items-start gap-3">
+        <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-violet-400/20 text-violet-200">
+          <Hourglass className="size-5" aria-hidden />
+          <span aria-hidden className="absolute -right-0.5 -top-0.5 flex size-3">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-violet-300 opacity-75 motion-reduce:animate-none" />
+            <span className="relative inline-flex size-3 rounded-full bg-violet-300" />
+          </span>
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[14px] font-bold leading-snug text-violet-100">
+            {largas.length === 1
+              ? `${patente(primera.r)} lleva ${formatEstadia(primera.minutos)} en la playa`
+              : `${largas.length} vehículos llevan más de ${HORAS_ESTADIA_LARGA} h en la playa`}
+          </p>
+          <p className="mt-0.5 text-[12.5px] leading-snug text-violet-200/85">¿Siguen adentro? Si se fueron, registrá la salida.</p>
+          {largas.length > 1 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {largas.slice(0, 4).map(({ r, minutos }) => (
+                <button key={r.id} type="button" onClick={() => onCobrar(r.id)}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-violet-400/40 bg-card px-2.5 text-[12.5px] font-semibold transition-colors hover:border-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+                  <span className="gm-mono font-bold">{patente(r)}</span>
+                  <span className="text-violet-200/80">{formatEstadia(minutos)}</span>
+                </button>
+              ))}
+              {largas.length > 4 && <span className="self-center text-[12px] text-violet-200/80">y {largas.length - 4} más</span>}
+            </div>
+          )}
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {largas.length === 1 && (
+              <button type="button" onClick={() => onCobrar(primera.r.id)}
+                className="min-h-11 rounded-xl bg-violet-400 px-4 text-[13px] font-bold text-violet-950 transition-colors hover:bg-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-200">
+                Cobrar salida
+              </button>
+            )}
+            <button type="button" onClick={silenciar}
+              className="min-h-11 rounded-xl border border-violet-400/40 px-4 text-[13px] font-semibold text-violet-100 transition-colors hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+              {largas.length === 1 ? 'Sigue adentro' : 'Siguen adentro'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 // La franja de una estadía con anticipo: verde mientras lo pagado alcanza, naranja cuando se pasó.
 // Siempre recuerda que la salida hay que registrarla igual.

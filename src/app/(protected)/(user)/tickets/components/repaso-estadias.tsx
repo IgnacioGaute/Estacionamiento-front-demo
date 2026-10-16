@@ -17,8 +17,12 @@ import { formatEstadia } from '@/utils/estadia';
 // Desde cuántas horas adentro se resalta: lo normal es que un auto por hora no pase de ahí.
 export const HORAS_PARA_REVISAR = 4;
 
-export function RepasoEstadias({ estadias, ahora, confirmado, onConfirmar, onCobrar, disabled }: {
+// `todas`: las de toda la playa (quien cierra la caja), con quién registró cada una.
+// `sobrante`: el conteo dio de más; lo más común es un auto que se fue sin registrar la salida.
+export function RepasoEstadias({ estadias, ahora, confirmado, onConfirmar, onCobrar, disabled, todas = false, sobrante = 0 }: {
   estadias: EstadiaAbiertaTurno[];
+  todas?: boolean;
+  sobrante?: number;
   ahora: number;
   confirmado: boolean;
   onConfirmar: (valor: boolean) => void;
@@ -34,30 +38,35 @@ export function RepasoEstadias({ estadias, ahora, confirmado, onConfirmar, onCob
     const entryTime = /^\d{2}:\d{2}$/.test(hora) ? `${hora}:00` : hora;
     const valida = /^\d{4}-\d{2}-\d{2}$/.test(entryDay) && /^\d{2}:\d{2}:\d{2}$/.test(entryTime);
     return { ...e, entryDay, entryTime, minutos: valida ? minutesSinceEntry({ entryDay, entryTime } as unknown as TicketRegistration, ahora) ?? 0 : 0 };
-  });
+  }).sort((a, b) => b.minutos - a.minutos);
   const largas = filas.filter((f) => f.minutos >= HORAS_PARA_REVISAR * 60).length;
   return (
     <section aria-labelledby="repaso-estadias" className="overflow-hidden rounded-2xl border border-gm-line">
       <div className="space-y-1 px-4 pt-3.5">
         <h3 id="repaso-estadias" className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Vehículos que registraste y siguen adentro · {filas.length}
+          {todas ? 'Vehículos que siguen adentro' : 'Vehículos que registraste y siguen adentro'} · {filas.length}
         </h3>
         <p className="text-[12.5px] leading-relaxed text-muted-foreground">
           Revisá que sigan en la playa.{largas ? ` ${largas === 1 ? 'Uno lleva' : `${largas} llevan`} más de ${HORAS_PARA_REVISAR} horas.` : ''} Si alguno ya se fue, registrá su salida antes de cerrar.
         </p>
+        {sobrante > 0 && (
+          <p role="alert" className="mt-2 rounded-xl border border-violet-400/40 bg-violet-400/[0.08] px-3 py-2 text-[12.5px] leading-relaxed text-violet-200">
+            <strong className="font-bold text-violet-100">Contaste {formatImporte(sobrante)} de más.</strong> Lo más común es un auto que pagó y se fue sin registrar la salida: si alguno de estos ya no está, cobralo acá y el sobrante se corrige.
+          </p>
+        )}
       </div>
       <ul className="mt-2 max-h-[260px] divide-y divide-gm-line overflow-y-auto border-t border-gm-line">
         {filas.map((f) => {
           const larga = f.minutos >= HORAS_PARA_REVISAR * 60;
           return (
-            <li key={f.id} className={cn('flex min-h-[58px] items-center gap-3 px-4 py-2', larga && 'bg-[#F0714A]/[0.07]')}>
+            <li key={f.id} className={cn('flex min-h-[58px] items-center gap-3 px-4 py-2', larga && 'bg-violet-400/[0.08]')}>
               <PlateChip plate={f.patente || '—'} size="sm" />
               <span className="min-w-0 flex-1">
-                <span className={cn('block text-[13px] font-semibold', larga ? 'text-[#F0714A]' : 'text-foreground')}>
+                <span className={cn('block text-[13px] font-semibold', larga ? 'text-violet-300' : 'text-foreground')}>
                   {formatEstadia(f.minutos)} adentro
                 </span>
                 <span className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-                  Entró {f.entryTime.slice(0, 5)}
+                  Entró {f.entryTime.slice(0, 5)}{todas && f.operador ? ` · ${f.operador}` : ''}
                   {f.anticipo > 0 && <><Wallet className="size-3 shrink-0 text-emerald-300" aria-hidden /><span className="text-emerald-300">anticipo {formatImporte(f.anticipo)}</span></>}
                 </span>
               </span>

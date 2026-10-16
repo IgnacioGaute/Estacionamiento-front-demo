@@ -113,9 +113,10 @@ export async function addCashMovement(id: string, payload: { tipo: 'APORTE' | 'R
 
 // Las estadías que el responsable del turno registró desde que lo abrió y siguen abiertas: se
 // repasan antes de cerrarlo. null si no se pudieron consultar (el cierre no se traba por eso).
-export const getEstadiasAbiertasTurno = async (id: string, authToken?: string): Promise<EstadiaAbiertaTurno[] | null> => {
+// `todas`: las de toda la playa, para quien cierra la caja al final.
+export const getEstadiasAbiertasTurno = async (id: string, todas = false, authToken?: string): Promise<EstadiaAbiertaTurno[] | null> => {
   try {
-    const response = await fetch(`${BASE_URL}/turnos/${id}/estadias-abiertas`, { headers: await getAuthHeaders(authToken), cache: 'no-store' });
+    const response = await fetch(`${BASE_URL}/turnos/${id}/estadias-abiertas${todas ? "?todas=true" : ""}`, { headers: await getAuthHeaders(authToken), cache: 'no-store' });
     if (!response.ok) return null;
     return (await response.json()) as EstadiaAbiertaTurno[];
   } catch {
