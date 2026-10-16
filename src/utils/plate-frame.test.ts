@@ -1,4 +1,4 @@
-import { diferencia, nitidez, zonaDeLaGuia } from './plate-frame';
+import { diferencia, nitidez, zonaDeLaGuia, zonaVisible } from './plate-frame';
 import { looksLikeKnownPlateFormat } from './plate.utils';
 
 // Franjas verticales de 4 px: un "texto" de alto contraste, y la misma imagen corrida 2 px.
@@ -34,6 +34,20 @@ describe('medidas del escáner de patentes', () => {
     const zona = zonaDeLaGuia(1920, 1080, 3 / 4, 0.78);
     expect(zona.ancho).toBeCloseTo(810 * 0.78);
     expect(zona.x + zona.ancho / 2).toBeCloseTo(960);
+  });
+
+  it('el cuadro que se sube es lo que se ve en el visor, con la guía en el mismo lugar', () => {
+    // Video vertical: se recortan arriba y abajo, sin reducir el ancho.
+    expect(zonaVisible(1080, 1920, 3 / 4)).toEqual({ x: 0, y: 240, ancho: 1080, alto: 1440 });
+    // Video horizontal: se recortan los costados.
+    expect(zonaVisible(1920, 1080, 3 / 4)).toEqual({ x: 555, y: 0, ancho: 810, alto: 1080 });
+    // La guía dentro del recorte es la misma que en el video entero: el servicio la ubica igual.
+    const recorte = zonaVisible(1080, 1920, 3 / 4);
+    const enRecorte = zonaDeLaGuia(recorte.ancho, recorte.alto, 3 / 4, 0.78);
+    const enVideo = zonaDeLaGuia(1080, 1920, 3 / 4, 0.78);
+    expect(enRecorte.ancho).toBeCloseTo(enVideo.ancho);
+    expect(enRecorte.x + recorte.x).toBeCloseTo(enVideo.x);
+    expect(enRecorte.y + recorte.y).toBeCloseTo(enVideo.y);
   });
 });
 

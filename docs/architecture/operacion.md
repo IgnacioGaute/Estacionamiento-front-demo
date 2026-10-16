@@ -11,7 +11,10 @@ Ways to open an hourly stay:
   `onTicketRegistered` callback.
 - **Plate recognition** — `recognizePlateFromImage` (`src/services/plate-recognition.service.ts`) posts a photo as
   `multipart/form-data`; it deletes the `Content-Type` that `getAuthHeaders` sets, otherwise the multipart
-  boundary is lost. Result feeds `create-registration-by-plate.action.ts`.
+  boundary is lost. Result feeds `create-registration-by-plate.action.ts`. The live scanner
+  (`plate-live-scanner.tsx` + `src/utils/plate-scan.ts`) uploads only what the 3:4 viewer shows (`zonaVisible`),
+  without downscaling it; the backend's ALPR service locates the guide with the same geometry. When the camera
+  exposes them it asks for continuous focus and offers a torch toggle for low light.
 - **Day/week/month** — `TicketRegistrationForDay`, managed in `(user)/tickets/tickets-days-or-weeks/`.
 
 Physical cards and plates share `CloseTicketPanel` (`(user)/tickets/components/`). Closing submits

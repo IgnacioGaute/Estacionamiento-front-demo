@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Camera, RotateCcw, ScanLine } from 'lucide-react';
+import { Camera, Flashlight, FlashlightOff, RotateCcw, ScanLine } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,8 +20,16 @@ type Estado =
   | { tipo: 'sin-resultado' }
   | { tipo: 'error'; mensaje: string };
 
+// Lo que Chrome en Android expone de la cámara y TypeScript todavía no tipa.
+type CapacidadesCamara = MediaTrackCapabilities & { torch?: boolean; focusMode?: string[] };
+type AjusteCamara = MediaTrackConstraintSet & { torch?: boolean; focusMode?: string };
+
 function detener(stream: MediaStream | null) {
   stream?.getTracks().forEach((track) => track.stop());
+}
+
+function ajustar(pista: MediaStreamTrack, ajuste: AjusteCamara) {
+  return pista.applyConstraints({ advanced: [ajuste] });
 }
 
 function mensajeDeCamara(error: unknown): string {
@@ -36,7 +44,7 @@ function mensajeDeCamara(error: unknown): string {
   return 'No se pudo abrir la cámara.';
 }
 
-function textoDe(estado: Estado): string {
+function textoDe(estado: Estado, sugerirLinterna: boolean): string {
   switch (estado.tipo) {
     case 'iniciando':
       return 'Abriendo la cámara…';
@@ -45,7 +53,9 @@ function textoDe(estado: Estado): string {
     case 'leyendo':
       return 'Leyendo la patente…';
     case 'mover':
-      return 'No se pudo leer. Acercate un poco o cambiá el ángulo.';
+      return sugerirLinterna
+        ? 'No se pudo leer. Acercate un poco, cambiá el ángulo o prendé la linterna si hay poca luz.'
+        : 'No se pudo leer. Acercate un poco o cambiá el ángulo.';
     case 'sin-resultado':
       return 'No pude leer la patente. Probá de nuevo o sacá una foto.';
     case 'error':
@@ -70,6 +80,8 @@ export function PlateLiveScanner({
   const alReconocer = useRef(onRecognized);
   const [estado, setEstado] = useState<Estado>({ tipo: 'iniciando' });
   const [ronda, setRonda] = useState(0);
+  // null: la cámara no tiene linterna o el navegador no deja usarla.
+  const [linterna, setLinterna] = useState<boolean | null>(null);
 
   useEffect(() => {
     alReconocer.current = onRecognized;
@@ -81,6 +93,7 @@ export function PlateLiveScanner({
     const apagar = () => {
       detener(streamRef.current);
       streamRef.current = null;
+      setLinterna(null);
     };
 
     (async () => {
@@ -101,6 +114,16 @@ export function PlateLiveScanner({
       }
       if (cancelado) return detener(stream);
       streamRef.current = stream;
+
+      // Con cámaras mediocres lo que más falla es la luz y el foco. Hay Android que abren la
+      // cámara con el foco fijo: el continuo acompaña al operador mientras se acerca. La linterna
+      // se ofrece solo si la cámara la tiene; se apaga sola al cerrar la cámara.
+      const pista = stream.getVideoTracks()[0];
+      const capacidades = (pista?.getCapabilities?.() ?? {}) as CapacidadesCamara;
+      if (capacidades.focusMode?.includes('continuous')) {
+        ajustar(pista, { focusMode: 'continuous' }).catch(() => undefined);
+      }
+      setLinterna(capacidades.torch ? false : null);
 
       const video = videoRef.current;
       if (!video) return apagar();
@@ -138,7 +161,17 @@ export function PlateLiveScanner({
     // La cámara se suelta antes de abrir la app de fotos: en Android la toma un solo proceso.
     detener(streamRef.current);
     streamRef.current = null;
+    setLinterna(null);
     onTakePhoto();
+  };
+
+  const alternarLinterna = () => {
+    const pista = streamRef.current?.getVideoTracks()[0];
+    if (!pista || linterna === null) return;
+    const encender = !linterna;
+    ajustar(pista, { torch: encender })
+      .then(() => setLinterna(encender))
+      .catch(() => setLinterna(null));
   };
 
   const terminado = estado.tipo === 'sin-resultado' || estado.tipo === 'error';
@@ -164,6 +197,20 @@ export function PlateLiveScanner({
             )}
             style={{ width: `${ANCHO_GUIA * 100}%` }}
           />
+          {linterna !== null && (
+            <button
+              type="button"
+              onClick={alternarLinterna}
+              aria-label="Linterna"
+              aria-pressed={linterna}
+              className={cn(
+                'absolute right-2 top-2 grid size-11 place-items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
+                linterna ? 'bg-gm-yellow text-gm-ink' : 'bg-black/55 text-white',
+              )}
+            >
+              {linterna ? <Flashlight className="size-5" aria-hidden /> : <FlashlightOff className="size-5" aria-hidden />}
+            </button>
+          )}
         </div>
 
         <p
@@ -174,7 +221,7 @@ export function PlateLiveScanner({
           )}
         >
           {estado.tipo === 'leyendo' && <ScanLine className="mt-0.5 size-4 shrink-0 animate-pulse" />}
-          {textoDe(estado)}
+          {textoDe(estado, linterna === false)}
         </p>
 
         <div className="grid grid-cols-2 gap-2">
