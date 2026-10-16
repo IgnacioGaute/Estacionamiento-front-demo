@@ -1,6 +1,6 @@
 'use client';
 import { ReactNode, useRef, useState } from 'react';
-import { Check, Plus } from 'lucide-react';
+import { Check, Pencil, Plus } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
@@ -11,20 +11,28 @@ type Shortcut = { label: string; amount: number; disabled?: boolean };
 // Un importe de caja: la cifra grande con separador de miles y, pegados abajo, los atajos («Conté
 // todo», «No hay efectivo»…) como una bandeja del mismo recuadro. El input sigue siendo numérico;
 // mientras no tiene foco se muestra la cifra formateada encima, y al escribir aparecen los dígitos.
-export function CashAmountField({ id, label, value, onChange, disabled, max, placeholder, shortcuts = [], increments = false, description, status }: {
+export function CashAmountField({ id, label, value, onChange, disabled, max, placeholder, shortcuts = [], increments = false, description, status, compact }: {
   id: string; label: string; value: string; onChange: (value: string) => void;
   disabled?: boolean; max?: number; placeholder?: string; shortcuts?: Shortcut[]; increments?: boolean; description?: ReactNode;
   // Estado del importe (p. ej. «El efectivo coincide»), a la derecha de la cifra.
   status?: ReactNode;
+  compact?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const numero = value !== '' && Number.isInteger(Number(value)) && Number(value) >= 0 ? Number(value) : null;
   const formateado = !focused && numero !== null;
   return <div className="space-y-2.5">
-    <Label htmlFor={id} className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</Label>
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+      <Label htmlFor={id} className="min-w-0 flex-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</Label>
+      {!!shortcuts.length && <button type="button" disabled={disabled} aria-label={'Editar importe: ' + label} aria-controls={id}
+        onClick={() => inputRef.current?.focus()}
+        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-gm-line-strong px-3 text-xs font-semibold text-gm-yellow transition-colors hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50">
+        <Pencil className="size-3.5" aria-hidden />Editar importe
+      </button>}
+    </div>
     <div className={cn('overflow-hidden rounded-2xl border bg-gm-surface-2/60 transition-[border-color,box-shadow]', focused ? 'border-gm-yellow/60 shadow-[0_0_0_4px_hsl(var(--gm-yellow)/0.10)]' : 'border-gm-line-strong', disabled && 'opacity-60')}>
-      <div onClick={() => inputRef.current?.focus()} className="flex cursor-text items-baseline gap-2 px-4 pb-3 pt-3.5">
+      <div onClick={() => inputRef.current?.focus()} className={cn('flex cursor-text items-baseline gap-2', compact ? 'px-3 py-1.5' : 'px-4 pb-3 pt-3.5')}>
         <span aria-hidden className="font-display text-2xl font-bold text-muted-foreground">$</span>
         <span className="relative min-w-0 flex-1">
           <input ref={inputRef} id={id} type="number" inputMode="numeric" min="0" step="1" max={max} required value={value} onChange={e => onChange(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} disabled={disabled} placeholder={placeholder ?? 'Otro importe'} aria-describedby={description ? id + '-help' : undefined}

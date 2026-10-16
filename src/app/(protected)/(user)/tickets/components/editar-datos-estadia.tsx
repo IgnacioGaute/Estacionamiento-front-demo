@@ -52,16 +52,21 @@ export function EditarDatosEstadia({ summary, onCorregido }: { summary: CloseSum
     }
   };
 
+  // Cerrado: una pastilla chica, como «¿Entró antes?», que no compite con el importe. El área
+  // táctil sigue siendo de 44 px.
   if (!abierto) {
     return (
-      <button type="button" onClick={abrir}
-        className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg px-1 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
-        <Pencil className="size-3.5" aria-hidden />{tarjeta ? 'Editar tipo de vehículo' : 'Editar patente o tipo'}
+      <button type="button" onClick={abrir} aria-label={tarjeta ? 'Corregir tipo de vehículo' : 'Corregir patente o tipo'}
+        className="group inline-flex h-11 shrink-0 items-center rounded-full focus-visible:outline-none">
+        <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-gm-yellow/30 px-3 text-[12.5px] font-semibold text-gm-yellow transition-colors group-hover:bg-gm-yellow/10 group-focus-visible:ring-2 group-focus-visible:ring-gm-yellow">
+          <Pencil className="size-3.5" aria-hidden />Corregir
+        </span>
       </button>
     );
   }
+  // data-abierto: la fila del resumen esconde el tipo y los otros botones mientras se corrige.
   return (
-    <form onSubmit={guardar} className="mt-3 space-y-3 rounded-2xl border border-gm-line-strong bg-card p-3">
+    <form data-abierto onSubmit={guardar} className="w-full min-w-0 space-y-3 rounded-2xl border border-gm-line-strong bg-card p-3">
       {!tarjeta && (
         <div className="space-y-1.5">
           <label htmlFor="editar-patente" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Patente</label>
@@ -71,7 +76,7 @@ export function EditarDatosEstadia({ summary, onCorregido }: { summary: CloseSum
       )}
       <div className="space-y-1.5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Tipo de vehículo</p>
-        <VehicleTypeButtons value={tipo} onChange={setTipo} disabled={enviando} onValidityChange={setTipoValido} />
+        <VehicleTypeButtons compact value={tipo} onChange={setTipo} disabled={enviando} onValidityChange={setTipoValido} />
         {cambioTipo && <p className="text-xs text-muted-foreground">Se cobra con la tarifa de este tipo, desde que entró.</p>}
       </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

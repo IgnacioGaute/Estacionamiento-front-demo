@@ -40,6 +40,23 @@ async function openDiscount() {
   expect(screen.queryByText(/Cortesía/)).not.toBeInTheDocument();
   fireEvent.change(await screen.findByLabelText('Motivo del descuento'), { target: { value: 'Cliente frecuente' } });
 }
+test('el cálculo se despliega sin ocultar los medios de pago', async () => {
+  const datos = summary();
+  datos.previewBracket.breakdown = [];
+  jest.mocked(getCloseSummaryAction).mockResolvedValue(datos);
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
+  const detalle = await screen.findByRole('button', { name: /Ver cálculo/ });
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Efectivo Contalo/ })).toBeEnabled());
+  expect(detalle).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.queryByText(/Se usa el precio de la hora/)).not.toBeInTheDocument();
+  if (process.env.TURNOS_VISUAL_QA) writeFileSync('../estacionamiento-back-demo/.tmp/cobro-mobile-inicial.html', document.body.innerHTML);
+  fireEvent.click(detalle);
+  expect(detalle).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByText(/Se usa el precio de la hora/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Efectivo Contalo/ })).toBeVisible();
+  fireEvent.click(detalle);
+  expect(screen.queryByText(/Se usa el precio de la hora/)).not.toBeInTheDocument();
+});
 test('descuento parcial: exige un importe válido y cobra el resto con el medio elegido', async () => {
   jest.mocked(discountRegistrationAction).mockResolvedValue({ summary: summary(700) });
   await openDiscount();
@@ -100,6 +117,7 @@ test('efectivo y transferencia: se escribe el efectivo, el resto va por transfer
   expect(screen.getByRole('alert')).toHaveTextContent('El efectivo cubre todo');
   expect(cobrar).toBeDisabled();
   fireEvent.change(efectivo, { target: { value: '400' } });
+  if (process.env.TURNOS_VISUAL_QA) writeFileSync('../estacionamiento-back-demo/.tmp/cobro-mobile-mixto.html', document.body.innerHTML);
   expect(screen.getByText('El resto').parentElement).toHaveTextContent(/600$/);
   // Sin alias habilitado, el resto se elige entre transferencia (por defecto) y QR.
   expect(screen.getByRole('button', { name: 'Transferencia' })).toHaveAttribute('aria-pressed', 'true');

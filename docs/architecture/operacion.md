@@ -19,10 +19,21 @@ Physical cards and plates share `CloseTicketPanel` (`(user)/tickets/components/`
 charging. Overpayment requires a refund method. Advance amounts are accumulated totals; a decrease requires a
 reason. `entryMode` preserves the origin after the card is unlinked.
 
+Cobrar salida muestra patente, tipo de vehículo y saldo en un resumen compacto. En la fila del tipo
+van «Corregir» (pastilla) y Eliminar (ícono de papelera), ambos con 44 px táctiles; el que se abre
+lleva `data-abierto` y ocupa la fila, y el resto se esconde por CSS (`:has`). Eliminar mantiene la
+restricción de administrador, sin cobros, sin medio de pago elegido y con confirmación.
+Ver cálculo despliega las tarifas junto al resumen, tanto en móvil como en escritorio, sin ocultar
+los medios de pago. El pie de confirmación permanece visible y el cuerpo se desplaza.
+
 Turnos y cajas: la UI usa el contexto de caja del backend y soporta cajas físicas y turnos
 compartidos mediante CashSession. Revisar src/types/turno.type.ts y docs/caja-turnos.md del backend
 antes de modificar aperturas/cierres; los turnos legacy conservan su circuito histórico.
 Cash is not revenue: BoxList.totalPrice es efectivo físico neto, no ingresos ni fondos de traspaso.
+
+Las tarjetas de vehículos por hora y estadías largas muestran el tipo con ícono y nombre. `CardTicket` comparte el catálogo de tipos mediante `VehicleTypeLabelsContext`; las etiquetas incluyen tipos desactivados y usan el código como respaldo si el catálogo no está disponible. El color de estadía y los avisos conservan su significado.
+
+Configuración → Operación → Turnos → Sueldo permite activar el retiro por usuario y definir su importe por jornada. La lista de usuarios habilitados proviene de `/turnos/configuracion`; los importes se guardan en `sueldosPorUsuario` de la configuración de la playa. Sin selección no hay retiro. Los cambios rigen para nuevas jornadas y los turnos abiertos conservan su importe previsto.
 
 The caja planilla is computed by `src/utils/ticket-box-rows.ts` (`ticketBoxRows`) from daily `ticketMovements`,
 with a legacy fallback for old records. Courtesy is zero income; negative adjustments are outflows. It is the one

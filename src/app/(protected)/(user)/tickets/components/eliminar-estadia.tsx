@@ -1,7 +1,7 @@
 'use client';
 
 // Eliminar una estadía que se cargó por error (patente equivocada, doble carga). Es del
-// administrador y va discreta, al costado del cobro: un enlace apagado que pide confirmación en el
+// administrador: un ícono al lado de «Corregir» que pide confirmación en el
 // lugar. Solo aparece sin cobros ni anticipos; el backend lo vuelve a validar (y rechaza si hay un
 // QR o una transferencia esperando el pago) y lo deja en la Actividad.
 //
@@ -40,31 +40,37 @@ export function EliminarEstadia({ summary, onEliminada }: { summary: CloseSummar
     }
   };
 
+  // Solo el ícono: es la acción menos frecuente y no tiene que pesar como el cobro. El nombre
+  // («Eliminar estadía») lo lleva el aria-label y el title; el área táctil es de 44 px.
   if (!confirmando)
     return (
       <button
         type="button"
+        aria-label="Eliminar estadía"
+        title="Eliminar estadía"
         onClick={() => setConfirmando(true)}
-        className="inline-flex min-h-9 items-center gap-1.5 self-start rounded-lg px-1 text-[12.5px] text-muted-foreground/80 transition-colors hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/60"
+        className="group inline-flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-none"
       >
-        <Trash2 className="size-3.5" aria-hidden />
-        ¿Se cargó por error? Eliminar estadía
+        <span className="grid size-8 place-items-center rounded-full border border-destructive/30 text-destructive transition-colors group-hover:bg-destructive/10 group-focus-visible:ring-2 group-focus-visible:ring-destructive/60">
+          <Trash2 className="size-3.5" aria-hidden />
+        </span>
       </button>
     );
 
+  // data-abierto: ocupa la fila del resumen; el tipo y «Corregir» se esconden hasta volver.
   return (
-    <div role="alertdialog" aria-label="Eliminar estadía" className="space-y-2.5 rounded-2xl border border-destructive/35 bg-destructive/[0.06] p-3.5">
+    <div data-abierto role="alertdialog" aria-label="Eliminar estadía" className="w-full space-y-2.5 rounded-2xl border border-destructive/35 bg-destructive/[0.06] p-3.5">
       <p className="text-[13.5px] leading-snug">
         <span className="font-semibold">¿Eliminar la estadía de <span className="gm-mono">{quien}</span>?</span>{' '}
         <span className="text-muted-foreground">Usalo solo si se cargó por error: la entrada desaparece y no se cobra nada.</span>
       </p>
       {error && <p role="alert" className="text-[12.5px] text-destructive">{error}</p>}
-      <div className="flex justify-end gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           disabled={enviando}
           onClick={() => { setConfirmando(false); setError(''); }}
-          className="h-10 rounded-xl px-3.5 text-[13.5px] font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          className="h-11 rounded-xl border border-gm-line-strong text-[13.5px] font-semibold transition-colors hover:bg-gm-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50"
         >
           No, volver
         </button>
@@ -72,7 +78,7 @@ export function EliminarEstadia({ summary, onEliminada }: { summary: CloseSummar
           type="button"
           disabled={enviando}
           onClick={() => void eliminar()}
-          className="h-10 rounded-xl bg-destructive px-4 text-[13.5px] font-bold text-destructive-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+          className="h-11 rounded-xl bg-destructive text-[13.5px] font-bold text-destructive-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
         >
           {enviando ? 'Eliminando…' : 'Sí, eliminar'}
         </button>

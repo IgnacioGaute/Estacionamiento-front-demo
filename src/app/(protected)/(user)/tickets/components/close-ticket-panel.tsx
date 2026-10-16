@@ -6,6 +6,7 @@ import { DataLoading } from '@/components/ui/data-loading';
 import { PricingBreakdown, formatImporte } from '@/components/pricing-breakdown';
 import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 import { PlateChip } from '@/components/plate-chip';
+import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import {
@@ -102,10 +103,12 @@ function ResumenEstadia({
   onVerCalculo,
   calculoAbierto,
   onCorregido,
+  onEliminada,
 }: {
   summary: CloseSummary;
   // Solo cuando se puede corregir la entrada (no mientras se espera un QR o una transferencia).
   onCorregido?: (summary: CloseSummary) => void;
+  onEliminada?: () => void;
   compacto: boolean;
   // Solo en celulares bajos: con el medio ya elegido el importe está en el botón de abajo, y la
   // línea deja lugar para el vuelto.
@@ -122,10 +125,11 @@ function ResumenEstadia({
   return (
     <>
       {(compacto || compactoEnBajas) && (
-        <div className={cn('items-center gap-3 rounded-2xl border border-border bg-gm-surface-2 py-2.5 pl-2.5 pr-3.5', compacto ? 'flex md:hidden' : 'hidden short:flex md:short:hidden')}>
+        <div className={cn('flex-wrap items-center gap-3 rounded-2xl border border-border bg-gm-surface-2 py-2.5 pl-2.5 pr-3.5', compacto ? 'flex md:hidden' : 'hidden short:flex md:short:hidden')}>
           <Identidad r={r} />
           <span className="gm-mono min-w-0 flex-1 truncate text-[13.5px] text-muted-foreground">{formatElapsed(summary.elapsedMinutes)}</span>
           <span className="gm-mono text-[19px] font-bold">{formatImporte(importe)}</span>
+          {summary.previewBracket.usedFallback && <p className="w-full text-xs text-gm-orange">El tiempo supera los precios cargados. Revisá el importe antes de cobrar.</p>}
         </div>
       )}
       <div className={cn('rounded-[18px] border border-border bg-gm-surface-2 p-3.5 short:p-3', compacto ? 'hidden md:block' : compactoEnBajas && 'short:hidden md:short:block')}>
@@ -137,20 +141,27 @@ function ResumenEstadia({
           </div>
         </div>
         {onCorregido && <CorregirEntrada summary={summary} onCorregido={onCorregido} />}
-        {onCorregido && <EditarDatosEstadia key={summary.registration.id} summary={summary} onCorregido={onCorregido} />}
+        {/* Una sola fila: el tipo a la izquierda y «Corregir» y eliminar a la derecha. El que se abre
+            (formulario o confirmación) se marca con data-abierto y ocupa la fila: el resto se esconde
+            por CSS, sin estado compartido que pueda quedar desfasado si uno se desmonta. */}
+        <div className="mt-2 flex items-center justify-end gap-1 [&:has(>[data-abierto])>:not([data-abierto])]:hidden">
+          <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} className="mr-auto self-center" />
+          {onCorregido && <EditarDatosEstadia key={summary.registration.id} summary={summary} onCorregido={onCorregido} />}
+          {onEliminada && <EliminarEstadia summary={summary} onEliminada={onEliminada} />}
+        </div>
         <div className="my-3 h-px bg-border short:my-2.5" />
         {/* Con importes muy largos el botón baja a otra línea en vez de pisar el número. */}
         <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
           <div className="min-w-0">
             <p className={etiqueta}>{saldo > 0 ? 'Falta cobrar' : 'Total de la estadía'}</p>
-            <p className="gm-mono mt-0.5 text-[38px] font-bold leading-none tracking-tight short:text-[32px]">{formatImporte(importe)}</p>
+            <p className="gm-mono mt-1 text-[30px] font-bold leading-none tracking-tight">{formatImporte(importe)}</p>
           </div>
           {summary.previewBracket.breakdown && (
             <button
               type="button"
               onClick={onVerCalculo}
               aria-expanded={calculoAbierto}
-              className="-mb-2 -mr-1 ml-auto inline-flex min-h-11 shrink-0 items-center gap-1 px-1 text-[13.5px] font-semibold text-gm-yellow md:hidden"
+              className="-mb-2 -mr-1 ml-auto inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-1 text-[13px] font-semibold text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow"
             >
               {calculoAbierto ? 'Ocultar' : 'Ver cálculo'}
               <ChevronDown className={cn('size-4 transition-transform', calculoAbierto && 'rotate-180')} aria-hidden />
@@ -206,7 +217,7 @@ export function CloseTicketPanel({
   const [discountAmount, setDiscountAmount] = useState('');
   // PREV: cobrar la tarifa anterior (pagó tarde y la estadía pasó de escalón).
   const [discountMode, setDiscountMode] = useState<'AMOUNT' | 'ALL' | 'PREV'>('AMOUNT');
-  // En el celular el cálculo reemplaza a los medios de pago en vez de alargar el diálogo.
+  // El detalle se despliega junto al resumen sin ocultar los medios de pago.
   const [verCalculo, setVerCalculo] = useState(false);
   // Solo para calcular el vuelto en pantalla: no se manda al backend.
   const [pagaCon, setPagaCon] = useState<number | 'OTRO' | null>(null);
@@ -677,20 +688,13 @@ export function CloseTicketPanel({
                   calculoAbierto={verCalculo}
                   onVerCalculo={() => setVerCalculo((v) => !v)}
                   onCorregido={enEspera || pagoConSalida ? undefined : setSummary}
+                  onEliminada={!enEspera && !pagoConSalida && !paymentMethod && !showDiscount ? () => {
+                    toast.success('Estadía eliminada');
+                    onOpenChange(false);
+                    onSuccess?.();
+                  } : undefined}
                 />
-                {/* En computadora hay lugar: el cálculo queda siempre a la vista. */}
-                <div className="hidden md:block"><Calculo summary={summary} /></div>
-                {/* Al costado y apagado: solo el administrador, sin cobros, y no mientras cobra. */}
-                {!enEspera && !pagoConSalida && !paymentMethod && !showDiscount && (
-                  <EliminarEstadia
-                    summary={summary}
-                    onEliminada={() => {
-                      toast.success('Estadía eliminada');
-                      onOpenChange(false);
-                      onSuccess?.();
-                    }}
-                  />
-                )}
+                {verCalculo && <Calculo summary={summary} />}
               </div>
 
               <div className="flex min-w-0 flex-col gap-4 short:gap-3">
@@ -723,9 +727,7 @@ export function CloseTicketPanel({
                       />
                     )}
 
-                    {verCalculo ? (
-                      <div className="md:hidden"><Calculo summary={summary} /></div>
-                    ) : mostrarMedios && showDiscount ? (
+                    {mostrarMedios && showDiscount ? (
                       <div className="space-y-3 rounded-2xl border border-border bg-gm-surface-2/50 p-3.5">
                         <p className="flex items-center gap-2 text-sm font-semibold"><BadgePercent className="size-[18px] text-gm-yellow" aria-hidden />Descuento</p>
                         <div className={cn('grid gap-2', tarifaAnterior ? 'grid-cols-3' : 'grid-cols-2')}>
@@ -740,18 +742,18 @@ export function CloseTicketPanel({
                             </div>
                             <strong className="gm-mono shrink-0 text-lg">{formatImporte(tarifaAnterior.precio)}</strong>
                           </div>
-                        ) : discountMode === 'AMOUNT' ? <CashAmountField id="discount-amount" label="Importe del descuento" value={discountAmount} onChange={setDiscountAmount} disabled={isPending} max={saldo} /> : <p className="text-sm text-muted-foreground">Se descuentan {formatImporte(saldo)} de saldo pendiente.</p>}
+                        ) : discountMode === 'AMOUNT' ? <CashAmountField compact id="discount-amount" label="Importe del descuento" value={discountAmount} onChange={setDiscountAmount} disabled={isPending} max={saldo} /> : <p className="text-sm text-muted-foreground">Se descuentan {formatImporte(saldo)} de saldo pendiente.</p>}
                         <label htmlFor="discount-reason" className="block text-xs font-semibold">Motivo del descuento</label>
                         <input id="discount-reason" value={discountReason} onChange={e => setDiscountReason(e.target.value)} disabled={isPending} maxLength={255} placeholder="Ej.: beneficio para cliente frecuente" className="h-12 w-full rounded-xl border border-gm-line-strong bg-gm-surface-2 px-3 text-base outline-none focus:border-gm-yellow" />
                         {discount > 0 && discount <= saldo && <p className="text-sm font-semibold">Quedan por cobrar: {formatImporte(saldo - discount)}</p>}
-                        <p className="text-xs text-muted-foreground">El descuento queda registrado con tu nombre. Después confirmás el cobro o la salida.</p>
+                        <p className="text-xs text-muted-foreground">Después confirmás el cobro o la salida.</p>
                         <ActionDialogSecondaryButton tone="ghost" className="sm:w-full" disabled={isPending} onClick={() => { setShowDiscount(false); setDiscountReason(''); setDiscountAmount(''); }}>Volver a cobrar</ActionDialogSecondaryButton>
                       </div>
                     ) : mostrarMedios ? (
                       <>
                         <fieldset className="min-w-0 space-y-2">
                           <legend className="sr-only">Medio de pago</legend>
-                          <div className="flex items-center gap-3">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span className={cn(etiqueta, 'mr-auto')} aria-hidden>¿Cómo paga?</span>
                             {onAdvance && (
                               <button
@@ -774,12 +776,12 @@ export function CloseTicketPanel({
                               Descuento
                             </button>
                           </div>
-                          <PaymentMethodChoices hibrido value={paymentMethod} onChange={setPaymentMethod} disabled={isPending} aliasDisponible={!!alias?.disponible} />
+                          <PaymentMethodChoices compact hibrido value={paymentMethod} onChange={setPaymentMethod} disabled={isPending} aliasDisponible={!!alias?.disponible} />
                         </fieldset>
 
                         {paymentMethod === 'AMBOS' ? (
                           <div className="space-y-2.5 rounded-2xl border border-border bg-gm-surface-2/50 p-3 short:space-y-2">
-                            <CashAmountField id="efectivo-hibrido" label="En efectivo" value={efectivoHibrido} onChange={setEfectivoHibrido} disabled={isPending} max={saldo} />
+                            <CashAmountField compact id="efectivo-hibrido" label="En efectivo" value={efectivoHibrido} onChange={setEfectivoHibrido} disabled={isPending} max={saldo} />
                             <div className="space-y-2 border-t border-dashed border-gm-line-strong pt-2.5">
                               <p className="flex items-center justify-between gap-2">
                                 <span className="text-[13.5px] font-semibold">El resto</span>

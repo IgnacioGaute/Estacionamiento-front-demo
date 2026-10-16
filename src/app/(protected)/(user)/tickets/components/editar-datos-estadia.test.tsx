@@ -18,7 +18,7 @@ test('cambiar el tipo devuelve el cobro con la tarifa nueva', async () => {
   jest.mocked(corregirDatosEstadiaAction).mockResolvedValue({ summary: summary('CAMIONETA', 2500) });
   const onCorregido = jest.fn();
   render(<EditarDatosEstadia summary={summary()} onCorregido={onCorregido} />);
-  fireEvent.click(screen.getByRole('button', { name: /Editar patente o tipo/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Corregir patente o tipo/}));
   fireEvent.click(await screen.findByRole('radio', { name: 'Camioneta' }));
   fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
   await waitFor(() => expect(corregirDatosEstadiaAction).toHaveBeenCalledWith('reg', { vehicleType: 'CAMIONETA' }));
@@ -28,7 +28,7 @@ test('cambiar el tipo devuelve el cobro con la tarifa nueva', async () => {
 test('corregir la patente manda solo la patente y muestra el error si ya está adentro', async () => {
   jest.mocked(corregirDatosEstadiaAction).mockResolvedValue({ code: 'DUPLICATE_ACTIVE_PLATE', error: 'Esa patente ya está adentro en otra estadía.' });
   render(<EditarDatosEstadia summary={summary()} onCorregido={jest.fn()} />);
-  fireEvent.click(screen.getByRole('button', { name: /Editar patente o tipo/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Corregir patente o tipo/}));
   fireEvent.change(screen.getByLabelText('Patente'), { target: { value: 'ab128cd' } });
   fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
   await waitFor(() => expect(corregirDatosEstadiaAction).toHaveBeenCalledWith('reg', { licensePlate: 'AB128CD' }));
@@ -37,7 +37,7 @@ test('corregir la patente manda solo la patente y muestra el error si ya está a
 
 test('sin cambios no se puede guardar', async () => {
   render(<EditarDatosEstadia summary={summary()} onCorregido={jest.fn()} />);
-  fireEvent.click(screen.getByRole('button', { name: /Editar patente o tipo/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Corregir patente o tipo/}));
   await screen.findByRole('radio', { name: 'Auto' });
   expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
 });

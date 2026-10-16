@@ -38,7 +38,10 @@ export const VehicleTypeButtons = forwardRef<HTMLDivElement, {
   onValidityChange?: (valid: boolean) => void;
   // El nombre del elegido, para repetirlo en el botón de confirmar («AB123CD · Auto»).
   onSelectedNameChange?: (name: string | null) => void;
-}>(({ value, onChange, disabled, onValidityChange, onSelectedNameChange, ...props }, ref) => {
+  // Para lugares angostos, como la tarjeta de Cobrar salida: siempre el ícono arriba y de a dos por
+  // fila. Al costado, con el tilde, «Camioneta» no entraba y se partía letra por letra.
+  compact?: boolean;
+}>(({ value, onChange, disabled, onValidityChange, onSelectedNameChange, compact, ...props }, ref) => {
   const { types, error, loading } = useVehicleTypes();
   const active = types.filter(type => type.enabled);
   const valid = !loading && !error && active.some(type => type.code === value);
@@ -47,13 +50,13 @@ export const VehicleTypeButtons = forwardRef<HTMLDivElement, {
   useEffect(() => { onSelectedNameChange?.(selectedName); }, [selectedName, onSelectedNameChange]);
   // Con dos tipos, botones anchos con el ícono al costado; con más, en columnas y el ícono arriba.
   // Bajos a propósito: el diálogo de entrada tiene que entrar en la pantalla sin desplazar.
-  const wide = active.length <= 2;
+  const wide = !compact && active.length <= 2;
   return <div {...props} ref={ref}>
     {loading ? <LatticeLoader label="Cargando vehículos…" showTimer={false} cellSize={4} gap={1} fontSize={12} />
       : error ? <p role="alert" className="text-xs text-gm-orange">{error}</p>
       : !active.length ? <p role="alert" className="text-xs text-muted-foreground">No hay tipos de vehículo habilitados. Pedile al administrador que los configure.</p>
       : <>
-        <div role="radiogroup" aria-label="Tipo de vehículo" className={cn('grid gap-2', wide ? 'grid-cols-2' : 'grid-cols-3')}>
+        <div role="radiogroup" aria-label="Tipo de vehículo" className={cn('grid gap-2', compact || active.length <= 2 ? 'grid-cols-2' : 'grid-cols-3')}>
           {active.map((type, index) => {
             const selected = value === type.code;
             const name = (type.code + ' ' + type.name).toLowerCase();
