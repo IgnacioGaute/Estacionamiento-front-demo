@@ -71,6 +71,10 @@ test('buscar escaneando: además de las que coinciden muestra las patentes parec
   const onSalidaSinEntrada = jest.fn();
   render(<CloseTicketPanel open onOpenChange={jest.fn()} onSalidaSinEntrada={onSalidaSinEntrada} />);
   expect(await screen.findByText('Adentro ahora · 1')).toBeInTheDocument();
+  // Como en Registrar entrada, lo escrito queda en mayúsculas.
+  fireEvent.change(screen.getByRole('textbox', { name: 'Buscar vehículo' }), { target: { value: 'so1' } });
+  expect(screen.getByRole('textbox', { name: 'Buscar vehículo' })).toHaveValue('SO1');
+  expect(searchActiveRegistrationsAction).toHaveBeenLastCalledWith('SO1');
   fireEvent.click(screen.getByRole('button', { name: 'Escanear patente' }));
   expect(await screen.findByText('Patente parecida')).toBeInTheDocument();
   expect(screen.getByRole('textbox', { name: 'Buscar vehículo' })).toHaveValue('SO128AA');

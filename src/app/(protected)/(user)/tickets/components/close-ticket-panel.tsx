@@ -20,7 +20,7 @@ import {
 import { PaymentMethodChoices, MedioSalida } from './payment-method-choices';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
-import { AlertTriangle, Barcode, ChevronDown, ChevronRight, BadgePercent, Search, Timer } from 'lucide-react';
+import { AlertTriangle, Barcode, ChevronDown, ChevronRight, BadgePercent, CircleX, Timer } from 'lucide-react';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
 import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
@@ -55,7 +55,7 @@ const etiqueta = 'text-[11px] font-semibold uppercase tracking-[0.12em] text-mut
 const miles = (valor: number) => new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(valor);
 
 // Patente como chapa; las fichas y las estadías sin patente con su propio distintivo.
-function Identidad({ r, size = 'sm' }: { r: TicketRegistration; size?: 'sm' | 'md' }) {
+function Identidad({ r, size = 'sm', highlight }: { r: TicketRegistration; size?: 'sm' | 'md'; highlight?: string }) {
   const alto = size === 'md' ? 'h-[38px] min-w-[124px]' : 'h-[33px] min-w-[96px]';
   if (isBarcodeOrigin(r))
     return (
@@ -71,7 +71,7 @@ function Identidad({ r, size = 'sm' }: { r: TicketRegistration; size?: 'sm' | 'm
         Sin patente
       </span>
     );
-  return <PlateChip plate={r.licensePlateOriginal || '—'} size={size} />;
+  return <PlateChip plate={r.licensePlateOriginal || '—'} size={size} highlight={highlight} />;
 }
 
 function Calculo({ summary }: { summary: CloseSummary }) {
@@ -472,7 +472,8 @@ export function CloseTicketPanel({
           onClick={() => loadSummary(r.id)}
           className="flex min-h-16 w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow"
         >
-          <Identidad r={r} />
+          {/* Como en Registrar entrada, se marca lo que coincide con lo buscado (en las parecidas no hay). */}
+          <Identidad r={r} highlight={r.parecida ? undefined : query.trim()} />
           <span className="min-w-0 flex-1">
             <span className="gm-mono block text-[15px] font-semibold">{elapsed !== null ? formatElapsed(elapsed) : '—'}</span>
             <span className="block truncate text-[12.5px] text-muted-foreground">{detalle}</span>
@@ -557,21 +558,34 @@ export function CloseTicketPanel({
         ) : !summary ? (
           <ActionDialogBody className="gap-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
             <div className="sticky top-0 z-10 -mt-1 flex shrink-0 gap-2 bg-card pt-1">
+              {/* Mismo campo que Registrar entrada: en mayúsculas y con la patente grande, así lo que
+                  escribe o lee la cámara se compara de un vistazo con la del auto. */}
               <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
                 <input
                   autoFocus
                   aria-label="Buscar vehículo"
                   spellCheck={false}
                   autoComplete="off"
-                  className="h-14 w-full rounded-2xl border-2 border-gm-line-strong bg-gm-surface-2 pl-12 pr-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-gm-yellow"
+                  autoCapitalize="characters"
+                  maxLength={50}
+                  className="gm-mono h-[60px] w-full rounded-2xl border-2 border-gm-line-strong bg-gm-surface-2 pl-4 pr-12 text-[24px] font-bold uppercase tracking-[0.1em] text-foreground outline-none transition-colors placeholder:font-sans placeholder:text-[15px] placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-muted-foreground focus:border-gm-yellow focus:shadow-[0_0_0_4px_hsl(var(--gm-yellow)/0.14)] short:h-[52px] short:text-[21px]"
                   placeholder={barcodeTicketsEnabled ? 'Patente, ficha, casillero o apellido' : 'Patente o apellido'}
                   value={query}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value.toUpperCase())}
                 />
+                {query && (
+                  <button
+                    type="button"
+                    aria-label="Borrar y buscar otra"
+                    onClick={() => handleSearchChange('')}
+                    className="absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <CircleX className="size-[18px]" aria-hidden />
+                  </button>
+                )}
               </div>
               {/* En el celular, la cámara escribe la patente en el buscador: se ven las que coinciden y las parecidas. */}
-              <PlateCameraScanButton variant="square" disabled={isPending} onRecognized={handleSearchChange} />
+              <PlateCameraScanButton variant="square" onRecognized={(plate) => handleSearchChange(plate.toUpperCase())} />
             </div>
             {coinciden.length > 0 && (
               <>
