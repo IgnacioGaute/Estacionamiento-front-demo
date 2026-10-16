@@ -40,6 +40,7 @@ import { minutesSinceEntry, isOverdue, isBarcodeOrigin } from '@/utils/ticket-re
 import { calcularVuelto, pagosSugeridos } from '@/utils/vuelto';
 import { cuandoEntro, formatEstadia as formatElapsed } from '@/utils/estadia';
 import { CorregirEntrada } from './corregir-entrada';
+import { pagoParcialEfectivoAction } from '@/actions/tickets/pago-parcial.action';
 import { EditarDatosEstadia } from './editar-datos-estadia';
 import { EliminarEstadia } from './eliminar-estadia';
 import { PlateCameraScanButton } from './plate-camera-scan-button';
@@ -47,7 +48,8 @@ import { PlateCameraScanButton } from './plate-camera-scan-button';
 // Efectivo y transferencia los declara el cajero; QR y alias los verifica el sistema contra
 // MercadoPago. Los cuatro se eligen igual (tocar y confirmar abajo) para que el botón principal
 // diga siempre qué va a pasar antes de que pase. AMBOS reparte el saldo como en la cuenta de un
-// inquilino: se escribe el efectivo y el resto va por transferencia, así el reparto siempre cierra.
+// inquilino: se escribe el efectivo y el resto va por transferencia, QR o alias, así el reparto
+// siempre cierra.
 type Medio = MedioSalida;
 
 
@@ -211,6 +213,8 @@ export function CloseTicketPanel({
   const [otroImporte, setOtroImporte] = useState('');
   // Pago híbrido: lo que entrega en efectivo; la transferencia es el resto del saldo.
   const [efectivoHibrido, setEfectivoHibrido] = useState('');
+  // Con qué paga el resto: transferencia ya verificada (se cierra junto con el efectivo), QR o alias.
+  const [restoPor, setRestoPor] = useState<'TRANSFER' | 'QR' | 'ALIAS'>('TRANSFER');
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
   // La transferencia al alias: si la empresa la tiene (adicional + activada) y el cobro en curso.
   const [alias, setAlias] = useState<DisponibilidadAlias | null>(null);
@@ -247,6 +251,7 @@ export function CloseTicketPanel({
     setPagaCon(null);
     setOtroImporte('');
     setEfectivoHibrido('');
+    setRestoPor('TRANSFER');
   };
 
   const resetAll = () => {
@@ -306,16 +311,45 @@ export function CloseTicketPanel({
     loadSummary(registrationId);
   };
 
+  const pedirQr = async (id: string) => {
+    const r = await crearCobroMercadoPagoAction(id);
+    if (r.error || !r.cobro) {
+      toast.error(r.error ?? 'No se pudo generar el QR.');
+      return;
+    }
+    setPaymentMethod(null);
+    setCobroQr(r.cobro);
+  };
   const generarQr = () => {
     if (!summary) return;
+    startTransition(() => pedirQr(summary.registration.id));
+  };
+
+  // Pago híbrido con QR o alias: esos cobros se acreditan después, así que primero se registra el
+  // efectivo (sin la salida) y después el QR o el alias piden el saldo que queda. Al acreditarse
+  // registran la salida como siempre; si no se paga, el efectivo ya quedó cobrado.
+  const cobrarEfectivoYSeguir = (medio: 'QR' | 'ALIAS') => {
+    if (!summary) return;
+    const id = summary.registration.id;
+    const efectivo = Number(efectivoHibrido);
     startTransition(async () => {
-      const r = await crearCobroMercadoPagoAction(summary.registration.id);
-      if (r.error || !r.cobro) {
-        toast.error(r.error ?? 'No se pudo generar el QR.');
+      const r = await pagoParcialEfectivoAction(id, { importe: efectivo, expectedPrice: summary.previewBracket.price, expectedCollected: summary.totalCollectedSoFar });
+      if (r.error || !r.summary) {
+        toast.error(r.error ?? 'No se pudo cobrar el efectivo.');
+        const refreshed = await getCloseSummaryAction(id);
+        if (refreshed) setSummary(refreshed);
         return;
       }
-      setPaymentMethod(null);
-      setCobroQr(r.cobro);
+      setSummary(r.summary);
+      toast.success(`Efectivo cobrado: ${formatImporte(efectivo)}. Falta ${formatImporte(r.summary.saldoACobrar)} ${medio === 'QR' ? 'por QR' : 'al alias'}.`);
+      if (medio === 'QR') await pedirQr(id);
+      else {
+        const a = await iniciarCobroAliasAction(id);
+        if (a.error || !a.datos) { toast.error(a.error ?? 'No se pudo empezar a esperar la transferencia.'); return; }
+        setPaymentMethod(null);
+        if (a.datos.estado === 'CONFIRMADO' || a.datos.estado === 'PAGADO_OTRO_MEDIO') terminadoAlias(a.datos);
+        else setCobroAlias(a.datos);
+      }
     });
   };
 
@@ -423,7 +457,9 @@ export function CloseTicketPanel({
     if (paymentMethod === 'CASH' || paymentMethod === 'TRANSFER') handleClose('PAYMENT', paymentMethod);
     else if (paymentMethod === 'AMBOS') {
       if (errorHibrido) return;
-      handleClose('PAYMENT', undefined, undefined, [{ metodo: 'CASH', importe: efectivoParte }, { metodo: 'TRANSFER', importe: transferenciaParte }]);
+      // Con transferencia ya verificada se cierra todo junto; QR y alias se acreditan después.
+      if (restoPor === 'TRANSFER') handleClose('PAYMENT', undefined, undefined, [{ metodo: 'CASH', importe: efectivoParte }, { metodo: 'TRANSFER', importe: restoParte }]);
+      else cobrarEfectivoYSeguir(restoPor);
     } else if (paymentMethod === 'QR') generarQr();
     else if (paymentMethod === 'ALIAS') iniciarAlias();
   };
@@ -448,7 +484,13 @@ export function CloseTicketPanel({
   const recibido = pagaCon === 'OTRO' ? (otroImporte ? Number(otroImporte) : null) : pagaCon;
   const vuelto = recibido !== null ? calcularVuelto(saldo, recibido) : null;
   const efectivoParte = efectivoHibrido ? Number(efectivoHibrido) : 0;
-  const transferenciaParte = Math.max(0, saldo - efectivoParte);
+  const restoParte = Math.max(0, saldo - efectivoParte);
+  const restoMedios: { id: typeof restoPor; texto: string; detalle: string }[] = [
+    { id: 'TRANSFER', texto: 'Transferencia', detalle: 'por transferencia' },
+    { id: 'QR', texto: 'QR', detalle: 'por QR' },
+    ...(alias?.disponible ? [{ id: 'ALIAS' as const, texto: 'Al alias', detalle: 'al alias' }] : []),
+  ];
+  const restoDetalle = restoMedios.find((m) => m.id === restoPor)?.detalle ?? 'por transferencia';
   const errorHibrido = !efectivoParte
     ? 'Ingresá cuánto entrega en efectivo.'
     : efectivoParte >= saldo
@@ -510,7 +552,10 @@ export function CloseTicketPanel({
         TRANSFER: { accion: 'Cobrar y registrar salida', detalle: `${formatImporte(saldo)} por transferencia` },
         QR: { accion: 'Mostrar el QR', detalle: `${formatImporte(saldo)} · se acredita solo` },
         ALIAS: { accion: 'Esperar la transferencia', detalle: `${formatImporte(saldo)} al alias` },
-        AMBOS: { accion: 'Cobrar y registrar salida', detalle: errorHibrido ? 'Indicá el efectivo' : `${formatImporte(efectivoParte)} en efectivo · ${formatImporte(transferenciaParte)} por transferencia` },
+        AMBOS: {
+          accion: restoPor === 'QR' ? 'Cobrar efectivo y mostrar el QR' : restoPor === 'ALIAS' ? 'Cobrar efectivo y esperar la transferencia' : 'Cobrar y registrar salida',
+          detalle: errorHibrido ? 'Indicá el efectivo' : `${formatImporte(efectivoParte)} en efectivo · ${formatImporte(restoParte)} ${restoDetalle}`,
+        },
       };
       const elegido = paymentMethod ? texto[paymentMethod] : null;
       return (
@@ -735,13 +780,28 @@ export function CloseTicketPanel({
                         {paymentMethod === 'AMBOS' ? (
                           <div className="space-y-2.5 rounded-2xl border border-border bg-gm-surface-2/50 p-3 short:space-y-2">
                             <CashAmountField id="efectivo-hibrido" label="En efectivo" value={efectivoHibrido} onChange={setEfectivoHibrido} disabled={isPending} max={saldo} />
-                            <p className="flex items-center justify-between gap-2 border-t border-dashed border-gm-line-strong pt-2.5">
-                              <span className="text-[13.5px] font-semibold">Por transferencia <span className="font-normal text-muted-foreground">(el resto)</span></span>
-                              <span className="gm-mono text-[20px] font-bold leading-none">{formatImporte(transferenciaParte)}</span>
-                            </p>
+                            <div className="space-y-2 border-t border-dashed border-gm-line-strong pt-2.5">
+                              <p className="flex items-center justify-between gap-2">
+                                <span className="text-[13.5px] font-semibold">El resto</span>
+                                <span className="gm-mono text-[20px] font-bold leading-none">{formatImporte(restoParte)}</span>
+                              </p>
+                              <div role="group" aria-label="Cómo paga el resto" className={cn('grid gap-2', restoMedios.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
+                                {restoMedios.map((m) => (
+                                  <button key={m.id} type="button" aria-pressed={restoPor === m.id} disabled={isPending} onClick={() => setRestoPor(m.id)}
+                                    className={cn('h-11 rounded-xl border-[1.5px] px-1 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
+                                      restoPor === m.id ? 'border-gm-yellow bg-gm-yellow/[0.12]' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/40')}>
+                                    {m.texto}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                             {errorHibrido && efectivoHibrido
                               ? <p role="alert" className="text-xs text-gm-orange">{errorHibrido}</p>
-                              : <p className="text-xs text-muted-foreground">Confirmá después de contar el efectivo y ver la transferencia acreditada.</p>}
+                              : <p className="text-xs text-muted-foreground">
+                                  {restoPor === 'TRANSFER'
+                                    ? 'Confirmá después de contar el efectivo y ver la transferencia acreditada.'
+                                    : `Se cobra el efectivo y después ${restoPor === 'QR' ? 'se genera el QR' : 'se espera la transferencia al alias'} por el resto. Al acreditarse, la salida se registra sola.`}
+                                </p>}
                           </div>
                         ) : paymentMethod === 'CASH' ? (
                           <div className="space-y-2.5 rounded-2xl border border-border bg-gm-surface-2/50 p-3 short:space-y-2">

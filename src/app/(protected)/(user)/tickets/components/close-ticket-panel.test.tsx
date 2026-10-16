@@ -6,6 +6,8 @@ import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.actio
 import { discountRegistrationAction } from '@/actions/tickets/discount-registration.action';
 import { closeRegistrationAction } from '@/actions/tickets/close-registration.action';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
+import { pagoParcialEfectivoAction } from '@/actions/tickets/pago-parcial.action';
+import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import type { CloseSummary } from '@/services/tickets.service';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
@@ -17,6 +19,7 @@ jest.mock('@/actions/tickets/corregir-datos.action', () => ({ corregirDatosEstad
 jest.mock('@/actions/tickets/vehicle-types.action', () => ({ getVehicleTypesAction: jest.fn().mockResolvedValue([]) }));
 jest.mock('@/actions/tickets/close-registration.action', () => ({ closeRegistrationAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/mercadopago.action', () => ({ crearCobroMercadoPagoAction: jest.fn() }));
+jest.mock('@/actions/tickets/pago-parcial.action', () => ({ pagoParcialEfectivoAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/verificacion-alias.action', () => ({ disponibilidadAliasAction: async () => ({ datos: null }), cobroAliasDeEstadiaAction: async () => ({ cobro: null }), iniciarCobroAliasAction: jest.fn() }));
 jest.mock('./cobro-qr-mercadopago', () => ({ CobroQrMercadoPago: () => null }));
 jest.mock('./cobro-alias', () => ({ CobroAliasPanel: () => null }));
@@ -87,7 +90,7 @@ test('buscar escaneando: además de las que coinciden muestra las patentes parec
 
 test('efectivo y transferencia: se escribe el efectivo, el resto va por transferencia y se mandan las dos partes', async () => {
   render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
-  const hibrido = await screen.findByRole('button', { name: /Efectivo y transferencia/ });
+  const hibrido = await screen.findByRole('button', { name: /Efectivo y otro medio/ });
   await waitFor(() => expect(hibrido).toBeEnabled());
   fireEvent.click(hibrido);
   const cobrar = screen.getByRole('button', { name: /Cobrar y registrar salida/ });
@@ -97,13 +100,33 @@ test('efectivo y transferencia: se escribe el efectivo, el resto va por transfer
   expect(screen.getByRole('alert')).toHaveTextContent('El efectivo cubre todo');
   expect(cobrar).toBeDisabled();
   fireEvent.change(efectivo, { target: { value: '400' } });
-  expect(screen.getByText('Por transferencia').parentElement).toHaveTextContent(/600$/);
+  expect(screen.getByText('El resto').parentElement).toHaveTextContent(/600$/);
+  // Sin alias habilitado, el resto se elige entre transferencia (por defecto) y QR.
+  expect(screen.getByRole('button', { name: 'Transferencia' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.queryByRole('button', { name: 'Al alias' })).not.toBeInTheDocument();
   expect(cobrar).toBeEnabled();
   fireEvent.click(cobrar);
   await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({
     closeType: 'PAYMENT', metodo: undefined, expectedPrice: 1000,
     pagos: [{ metodo: 'CASH', importe: 400 }, { metodo: 'TRANSFER', importe: 600 }],
   })));
+  expect(pagoParcialEfectivoAction).not.toHaveBeenCalled();
+});
+
+test('efectivo y QR: primero se cobra el efectivo sin la salida y después el QR pide el resto', async () => {
+  jest.mocked(pagoParcialEfectivoAction).mockResolvedValue({ summary: summary(1000, 400) });
+  jest.mocked(crearCobroMercadoPagoAction).mockResolvedValue({ cobro: { id: 'qr', estado: 'PENDIENTE', monto: 600 } } as unknown as Awaited<ReturnType<typeof crearCobroMercadoPagoAction>>);
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
+  const hibrido = await screen.findByRole('button', { name: /Efectivo y otro medio/ });
+  await waitFor(() => expect(hibrido).toBeEnabled());
+  fireEvent.click(hibrido);
+  fireEvent.change(screen.getByLabelText('En efectivo'), { target: { value: '400' } });
+  fireEvent.click(screen.getByRole('button', { name: 'QR' }));
+  fireEvent.click(screen.getByRole('button', { name: /Cobrar efectivo y mostrar el QR/ }));
+  await waitFor(() => expect(crearCobroMercadoPagoAction).toHaveBeenCalledWith('reg'));
+  expect(pagoParcialEfectivoAction).toHaveBeenCalledWith('reg', { importe: 400, expectedPrice: 1000, expectedCollected: 0 });
+  expect(jest.mocked(pagoParcialEfectivoAction).mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(crearCobroMercadoPagoAction).mock.invocationCallOrder[0]);
+  expect(closeRegistrationAction).not.toHaveBeenCalled();
 });
 
 test('tarifa anterior: si pagó tarde, el descuento deja el precio del escalón anterior con un toque', async () => {

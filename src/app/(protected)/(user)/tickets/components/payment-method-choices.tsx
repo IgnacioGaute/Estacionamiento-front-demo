@@ -4,14 +4,14 @@ import { ArrowLeftRight, Banknote, Check, Landmark, QrCode, Split } from 'lucide
 import { cn } from '@/lib/utils';
 
 export type MedioCobro = 'CASH' | 'QR' | 'ALIAS' | 'TRANSFER';
-// AMBOS: pago híbrido, una parte en efectivo y el resto por transferencia (solo en Cobrar salida).
+// AMBOS: pago híbrido, una parte en efectivo y el resto por transferencia, QR o alias (solo en Cobrar salida).
 export type MedioSalida = MedioCobro | 'AMBOS';
 const medios = [
   { id: 'CASH', titulo: 'Efectivo', ayuda: 'Contalo antes de confirmar', Icon: Banknote, verificado: false },
   { id: 'QR', titulo: 'QR / celular', ayuda: 'Se acredita solo', Icon: QrCode, verificado: true },
   { id: 'ALIAS', titulo: 'Al alias', ayuda: 'Se detecta sola', Icon: ArrowLeftRight, verificado: true },
   { id: 'TRANSFER', titulo: 'Transferencia', ayuda: 'Verificala antes de confirmar', Icon: Landmark, verificado: false },
-  { id: 'AMBOS', titulo: 'Efectivo y transferencia', ayuda: 'Una parte de cada uno', Icon: Split, verificado: false },
+  { id: 'AMBOS', titulo: 'Efectivo y otro medio', ayuda: 'Una parte en efectivo', Icon: Split, verificado: false },
 ] as const;
 
 type Props = { aliasDisponible: boolean; disabled?: boolean } & (
