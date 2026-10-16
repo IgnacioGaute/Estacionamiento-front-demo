@@ -125,7 +125,7 @@ export async function buscarPatente(
       continue;
     }
 
-    const cuadro = await capturarCuadro(video);
+    const cuadro = await capturarCuadro(video, ASPECTO_VISOR);
     if (cancelado()) return { tipo: 'cancelado' };
     if (!cuadro) continue;
     avisar('leyendo');

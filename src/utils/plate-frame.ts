@@ -35,17 +35,23 @@ export function diferencia(a: Float32Array, b: Float32Array): number {
   return a.length ? suma / a.length : 0;
 }
 
-// Rectángulo del video que cae dentro de la guía. El visor muestra el video con `object-cover`
-// en un cuadro de proporción `aspectoVisor` (ancho / alto), y la guía ocupa `anchoGuia` de ese
-// ancho, centrada y en 3:1. Como todo está centrado, alcanza con saber qué parte del video se ve.
+// Rectángulo del video que se ve en el visor: el video se muestra con `object-cover` en un cuadro
+// de proporción `aspectoVisor` (ancho / alto), así que se recortan los costados o arriba y abajo.
+export function zonaVisible(videoAncho: number, videoAlto: number, aspectoVisor: number) {
+  const ancho = Math.min(videoAncho, videoAlto * aspectoVisor);
+  const alto = Math.min(videoAlto, videoAncho / aspectoVisor);
+  return { x: (videoAncho - ancho) / 2, y: (videoAlto - alto) / 2, ancho, alto };
+}
+
+// Rectángulo del video que cae dentro de la guía, que ocupa `anchoGuia` del ancho visible,
+// centrada y en 3:1. Como todo está centrado, alcanza con saber qué parte del video se ve.
 export function zonaDeLaGuia(
   videoAncho: number,
   videoAlto: number,
   aspectoVisor: number,
   anchoGuia: number,
 ) {
-  const visibleAncho = Math.min(videoAncho, videoAlto * aspectoVisor);
-  const ancho = visibleAncho * anchoGuia;
+  const ancho = zonaVisible(videoAncho, videoAlto, aspectoVisor).ancho * anchoGuia;
   const alto = ancho / 3;
   return { x: (videoAncho - ancho) / 2, y: (videoAlto - alto) / 2, ancho, alto };
 }
