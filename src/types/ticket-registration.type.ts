@@ -9,6 +9,8 @@ export type TicketRegistration = {
     operatorName?: string | null;
     discountNote?: string;
     entryMode?: 'BARCODE' | 'PLATE' | null;
+    // Solo en la búsqueda de Cobrar salida: no coincide, pero la patente es parecida (puede ser mal leída).
+    parecida?: boolean;
     pricingSnapshot?: { capturedAt: string; brackets: import('./ticket-price-bracket.type').TicketPriceBracket[]; schedule: { pricingDayTypeBasis: 'ENTRY' | 'EXIT'; pricingOptions?: import('./pricing-options.type').PricingOptions | null } } | null;
     description: string;
     price: number;

@@ -42,6 +42,7 @@ import { cuandoEntro, formatEstadia as formatElapsed } from '@/utils/estadia';
 import { CorregirEntrada } from './corregir-entrada';
 import { EditarDatosEstadia } from './editar-datos-estadia';
 import { EliminarEstadia } from './eliminar-estadia';
+import { PlateCameraScanButton } from './plate-camera-scan-button';
 
 // Efectivo y transferencia los declara el cajero; QR y alias los verifica el sistema contra
 // MercadoPago. Los cuatro se eligen igual (tocar y confirmar abajo) para que el botón principal
@@ -454,6 +455,38 @@ export function CloseTicketPanel({
       ? 'El efectivo cubre todo: elegí «Efectivo».'
       : null;
 
+  // La búsqueda trae primero las que coinciden y después las de patente parecida: lo escaneado o
+  // escrito puede tener un carácter mal leído, y sin verlas se cobraba como salida sin entrada.
+  const coinciden = results.filter((r) => !r.parecida);
+  const parecidas = results.filter((r) => r.parecida);
+  const fila = (r: TicketRegistration) => {
+    const elapsed = minutesSinceEntry(r, Date.now());
+    const overdue = isOverdue(r, Date.now());
+    const detalle = [r.noPlate ? r.lastNameCustomer : null, `Entró ${cuandoEntro(r)}`, r.casilleroNumber ? `Casillero ${r.casilleroNumber}` : null]
+      .filter(Boolean)
+      .join(' · ');
+    return (
+      <li key={r.id} className="border-b border-border last:border-0">
+        <button
+          type="button"
+          onClick={() => loadSummary(r.id)}
+          className="flex min-h-16 w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow"
+        >
+          <Identidad r={r} />
+          <span className="min-w-0 flex-1">
+            <span className="gm-mono block text-[15px] font-semibold">{elapsed !== null ? formatElapsed(elapsed) : '—'}</span>
+            <span className="block truncate text-[12.5px] text-muted-foreground">{detalle}</span>
+          </span>
+          {overdue ? (
+            <span className="shrink-0 rounded-full bg-gm-orange/15 px-2 py-1 text-[11.5px] font-bold text-[#F0714A]">Excedido</span>
+          ) : (
+            <ChevronRight className="size-[18px] shrink-0 text-muted-foreground" aria-hidden />
+          )}
+        </button>
+      </li>
+    );
+  };
+
   const titulo = pagoConSalida
     ? 'Salida registrada'
     : cobroQr?.estado === 'PENDIENTE'
@@ -523,62 +556,53 @@ export function CloseTicketPanel({
           </ActionDialogBody>
         ) : !summary ? (
           <ActionDialogBody className="gap-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
-            <div className="sticky top-0 z-10 -mt-1 shrink-0 bg-card pt-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-              <input
-                autoFocus
-                aria-label="Buscar vehículo"
-                spellCheck={false}
-                autoComplete="off"
-                className="h-14 w-full rounded-2xl border-2 border-gm-line-strong bg-gm-surface-2 pl-12 pr-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-gm-yellow"
-                placeholder={barcodeTicketsEnabled ? 'Patente, ficha, casillero o apellido' : 'Patente o apellido'}
-                value={query}
-                onChange={(e) => handleSearchChange(e.target.value)}
-              />
+            <div className="sticky top-0 z-10 -mt-1 flex shrink-0 gap-2 bg-card pt-1">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <input
+                  autoFocus
+                  aria-label="Buscar vehículo"
+                  spellCheck={false}
+                  autoComplete="off"
+                  className="h-14 w-full rounded-2xl border-2 border-gm-line-strong bg-gm-surface-2 pl-12 pr-4 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-gm-yellow"
+                  placeholder={barcodeTicketsEnabled ? 'Patente, ficha, casillero o apellido' : 'Patente o apellido'}
+                  value={query}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                />
+              </div>
+              {/* En el celular, la cámara escribe la patente en el buscador: se ven las que coinciden y las parecidas. */}
+              <PlateCameraScanButton variant="square" disabled={isPending} onRecognized={handleSearchChange} />
             </div>
-            {results.length > 0 && (
+            {coinciden.length > 0 && (
               <>
-                <p className={etiqueta}>{query.trim() ? `Coinciden · ${results.length}` : `Adentro ahora · ${results.length}`}</p>
+                <p className={etiqueta}>{query.trim() ? `Coinciden · ${coinciden.length}` : `Adentro ahora · ${coinciden.length}`}</p>
                 <ul className="shrink-0 overflow-hidden rounded-2xl border border-border bg-gm-surface-2">
-                  {results.map((r) => {
-                    const elapsed = minutesSinceEntry(r, Date.now());
-                    const overdue = isOverdue(r, Date.now());
-                    const detalle = [r.noPlate ? r.lastNameCustomer : null, `Entró ${cuandoEntro(r)}`, r.casilleroNumber ? `Casillero ${r.casilleroNumber}` : null]
-                      .filter(Boolean)
-                      .join(' · ');
-                    return (
-                      <li key={r.id} className="border-b border-border last:border-0">
-                        <button
-                          type="button"
-                          onClick={() => loadSummary(r.id)}
-                          className="flex min-h-16 w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow"
-                        >
-                          <Identidad r={r} />
-                          <span className="min-w-0 flex-1">
-                            <span className="gm-mono block text-[15px] font-semibold">{elapsed !== null ? formatElapsed(elapsed) : '—'}</span>
-                            <span className="block truncate text-[12.5px] text-muted-foreground">{detalle}</span>
-                          </span>
-                          {overdue ? (
-                            <span className="shrink-0 rounded-full bg-gm-orange/15 px-2 py-1 text-[11.5px] font-bold text-[#F0714A]">Excedido</span>
-                          ) : (
-                            <ChevronRight className="size-[18px] shrink-0 text-muted-foreground" aria-hidden />
-                          )}
-                        </button>
-                      </li>
-                    );
-                  })}
+                  {coinciden.map(fila)}
                 </ul>
               </>
             )}
-            {results.length === 0 && (isPending ? <DataLoading label="Buscando vehículos…" /> : <>
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                {query.trim() ? (barcodeTicketsEnabled ? 'No encontramos ese vehículo. Revisá la patente o el número de ticket.' : 'No encontramos ese vehículo. Revisá la patente o el apellido.') : 'No hay vehículos adentro.'}
-              </p>
+            {parecidas.length > 0 && (
+              <>
+                <div className="space-y-0.5">
+                  <p className={etiqueta}>{parecidas.length === 1 ? 'Patente parecida' : `Patentes parecidas · ${parecidas.length}`}</p>
+                  <p className="text-[12.5px] text-muted-foreground">No coinciden exacto, pero puede ser el mismo auto con un carácter mal leído.</p>
+                </div>
+                <ul className="shrink-0 overflow-hidden rounded-2xl border border-dashed border-gm-line-strong bg-gm-surface-2">
+                  {parecidas.map(fila)}
+                </ul>
+              </>
+            )}
+            {coinciden.length === 0 && (isPending && !parecidas.length ? <DataLoading label="Buscando vehículos…" /> : <>
+              {!parecidas.length && (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  {query.trim() ? (barcodeTicketsEnabled ? 'No encontramos ese vehículo. Revisá la patente o el número de ticket.' : 'No encontramos ese vehículo. Revisá la patente o el apellido.') : 'No hay vehículos adentro.'}
+                </p>
+              )}
               {/* Un auto que se va sin entrada registrada: se cobra igual con la hora en que llegó. */}
               {onSalidaSinEntrada && query.replace(/[^A-Za-z0-9]/g, '').length >= 5 && (
                 <button type="button" onClick={() => onSalidaSinEntrada(query.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                   className="mx-auto inline-flex min-h-11 items-center gap-2 rounded-xl border border-gm-line-strong px-4 text-[13px] font-semibold transition-colors hover:border-gm-yellow/50 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
-                  Se está yendo sin entrada: cobrar {query.toUpperCase().replace(/[^A-Z0-9]/g, '')}
+                  {parecidas.length ? 'No es ninguno, se va sin entrada' : 'Se está yendo sin entrada'}: cobrar {query.toUpperCase().replace(/[^A-Z0-9]/g, '')}
                 </button>
               )}
             </>)}

@@ -5,7 +5,9 @@ import { CloseTicketPanel } from './close-ticket-panel';
 import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
 import { discountRegistrationAction } from '@/actions/tickets/discount-registration.action';
 import { closeRegistrationAction } from '@/actions/tickets/close-registration.action';
+import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
 import type { CloseSummary } from '@/services/tickets.service';
+import type { TicketRegistration } from '@/types/ticket-registration.type';
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn() }));
 jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn() }));
@@ -19,6 +21,7 @@ jest.mock('@/actions/mercadopago/verificacion-alias.action', () => ({ disponibil
 jest.mock('./cobro-qr-mercadopago', () => ({ CobroQrMercadoPago: () => null }));
 jest.mock('./cobro-alias', () => ({ CobroAliasPanel: () => null }));
 jest.mock('./eliminar-estadia', () => ({ EliminarEstadia: () => null }));
+jest.mock('./plate-camera-scan-button', () => ({ PlateCameraScanButton: ({ onRecognized }: { onRecognized: (plate: string) => void }) => <button type="button" onClick={() => onRecognized('SO128AA')}>Escanear patente</button> }));
 jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 const summary = (price = 1000, collected = 0) => ({ registration: { id: 'reg', vehicleType: 'AUTO', entryMode: 'PLATE', licensePlateOriginal: 'AB123CD', entryDay: '2026-10-10', entryTime: '10:00:00' }, elapsedMinutes: 30, previewBracket: { price }, saldoACobrar: price - collected, cambioARetornar: 0, totalCollectedSoFar: collected, pricingDayTypeBasis: 'ENTRY' } as CloseSummary);
 beforeEach(() => {
@@ -60,6 +63,22 @@ test('todo el saldo respeta el anticipo y después permite confirmar la salida s
   await waitFor(() => expect(discountRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({ monto: 600, expectedCollected: 400 })));
   fireEvent.click(await screen.findByRole('button', { name: /Registrar salida/ }));
   await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({ closeType: 'NO_CHARGE', expectedPrice: 400, expectedCollected: 400 })));
+});
+
+test('buscar escaneando: además de las que coinciden muestra las patentes parecidas para cobrarlas', async () => {
+  const estadia = (id: string, plate: string, parecida?: boolean) => ({ id, vehicleType: 'AUTO', entryMode: 'PLATE', licensePlateOriginal: plate, entryDay: '2026-10-10', entryTime: '10:00:00', parecida } as unknown as TicketRegistration);
+  jest.mocked(searchActiveRegistrationsAction).mockImplementation(async (q: string) => (q ? [estadia('par', 'SO123AA', true)] : [estadia('otra', 'ZZ999ZZ')]));
+  const onSalidaSinEntrada = jest.fn();
+  render(<CloseTicketPanel open onOpenChange={jest.fn()} onSalidaSinEntrada={onSalidaSinEntrada} />);
+  expect(await screen.findByText('Adentro ahora · 1')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente' }));
+  expect(await screen.findByText('Patente parecida')).toBeInTheDocument();
+  expect(screen.getByRole('textbox', { name: 'Buscar vehículo' })).toHaveValue('SO128AA');
+  expect(screen.queryByText(/No encontramos ese vehículo/)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /No es ninguno, se va sin entrada/ }));
+  expect(onSalidaSinEntrada).toHaveBeenCalledWith('SO128AA');
+  fireEvent.click(screen.getByRole('button', { name: /SO123AA|SO 123 AA/ }));
+  await waitFor(() => expect(getCloseSummaryAction).toHaveBeenCalledWith('par'));
 });
 
 test('efectivo y transferencia: se escribe el efectivo, el resto va por transferencia y se mandan las dos partes', async () => {
