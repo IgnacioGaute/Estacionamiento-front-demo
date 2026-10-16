@@ -9,11 +9,12 @@ jest.mock('@/actions/tickets/update-ticket-schedule.action', () => ({ updateTick
 jest.mock('@/actions/turnos/cajas.action', () => ({ getCashConfigurationAction: jest.fn(), saveCajaAction: jest.fn() }));
 jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 const cajas = [{ id: 'principal', nombre: 'Caja principal', principal: true, activa: true }, { id: 'lateral', nombre: 'Entrada lateral', principal: false, activa: true }];
+const usuarios = [{ id: 'ana', firstName: 'Ana', lastName: 'Pérez', username: 'ana' }, { id: 'juan', firstName: 'Juan', lastName: 'Pérez', username: 'juan' }];
 // Cada paso guarda antes de avanzar: con la suite completa corriendo en paralelo, 1 s no alcanza.
 configure({ asyncUtilTimeout: 4000 });
 // Después de guardar, el botón dice «Guardando…» hasta que termina: se espera a que vuelva a Continuar.
 const continuar = async () => fireEvent.click(await screen.findByRole('button', { name: /^Continuar/ }));
-beforeEach(() => { jest.clearAllMocks(); jest.mocked(getCashConfigurationAction).mockResolvedValue({ configuration: { cajas, hayTurnosAbiertos: false } }); jest.mocked(updateTicketScheduleAction).mockResolvedValue({ success: 'ok' }); });
+beforeEach(() => { jest.clearAllMocks(); jest.mocked(getCashConfigurationAction).mockResolvedValue({ configuration: { cajas, usuarios, hayTurnosAbiertos: false } }); jest.mocked(updateTicketScheduleAction).mockResolvedValue({ success: 'ok' }); });
 
 test('activar es obligatorio; cada paso guarda lo suyo al continuar', async () => {
   render(<OperationSettings shiftsEnabled={false} />);
@@ -73,9 +74,31 @@ test('el sueldo se guarda en el último paso', async () => {
   render(<OperationSettings shiftsEnabled />);
   fireEvent.click(screen.getByRole('button', { name: /^Paso 4: Sueldo/ }));
   fireEvent.click(await screen.findByRole('switch', { name: 'Retirar sueldo de la caja automáticamente' }));
-  fireEvent.change(screen.getByLabelText('Importe por jornada del operador'), { target: { value: '25000' } });
+  fireEvent.click(await screen.findByRole('switch', { name: 'Retira sueldo: Ana Pérez' }));
+  expect(screen.getByRole('button', { name: /^Guardar/ })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Importe por jornada: Ana Pérez'), { target: { value: '25000' } });
+  expect(screen.getByRole('switch', { name: 'Retira sueldo: Juan Pérez' })).not.toBeChecked();
   fireEvent.click(screen.getByRole('button', { name: /^Guardar/ }));
-  await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ sueldoAutomatico: true, sueldoPorTurno: 25000 }));
+  await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ sueldoAutomatico: true, sueldosPorUsuario: [{ usuarioId: 'ana', importe: 25000 }] }));
+});
+
+test('permite dejar sin sueldo a un usuario que lo tenía configurado', async () => {
+  render(<OperationSettings shiftsEnabled sueldoAutomatico sueldosPorUsuario={[{ usuarioId: 'ana', importe: 25000 }]} />);
+  fireEvent.click(screen.getByRole('button', { name: /^Paso 4: Sueldo/ }));
+  fireEvent.click(await screen.findByRole('switch', { name: 'Retira sueldo: Ana Pérez' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Guardar/ }));
+  await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ sueldoAutomatico: true, sueldosPorUsuario: [] }));
+});
+
+test('si falla la carga de usuarios impide guardar y permite reintentar', async () => {
+  jest.mocked(getCashConfigurationAction).mockResolvedValue({ error: 'Sin conexión' });
+  render(<OperationSettings shiftsEnabled sueldoAutomatico />);
+  fireEvent.click(screen.getByRole('button', { name: /^Paso 4: Sueldo/ }));
+  expect(await screen.findByText('Sin conexión')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Listo/ })).toBeDisabled();
+  jest.mocked(getCashConfigurationAction).mockResolvedValue({ configuration: { cajas, usuarios, hayTurnosAbiertos: false } });
+  fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+  expect(await screen.findByRole('switch', { name: 'Retira sueldo: Ana Pérez' })).toBeInTheDocument();
 });
 
 test('los tickets por código de barras se guardan aparte', async () => {

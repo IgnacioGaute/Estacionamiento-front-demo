@@ -5,7 +5,7 @@ import { TicketScheduleSchemaType } from '@/schemas/ticket-schedule.schema';
 import { updateTicketSchedule as updateTicketScheduleAPI } from '@/services/tickets.service';
 import { handleTicketError, TicketError } from './ticket.utility';
 
-export async function updateTicketScheduleAction(values: Partial<TicketScheduleSchemaType> & { barcodeTicketsEnabled?: boolean; shiftsEnabled?: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldoPorTurno?: number }) {
+export async function updateTicketScheduleAction(values: Partial<TicketScheduleSchemaType> & { barcodeTicketsEnabled?: boolean; shiftsEnabled?: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldoPorTurno?: number; sueldosPorUsuario?: { usuarioId: string; importe: number }[] }) {
   try {
     const schedule = await updateTicketScheduleAPI(values);
     if (!schedule) {

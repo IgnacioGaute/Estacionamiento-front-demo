@@ -17,9 +17,12 @@ type ScheduleChange = Parameters<typeof updateTicketScheduleAction>[0];
 
 // Turnos de caja en 4 pasos. Sólo activar es obligatorio: modo, cajas y sueldo se pueden dejar como
 // están. Cada paso guarda lo suyo al continuar, así un cambio no queda esperando al final.
-export function OperationSettings(props: { shiftsEnabled: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldoPorTurno?: number }) {
+export function OperationSettings(props: { shiftsEnabled: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldosPorUsuario?: { usuarioId: string; importe: number }[] }) {
   const [salaryEnabled, setSalaryEnabled] = useState(props.sueldoAutomatico ?? false);
-  const [salary, setSalary] = useState(String(props.sueldoPorTurno ?? 0));
+  const [salaries, setSalaries] = useState<Record<string, string>>(() => Object.fromEntries((props.sueldosPorUsuario ?? []).map(s => [s.usuarioId, String(s.importe)])));
+  const [salaryUsers, setSalaryUsers] = useState<{ id: string; firstName: string; lastName: string; username: string }[]>([]);
+  const [salaryLoading, setSalaryLoading] = useState(true);
+  const [salaryError, setSalaryError] = useState('');
   const [shifts, setShifts] = useState(props.shiftsEnabled);
   const [savedShifts, setSavedShifts] = useState(props.shiftsEnabled);
   const [multiple, setMultiple] = useState(props.multipleShiftsEnabled ?? false);
@@ -30,10 +33,21 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
   useEffect(() => {
     setShifts(props.shiftsEnabled); setSavedShifts(props.shiftsEnabled);
     setMultiple(props.multipleShiftsEnabled ?? false); setSavedMultiple(props.multipleShiftsEnabled ?? false);
-    setSalaryEnabled(props.sueldoAutomatico ?? false); setSalary(String(props.sueldoPorTurno ?? 0));
-  }, [props.shiftsEnabled, props.multipleShiftsEnabled, props.sueldoAutomatico, props.sueldoPorTurno]);
-  const salaryChanged = salaryEnabled !== (props.sueldoAutomatico ?? false) || Number(salary) !== (props.sueldoPorTurno ?? 0);
-  const salaryValid = !salaryEnabled || (Number.isInteger(Number(salary)) && Number(salary) >= 1);
+    setSalaryEnabled(props.sueldoAutomatico ?? false);
+    setSalaries(Object.fromEntries((props.sueldosPorUsuario ?? []).map(s => [s.usuarioId, String(s.importe)])));
+  }, [props.shiftsEnabled, props.multipleShiftsEnabled, props.sueldoAutomatico, props.sueldosPorUsuario]);
+  const loadSalaryUsers = async () => {
+    setSalaryLoading(true);
+    const result = await getCashConfigurationAction();
+    setSalaryUsers(result.configuration?.usuarios ?? []);
+    setSalaryError(result.error ?? (result.configuration?.usuarios ? '' : 'No se pudieron cargar los usuarios.'));
+    setSalaryLoading(false);
+  };
+  useEffect(() => { void loadSalaryUsers(); }, []);
+  const selectedSalaries = salaryUsers.filter(u => salaries[u.id] !== undefined).map(u => ({ usuarioId: u.id, importe: Number(salaries[u.id]) }));
+  const originalSalaries = (props.sueldosPorUsuario ?? []).filter(s => salaryUsers.some(u => u.id === s.usuarioId));
+  const salaryChanged = salaryEnabled !== (props.sueldoAutomatico ?? false) || selectedSalaries.length !== originalSalaries.length || selectedSalaries.some(s => !originalSalaries.some(o => o.usuarioId === s.usuarioId && o.importe === s.importe));
+  const salaryValid = !salaryLoading && !salaryError && selectedSalaries.every(s => Number.isInteger(s.importe) && s.importe >= 1 && s.importe <= 100000000);
   const save = (change: ScheduleChange, done: () => void, message = 'Configuración guardada') => startTransition(async () => {
     const result = await updateTicketScheduleAction(change);
     if (result.error) { toast.error(result.error.message); return; }
@@ -52,7 +66,8 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
   };
   const finish = () => {
     if (!salaryChanged) { router.push('/admin/configuracion'); return; }
-    save({ sueldoAutomatico: salaryEnabled, sueldoPorTurno: Number(salary) }, () => undefined);
+    if (!salaryValid) return;
+    save({ sueldoAutomatico: salaryEnabled, sueldosPorUsuario: selectedSalaries }, () => undefined);
   };
   return <SetupStepper
     titles={['Activar', 'Modo', 'Cajas', 'Sueldo']}
@@ -72,7 +87,7 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
         : !savedShifts ? 'Requiere turnos'
           : number === 2 ? (savedMultiple ? 'Múltiples' : 'Simple')
             : number === 3 ? (savedMultiple ? 'Varias cajas' : 'Caja principal')
-              : props.sueldoAutomatico ? '$ ' + (props.sueldoPorTurno ?? 0).toLocaleString('es-AR') + ' por jornada' : 'Sin retiro'}
+              : props.sueldoAutomatico && props.sueldosPorUsuario?.length ? 'Por usuario' : 'Sin retiro'}
     nextButtonProps={{ onClick: next }}
   >
     <Step>
@@ -101,10 +116,17 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
     </Step>
     <Step>
       <section className="space-y-4">
-        <SetupStepHeading number={4} total={4} title="Sueldo del operador" optional>Retiralo de la caja automáticamente al terminar la jornada.</SetupStepHeading>
+        <SetupStepHeading number={4} total={4} title="Sueldo por usuario" optional>Elegí quién retira sueldo y cuánto cobra por jornada. Los demás quedan sin retiro.</SetupStepHeading>
         <div className="space-y-3 rounded-2xl border border-gm-line bg-gm-surface-2 p-4">
           <div className="flex items-center justify-between gap-3"><Label htmlFor="salary-enabled">Retirar sueldo de la caja automáticamente</Label><Switch id="salary-enabled" checked={salaryEnabled} onCheckedChange={setSalaryEnabled} disabled={pending} /></div>
-          {salaryEnabled && <div className="space-y-2"><Label htmlFor="salary-amount">Importe por jornada del operador</Label><Input id="salary-amount" type="number" min={1} max={100000000} step={1} required value={salary} onChange={e => setSalary(e.target.value)} disabled={pending} /></div>}
+          {salaryLoading ? <DataLoading label="Cargando usuarios…" /> : salaryError ? <div role="alert"><p>{salaryError}</p><Button variant="outline" onClick={() => void loadSalaryUsers()}>Reintentar</Button></div> : salaryEnabled && <div className="space-y-3">{salaryUsers.map(u => {
+            const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username;
+            const enabled = salaries[u.id] !== undefined;
+            return <div key={u.id} className="space-y-2 rounded-xl border border-gm-line p-3">
+              <div className="flex items-center justify-between gap-3"><Label htmlFor={'salary-user-' + u.id}>Retira sueldo: {name}</Label><Switch id={'salary-user-' + u.id} checked={enabled} disabled={pending} onCheckedChange={checked => setSalaries(current => { const next = { ...current }; if (checked) next[u.id] = ''; else delete next[u.id]; return next; })} /></div>
+              {enabled ? <div className="space-y-2"><Label htmlFor={'salary-amount-' + u.id}>Importe por jornada: {name}</Label><Input id={'salary-amount-' + u.id} type="number" min={1} max={100000000} step={1} required value={salaries[u.id]} onChange={e => setSalaries(current => ({ ...current, [u.id]: e.target.value }))} disabled={pending} /></div> : <p className="text-xs text-muted-foreground">Sin retiro de sueldo.</p>}
+            </div>;
+          })}{salaryUsers.length === 0 && <p className="text-sm text-muted-foreground">No hay usuarios habilitados para esta playa.</p>}</div>}
         </div>
         <p className="text-xs text-muted-foreground">Se aplica al finalizar la jornada, una sola vez. A las 00:00 continúa en la nueva planilla sin retirar sueldo. Si no alcanza para preservar el fondo de la caja, no se descuenta y queda una alerta. Los cambios de sueldo rigen para nuevas jornadas.</p>
       </section>

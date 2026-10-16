@@ -29,7 +29,7 @@ export async function getFrequentCustomersPage(filters: FrequentCustomersFilters
 export async function getFrequentCustomers(filters: FrequentCustomersFilters, authToken?: string) {
   return (await getFrequentCustomersPage(filters, authToken)).data;
 }
-export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean; shiftsEnabled?: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldoPorTurno?: number; pricingDayTypeBasis?: 'ENTRY' | 'EXIT'; pricingOptions?: PricingOptions | null; receiptDelivery?: ReceiptDeliverySettings };
+export type TicketSchedule = { dayStartHour: number; dayEndHour: number; graceMinutes: number; barcodeTicketsEnabled: boolean; shiftsEnabled?: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldoPorTurno?: number; sueldosPorUsuario?: { usuarioId: string; importe: number }[]; pricingDayTypeBasis?: 'ENTRY' | 'EXIT'; pricingOptions?: PricingOptions | null; receiptDelivery?: ReceiptDeliverySettings };
 
 
 
@@ -162,7 +162,7 @@ export const getTicketSchedule = async (authToken?: string) => {
   }
 };
 
-export const updateTicketSchedule = async (schedule: Partial<TicketScheduleSchemaType> & { barcodeTicketsEnabled?: boolean; shiftsEnabled?: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldoPorTurno?: number }, authToken?: string) => {
+export const updateTicketSchedule = async (schedule: Partial<TicketScheduleSchemaType> & { barcodeTicketsEnabled?: boolean; shiftsEnabled?: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldoPorTurno?: number; sueldosPorUsuario?: { usuarioId: string; importe: number }[] }, authToken?: string) => {
   try {
     const response = await fetch(`${BASE_URL}/tickets/schedule-settings`, {
       method: 'PATCH',

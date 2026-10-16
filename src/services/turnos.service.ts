@@ -92,7 +92,7 @@ export async function getOperadores(): Promise<{ id: string; firstName: string; 
   return response.json();
 }
 
-export async function getCashConfiguration(): Promise<{ cajas: import('@/types/turno.type').Caja[]; hayTurnosAbiertos: boolean }> {
+export async function getCashConfiguration(): Promise<{ cajas: import('@/types/turno.type').Caja[]; hayTurnosAbiertos: boolean; usuarios?: { id: string; firstName: string; lastName: string; username: string }[] }> {
   const response = await fetch(BASE_URL + '/turnos/configuracion', { headers: await getAuthHeaders(), cache: 'no-store' });
   const data = await response.json();
   if (!response.ok) throw new Error(data.message || 'No se pudo consultar las cajas.');
