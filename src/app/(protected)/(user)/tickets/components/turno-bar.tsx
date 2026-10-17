@@ -43,7 +43,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState('');
   const [cajaId, setCajaId] = useState('');
-  const [received, setReceived] = useState('0');
+  // El saldo anterior es una referencia, nunca una confirmación del dinero recibido.
+  const [received, setReceived] = useState('');
   const [added, setAdded] = useState('0');
   const [openingReason, setOpeningReason] = useState('');
   const [counted, setCounted] = useState('');
@@ -94,7 +95,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     if (turnoId && !next.openTurnos.some(t => t.id === turnoId)) { setContext(null); setError('Este turno ya no está abierto. Actualizá la lista de turnos.'); return; }
     setContext(next); setError('');
     const selected = next.cajas?.find(c => c.id === cajaId) ?? next.cajas?.[0];
-    if (selected) { setCajaId(selected.id); if (resetOpening) { setReceived(String(selected.session ? 0 : selected.efectivoDisponible)); setAdded('0'); setOpeningReason(''); } }
+    if (selected) { setCajaId(selected.id); if (resetOpening) { setReceived(''); setAdded('0'); setOpeningReason(''); } }
   };
   useEffect(() => {
     if (turnoId) return;
@@ -119,14 +120,16 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   }, [open, closing, activeId, arqueo]);
   const cobrarEstadia = onCobrarEstadia && ((id: string) => { setOpen(false); setClosing(false); onCobrarEstadia(id); });
   const updated = () => { onUpdated?.(); window.dispatchEvent(new Event('parking-shift-changed')); };
-  const submitOpen = () => startTransition(async () => {
-    if (!caja) return;
+  const submitOpen = () => {
+    if (!caja || pending || !openingValid) return;
+    startTransition(async () => {
     const result = await openTurnoAction({ cajaId: caja.id, fondoInicial: caja.session ? 0 : Number(received) + Number(added),
       sesionActivaId: caja.session?.id, sesionAnteriorId: caja.pending?.id, turnoAnteriorId: caja.legacyPending?.id,
       cambioAgregado: caja.session ? 0 : Number(added), motivoApertura: openingDifference ? openingReason : undefined });
     if (result.error) { toast.error(typeof result.error === 'string' ? result.error : result.error.message); await refresh(); return; }
     toast.success(caja.session ? 'Te uniste a la caja. Tu turno está abierto.' : 'Caja y turno abiertos.'); setOpen(false); updated(); await refresh();
-  });
+    });
+  };
   const submitClose = () => startTransition(async () => {
     if (!active) return;
     const result = await closeTurnoAction(active.id, { cerrarCaja: arqueo, sueldoEsperado: salary, efectivoEsperado: expected,
@@ -142,7 +145,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const confirmar = (ids: string[], sigue: boolean) => setEstadiasConfirmadas(actuales => sigue ? [...new Set([...actuales, ...ids])] : actuales.filter(id => !ids.includes(id)));
   const closingValid = canClose && estadias !== null && largas.every(e => estadiasConfirmadas.includes(e.id)) &&(!forzando || forcedReason.trim()) && (!arqueo ||(amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= afterSalary && (closingDifference === 0 || notes.trim())));
   const openingValid = !!caja && !context?.legacyOpen && (caja.session ? context?.multipleShiftsEnabled : amountValid(received) && amountValid(added) && (openingDifference === 0 || openingReason.trim()));
-  const abrir = () => { setClosing(!!turnoId); setCounted(''); setWithdrawn('0'); setNotes(''); setForcedReason(''); setOpen(true); startTransition(() => refresh(true)); };
+  const abrir = () => { setClosing(!!turnoId); setReceived(''); setAdded('0'); setOpeningReason(''); setCounted(''); setWithdrawn('0'); setNotes(''); setForcedReason(''); setOpen(true); startTransition(() => refresh(true)); };
   const enlaceHistorial = esAdmin && <Link href="/admin/caja?tab=turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja?tab=turnos'), 200); }} className="mx-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow"><History className="size-3.5" aria-hidden />Ver turnos e historial</Link>;
   return <>
     {variant === 'pill' ? (
@@ -254,7 +257,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             {(context.cajas?.length ?? 0) <= 1 && <Pill>{caja?.nombre ?? 'Caja principal'}</Pill>}
           </div>
           {context.legacyOpen && <p role="alert" className="rounded-2xl border border-amber-500/40 bg-amber-500/[0.05] p-4 text-sm">Hay turnos del esquema anterior abiertos. El administrador debe cerrarlos antes de empezar a usar cajas compartidas.</p>}
-          {(context.cajas?.length ?? 0) > 1 ? <div className="space-y-1.5"><Label htmlFor="cash-register">¿En qué caja vas a trabajar?</Label><Select value={cajaId} disabled={pending} onValueChange={value => { setCajaId(value); const c = context.cajas?.find(item => item.id === value); setReceived(String(c?.session ? 0 : c?.efectivoDisponible ?? 0)); setAdded('0'); setOpeningReason(''); }}><SelectTrigger id="cash-register" className="h-11"><SelectValue placeholder="Elegí tu caja" /></SelectTrigger><SelectContent>{context.cajas?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre} · {c.session ? 'Abierta' : 'Disponible'}</SelectItem>)}</SelectContent></Select></div> : null}
+          {(context.cajas?.length ?? 0) > 1 ? <div className="space-y-1.5"><Label htmlFor="cash-register">¿En qué caja vas a trabajar?</Label><Select value={cajaId} disabled={pending} onValueChange={value => { setCajaId(value); setReceived(''); setAdded('0'); setOpeningReason(''); }}><SelectTrigger id="cash-register" className="h-11"><SelectValue placeholder="Elegí tu caja" /></SelectTrigger><SelectContent>{context.cajas?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre} · {c.session ? 'Abierta' : 'Disponible'}</SelectItem>)}</SelectContent></Select></div> : null}
           {caja?.session ? <div className="space-y-3 rounded-2xl border border-gm-yellow/25 bg-gm-yellow/[0.06] p-4 text-sm">
             <p className="font-semibold">{context.multipleShiftsEnabled ? 'Te vas a unir a una caja abierta' : 'Esta caja ya tiene un turno abierto'}</p>
             <div className="flex items-center gap-3"><span className="flex -space-x-2">{caja.operadores.slice(0, 3).map(o => <Iniciales key={o.turnoId} nombre={o.nombre} className="size-8 border-2 border-card text-[11px]" />)}</span><p className="text-muted-foreground">{caja.operadores.map(o => o.nombre).join(', ')} {caja.operadores.length === 1 ? 'está trabajando' : 'están trabajando'} aquí.</p></div>
@@ -275,10 +278,14 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
               </div>
               {handover?.vehiculosDejados != null && handover.vehiculosActivos !== handover.vehiculosDejados && <p className="border-t border-gm-line px-4 py-2 text-[11px] text-muted-foreground">Ahora hay {handover.vehiculosActivos} vehículos dentro.</p>}
             </section>
-            <div className="space-y-3">
-              <CashAmountField id="cash-received" label="Efectivo que recibís" value={received} onChange={setReceived} disabled={pending} shortcuts={[...(hasPrior ? [{ label: 'Recibí todo · ' + money(openingExpected), amount: openingExpected }] : []), { label: 'Sin efectivo recibido', amount: 0 }]} description={<>Contá el dinero y confirmá el importe. Fondo habitual: <span className="tabular-nums">{money(caja?.fondoObjetivo ?? 15000)}</span>.</>} />
+            <section aria-labelledby="received-question" className="space-y-3 rounded-2xl border border-gm-yellow/40 bg-gm-yellow/[0.04] p-3 sm:p-4">
+              <div className="space-y-1">
+                <h3 id="received-question" className="text-base font-bold">¿Cuánto efectivo recibiste?</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">Contá el dinero. Marcá lo que recibiste o escribí otro importe para poder abrir la caja.</p>
+              </div>
+              <CashAmountField id="cash-received" label="Efectivo que recibís" value={received} onChange={setReceived} disabled={pending} placeholder="Escribí el importe recibido" shortcuts={[...(hasPrior && openingExpected > 0 ? [{ label: 'Recibí todo · ' + money(openingExpected), amount: openingExpected }] : []), { label: 'Sin efectivo recibido', amount: 0 }]} description="Confirmá el dinero que tenés en mano, antes de agregar cambio." />
               {openingDifference !== 0 && amountValid(received) && <div className="space-y-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] p-4"><Pill tono="aviso">{openingDifference > 0 ? 'Faltan ' + money(openingDifference) : 'Hay ' + money(-openingDifference) + ' adicionales'}</Pill><div className="space-y-1.5"><Label htmlFor="opening-reason">Motivo de la diferencia al recibir</Label><Input id="opening-reason" maxLength={255} required value={openingReason} onChange={e => setOpeningReason(e.target.value)} disabled={pending} placeholder="Ej.: retiro que no quedó registrado" /></div></div>}
-            </div>
+            </section>
             <details className="group rounded-2xl border border-dashed border-gm-line-strong text-xs">
               <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-semibold text-muted-foreground rounded-2xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow [&::-webkit-details-marker]:hidden"><Plus className="size-3.5 transition-transform group-open:rotate-45" aria-hidden />Agregar cambio · opcional</summary>
               <div className="border-t border-dashed border-gm-line-strong p-4"><CashAmountField id="cash-added" label="Cambio que agregás ahora" value={added} onChange={setAdded} disabled={pending} shortcuts={[{ label: 'No agrego cambio', amount: 0 }]} increments description="Solo si agregás dinero de afuera." /></div>
@@ -287,7 +294,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           {enlaceHistorial}
         </ActionDialogBody>
           <ActionDialogFooter>
-            <ActionDialogPrimaryButton type="submit" disabled={pending || !openingValid}>{pending ? 'Abriendo…' : caja?.session ? 'Abrir mi turno en esta caja' : 'Abrir caja y mi turno'}</ActionDialogPrimaryButton>
+            <ActionDialogPrimaryButton type="submit" disabled={pending || !openingValid} detail={!caja?.session && !amountValid(received) ? 'Primero confirmá cuánto efectivo recibiste' : undefined}>{pending ? 'Abriendo…' : caja?.session ? 'Abrir mi turno en esta caja' : 'Abrir caja y mi turno'}</ActionDialogPrimaryButton>
           </ActionDialogFooter>
         </form>}
       </ActionDialogContent>

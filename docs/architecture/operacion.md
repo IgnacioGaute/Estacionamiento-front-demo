@@ -32,6 +32,10 @@ los medios de pago. El pie de confirmación permanece visible y el cuerpo se des
 Turnos y cajas: la UI usa el contexto de caja del backend y soporta cajas físicas y turnos
 compartidos mediante CashSession. Revisar src/types/turno.type.ts y docs/caja-turnos.md del backend
 antes de modificar aperturas/cierres; los turnos legacy conservan su circuito histórico.
+Al abrir una caja, el efectivo recibido empieza vacío: el operador debe elegir un importe o
+escribirlo, incluso si recibe cero. Se vuelve a pedir al reabrir el diálogo o cambiar de caja.
+Un importe distinto al cierre anterior exige motivo. Unirse a una caja ya abierta no vuelve a
+declarar el fondo compartido.
 Cash is not revenue: BoxList.totalPrice es efectivo físico neto, no ingresos ni fondos de traspaso.
 
 Las tarjetas de vehículos por hora y estadías largas muestran el tipo con ícono y nombre. `CardTicket` comparte el catálogo de tipos mediante `VehicleTypeLabelsContext`; las etiquetas incluyen tipos desactivados y usan el código como respaldo si el catálogo no está disponible. El color de estadía y los avisos conservan su significado.

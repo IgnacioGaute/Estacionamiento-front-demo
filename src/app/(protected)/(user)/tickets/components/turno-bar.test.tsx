@@ -27,11 +27,21 @@ const shift = (owner = user, shared = false): OpenTurno => ({ id: owner.id + '-t
 const context = (active: OpenTurno | null = null): CashContext => ({ active, pending: null, efectivoDisponible: active ? 900 : 40000, openTurnos: [shift(other)], cajas: [caja], multipleShiftsEnabled: false });
 beforeEach(() => { jest.clearAllMocks(); jest.mocked(useSession).mockReturnValue({ data: { user }, status: 'authenticated' } as ReturnType<typeof useSession>); jest.mocked(getCashContextAction).mockResolvedValue({ context: context() }); jest.mocked(openTurnoAction).mockResolvedValue({ error: 'Prueba' }); jest.mocked(closeTurnoAction).mockResolvedValue({ error: 'Prueba' }); });
 
-test('una caja recibe el fondo del último cierre sin pedir elegir caja', async () => {
+test('exige confirmar el fondo del último cierre antes de abrir la caja', async () => {
   render(<TurnoBar />);
   fireEvent.click(await screen.findByRole('button', { name: 'Abrir mi turno' }));
   const input = await screen.findByLabelText('Efectivo que recibís');
-  await waitFor(() => expect(input).toHaveValue(40000));
+  await waitFor(() => expect(input).toBeEnabled());
+  expect(input).toHaveValue(null);
+  expect(screen.getByRole('heading', { name: '¿Cuánto efectivo recibiste?' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Abrir caja y mi turno/ })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /^Recibí todo/ })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByRole('button', { name: 'Sin efectivo recibido' })).toHaveAttribute('aria-pressed', 'false');
+  if (process.env.TURNOS_VISUAL_QA) writeFileSync('../estacionamiento-back-demo/.tmp/turnos-confirmar.html', document.body.innerHTML);
+  fireEvent.submit(input.closest('form')!);
+  expect(openTurnoAction).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: /^Recibí todo/ }));
+  expect(input).toHaveValue(40000);
   expect(screen.queryByLabelText('¿En qué caja vas a trabajar?')).not.toBeInTheDocument();
   expect(screen.getByText('Luis Pérez')).toBeInTheDocument();
   expect(screen.getByText('Vehículos que dejó dentro')).toBeInTheDocument();
@@ -51,6 +61,27 @@ test('permite recibir menos que el esperado cuando se explica la diferencia', as
   const submit = await screen.findByRole('button', { name: 'Abrir caja y mi turno' }); expect(submit).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Motivo de la diferencia al recibir'), { target: { value: 'Faltante al recibir' } }); fireEvent.click(submit);
   await waitFor(() => expect(openTurnoAction).toHaveBeenCalledWith(expect.objectContaining({ fondoInicial: 39000, motivoApertura: 'Faltante al recibir' })));
+});
+
+test('incluso sin fondo anterior exige elegir cero y vuelve a pedir confirmación al reabrir', async () => {
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: { ...context(), cajas: [{ ...caja, pending: null, efectivoDisponible: 0 }] } });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Abrir mi turno' }));
+  const input = await screen.findByLabelText('Efectivo que recibís');
+  await waitFor(() => expect(input).toBeEnabled());
+  expect(input).toHaveValue(null);
+  expect(screen.getByRole('button', { name: /Abrir caja y mi turno/ })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Sin efectivo recibido' }));
+  expect(input).toHaveValue(0);
+  expect(screen.getByRole('button', { name: 'Abrir caja y mi turno' })).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Abrir mi turno' }));
+  await waitFor(() => expect(screen.getByLabelText('Efectivo que recibís')).toBeEnabled());
+  expect(screen.getByLabelText('Efectivo que recibís')).toHaveValue(null);
+  expect(screen.getByRole('button', { name: /Abrir caja y mi turno/ })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Sin efectivo recibido' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Abrir caja y mi turno' }));
+  await waitFor(() => expect(openTurnoAction).toHaveBeenCalledWith(expect.objectContaining({ fondoInicial: 0 })));
 });
 
 test('al unirse a la caja abierta no vuelve a cargar el fondo', async () => {
@@ -170,11 +201,18 @@ test('el selector permite elegir otra caja y utiliza exclusivamente su fondo', a
   jest.mocked(getCashContextAction).mockResolvedValue({ context: { ...context(), multipleShiftsEnabled: true, cajas: [caja, lateral] } });
   render(<TurnoBar />); fireEvent.click(await screen.findByRole('button', { name: 'Abrir mi turno' }));
   const select = await screen.findByRole('combobox', { name: '¿En qué caja vas a trabajar?' });
-  await waitFor(() => expect(select).toBeEnabled()); fireEvent.keyDown(select, { key: 'ArrowDown' });
+  await waitFor(() => expect(select).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: /^Recibí todo/ }));
+  expect(screen.getByLabelText('Efectivo que recibís')).toHaveValue(40000);
+  fireEvent.keyDown(select, { key: 'ArrowDown' });
   const option = await screen.findByRole('option', { name: 'Entrada lateral · Disponible' });
   if (process.env.TURNOS_VISUAL_QA) writeFileSync('../estacionamiento-back-demo/.tmp/turnos-select.html', document.body.innerHTML);
   fireEvent.click(option);
-  await waitFor(() => expect(screen.getByLabelText('Efectivo que recibís')).toHaveValue(20000));
+  await waitFor(() => expect(screen.getByLabelText('Efectivo que recibís')).toHaveValue(null));
+  await waitFor(() => expect(screen.getByLabelText('Efectivo que recibís')).toBeEnabled());
+  expect(screen.getByRole('button', { name: /Abrir caja y mi turno/ })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: /^Recibí todo/ }));
+  expect(screen.getByLabelText('Efectivo que recibís')).toHaveValue(20000);
   const submit = await screen.findByRole('button', { name: 'Abrir caja y mi turno' }); await waitFor(() => expect(submit).toBeEnabled()); fireEvent.click(submit);
   await waitFor(() => expect(openTurnoAction).toHaveBeenCalledWith(expect.objectContaining({ cajaId: 'lateral', sesionAnteriorId: 'cierre-lateral', fondoInicial: 20000 })));
 });
