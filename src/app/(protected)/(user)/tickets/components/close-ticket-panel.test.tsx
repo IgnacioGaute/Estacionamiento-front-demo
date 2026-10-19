@@ -29,6 +29,7 @@ jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn(),
 const summary = (price = 1000, collected = 0) => ({ registration: { id: 'reg', vehicleType: 'AUTO', entryMode: 'PLATE', licensePlateOriginal: 'AB123CD', entryDay: '2026-10-10', entryTime: '10:00:00' }, elapsedMinutes: 30, previewBracket: { price }, saldoACobrar: price - collected, cambioARetornar: 0, totalCollectedSoFar: collected, pricingDayTypeBasis: 'ENTRY' } as CloseSummary);
 beforeEach(() => {
   jest.clearAllMocks();
+  localStorage.clear();
   jest.mocked(getCloseSummaryAction).mockResolvedValue(summary());
   jest.mocked(closeRegistrationAction).mockResolvedValue({ success: 'OK', registrationId: 'reg' });
 });
@@ -85,12 +86,28 @@ test('todo el saldo respeta el anticipo y después permite confirmar la salida s
   await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({ closeType: 'NO_CHARGE', expectedPrice: 400, expectedCollected: 400 })));
 });
 
+test('sin buscar: primero los de más de 4 h sin confirmar; «Sigue» los pasa a la lista común', async () => {
+  const estadia = (id: string, plate: string, entryTime: string, entryDay: string) => ({ id, vehicleType: 'AUTO', entryMode: 'PLATE', licensePlateOriginal: plate, entryDay, entryTime } as unknown as TicketRegistration);
+  // Entró hace 10 minutos, con fecha y hora del mismo instante (también cerca de la medianoche).
+  const entrada = new Date(Date.now() - 10 * 60_000);
+  const dia = entrada.toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+  const hora = entrada.toLocaleTimeString('en-GB', { timeZone: 'America/Argentina/Buenos_Aires', hour12: false });
+  jest.mocked(searchActiveRegistrationsAction).mockResolvedValue([estadia('vieja', 'AE567YU', '10:00:00', '2026-10-10'), estadia('nueva', 'CD453RT', hora, dia)]);
+  render(<CloseTicketPanel open onOpenChange={jest.fn()} />);
+  expect(await screen.findByText('Sin confirmar · más de 4 h · 1')).toBeInTheDocument();
+  expect(screen.getByText('Los demás · 1')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'AE567YU sigue en la playa' }));
+  expect(screen.queryByText(/Sin confirmar/)).not.toBeInTheDocument();
+  expect(screen.getByText('Adentro ahora · 2')).toBeInTheDocument();
+});
+
 test('buscar escaneando: además de las que coinciden muestra las patentes parecidas para cobrarlas', async () => {
   const estadia = (id: string, plate: string, parecida?: boolean) => ({ id, vehicleType: 'AUTO', entryMode: 'PLATE', licensePlateOriginal: plate, entryDay: '2026-10-10', entryTime: '10:00:00', parecida } as unknown as TicketRegistration);
   jest.mocked(searchActiveRegistrationsAction).mockImplementation(async (q: string) => (q ? [estadia('par', 'SO123AA', true)] : [estadia('otra', 'ZZ999ZZ')]));
   const onSalidaSinEntrada = jest.fn();
   render(<CloseTicketPanel open onOpenChange={jest.fn()} onSalidaSinEntrada={onSalidaSinEntrada} />);
-  expect(await screen.findByText('Adentro ahora · 1')).toBeInTheDocument();
+  // Entró hace días: sin buscar, aparece primero entre los que nadie confirmó.
+  expect(await screen.findByText('Sin confirmar · más de 4 h · 1')).toBeInTheDocument();
   // Como en Registrar entrada, lo escrito queda en mayúsculas.
   fireEvent.change(screen.getByRole('textbox', { name: 'Buscar vehículo' }), { target: { value: 'so1' } });
   expect(screen.getByRole('textbox', { name: 'Buscar vehículo' })).toHaveValue('SO1');

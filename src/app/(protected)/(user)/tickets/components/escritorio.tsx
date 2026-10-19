@@ -138,7 +138,9 @@ export function TarjetaAdentro({ total, porHora, largas, excedidos, vencidas, tu
 
 // ── Entrar, cobrar y estadía larga ────────────────────────────────────────────
 
-export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef, salidaRef, estadiaRef, ticketsHabilitados, atajos }: {
+// `sinConfirmar`: autos de más de 4 h que nadie confirmó. Cobrar salida los muestra primero, así el
+// botón lleva la cuenta en vez de sumar otro aviso.
+export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef, salidaRef, estadiaRef, ticketsHabilitados, atajos, sinConfirmar = 0 }: {
   onEntrada: () => void;
   onSalida: () => void;
   onEstadia: () => void;
@@ -147,6 +149,7 @@ export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef,
   estadiaRef?: Refe;
   ticketsHabilitados: boolean;
   atajos: boolean;
+  sinConfirmar?: number;
 }) {
   const accion = cn('group flex min-h-[132px] flex-col justify-between gap-5 rounded-[22px] border border-gm-line-strong bg-gm-surface-2 p-4 text-left transition-[border-color,transform] hover:border-gm-yellow active:scale-[0.98]', enfoque);
   return (
@@ -162,14 +165,19 @@ export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef,
             <span className="mt-0.5 block text-xs text-muted-foreground">{ticketsHabilitados ? 'Patente, apellido o ticket' : 'Patente o apellido'}</span>
           </span>
         </button>
-        <button ref={salidaRef} type="button" onClick={onSalida} aria-keyshortcuts={atajos ? 'S' : undefined} className={accion}>
-          <span className="flex w-full items-center justify-between">
+        <button ref={salidaRef} type="button" onClick={onSalida} aria-keyshortcuts={atajos ? 'S' : undefined} className={cn(accion, sinConfirmar > 0 && 'border-violet-400/55')}>
+          <span className="flex w-full items-center justify-between gap-2">
             <span className="grid size-12 place-items-center rounded-2xl bg-foreground text-gm-ink"><Banknote className="size-6" aria-hidden /></span>
-            {atajos && <Kbd>S</Kbd>}
+            <span className="flex items-center gap-1.5">
+              {sinConfirmar > 0 && <span aria-hidden className="gm-mono grid h-[26px] min-w-[26px] place-items-center rounded-full bg-violet-400 px-1.5 text-[13px] font-bold text-[#1B1230]">{sinConfirmar}</span>}
+              {atajos && <Kbd>S</Kbd>}
+            </span>
           </span>
           <span>
             <span className="gm-display block text-[19px] leading-tight tracking-[0.04em]">Cobrar salida</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">O tocá un vehículo del tablero</span>
+            {sinConfirmar > 0
+              ? <span className="mt-0.5 block text-xs font-semibold text-violet-200">{sinConfirmar} sin confirmar</span>
+              : <span className="mt-0.5 block text-xs text-muted-foreground">O tocá un vehículo del tablero</span>}
           </span>
         </button>
       </div>

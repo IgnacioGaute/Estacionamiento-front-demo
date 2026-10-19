@@ -19,6 +19,7 @@ import { DataLoading } from '@/components/ui/data-loading';
 import { CashContext, EstadiaAbiertaTurno } from '@/types/turno.type';
 import { getEstadiasAbiertasTurnoAction } from '@/actions/turnos/estadias-abiertas.action';
 import { paraRepasar, RepasoEstadias } from './repaso-estadias';
+import { useConfirmadas } from './estadias-largas';
 import { getCashContextAction } from '@/actions/turnos/cash-context.action';
 import { openTurnoAction } from '@/actions/turnos/open-turno.action';
 import { closeTurnoAction } from '@/actions/turnos/close-turno.action';
@@ -54,6 +55,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   // Las entradas del operador que siguen abiertas: hay que confirmarlas para cerrar el turno.
   const [estadias, setEstadias] = useState<EstadiaAbiertaTurno[] | null>(null);
   const [estadiasConfirmadas, setEstadiasConfirmadas] = useState<string[]>([]);
+  const { confirmada: confirmadaEnDispositivo, confirmar: confirmarEnDispositivo } = useConfirmadas();
   const esAdmin = session?.user?.role === 'ADMIN';
   const nombreUsuario = [session?.user?.firstName, session?.user?.lastName].filter(Boolean).join(' ').trim() || session?.user?.username || 'Tu usuario';
   const active = turnoId ? context?.openTurnos.find(t => t.id === turnoId) : context?.active;
@@ -140,10 +142,16 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     toast.success(arqueo ? 'Turno y caja cerrados. El fondo queda para el próximo operador.' : 'Turno cerrado. La caja sigue abierta para los demás operadores.');
     setOpen(false); setClosing(false); updated(); await refresh();
   });
-  // Solo se preguntan los de más de 4 horas; el turno se cierra cuando están todos revisados.
+  // Solo se preguntan los de más de 4 horas; el turno se cierra cuando están todos revisados. Los que
+  // ya se confirmaron en este dispositivo (franja del inicio o Cobrar salida) llegan marcados, y lo
+  // que se marca acá queda confirmado también allá.
   const largas = estadias ? paraRepasar(estadias, Date.now()) : [];
-  const confirmar = (ids: string[], sigue: boolean) => setEstadiasConfirmadas(actuales => sigue ? [...new Set([...actuales, ...ids])] : actuales.filter(id => !ids.includes(id)));
-  const closingValid = canClose && estadias !== null && largas.every(e => estadiasConfirmadas.includes(e.id)) &&(!forzando || forcedReason.trim()) && (!arqueo ||(amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= afterSalary && (closingDifference === 0 || notes.trim())));
+  const confirmadas = [...new Set([...estadiasConfirmadas, ...largas.filter(e => confirmadaEnDispositivo(e.id, Date.now())).map(e => e.id)])];
+  const confirmar = (ids: string[], sigue: boolean) => {
+    setEstadiasConfirmadas(actuales => sigue ? [...new Set([...actuales, ...ids])] : actuales.filter(id => !ids.includes(id)));
+    confirmarEnDispositivo(ids, sigue);
+  };
+  const closingValid = canClose && estadias !== null && largas.every(e => confirmadas.includes(e.id)) &&(!forzando || forcedReason.trim()) && (!arqueo ||(amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= afterSalary && (closingDifference === 0 || notes.trim())));
   const openingValid = !!caja && !context?.legacyOpen && (caja.session ? context?.multipleShiftsEnabled : amountValid(received) && amountValid(added) && (openingDifference === 0 || openingReason.trim()));
   const abrir = () => { setClosing(!!turnoId); setReceived(''); setAdded('0'); setOpeningReason(''); setCounted(''); setWithdrawn('0'); setNotes(''); setForcedReason(''); setOpen(true); startTransition(() => refresh(true)); };
   const enlaceHistorial = esAdmin && <Link href="/admin/caja?tab=turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja?tab=turnos'), 200); }} className="mx-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow"><History className="size-3.5" aria-hidden />Ver turnos e historial</Link>;
@@ -172,7 +180,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           {enlaceHistorial}
         </ActionDialogBody> : active ? closing ? <form onSubmit={e => { e.preventDefault(); submitClose(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-5 [&>*]:shrink-0">
           {arqueo && <p className="text-[13px] leading-relaxed text-muted-foreground">Sos el último operador de esta caja: contá el efectivo de todos los turnos desde su apertura.</p>}
-          {estadias && <RepasoEstadias estadias={largas} todas={arqueo} sobrante={arqueo && amountValid(counted) && closingDifference < 0 ? -closingDifference : 0} confirmadas={estadiasConfirmadas} onConfirmar={confirmar} onCobrar={cobrarEstadia} disabled={pending} />}
+          {estadias && <RepasoEstadias estadias={largas} todas={arqueo} sobrante={arqueo && amountValid(counted) && closingDifference < 0 ? -closingDifference : 0} confirmadas={confirmadas} onConfirmar={confirmar} onCobrar={cobrarEstadia} disabled={pending} />}
           <section aria-label="Turno que cerrás" className="overflow-hidden rounded-2xl border border-gm-line bg-gm-surface-2/50">
             <div className="flex items-center gap-3 p-3.5">
               <Iniciales nombre={active.nombre} />

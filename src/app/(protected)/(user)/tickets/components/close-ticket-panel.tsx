@@ -45,6 +45,7 @@ import { pagoParcialEfectivoAction } from '@/actions/tickets/pago-parcial.action
 import { EditarDatosEstadia } from './editar-datos-estadia';
 import { EliminarEstadia } from './eliminar-estadia';
 import { PlateCameraScanButton } from './plate-camera-scan-button';
+import { estadiasLargas, useConfirmadas } from './estadias-largas';
 
 // Efectivo y transferencia los declara el cajero; QR y alias los verifica el sistema contra
 // MercadoPago. Los cuatro se eligen igual (tocar y confirmar abajo) para que el botón principal
@@ -210,6 +211,7 @@ export function CloseTicketPanel({
   const searchRequest = useRef(0);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<TicketRegistration[]>([]);
+  const { confirmada, confirmar } = useConfirmadas();
   const [summary, setSummary] = useState<CloseSummary | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<Medio | null>(null);
   const [showDiscount, setShowDiscount] = useState(false);
@@ -510,7 +512,13 @@ export function CloseTicketPanel({
 
   // La búsqueda trae primero las que coinciden y después las de patente parecida: lo escaneado o
   // escrito puede tener un carácter mal leído, y sin verlas se cobraba como salida sin entrada.
-  const coinciden = results.filter((r) => !r.parecida);
+  // Sin buscar nada, primero los de más de 4 h que nadie confirmó: el aviso de la pantalla de inicio
+  // manda acá («Revisar») y casi siempre son autos que se fueron sin registrar la salida. No se
+  // repiten en la lista de abajo.
+  const ahoraLista = Date.now();
+  const sinConfirmar = query.trim() ? [] : estadiasLargas(results.filter((r) => !r.parecida), ahoraLista).filter(({ r }) => !confirmada(r.id, ahoraLista));
+  const idsSinConfirmar = new Set(sinConfirmar.map(({ r }) => r.id));
+  const coinciden = results.filter((r) => !r.parecida && !idsSinConfirmar.has(r.id));
   const parecidas = results.filter((r) => r.parecida);
   const fila = (r: TicketRegistration) => {
     const elapsed = minutesSinceEntry(r, Date.now());
@@ -643,9 +651,41 @@ export function CloseTicketPanel({
               {/* En el celular, la cámara escribe la patente en el buscador: se ven las que coinciden y las parecidas. */}
               <PlateCameraScanButton variant="square" onRecognized={(plate) => handleSearchChange(plate.toUpperCase())} />
             </div>
+            {sinConfirmar.length > 0 && (
+              <section aria-label="Autos sin confirmar" className="shrink-0 overflow-hidden rounded-2xl border border-violet-400/30 bg-violet-400/[0.06]">
+                <div className="flex min-h-11 items-center justify-between gap-3 pl-3.5 pr-1.5">
+                  <p className="text-[12.5px] font-semibold text-violet-100">Sin confirmar · más de 4 h · {sinConfirmar.length}</p>
+                  {sinConfirmar.length > 1 && (
+                    <button type="button" onClick={() => confirmar(sinConfirmar.map(({ r }) => r.id))}
+                      className="min-h-11 shrink-0 rounded-xl px-3 text-[12.5px] font-semibold text-violet-200 transition-colors hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+                      Siguen todos
+                    </button>
+                  )}
+                </div>
+                <ul>
+                  {sinConfirmar.map(({ r, minutos }) => (
+                    <li key={r.id} className="flex items-center gap-1 border-t border-violet-400/15 pr-2">
+                      <button type="button" onClick={() => loadSummary(r.id)}
+                        className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow">
+                        <Identidad r={r} />
+                        <span className="min-w-0 flex-1">
+                          <span className="gm-mono block text-[15px] font-semibold text-violet-200">{formatElapsed(minutos)}</span>
+                          <span className="block truncate text-[12.5px] text-muted-foreground">Entró {cuandoEntro(r)}</span>
+                        </span>
+                        <span className="shrink-0 text-[12.5px] font-bold text-gm-yellow">Cobrar</span>
+                      </button>
+                      <button type="button" onClick={() => confirmar([r.id])} aria-label={`${r.licensePlateOriginal || r.lastNameCustomer || 'Este vehículo'} sigue en la playa`}
+                        className="min-h-11 shrink-0 rounded-xl border border-gm-line-strong px-3 text-[12.5px] font-semibold text-[#D9D1C3] transition-colors hover:border-violet-300/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+                        Sigue
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
             {coinciden.length > 0 && (
               <>
-                <p className={etiqueta}>{query.trim() ? `Coinciden · ${coinciden.length}` : `Adentro ahora · ${coinciden.length}`}</p>
+                <p className={etiqueta}>{query.trim() ? `Coinciden · ${coinciden.length}` : sinConfirmar.length ? `Los demás · ${coinciden.length}` : `Adentro ahora · ${coinciden.length}`}</p>
                 <ul className="shrink-0 overflow-hidden rounded-2xl border border-border bg-gm-surface-2">
                   {coinciden.map(fila)}
                 </ul>
@@ -662,7 +702,7 @@ export function CloseTicketPanel({
                 </ul>
               </>
             )}
-            {coinciden.length === 0 && (isPending && !parecidas.length ? <DataLoading label="Buscando vehículos…" /> : <>
+            {coinciden.length === 0 && !sinConfirmar.length && (isPending && !parecidas.length ? <DataLoading label="Buscando vehículos…" /> : <>
               {!parecidas.length && (
                 <p className="py-6 text-center text-sm text-muted-foreground">
                   {query.trim() ? (barcodeTicketsEnabled ? 'No encontramos ese vehículo. Revisá la patente o el número de ticket.' : 'No encontramos ese vehículo. Revisá la patente o el apellido.') : 'No hay vehículos adentro.'}

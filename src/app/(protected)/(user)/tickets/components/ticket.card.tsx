@@ -39,6 +39,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { isBarcodeOrigin, isOverdue, mergeServerSnapshot, minutesSinceEntry, upsertRegistration } from "@/utils/ticket-registration.utils";
 import { estadiaLargaActiva as isDayRegistrationActive, estadiaLargaVencida as isDayRegistrationOverdue } from "@/utils/estadia-larga";
 import { AvisoEstadiasLargas, EncabezadoVista, estaAdentro, estadiasLargas, FichasEnElPlayon, HORAS_ESTADIA_LARGA, InicioHero, MostradorDock, normalizar, TodosLosVehiculos, VehiculoFila, type FiltroVehiculos } from "./inicio";
+import { useConfirmadas } from "./estadias-largas";
 import { AccionesEscritorio, BuscadorRapido, TableroPlaya, TarjetaAdentro, UltimosMovimientos, type FiltroTablero } from "./escritorio";
 import {
   ArrowDownLeft,
@@ -274,23 +275,42 @@ export default function CardTicket({
     setClosePanelOpen(true);
   };
 
-  // Un aviso cuando un auto cruza las 4 horas adentro (una vez por auto; lo que ya
-  // estaba al abrir la pantalla lo muestra la franja violeta, sin repetirlo como aviso).
+  // Un solo aviso cuando autos cruzan las 4 horas adentro, nunca uno por auto: si cruzan varios
+  // mientras está en pantalla, el mismo aviso pasa a «N autos pasaron las 4 h» (mismo id de sonner,
+  // se actualiza en vez de apilarse). Lo que ya estaba al abrir la pantalla no avisa: está en la
+  // franja. Si nadie lo contesta, el auto queda «sin confirmar» en la franja y en Cobrar salida.
+  const { confirmada, confirmar } = useConfirmadas();
   const largasAvisadasRef = useRef<Set<string> | null>(null);
+  const enElAvisoRef = useRef<string[]>([]);
   useEffect(() => {
     const largas = estadiasLargas(visibleRegistrations, now);
     if (!largasAvisadasRef.current) { largasAvisadasRef.current = new Set(largas.map(({ r }) => r.id)); return; }
-    for (const { r } of largas) {
-      if (largasAvisadasRef.current.has(r.id)) continue;
-      largasAvisadasRef.current.add(r.id);
-      toast(`${r.licensePlateOriginal || r.lastNameCustomer || 'Un vehículo'} lleva más de ${HORAS_ESTADIA_LARGA} h en la playa`, {
+    const nuevas = largas.filter(({ r }) => !largasAvisadasRef.current!.has(r.id) && !confirmada(r.id, now));
+    if (!nuevas.length) return;
+    for (const { r } of nuevas) largasAvisadasRef.current.add(r.id);
+    enElAvisoRef.current = [...new Set([...enElAvisoRef.current, ...nuevas.map(({ r }) => r.id)])];
+    const enElAviso = largas.filter(({ r }) => enElAvisoRef.current.includes(r.id));
+    const cerrado = () => { enElAvisoRef.current = []; };
+    const patente = (r: TicketRegistration) => r.licensePlateOriginal || r.lastNameCustomer || 'Un vehículo';
+    const comun = { id: 'estadias-4h', icon: <Hourglass className="size-4 text-violet-300" aria-hidden />, duration: 10_000, onDismiss: cerrado, onAutoClose: cerrado };
+    if (enElAviso.length === 1) {
+      const [{ r }] = enElAviso;
+      toast(`${patente(r)} lleva más de ${HORAS_ESTADIA_LARGA} h en la playa`, {
+        ...comun,
         description: '¿Sigue adentro? Si se fue, registrá la salida.',
-        icon: <Hourglass className="size-4 text-violet-300" aria-hidden />,
-        duration: 8_000,
-        action: { label: 'Cobrar', onClick: () => abrirCobro(r.id) },
+        action: { label: 'Cobrar', onClick: () => { cerrado(); abrirCobro(r.id); } },
+        cancel: { label: 'Sigue adentro', onClick: () => { cerrado(); confirmar([r.id]); } },
+      });
+    } else {
+      toast(`${enElAviso.length} autos pasaron las ${HORAS_ESTADIA_LARGA} h`, {
+        ...comun,
+        description: enElAviso.slice(0, 3).map(({ r }) => patente(r)).join(' · ') + (enElAviso.length > 3 ? ` y ${enElAviso.length - 3} más` : ''),
+        // Cobrar salida los muestra primero, con «Sigue» y «Cobrar» para cada uno.
+        action: { label: 'Revisar', onClick: () => { cerrado(); abrirCobro(null); } },
       });
     }
-  }, [visibleRegistrations, now]);
+  }, [visibleRegistrations, now, confirmada, confirmar]);
+  const sinConfirmar = estadiasLargas(visibleRegistrations, now).filter(({ r }) => !confirmada(r.id, now)).length;
   const abrirEntrada = () => setEntradaSignal((n) => n + 1);
   const abrirEstadia = () => setEstadiaSignal((n) => n + 1);
   const abrirAnticipo = (r: TicketRegistration) => setAdvanceTarget({
@@ -603,6 +623,7 @@ export default function CardTicket({
             estadiaRef={refVisible('alta-abono')}
             ticketsHabilitados={barcodeTicketsEnabled}
             atajos={atajos}
+            sinConfirmar={sinConfirmar}
           />
           <UltimosMovimientos
             refEl={refVisible('ticket')}
@@ -664,6 +685,7 @@ export default function CardTicket({
         <MostradorDock
           onEntrada={abrirEntrada}
           onSalida={() => abrirCobro(null)}
+          sinConfirmar={sinConfirmar}
           entradaRef={refVisible('entrada')}
           salidaRef={refVisible('salida')}
           escanear={puedeEscanear ? (

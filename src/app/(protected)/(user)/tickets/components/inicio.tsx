@@ -18,11 +18,12 @@ import { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.ty
 import { anticipoDe, isBarcodeOrigin, isOverdue, isTicketActive, latestRegistrationForTicket, minutesSinceEntry } from '@/utils/ticket-registration.utils';
 import { cuandoEntro, formatEstadia, progresoEnTramo, tramoDe, tramoInfo, TRAMOS } from '@/utils/estadia';
 import { DayRegistrationsPanel } from './day-registrations-panel';
+import { estaAdentro, estadiasDeDosHoras, estadiasLargas, HORAS_ESTADIA_LARGA, useConfirmadas } from './estadias-largas';
+
+export { estaAdentro, estadiasLargas, HORAS_ESTADIA_LARGA };
 
 // Sin tildes antes de quitar lo que no es letra o número: «Gómez» se encuentra escribiendo «gomez».
 export const normalizar = (valor: string) => valor.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-export const estaAdentro = (r: TicketRegistration) => !r.departureTime && !r.departureDay;
 
 export const NARANJA_AVISO = '#F0714A';
 
@@ -177,54 +178,78 @@ function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration
 
 // ── Aviso de estadías largas ──────────────────────────────────────────────────
 
-// Un auto por hora que lleva más de estas horas casi siempre es uno que se fue sin registrar la
-// salida (o se quedó y hay que cobrarle más). Pasó con seis autos en un día que nadie miró el tablero.
-export const HORAS_ESTADIA_LARGA = 4;
-const SILENCIO_MS = 2 * 60 * 60 * 1000;
-const CLAVE_SILENCIO = 'aviso-estadias-largas';
+// El lugar fijo de los autos de más de 4 h que nadie confirmó. El aviso que salta al cruzar las 4 h
+// es uno solo (o uno agrupado) y, si nadie lo contesta, el auto queda acá «sin confirmar». Violeta
+// como «Más de 4 h» del tablero: no es un tiempo vencido (eso es naranja) sino un «fijate si sigue».
+// Discreta mientras es reciente; pasada una hora sin respuesta sube de tono, sin más avisos encima.
+// Al cerrar el turno el repaso los pide igual. Los de 2 a 4 h se informan aparte, sin pedir nada.
+const MINUTOS_SIN_RESPUESTA = (HORAS_ESTADIA_LARGA + 1) * 60;
+const patenteDe = (r: TicketRegistration) => r.licensePlateOriginal || r.lastNameCustomer || 'Sin patente';
 
-export function estadiasLargas(registros: TicketRegistration[], ahora: number) {
-  return registros
-    .filter(estaAdentro)
-    .map((r) => ({ r, minutos: minutesSinceEntry(r, ahora) ?? 0 }))
-    .filter((e) => e.minutos >= HORAS_ESTADIA_LARGA * 60)
-    .sort((a, b) => b.minutos - a.minutos);
+function DeDosHoras({ estadias, onCobrar }: { estadias: { r: TicketRegistration; minutos: number }[]; onCobrar: (id: string) => void }) {
+  return (
+    <ul>
+      {estadias.map(({ r, minutos }) => (
+        <li key={r.id}>
+          <button type="button" onClick={() => onCobrar(r.id)}
+            className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-1.5 text-left transition-colors hover:bg-blue-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300">
+            <span className="gm-mono min-w-0 flex-1 truncate text-[13px] font-bold text-[#D9D1C3]">{patenteDe(r)}</span>
+            <span className="gm-mono shrink-0 text-[12.5px] text-blue-300">{formatEstadia(minutos)}</span>
+            <span className="shrink-0 text-[12.5px] font-semibold text-gm-yellow">Cobrar</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
-// Discreto: una línea con un punto violeta (el color de «Más de 4 h» del tablero), sin alarma; no es
-// un tiempo vencido (eso es naranja) sino un «fijate si sigue adentro». Al tocarla se despliegan los
-// autos para cobrarlos. «Siguen adentro» la oculta dos horas en este dispositivo para esos autos.
 export function AvisoEstadiasLargas({ registros, ahora, onCobrar }: {
   registros: TicketRegistration[];
   ahora: number;
   onCobrar: (id: string) => void;
 }) {
-  const [silenciadas, setSilenciadas] = useState<Record<string, number>>({});
+  const { confirmada, confirmar } = useConfirmadas();
   const [abierto, setAbierto] = useState(false);
-  useEffect(() => {
-    try { setSilenciadas(JSON.parse(localStorage.getItem(CLAVE_SILENCIO) ?? '{}')); } catch { /* sin almacenamiento: no se silencia */ }
-  }, []);
-  const largas = estadiasLargas(registros, ahora).filter(({ r }) => !(silenciadas[r.id] > ahora));
-  if (!largas.length) return null;
-  const silenciar = () => {
-    const hasta = Date.now() + SILENCIO_MS;
-    const vigentes = Object.fromEntries(Object.entries(silenciadas).filter(([, h]) => h > Date.now()));
-    const nuevas = { ...vigentes, ...Object.fromEntries(largas.map(({ r }) => [r.id, hasta])) };
-    setSilenciadas(nuevas);
-    setAbierto(false);
-    try { localStorage.setItem(CLAVE_SILENCIO, JSON.stringify(nuevas)); } catch { /* queda oculto solo en esta pantalla */ }
-  };
-  const [primera] = largas;
-  const patente = (r: TicketRegistration) => r.licensePlateOriginal || r.lastNameCustomer || 'Sin patente';
+  const pendientes = estadiasLargas(registros, ahora).filter(({ r }) => !confirmada(r.id, ahora));
+  const deDosHoras = estadiasDeDosHoras(registros, ahora);
+  if (!pendientes.length && !deDosHoras.length) return null;
+
+  // Solo autos de 2 a 4 h: una línea azul, para tener en cuenta.
+  if (!pendientes.length)
+    return (
+      <section aria-label="Autos con más de 2 horas" className="overflow-hidden rounded-2xl border border-blue-400/20 bg-blue-400/[0.05]">
+        <button type="button" aria-expanded={abierto} onClick={() => setAbierto((v) => !v)}
+          className="flex min-h-11 w-full items-center gap-2.5 px-3.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-300">
+          <span aria-hidden className="size-2 shrink-0 rounded-full bg-blue-400" />
+          <span className="min-w-0 flex-1 truncate text-[13px] text-[#D9D1C3]">
+            {deDosHoras.length === 1
+              ? <><strong className="gm-mono font-semibold text-blue-100">{patenteDe(deDosHoras[0].r)}</strong> pasó las 2 h</>
+              : <><strong className="font-semibold text-blue-100">{deDosHoras.length} autos</strong> pasaron las 2 h</>}
+          </span>
+          <ChevronDown aria-hidden className={cn('size-4 shrink-0 text-blue-300 transition-transform', abierto && 'rotate-180')} />
+        </button>
+        {abierto && <div className="border-t border-blue-400/15 px-2 pb-2 pt-1"><DeDosHoras estadias={deDosHoras} onCobrar={onCobrar} /></div>}
+      </section>
+    );
+
+  const [primera] = pendientes;
+  const varias = pendientes.length > 1;
+  const sinRespuesta = pendientes.some((e) => e.minutos >= MINUTOS_SIN_RESPUESTA);
   return (
-    <section aria-label="Autos con más de 4 horas" className="overflow-hidden rounded-2xl border border-violet-400/20 bg-violet-400/[0.05]">
+    <section aria-label="Autos sin confirmar" className={cn('overflow-hidden rounded-2xl border', sinRespuesta ? 'border-[1.5px] border-violet-400 bg-[#2A2240]' : 'border-violet-400/30 bg-violet-400/[0.06]')}>
       <button type="button" aria-expanded={abierto} onClick={() => setAbierto((v) => !v)}
-        className="flex min-h-11 w-full items-center gap-2.5 px-3.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300">
-        <span aria-hidden className="size-2 shrink-0 rounded-full bg-violet-300" />
-        <span className="min-w-0 flex-1 truncate text-[13px] text-[#D9D1C3]">
-          {largas.length === 1
-            ? <><strong className="gm-mono font-semibold text-violet-100">{patente(primera.r)}</strong> lleva {formatEstadia(primera.minutos)} en la playa</>
-            : <><strong className="font-semibold text-violet-100">{largas.length} autos</strong> con más de {HORAS_ESTADIA_LARGA} h en la playa</>}
+        className="flex min-h-[52px] w-full items-center gap-2.5 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300">
+        <span aria-hidden className="gm-mono grid h-6 min-w-6 shrink-0 place-items-center rounded-full bg-violet-400 px-1.5 text-xs font-bold text-[#1B1230]">{pendientes.length}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13px] font-semibold text-foreground">
+            {varias ? `${pendientes.length} autos sin confirmar` : <><span className="gm-mono">{patenteDe(primera.r)}</span> sin confirmar</>}
+          </span>
+          {/* La pregunta pasa a una segunda línea antes que cortarse en la columna angosta. */}
+          <span className={cn('block text-[11.5px] leading-snug', sinRespuesta ? 'text-violet-100' : 'text-muted-foreground')}>
+            {sinRespuesta
+              ? (varias ? '¿Siguen en la playa? Si se fueron, cobralos.' : '¿Sigue en la playa? Si se fue, cobralo.')
+              : `${varias ? 'El más largo lleva' : 'Lleva'} ${formatEstadia(primera.minutos)}`}
+          </span>
         </span>
         <span className="shrink-0 text-[12.5px] font-semibold text-violet-200">Revisar</span>
         <ChevronDown aria-hidden className={cn('size-4 shrink-0 text-violet-200 transition-transform', abierto && 'rotate-180')} />
@@ -232,21 +257,33 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar }: {
       {abierto && (
         <div className="border-t border-violet-400/15 px-2 pb-2 pt-1">
           <ul>
-            {largas.map(({ r, minutos }) => (
-              <li key={r.id}>
-                <button type="button" onClick={() => onCobrar(r.id)}
-                  className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-1.5 text-left transition-colors hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
-                  <span className="gm-mono min-w-0 flex-1 truncate text-[13px] font-bold">{patente(r)}</span>
-                  <span className="gm-mono shrink-0 text-[12.5px] text-violet-200">{formatEstadia(minutos)}</span>
-                  <span className="shrink-0 text-[12.5px] font-semibold text-gm-yellow">Cobrar</span>
+            {pendientes.map(({ r, minutos }) => (
+              <li key={r.id} className="flex min-h-12 items-center gap-2 px-1.5">
+                <span className="gm-mono min-w-0 flex-1 truncate text-[13px] font-bold">{patenteDe(r)}</span>
+                <span className="gm-mono shrink-0 text-[12.5px] text-violet-200">{formatEstadia(minutos)}</span>
+                <button type="button" onClick={() => confirmar([r.id])} aria-label={`${patenteDe(r)} sigue en la playa`}
+                  className="min-h-11 shrink-0 rounded-xl border border-gm-line-strong px-3 text-[12.5px] font-semibold text-[#D9D1C3] transition-colors hover:border-violet-300/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+                  Sigue
+                </button>
+                <button type="button" onClick={() => onCobrar(r.id)} aria-label={`Cobrar ${patenteDe(r)}`}
+                  className="min-h-11 shrink-0 rounded-xl bg-gm-yellow/[0.12] px-3 text-[12.5px] font-bold text-gm-yellow transition-colors hover:bg-gm-yellow/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
+                  Cobrar
                 </button>
               </li>
             ))}
           </ul>
-          <button type="button" onClick={silenciar}
-            className="mt-1 min-h-10 w-full rounded-xl text-[12.5px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
-            {largas.length === 1 ? 'Sigue adentro · ocultar 2 h' : 'Siguen adentro · ocultar 2 h'}
-          </button>
+          {varias && (
+            <button type="button" onClick={() => confirmar(pendientes.map(({ r }) => r.id))}
+              className="mt-1 min-h-11 w-full rounded-xl border border-dashed border-gm-line-strong text-[12.5px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+              Siguen todos
+            </button>
+          )}
+          {deDosHoras.length > 0 && (
+            <div className="mt-2 border-t border-violet-400/15 pt-1">
+              <p className="px-1.5 pb-0.5 pt-1.5 text-xs font-semibold text-blue-300">{deDosHoras.length === 1 ? 'Pasó las 2 h' : `Pasaron las 2 h · ${deDosHoras.length}`}</p>
+              <DeDosHoras estadias={deDosHoras} onCobrar={onCobrar} />
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -557,12 +594,14 @@ const DOCK_ICONO =
 const DOCK_TEXTO =
   'flex min-w-0 flex-col leading-[1.05] [@container(width<120px)]:items-center [@container(width<120px)]:text-center';
 
-export function MostradorDock({ onEntrada, onSalida, escanear, entradaRef, salidaRef }: {
+// `sinConfirmar`: autos de más de 4 h que nadie confirmó; Cobrar salida los muestra primero.
+export function MostradorDock({ onEntrada, onSalida, escanear, entradaRef, salidaRef, sinConfirmar = 0 }: {
   onEntrada: () => void;
   onSalida: () => void;
   escanear: React.ReactNode | null;
   entradaRef?: (el: HTMLElement | null) => void;
   salidaRef?: (el: HTMLElement | null) => void;
+  sinConfirmar?: number;
 }) {
   return (
     <>
@@ -581,11 +620,14 @@ export function MostradorDock({ onEntrada, onSalida, escanear, entradaRef, salid
           </span>
         </button>
         {escanear}
-        <button ref={salidaRef} type="button" onClick={onSalida} className={cn(DOCK_LADO, 'bg-[#2E2A23] text-right text-foreground')}>
+        <button ref={salidaRef} type="button" onClick={onSalida} aria-label={sinConfirmar > 0 ? `Salida: cobrar. ${sinConfirmar} sin confirmar` : undefined} className={cn(DOCK_LADO, 'relative bg-[#2E2A23] text-right text-foreground')}>
           <span className={cn(DOCK_DENTRO, 'justify-end pl-2.5 pr-1.5')}>
             <span className={cn(DOCK_TEXTO, 'items-end')}><span className="gm-display max-w-full truncate text-base tracking-[0.03em]">Salida</span><span className="max-w-full truncate text-[11px] font-semibold text-muted-foreground">Cobrar</span></span>
             <span className={cn(DOCK_ICONO, 'bg-background text-gm-yellow')}><Banknote className="size-[18px]" aria-hidden /></span>
           </span>
+          {sinConfirmar > 0 && (
+            <span aria-hidden className="gm-mono absolute -right-1 -top-2 grid h-[22px] min-w-[22px] place-items-center rounded-full border-2 border-[#1F1C17] bg-violet-400 px-1 text-[11px] font-bold text-[#1B1230]">{sinConfirmar}</span>
+          )}
         </button>
       </nav>
     </>

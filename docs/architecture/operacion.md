@@ -29,6 +29,13 @@ restricción de administrador, sin cobros, sin medio de pago elegido y con confi
 Ver cálculo despliega las tarifas junto al resumen, tanto en móvil como en escritorio, sin ocultar
 los medios de pago. El pie de confirmación permanece visible y el cuerpo se desplaza.
 
+Estadías de más de 4 h (`tickets/components/estadias-largas.ts`): al cruzarlas salta un solo aviso
+de sonner con id fijo (uno por auto nunca; si cruzan varios, el mismo aviso pasa a «N autos»). Sin
+respuesta, el auto queda «sin confirmar» en la franja del inicio (`AvisoEstadiasLargas`, sube de tono
+pasada una hora) y primero en Cobrar salida sin buscar; los botones de salida muestran la cuenta.
+«Sigue» se guarda en localStorage por 4 h (`useConfirmadas`) y el repaso del cierre lo toma. De 2 a
+4 h solo una línea azul, sin aviso.
+
 Turnos y cajas: la UI usa el contexto de caja del backend y soporta cajas físicas y turnos
 compartidos mediante CashSession. Revisar src/types/turno.type.ts y docs/caja-turnos.md del backend
 antes de modificar aperturas/cierres; los turnos legacy conservan su circuito histórico.
