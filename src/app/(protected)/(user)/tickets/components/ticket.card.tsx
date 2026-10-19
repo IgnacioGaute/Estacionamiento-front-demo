@@ -40,6 +40,7 @@ import { isBarcodeOrigin, isOverdue, mergeServerSnapshot, minutesSinceEntry, ups
 import { estadiaLargaActiva as isDayRegistrationActive, estadiaLargaVencida as isDayRegistrationOverdue } from "@/utils/estadia-larga";
 import { AvisoEstadiasLargas, EncabezadoVista, estaAdentro, estadiasLargas, FichasEnElPlayon, HORAS_ESTADIA_LARGA, InicioHero, MostradorDock, normalizar, TodosLosVehiculos, VehiculoFila, type FiltroVehiculos } from "./inicio";
 import { useConfirmadas } from "./estadias-largas";
+import { SeFueAntes } from "./se-fue-antes";
 import { AccionesEscritorio, BuscadorRapido, TableroPlaya, TarjetaAdentro, UltimosMovimientos, type FiltroTablero } from "./escritorio";
 import {
   ArrowDownLeft,
@@ -280,6 +281,8 @@ export default function CardTicket({
   // se actualiza en vez de apilarse). Lo que ya estaba al abrir la pantalla no avisa: está en la
   // franja. Si nadie lo contesta, el auto queda «sin confirmar» en la franja y en Cobrar salida.
   const { confirmada, confirmar } = useConfirmadas();
+  // El auto al que se le abre «Se fue antes» desde la franja.
+  const [seFueAntes, setSeFueAntes] = useState<TicketRegistration | null>(null);
   const largasAvisadasRef = useRef<Set<string> | null>(null);
   const enElAvisoRef = useRef<string[]>([]);
   useEffect(() => {
@@ -434,7 +437,7 @@ export default function CardTicket({
         onZona={() => irA('vehiculos', 'hora')}
       />
 
-      <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} />
+      <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={setSeFueAntes} />
 
       {latestRegistration && (
         <div ref={refVisible('ticket')} className="flex min-h-12 items-center gap-2.5 px-1">
@@ -613,7 +616,7 @@ export default function CardTicket({
             filtro={filtroTablero}
             onFiltro={setFiltroTablero}
           />
-          <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} />
+          <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={setSeFueAntes} />
           <AccionesEscritorio
             onEntrada={abrirEntrada}
             onSalida={() => abrirCobro(null)}
@@ -743,6 +746,13 @@ export default function CardTicket({
         }}
         onSuccess={() => router.refresh()}
         onSalidaSinEntrada={(plate) => { setClosePanelOpen(false); setClosePanelTargetId(null); setSalidaSinEntrada(plate); }}
+      />
+
+      <SeFueAntes
+        registration={seFueAntes}
+        open={seFueAntes !== null}
+        onOpenChange={(open) => { if (!open) setSeFueAntes(null); }}
+        onRegistrada={() => router.refresh()}
       />
 
       <SalidaSinEntradaDialog

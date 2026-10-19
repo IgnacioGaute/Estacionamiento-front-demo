@@ -730,6 +730,37 @@ export async function corregirDatosEstadia(id: string, cambios: { licensePlate?:
   return { summary: data.summary as CloseSummary };
 }
 
+// «Se fue antes»: las tarifas que pudo haber pagado (las franjas que la estadía ya pasó y, después
+// de la última, cada repetición de la que se repite), con su importe y la hora en que terminaban.
+export type OpcionSalidaAnterior = { etiqueta: string; minutos: number; salidaEn: string; precio: number };
+export type OpcionesSalidaAnterior = { ahora: number; cobrado: number; opciones: OpcionSalidaAnterior[] };
+export async function opcionesSalidaAnterior(id: string): Promise<OpcionesSalidaAnterior & { error?: string } | { error: string }> {
+  const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/salida-anterior`, { cache: 'no-store', headers: await getAuthHeaders() });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) return { error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudieron cargar las tarifas.' };
+  return data as OpcionesSalidaAnterior;
+}
+
+// Registra la salida con la tarifa elegida, en un solo paso: el cuerpo del cierre más `salidaEn`
+// (la hora en que esa tarifa terminaba). Queda en la Actividad.
+export type SalidaAnteriorPayload = {
+  salidaEn: string;
+  expectedPrice: number;
+  expectedCollected: number;
+  closeType: 'PAYMENT' | 'NO_CHARGE';
+  metodo?: 'CASH' | 'TRANSFER';
+  refundMetodo?: 'CASH' | 'TRANSFER';
+};
+export async function registrarSalidaAnterior(id: string, payload: SalidaAnteriorPayload): Promise<{ registration?: TicketRegistration; error?: string; code?: string }> {
+  const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/salida-anterior`, {
+    method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) return { code: data?.code, error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudo registrar la salida.' };
+  revalidateTag(getCacheTag('tickets', 'all'));
+  return { registration: data.registration as TicketRegistration };
+}
+
 // Una estadía abierta y sin cobros que se cargó por error (solo el administrador). El backend
 // rechaza si tiene cobros, anticipos o un QR o alias esperando el pago.
 export async function eliminarEstadia(id: string): Promise<{ ok?: true; error?: string }> {

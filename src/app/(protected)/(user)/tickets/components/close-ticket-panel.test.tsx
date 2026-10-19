@@ -20,6 +20,7 @@ jest.mock('@/actions/tickets/vehicle-types.action', () => ({ getVehicleTypesActi
 jest.mock('@/actions/tickets/close-registration.action', () => ({ closeRegistrationAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/mercadopago.action', () => ({ crearCobroMercadoPagoAction: jest.fn() }));
 jest.mock('@/actions/tickets/pago-parcial.action', () => ({ pagoParcialEfectivoAction: jest.fn() }));
+jest.mock('@/actions/tickets/salida-anterior.action', () => ({ registrarSalidaAnteriorAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/verificacion-alias.action', () => ({ disponibilidadAliasAction: async () => ({ datos: null }), cobroAliasDeEstadiaAction: async () => ({ cobro: null }), iniciarCobroAliasAction: jest.fn() }));
 jest.mock('./cobro-qr-mercadopago', () => ({ CobroQrMercadoPago: () => null }));
 jest.mock('./cobro-alias', () => ({ CobroAliasPanel: () => null }));

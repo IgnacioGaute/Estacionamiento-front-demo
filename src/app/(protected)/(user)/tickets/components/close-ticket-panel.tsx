@@ -21,7 +21,7 @@ import {
 import { PaymentMethodChoices, MedioSalida } from './payment-method-choices';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
-import { AlertTriangle, Barcode, ChevronDown, ChevronRight, BadgePercent, CircleX, Timer } from 'lucide-react';
+import { AlertTriangle, Barcode, ChevronDown, ChevronRight, BadgePercent, CircleX, LogOut, Timer } from 'lucide-react';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
 import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
@@ -46,6 +46,7 @@ import { EditarDatosEstadia } from './editar-datos-estadia';
 import { EliminarEstadia } from './eliminar-estadia';
 import { PlateCameraScanButton } from './plate-camera-scan-button';
 import { estadiasLargas, useConfirmadas } from './estadias-largas';
+import { SeFueAntes } from './se-fue-antes';
 
 // Efectivo y transferencia los declara el cajero; QR y alias los verifica el sistema contra
 // MercadoPago. Los cuatro se eligen igual (tocar y confirmar abajo) para que el botón principal
@@ -105,11 +106,14 @@ function ResumenEstadia({
   calculoAbierto,
   onCorregido,
   onEliminada,
+  onSeFueAntes,
 }: {
   summary: CloseSummary;
   // Solo cuando se puede corregir la entrada (no mientras se espera un QR o una transferencia).
   onCorregido?: (summary: CloseSummary) => void;
   onEliminada?: () => void;
+  // Abre «Se fue antes» (cobrar la tarifa que le correspondía). Mismas condiciones que corregir.
+  onSeFueAntes?: () => void;
   compacto: boolean;
   // Solo en celulares bajos: con el medio ya elegido el importe está en el botón de abajo, y la
   // línea deja lugar para el vuelto.
@@ -135,19 +139,30 @@ function ResumenEstadia({
       )}
       <div className={cn('rounded-[18px] border border-border bg-gm-surface-2 p-3.5 short:p-3', compacto ? 'hidden md:block' : compactoEnBajas && 'short:hidden md:short:block')}>
         <div className="flex items-center gap-3">
-          <Identidad r={r} size="md" />
+          {/* El tipo va debajo de la patente: así la fila de abajo queda para las acciones, juntas. */}
+          <div className="flex min-w-0 flex-col items-start gap-1.5">
+            <Identidad r={r} size="md" />
+            <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} />
+          </div>
           <div className="ml-auto min-w-0 text-right">
             <p className="gm-mono text-base font-semibold">{formatElapsed(summary.elapsedMinutes)}</p>
             <p className="truncate text-[12.5px] text-muted-foreground">{detalle}</p>
           </div>
         </div>
         {onCorregido && <CorregirEntrada summary={summary} onCorregido={onCorregido} />}
-        {/* Una sola fila: el tipo a la izquierda y «Corregir» y eliminar a la derecha. El que se abre
-            (formulario o confirmación) se marca con data-abierto y ocupa la fila: el resto se esconde
-            por CSS, sin estado compartido que pueda quedar desfasado si uno se desmonta. */}
-        <div className="mt-2 flex items-center justify-end gap-1 [&:has(>[data-abierto])>:not([data-abierto])]:hidden">
-          <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} className="mr-auto self-center" />
+        {/* Las acciones en una fila, una al lado de la otra («Corregir», «Se fue antes», eliminar). El
+            que se abre (formulario o confirmación) se marca con data-abierto y ocupa la fila: el resto
+            se esconde por CSS, sin estado compartido que pueda quedar desfasado si uno se desmonta. */}
+        <div className="mt-1 flex flex-wrap items-center justify-end gap-x-1 [&:has(>[data-abierto])>:not([data-abierto])]:hidden">
           {onCorregido && <EditarDatosEstadia key={summary.registration.id} summary={summary} onCorregido={onCorregido} />}
+          {onSeFueAntes && (
+            <button type="button" onClick={onSeFueAntes} aria-label="Se fue antes: registrar la salida con la tarifa que le correspondía"
+              className="group inline-flex h-11 shrink-0 items-center rounded-full focus-visible:outline-none">
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-gm-line-strong px-3 text-[12.5px] font-semibold text-[#D9D1C3] transition-colors group-hover:border-gm-yellow/40 group-hover:text-foreground group-focus-visible:ring-2 group-focus-visible:ring-gm-yellow">
+                <LogOut className="size-3.5" aria-hidden />Se fue antes
+              </span>
+            </button>
+          )}
           {onEliminada && <EliminarEstadia summary={summary} onEliminada={onEliminada} />}
         </div>
         <div className="my-3 h-px bg-border short:my-2.5" />
@@ -213,6 +228,7 @@ export function CloseTicketPanel({
   const [results, setResults] = useState<TicketRegistration[]>([]);
   const { confirmada, confirmar } = useConfirmadas();
   const [summary, setSummary] = useState<CloseSummary | null>(null);
+  const [seFueAntesAbierto, setSeFueAntesAbierto] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<Medio | null>(null);
   const [showDiscount, setShowDiscount] = useState(false);
   const [discountReason, setDiscountReason] = useState('');
@@ -733,6 +749,7 @@ export function CloseTicketPanel({
                     onOpenChange(false);
                     onSuccess?.();
                   } : undefined}
+                  onSeFueAntes={enEspera || pagoConSalida ? undefined : () => setSeFueAntesAbierto(true)}
                 />
                 {verCalculo && <Calculo summary={summary} />}
               </div>
@@ -936,6 +953,13 @@ export function CloseTicketPanel({
         )}
       </ActionDialogContent>
     </ActionDialog>
+    {/* «Se fue antes» registra la salida en su propio diálogo: al terminar, el cobro ya no tiene qué cobrar. */}
+    <SeFueAntes
+      registration={summary?.registration ?? null}
+      open={seFueAntesAbierto}
+      onOpenChange={setSeFueAntesAbierto}
+      onRegistrada={() => { onOpenChange(false); onSuccess?.(); }}
+    />
     <ParkingReceiptDelivery registrationId={receiptId} kind="EXIT" onDismiss={() => setReceiptId(null)} />
     </>
   );

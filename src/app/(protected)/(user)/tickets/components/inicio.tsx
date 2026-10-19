@@ -186,27 +186,68 @@ function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration
 const MINUTOS_SIN_RESPUESTA = (HORAS_ESTADIA_LARGA + 1) * 60;
 const patenteDe = (r: TicketRegistration) => r.licensePlateOriginal || r.lastNameCustomer || 'Sin patente';
 
-function DeDosHoras({ estadias, onCobrar }: { estadias: { r: TicketRegistration; minutos: number }[]; onCobrar: (id: string) => void }) {
+const BOTON_FILA = 'min-h-11 shrink-0 rounded-xl px-2 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2';
+
+// Un auto de la franja, en una línea: patente y tiempo apilados a la izquierda y, al lado, lo que se
+// puede hacer con él. «Se fue antes» registra la salida con la tarifa que le correspondía (ver
+// se-fue-antes).
+function FilaEstadia({ r, minutos, tono, onSigue, onSeFueAntes, onCobrar }: {
+  r: TicketRegistration;
+  minutos: number;
+  tono: 'violeta' | 'azul';
+  onSigue?: () => void;
+  onSeFueAntes?: () => void;
+  onCobrar: () => void;
+}) {
+  const patente = patenteDe(r);
   return (
-    <ul>
-      {estadias.map(({ r, minutos }) => (
-        <li key={r.id}>
-          <button type="button" onClick={() => onCobrar(r.id)}
-            className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-1.5 text-left transition-colors hover:bg-blue-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300">
-            <span className="gm-mono min-w-0 flex-1 truncate text-[13px] font-bold text-[#D9D1C3]">{patenteDe(r)}</span>
-            <span className="gm-mono shrink-0 text-[12.5px] text-blue-300">{formatEstadia(minutos)}</span>
-            <span className="shrink-0 text-[12.5px] font-semibold text-gm-yellow">Cobrar</span>
+    <li className="flex min-h-[56px] items-center gap-1.5 px-1.5 py-1.5">
+      <span className="min-w-0 flex-1">
+        <span className="gm-mono block truncate text-[13px] font-bold">{patente}</span>
+        <span className={cn('gm-mono block truncate text-[12px]', tono === 'violeta' ? 'text-violet-200' : 'text-blue-300')}>{formatEstadia(minutos)}</span>
+      </span>
+      <span className="flex shrink-0 items-center gap-1">
+        {onSigue && (
+          <button type="button" onClick={onSigue} aria-label={`${patente} sigue en la playa`}
+            className={cn(BOTON_FILA, 'border border-gm-line-strong text-[#D9D1C3] hover:border-violet-300/60 focus-visible:ring-violet-300')}>
+            Sigue
           </button>
-        </li>
+        )}
+        {onSeFueAntes && (
+          <button type="button" onClick={onSeFueAntes} aria-label={`${patente} se fue antes`}
+            className={cn(BOTON_FILA, 'border border-gm-line-strong text-[#D9D1C3] hover:border-gm-yellow/40 focus-visible:ring-gm-yellow')}>
+            Se fue antes
+          </button>
+        )}
+        <button type="button" onClick={onCobrar} aria-label={`Cobrar ${patente}`}
+          className={cn(BOTON_FILA, 'bg-gm-yellow/[0.12] font-bold text-gm-yellow hover:bg-gm-yellow/20 focus-visible:ring-gm-yellow')}>
+          Cobrar
+        </button>
+      </span>
+    </li>
+  );
+}
+
+function DeDosHoras({ estadias, onCobrar, onSeFueAntes }: {
+  estadias: { r: TicketRegistration; minutos: number }[];
+  onCobrar: (id: string) => void;
+  onSeFueAntes?: (r: TicketRegistration) => void;
+}) {
+  return (
+    <ul className="divide-y divide-blue-400/10">
+      {estadias.map(({ r, minutos }) => (
+        <FilaEstadia key={r.id} r={r} minutos={minutos} tono="azul" onCobrar={() => onCobrar(r.id)} onSeFueAntes={onSeFueAntes && (() => onSeFueAntes(r))} />
       ))}
     </ul>
   );
 }
 
-export function AvisoEstadiasLargas({ registros, ahora, onCobrar }: {
+// `onSeFueAntes`: abre «Se fue antes» para ese auto (el inicio guarda el diálogo).
+export function AvisoEstadiasLargas({ registros, ahora, onCobrar, onSeFueAntes }: {
   registros: TicketRegistration[];
   ahora: number;
   onCobrar: (id: string) => void;
+  onSeFueAntes?: (r: TicketRegistration) => void;
 }) {
   const { confirmada, confirmar } = useConfirmadas();
   const [abierto, setAbierto] = useState(false);
@@ -228,7 +269,7 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar }: {
           </span>
           <ChevronDown aria-hidden className={cn('size-4 shrink-0 text-blue-300 transition-transform', abierto && 'rotate-180')} />
         </button>
-        {abierto && <div className="border-t border-blue-400/15 px-2 pb-2 pt-1"><DeDosHoras estadias={deDosHoras} onCobrar={onCobrar} /></div>}
+        {abierto && <div className="border-t border-blue-400/15 px-2 pb-1"><DeDosHoras estadias={deDosHoras} onCobrar={onCobrar} onSeFueAntes={onSeFueAntes} /></div>}
       </section>
     );
 
@@ -256,20 +297,10 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar }: {
       </button>
       {abierto && (
         <div className="border-t border-violet-400/15 px-2 pb-2 pt-1">
-          <ul>
+          <ul className="divide-y divide-violet-400/10">
             {pendientes.map(({ r, minutos }) => (
-              <li key={r.id} className="flex min-h-12 items-center gap-2 px-1.5">
-                <span className="gm-mono min-w-0 flex-1 truncate text-[13px] font-bold">{patenteDe(r)}</span>
-                <span className="gm-mono shrink-0 text-[12.5px] text-violet-200">{formatEstadia(minutos)}</span>
-                <button type="button" onClick={() => confirmar([r.id])} aria-label={`${patenteDe(r)} sigue en la playa`}
-                  className="min-h-11 shrink-0 rounded-xl border border-gm-line-strong px-3 text-[12.5px] font-semibold text-[#D9D1C3] transition-colors hover:border-violet-300/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
-                  Sigue
-                </button>
-                <button type="button" onClick={() => onCobrar(r.id)} aria-label={`Cobrar ${patenteDe(r)}`}
-                  className="min-h-11 shrink-0 rounded-xl bg-gm-yellow/[0.12] px-3 text-[12.5px] font-bold text-gm-yellow transition-colors hover:bg-gm-yellow/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
-                  Cobrar
-                </button>
-              </li>
+              <FilaEstadia key={r.id} r={r} minutos={minutos} tono="violeta" onSigue={() => confirmar([r.id])}
+                onSeFueAntes={onSeFueAntes && (() => onSeFueAntes(r))} onCobrar={() => onCobrar(r.id)} />
             ))}
           </ul>
           {varias && (
@@ -281,7 +312,7 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar }: {
           {deDosHoras.length > 0 && (
             <div className="mt-2 border-t border-violet-400/15 pt-1">
               <p className="px-1.5 pb-0.5 pt-1.5 text-xs font-semibold text-blue-300">{deDosHoras.length === 1 ? 'Pasó las 2 h' : `Pasaron las 2 h · ${deDosHoras.length}`}</p>
-              <DeDosHoras estadias={deDosHoras} onCobrar={onCobrar} />
+              <DeDosHoras estadias={deDosHoras} onCobrar={onCobrar} onSeFueAntes={onSeFueAntes} />
             </div>
           )}
         </div>

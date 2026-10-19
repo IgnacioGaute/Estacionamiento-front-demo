@@ -47,8 +47,19 @@ test('de 2 a 4 h: una línea azul para tener en cuenta, sin pedir confirmación'
   render(<AvisoEstadiasLargas registros={[estadia('a', 'CD453RT', '19:39:00')]} ahora={ahora} onCobrar={onCobrar} />);
   fireEvent.click(screen.getByRole('button', { name: /CD453RT pasó las 2 h/ }));
   expect(screen.queryByRole('button', { name: /sigue en la playa/ })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: /CD453RT.*Cobrar/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Cobrar CD453RT' }));
   expect(onCobrar).toHaveBeenCalledWith('a');
+});
+
+test('«Se fue antes» en cada auto, de 4 h o de 2 h, abre su diálogo', () => {
+  const onSeFueAntes = jest.fn();
+  const registros = [estadia('a', 'HPQ966', '08:41:00'), estadia('b', 'CD453RT', '19:39:00')];
+  render(<AvisoEstadiasLargas registros={registros} ahora={ahora} onCobrar={jest.fn()} onSeFueAntes={onSeFueAntes} />);
+  fireEvent.click(screen.getByRole('button', { name: /HPQ966 sin confirmar/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'HPQ966 se fue antes' }));
+  expect(onSeFueAntes).toHaveBeenCalledWith(registros[0]);
+  fireEvent.click(screen.getByRole('button', { name: 'CD453RT se fue antes' }));
+  expect(onSeFueAntes).toHaveBeenCalledWith(registros[1]);
 });
 
 test('sin estadías de más de 2 h no muestra nada', () => {

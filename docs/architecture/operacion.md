@@ -36,6 +36,12 @@ pasada una hora) y primero en Cobrar salida sin buscar; los botones de salida mu
 «Sigue» se guarda en localStorage por 4 h (`useConfirmadas`) y el repaso del cierre lo toma. De 2 a
 4 h solo una línea azul, sin aviso.
 
+«Se fue antes» (`se-fue-antes.tsx`): en cada auto de la franja (4 h y 2 h), en la misma línea que
+«Sigue» y «Cobrar», y en el cobro de cualquier auto, al lado de «Corregir» (el tipo de vehículo va
+debajo de la patente para dejarles la fila). Diálogo propio: el backend arma las tarifas que pudo
+haber pagado con su importe (`GET …/salida-anterior`), se elige una sin hora exacta y un solo botón
+cobra y registra la salida (`POST …/salida-anterior`).
+
 Turnos y cajas: la UI usa el contexto de caja del backend y soporta cajas físicas y turnos
 compartidos mediante CashSession. Revisar src/types/turno.type.ts y docs/caja-turnos.md del backend
 antes de modificar aperturas/cierres; los turnos legacy conservan su circuito histórico.

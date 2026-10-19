@@ -182,6 +182,15 @@ const ACCIONES: Record<
     Icono: Pencil,
     detalle: (d) => [d.patenteAnterior && d.patente && d.patenteAnterior !== d.patente ? `patente ${d.patenteAnterior} → ${d.patente}` : d.patente, d.tipoAnterior && d.tipo && d.tipoAnterior !== d.tipo ? `tipo ${d.tipoAnterior} → ${d.tipo}` : null].filter(Boolean).join(" · "),
   },
+  SALIDA_CON_HORA_ANTERIOR: {
+    texto: "Registró una salida con la hora en que se fue",
+    categoria: "tarifas",
+    Icono: Clock3,
+    detalle: (d) => {
+      const pesos = (valor: unknown) => (typeof valor === "number" ? `$ ${valor.toLocaleString("es-AR")}` : "?");
+      return `${d.patente ? `${d.patente}: ` : ""}se fue ${d.salida ?? "?"} · cobró ${pesos(d.importe)} (ahora eran ${pesos(d.importeAhora)})`;
+    },
+  },
   ESTADIA_ELIMINADA: {
     texto: "Eliminó una estadía cargada por error",
     categoria: "tarifas",
