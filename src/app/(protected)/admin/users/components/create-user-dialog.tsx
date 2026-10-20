@@ -2,6 +2,7 @@
 import LatticeLoader from '@/components/ui/lattice-loader';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from '@/lib/toast';
@@ -39,8 +40,10 @@ import {
   RegisterSchemaType,
 } from '@/schemas/auth/register.schema';
 import { registerAction } from '@/actions/auth/register.action';
+import { SelectorRol } from './selector-rol';
 
 export function CreateUserDialog() {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [show1, setShow1] = useState(false);
@@ -55,6 +58,7 @@ export function CreateUserDialog() {
       lastName: '',
       password: '',
       confirmPassword: '',
+      role: 'USER',
     },
   });
 
@@ -68,6 +72,7 @@ export function CreateUserDialog() {
             toast.success(data.success ?? 'Usuario creado exitosamente');
             form.reset();
             setOpen(false);
+            router.refresh();
           }
         })
         .catch((err) => {
@@ -105,6 +110,14 @@ export function CreateUserDialog() {
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-4"
           >
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <SelectorRol nombre="rol-nuevo" valor={field.value ?? 'USER'} onChange={field.onChange} disabled={isPending} />
+              )}
+            />
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField
                 control={form.control}

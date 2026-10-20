@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { ParkingReceiptDelivery } from "@/components/parking-receipt-delivery";
 import { formatImporte } from "@/components/pricing-breakdown";
 import { useTenant } from "@/components/tenant-provider";
+import { esGratuita } from "@/lib/modalidad";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useVehicleTypes } from '@/components/vehicle-type-options';
 import { VehicleTypeLabelsContext } from '@/components/vehicle-type-badge';
@@ -49,6 +50,7 @@ import {
   Barcode,
   CalendarDays,
   CalendarPlus,
+  CarFront,
   ChevronRight,
   History,
   Hourglass,
@@ -89,10 +91,13 @@ export default function CardTicket({
 }) {
   const { types: vehicleTypes } = useVehicleTypes();
   const [registrations, setRegistrations] = useState<TicketRegistration[]>(initialRegistrations);
-  const TURNO_BAR_ENABLED = schedule?.shiftsEnabled === true;
+  // En una playa gratuita no hay tarifas, cobros, turnos de caja ni estadías por día/semana/mes.
+  const { reconocimientoPatentes, cobroHabilitado } = useTenant();
+  const TURNO_BAR_ENABLED = cobroHabilitado && schedule?.shiftsEnabled === true;
   const [isScanning, setIsScanning] = useState(false);
   const [receiptTarget, setReceiptTarget] = useState<{ id: string; kind: 'ENTRY' | 'EXIT' } | null>(null);
-  const receiptDeliveryEnabled = !!(schedule?.receiptDelivery?.whatsapp || schedule?.receiptDelivery?.qr || schedule?.receiptDelivery?.print);
+  // Una playa gratuita no entrega comprobantes, aunque haya quedado configurada la entrega.
+  const receiptDeliveryEnabled = cobroHabilitado && !!(schedule?.receiptDelivery?.whatsapp || schedule?.receiptDelivery?.qr || schedule?.receiptDelivery?.print);
   const [justScannedTicketId, setJustScannedTicketId] = useState<string | null>(null);
   const [advanceTarget, setAdvanceTarget] = useState<{
     id: string;
@@ -153,23 +158,25 @@ export default function CardTicket({
   const router = useRouter();
   const session = useSession();
   const isMobile = useIsMobile();
-  const { reconocimientoPatentes } = useTenant();
+
 
   // Cada paso del tour abre la vista donde está lo que señala.
   const tourSteps = useMemo(
     () => [
       { key: 'entrada', title: 'Registrá una entrada', desc: 'Buscá un cliente frecuente o completá patente y vehículo. Podés guardar su teléfono con código de país: aparecerá en frecuentes desde la primera visita.' },
-      ...(barcodeTicketsEnabled ? [{ key: 'entrada', title: 'También podés usar tickets físicos', desc: 'Elegí Ticket en el formulario o usá el lector. El primer escaneo registra la entrada; el siguiente prepara la salida para que revises y confirmes el cobro.' }] : []),
-      { key: 'salida', title: 'Cobrá la salida', desc: 'Buscá la patente o el ticket, o tocá un vehículo de la lista. Revisá el tiempo, el importe y los anticipos, elegí el medio de pago y confirmá. El tour no registra ni cobra nada.' },
-      { key: 'alta-abono', title: 'Día, semana o mes', desc: `Desde Estadía larga creás una estadía de días, semanas o meses: elegí la duración, el vehículo y si ya está pagada.${isAdmin ? ' Dentro del formulario tenés Administrar precios.' : ''}` },
-      { key: 'ticket', title: 'Lo último que pasó', desc: receiptDeliveryEnabled ? 'Acá quedan las últimas entradas y salidas, con su hora e importe. Con Comprobante lo volvés a abrir: no vuelve a registrar ni cobrar.' : 'Acá quedan las últimas entradas y salidas, con su hora e importe.' },
-      { key: 'occupancy', title: 'Todos los vehículos', desc: 'Se agrupan por hace cuánto están y el color lo dice: verde menos de 1 h, azul de 1 a 4 h, violeta más de 4 h. La línea de abajo de cada uno se llena a medida que se acerca al tramo siguiente; en naranja, los que se pasaron del tiempo avisado. Tocá uno para cobrarlo.' },
-      { key: 'abonos', title: 'Tus estadías largas', desc: `En Día/Sem/Mes podés buscar y abrir cada abono: ver duración, vencimiento, pago y registrar su salida.${receiptDeliveryEnabled ? ' En su detalle también podés abrir el comprobante de entrada.' : ''} Que venza no significa que el vehículo se haya retirado.` },
+      ...(barcodeTicketsEnabled ? [{ key: 'entrada', title: 'También podés usar tickets físicos', desc: cobroHabilitado ? 'Elegí Ticket en el formulario o usá el lector. El primer escaneo registra la entrada; el siguiente prepara la salida para que revises y confirmes el cobro.' : 'Elegí Ticket en el formulario o usá el lector. El primer escaneo registra la entrada; el siguiente prepara la salida para que la confirmes.' }] : []),
+      cobroHabilitado
+        ? { key: 'salida', title: 'Cobrá la salida', desc: 'Buscá la patente o el ticket, o tocá un vehículo de la lista. Revisá el tiempo, el importe y los anticipos, elegí el medio de pago y confirmá. El tour no registra ni cobra nada.' }
+        : { key: 'salida', title: 'Registrá la salida', desc: 'Buscá la patente o el ticket, o tocá un vehículo de la lista. Revisá el vehículo y cuánto estuvo, y confirmá. El estacionamiento es gratuito: no se cobra nada. El tour no registra nada.' },
+      ...(cobroHabilitado ? [{ key: 'alta-abono', title: 'Día, semana o mes', desc: `Desde Estadía larga creás una estadía de días, semanas o meses: elegí la duración, el vehículo y si ya está pagada.${isAdmin ? ' Dentro del formulario tenés Administrar precios.' : ''}` }] : []),
+      { key: 'ticket', title: 'Lo último que pasó', desc: `Acá quedan las últimas entradas y salidas, con su hora${cobroHabilitado ? ' e importe' : ''}.${receiptDeliveryEnabled ? ` Con Comprobante lo volvés a abrir: no vuelve a registrar${cobroHabilitado ? ' ni cobrar' : ''}.` : ''}` },
+      { key: 'occupancy', title: 'Todos los vehículos', desc: `Se agrupan por hace cuánto están y el color lo dice: verde menos de 1 h, azul de 1 a 4 h, violeta más de 4 h. La línea de abajo de cada uno se llena a medida que se acerca al tramo siguiente; en naranja, los que se pasaron del tiempo avisado. Tocá uno para ${cobroHabilitado ? 'cobrarlo' : 'registrar su salida'}.` },
+      ...(cobroHabilitado ? [{ key: 'abonos', title: 'Tus estadías largas', desc: `En Día/Sem/Mes podés buscar y abrir cada abono: ver duración, vencimiento, pago y registrar su salida.${receiptDeliveryEnabled ? ' En su detalle también podés abrir el comprobante de entrada.' : ''} Que venza no significa que el vehículo se haya retirado.` }] : []),
       ...(receiptDeliveryEnabled ? [
         { key: 'comprobantes', title: 'Comprobantes, sin perderlos', desc: 'Acá están las estadías con entrada o salida del día. Usá la fecha para ver otro día y el buscador para encontrar patente, ticket o apellido. Cada fila abre la Entrada y, si ya se retiró, la Salida.' },
       ] : []),
-      { key: 'precios', title: 'Consultá antes de cobrar', desc: 'Tarifas te muestra los precios de la playa. Los precios de Día/Sem/Mes son distintos de los precios por duración.' },
-      ...(isAdmin ? [{ key: 'admin', title: 'Configuración de la playa', desc: 'Administrar tarifas reúne los precios por tiempo y los pases de día, semana o mes. Podés editar un borrador, probar cuánto cobrarías y aplicar los cambios juntos.' }] : []),
+      ...(cobroHabilitado ? [{ key: 'precios', title: 'Consultá antes de cobrar', desc: 'Tarifas te muestra los precios de la playa. Los precios de Día/Sem/Mes son distintos de los precios por duración.' }] : []),
+      ...(isAdmin && cobroHabilitado ? [{ key: 'admin', title: 'Configuración de la playa', desc: 'Administrar tarifas reúne los precios por tiempo y los pases de día, semana o mes. Podés editar un borrador, probar cuánto cobrarías y aplicar los cambios juntos.' }] : []),
       ...(TURNO_BAR_ENABLED ? [{ key: 'turno', title: 'Revisá tu turno', desc: 'Desde tu turno revisás la caja y accedés a la apertura o cierre. Antes de cerrar, contá el efectivo y revisá las diferencias.' }] : []),
     ].map((step) => ({
       ...step,
@@ -181,7 +188,7 @@ export default function CardTicket({
         else if (vistaRef.current !== 'inicio') irA('inicio');
       },
     })),
-    [barcodeTicketsEnabled, receiptDeliveryEnabled, isAdmin, TURNO_BAR_ENABLED, irA],
+    [barcodeTicketsEnabled, receiptDeliveryEnabled, isAdmin, TURNO_BAR_ENABLED, cobroHabilitado, irA],
   );
   const tour = useTour(tourSteps);
   // Hay accesos que existen dos veces (en la barra del celular y en la columna de la computadora):
@@ -301,7 +308,7 @@ export default function CardTicket({
       toast(`${patente(r)} lleva más de ${HORAS_ESTADIA_LARGA} h en la playa`, {
         ...comun,
         description: '¿Sigue adentro? Si se fue, registrá la salida.',
-        action: { label: 'Cobrar', onClick: () => { cerrado(); abrirCobro(r.id); } },
+        action: { label: cobroHabilitado ? 'Cobrar' : 'Salida', onClick: () => { cerrado(); abrirCobro(r.id); } },
         cancel: { label: 'Sigue adentro', onClick: () => { cerrado(); confirmar([r.id]); } },
       });
     } else {
@@ -385,6 +392,9 @@ export default function CardTicket({
   const atajoSutil = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
   const atajosAdmin = (alto: string) => isAdmin && (
     <nav aria-label="Accesos de administración" className="flex shrink-0 flex-wrap items-center gap-0.5">
+      <Link href="/admin/vehiculos" className={cn(alto, atajoSutil)}>
+        <CarFront className="size-3.5" aria-hidden />Vehículos
+      </Link>
       {TURNO_BAR_ENABLED && (
         <Link href="/admin/caja?tab=turnos#historial" className={cn(alto, atajoSutil)}>
           <History className="size-3.5" aria-hidden />Historial de turnos
@@ -413,12 +423,12 @@ export default function CardTicket({
         </div>
         <h1 className="text-[32px] font-bold leading-[1.05] tracking-tight sm:text-[40px]">{barcodeTicketsEnabled ? "Tickets y patentes" : "Entradas y salidas"}</h1>
         <div className="flex flex-wrap gap-2">
-          <span ref={refVisible('precios')} className="inline-flex">
+          {cobroHabilitado && <span ref={refVisible('precios')} className="inline-flex">
             <PriceBracketMapDialog brackets={priceBrackets} schedule={schedule} renderTrigger={(abrir) => (
               <button type="button" onClick={abrir} className={accesoTarifas}><Map className="size-4 text-gm-yellow" aria-hidden />Ver tarifas</button>
             )} />
-          </span>
-          {isAdmin && (
+          </span>}
+          {isAdmin && cobroHabilitado && (
             <Link href="/admin/tarifas" ref={refVisible('admin')} className={accesoTarifas}><Settings className="size-4 text-gm-yellow" aria-hidden />Administrar tarifas</Link>
           )}
           {atajosAdmin("h-9")}
@@ -437,7 +447,7 @@ export default function CardTicket({
         onZona={() => irA('vehiculos', 'hora')}
       />
 
-      <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={setSeFueAntes} />
+      <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={cobroHabilitado ? setSeFueAntes : undefined} />
 
       {latestRegistration && (
         <div ref={refVisible('ticket')} className="flex min-h-12 items-center gap-2.5 px-1">
@@ -446,7 +456,7 @@ export default function CardTicket({
           </span>
           <p className="min-w-0 flex-1 truncate text-[13.5px] text-muted-foreground">
             Última {ultimaEsEntrada ? "entrada" : "salida"} <strong className="gm-mono text-foreground">{ultimaIdentidad}</strong> · {ultimaHora}
-            {!ultimaEsEntrada && <> · <strong className="gm-mono text-foreground">{formatImporte(latestRegistration.price)}</strong></>}
+            {!ultimaEsEntrada && !esGratuita(latestRegistration.modalidad) && <> · <strong className="gm-mono text-foreground">{formatImporte(latestRegistration.price)}</strong></>}
           </p>
           {receiptDeliveryEnabled && (
             <button type="button" onClick={() => setReceiptTarget({ id: latestRegistration.id, kind: ultimaEsEntrada ? 'ENTRY' : 'EXIT' })} className="min-h-11 shrink-0 px-1 text-[13px] font-semibold text-gm-yellow">
@@ -457,8 +467,8 @@ export default function CardTicket({
       )}
 
       {/* Estadía larga es una operación como entrar o salir: se destaca. Comprobantes es consulta. */}
-      <div className={cn("grid gap-2.5", receiptDeliveryEnabled ? "grid-cols-2" : "grid-cols-1")}>
-        <button
+      <div className={cn("grid gap-2.5", receiptDeliveryEnabled && cobroHabilitado ? "grid-cols-2" : "grid-cols-1")}>
+        {cobroHabilitado && <button
           type="button"
           ref={refVisible('alta-abono')}
           onClick={abrirEstadia}
@@ -473,7 +483,7 @@ export default function CardTicket({
             <span className="gm-display block text-[17px] tracking-[0.04em]">Estadía larga</span>
             <span className="block text-xs text-[#D9D1C3]">Por día, semana o mes</span>
           </span>
-        </button>
+        </button>}
         {receiptDeliveryEnabled && (
           <button
             type="button"
@@ -522,7 +532,7 @@ export default function CardTicket({
       ahora={now}
       recienEscaneada={justScannedTicketId}
       isAdmin={isAdmin}
-      onFicha={(t, r) => setAdvanceTarget({ id: r.id, codeBar: t.codeBar, vehicleType: t.vehicleType, existing: r })}
+      onFicha={(t, r) => cobroHabilitado && !esGratuita(r.modalidad) ? setAdvanceTarget({ id: r.id, codeBar: t.codeBar, vehicleType: t.vehicleType, existing: r }) : abrirCobro(r.id)}
     />
   ) : null;
 
@@ -593,12 +603,12 @@ export default function CardTicket({
             onEntrada={entrarCon}
           />
 
-          <span ref={refVisible('precios')} className="inline-flex">
+          {cobroHabilitado && <span ref={refVisible('precios')} className="inline-flex">
             <PriceBracketMapDialog brackets={priceBrackets} schedule={schedule} renderTrigger={(abrir) => (
               <button type="button" onClick={abrir} className={accesoEscritorio}><Map className="size-4 text-gm-yellow" aria-hidden />Ver tarifas</button>
             )} />
-          </span>
-          {isAdmin && (
+          </span>}
+          {isAdmin && cobroHabilitado && (
             <Link href="/admin/tarifas" ref={refVisible('admin')} className={accesoEscritorio}><Settings className="size-4 text-gm-yellow" aria-hidden />Administrar tarifas</Link>
           )}
         </div>
@@ -616,7 +626,7 @@ export default function CardTicket({
             filtro={filtroTablero}
             onFiltro={setFiltroTablero}
           />
-          <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={setSeFueAntes} />
+          <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={cobroHabilitado ? setSeFueAntes : undefined} />
           <AccionesEscritorio
             onEntrada={abrirEntrada}
             onSalida={() => abrirCobro(null)}
@@ -697,7 +707,7 @@ export default function CardTicket({
               onBusyChange={setPlateScanBusy}
               onEntry={(plate, parecidasRevisadas) => setEntryScanRequest((previous) => ({ plate, sequence: (previous?.sequence ?? 0) + 1, parecidasRevisadas }))}
               onHourlyExit={(id) => abrirCobro(id)}
-              onSalidaSinEntrada={setSalidaSinEntrada}
+              onSalidaSinEntrada={cobroHabilitado ? setSalidaSinEntrada : undefined}
               onDailyExit={(registration) => { setScannedDayRegistration(registration); setOpenDayRegistrationId(registration.id); }}
             />
           ) : null}
@@ -713,7 +723,7 @@ export default function CardTicket({
         onGoToRegistration={(id) => abrirCobro(id)}
         onTicketRegistered={() => router.refresh()}
       />
-      <CreateTicketRegistrationDialog isAdmin={isAdmin} setIsDialogOpen={setDayDialogOpen} showTrigger={false} openSignal={estadiaSignal} />
+      {cobroHabilitado && <CreateTicketRegistrationDialog isAdmin={isAdmin} setIsDialogOpen={setDayDialogOpen} showTrigger={false} openSignal={estadiaSignal} />}
 
       {receiptTarget && <ParkingReceiptDelivery registrationId={receiptTarget.id} kind={receiptTarget.kind} showDisabledMessage onDismiss={() => setReceiptTarget(null)} />}
 
@@ -739,7 +749,7 @@ export default function CardTicket({
         barcodeTicketsEnabled={barcodeTicketsEnabled}
         open={closePanelOpen}
         initialRegistrationId={closePanelTargetId}
-        onAdvance={abrirAnticipo}
+        onAdvance={cobroHabilitado ? abrirAnticipo : undefined}
         onOpenChange={(open) => {
           setClosePanelOpen(open);
           if (!open) setClosePanelTargetId(null);

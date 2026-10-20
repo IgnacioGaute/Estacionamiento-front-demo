@@ -80,6 +80,8 @@ import { Borrado, BorradoDialog } from "../../components/borrado-dialog";
 import { ActividadDeEmpresa, cuandoFue, describirActividad } from "./actividad-empresa";
 import { PlanDeEmpresa } from "./plan-empresa";
 import { PatentesPlayas } from "./patentes-playas";
+import { CambioModalidad, ModalidadPlayaDialog } from "./modalidad-playa-dialog";
+import { esGratuita, NOMBRE_MODALIDAD } from "@/lib/modalidad";
 import { EstadoCuentaPill, diaAR, hoyAR, sufijoPeriodo, textoVencimiento } from "@/components/plataforma/cuenta";
 
 type Tab = "resumen" | "plan" | "playas" | "usuarios" | "actividad";
@@ -122,6 +124,8 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
   const [visto, setVisto] = useState<string | null>(null);
   const [abrioActividad, setAbrioActividad] = useState(false);
   const [cambiandoModulo, setCambiandoModulo] = useState<string | null>(null);
+  // La modalidad (Con cobro / Gratuito) se cambia con su diálogo: revisa pendientes antes.
+  const [cambioModalidad, setCambioModalidad] = useState<CambioModalidad | null>(null);
 
   const refrescar = useCallback(async () => {
     const [e, m, a, d, el] = await Promise.all([
@@ -850,10 +854,10 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <div role="table" aria-label="Playas de la empresa" className="min-w-[1180px]">
+              <div role="table" aria-label="Playas de la empresa" className="min-w-[1300px]">
                 <div
                   role="row"
-                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_130px_160px] items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_120px_130px_160px] items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
                   style={{ color: EJE }}
                 >
                   <span role="columnheader">PLAYA</span>
@@ -863,6 +867,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   <span role="columnheader">OPERADORES</span>
                   <span role="columnheader">COBRADO 30 D</span>
                   <span role="columnheader">COMPROBANTES</span>
+                  <span role="columnheader">MODALIDAD</span>
                   <span role="columnheader">SECCIONES</span>
                   <span role="columnheader" className="sr-only">
                     Acciones
@@ -878,7 +883,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                     <div
                       key={p.id}
                       role="row"
-                      className="grid h-[76px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_130px_160px] items-center gap-3 border-t border-[#2B2620] px-5 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
+                      className="grid h-[76px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_120px_130px_160px] items-center gap-3 border-t border-[#2B2620] px-5 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
                     >
                       <span role="cell" className="min-w-0">
                         <span className="block truncate font-semibold">{p.nombre}</span>
@@ -923,6 +928,18 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                             Sin configurar
                           </span>
                         )}
+                      </span>
+                      <span role="cell">
+                        <button
+                          type="button"
+                          onClick={() => setCambioModalidad({ playaId: p.id, nombre: p.nombre })}
+                          title="Con cobro o gratuita. Revisa los pendientes antes de cambiar."
+                          className={`inline-flex min-h-9 items-center rounded-full border px-3 text-[12px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow ${
+                            esGratuita(p.modalidad) ? "border-sky-400/40 bg-sky-400/10 text-sky-300 hover:bg-sky-400/15" : "border-[#3A342B] text-[#D9D1C3] hover:border-gm-yellow/40"
+                          }`}
+                        >
+                          {NOMBRE_MODALIDAD[esGratuita(p.modalidad) ? "GRATUITO" : "CON_COBRO"]}
+                        </button>
                       </span>
                       <span role="cell">
                         <label
@@ -1194,6 +1211,19 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
           }}
         />
       )}
+      <ModalidadPlayaDialog
+        cambio={cambioModalidad}
+        cerrar={() => setCambioModalidad(null)}
+        hecho={(modalidad) => {
+          const id = cambioModalidad?.playaId;
+          setCambioModalidad(null);
+          setEmpresa((e) => (e ? { ...e, playas: e.playas.map((p) => (p.id === id ? { ...p, modalidad } : p)) } : e));
+          toast.success(modalidad === "GRATUITO"
+            ? "La playa pasó a modalidad gratuita. Sus pantallas abiertas se actualizan solas."
+            : "La playa vuelve a operar con cobro. Sus pantallas abiertas se actualizan solas.");
+          void refrescar();
+        }}
+      />
       <BorradoDialog
         borrado={borrado}
         cerrar={() => setBorrado(null)}

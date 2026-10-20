@@ -2,13 +2,33 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AvisoEstadiasLargas } from './inicio';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
+import { useTenant } from '@/components/tenant-provider';
 
+// useTenant vive junto a la acción de contexto (next-auth): se simula con una playa con cobro.
+jest.mock('@/components/tenant-provider', () => ({ useTenant: jest.fn(() => ({ cobroHabilitado: true })) }));
 jest.mock('next/navigation', () => ({ usePathname: () => '/tickets' }));
 jest.mock('./day-registrations-panel', () => ({ DayRegistrationsPanel: () => null }));
 const ahora = new Date('2026-10-15T22:19:00-03:00').getTime();
 const estadia = (id: string, patente: string, entrada: string, salida = false) =>
   ({ id, licensePlateOriginal: patente, entryDay: '2026-10-15', entryTime: entrada, departureDay: salida ? '2026-10-15' : null, departureTime: salida ? '20:00:00' : null }) as unknown as TicketRegistration;
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  jest.mocked(useTenant).mockReturnValue({ cobroHabilitado: true } as ReturnType<typeof useTenant>);
+});
+
+test.each([1, 2])('modalidad gratuita con %i vehículos: pide registrar la salida sin ofrecer cobros', (cantidad) => {
+  jest.mocked(useTenant).mockReturnValue({ cobroHabilitado: false } as ReturnType<typeof useTenant>);
+  const registros = [estadia('a', 'HPQ966', '08:41:00'), estadia('b', 'NBO468', '12:44:00')].slice(0, cantidad);
+  const onCobrar = jest.fn();
+  render(<AvisoEstadiasLargas registros={registros} ahora={ahora} onCobrar={onCobrar} />);
+  const franja = screen.getByRole('button', { name: /sin confirmar/ });
+  expect(franja).toHaveTextContent(cantidad === 1 ? 'Si se fue, registrá la salida.' : 'Si se fueron, registrá las salidas.');
+  expect(franja).not.toHaveTextContent(/cobral/);
+  fireEvent.click(franja);
+  expect(screen.queryByRole('button', { name: /^Cobrar/ })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Registrar la salida de HPQ966' }));
+  expect(onCobrar).toHaveBeenCalledWith('a');
+});
 
 test('un auto sin confirmar: la franja lo nombra y al abrirla se cobra', () => {
   const onCobrar = jest.fn();

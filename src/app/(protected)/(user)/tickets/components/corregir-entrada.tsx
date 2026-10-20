@@ -13,7 +13,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { corregirEntradaAction } from '@/actions/tickets/corregir-entrada.action';
-import type { CloseSummary } from '@/services/tickets.service';
+import type { ResumenSalida } from '@/services/tickets.service';
 import { Clock3 } from 'lucide-react';
 
 dayjs.extend(utc);
@@ -31,7 +31,7 @@ export function entradaDesdeHora(hora: string, ahora = dayjs().tz(TZ)): string |
   return momento.toISOString();
 }
 
-export function CorregirEntrada({ summary, onCorregido }: { summary: CloseSummary; onCorregido: (summary: CloseSummary) => void }) {
+export function CorregirEntrada({ summary, onCorregido }: { summary: Pick<ResumenSalida, 'registration' | 'elapsedMinutes'>; onCorregido: (summary: ResumenSalida) => void }) {
   const [abierto, setAbierto] = useState(false);
   const [hora, setHora] = useState('');
   const [enviando, setEnviando] = useState(false);

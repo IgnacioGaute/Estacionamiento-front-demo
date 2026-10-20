@@ -15,7 +15,8 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const getUsers = async (authToken?: string) => {
   try {
-    const response = await fetch(`${BASE_URL}/users`, {
+    // Sin limit el paginador devuelve 20: la lista y sus totales se arman con todas las cuentas.
+    const response = await fetch(`${BASE_URL}/users?limit=100`, {
       headers: await getAuthHeaders(authToken),
       next: {
         tags: [getCacheTag('users', 'all')],

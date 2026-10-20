@@ -24,6 +24,7 @@ import { issueParkingReceiptAction } from '@/actions/tickets/parking-receipt.act
 import { IssuedParkingReceipt } from '@/types/parking-receipt.type';
 import { ParkingReceiptView } from './parking-receipt-view';
 import { toast } from 'sonner';
+import { useTenant } from '@/components/tenant-provider';
 
 const medio = 'flex min-h-[62px] min-w-0 flex-col items-start justify-center gap-0.5 rounded-2xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 px-3.5 py-2 text-left transition-colors hover:border-gm-yellow/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow short:min-h-12';
 const medioTitulo = 'flex items-center gap-2 text-[14.5px] font-semibold';
@@ -32,6 +33,8 @@ const medioDetalle = 'w-full truncate text-xs text-muted-foreground short:hidden
 export function ParkingReceiptDelivery({ registrationId, kind, onDismiss, showDisabledMessage = false }: {
   registrationId: string | null; kind: 'ENTRY' | 'EXIT'; onDismiss: () => void; showDisabledMessage?: boolean;
 }) {
+  // En una playa gratuita no hay comprobantes: ni se emiten ni se ofrecen (el backend también los rechaza).
+  const { cobroHabilitado } = useTenant();
   const [receipt, setReceipt] = useState<IssuedParkingReceipt | null>(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -39,14 +42,14 @@ export function ParkingReceiptDelivery({ registrationId, kind, onDismiss, showDi
   useEffect(() => {
     let active = true;
     setReceipt(null); setError(''); setVerPapel(false);
-    if (registrationId) issueParkingReceiptAction(registrationId, kind).then(result => {
+    if (registrationId && cobroHabilitado) issueParkingReceiptAction(registrationId, kind).then(result => {
       if (!active) return;
       if (result.receipt) setReceipt(result.receipt);
       else if (result.error) setError(result.error);
       else if (result.disabled && showDisabledMessage) setError('Los medios de entrega están desactivados. Podés habilitarlos desde administración.');
     });
     return () => { active = false; };
-  }, [registrationId, kind, attempt, showDisabledMessage]);
+  }, [registrationId, kind, attempt, showDisabledMessage, cobroHabilitado]);
   // El comprobante lo sirve otro dominio (repo `estacionamiento-comprobantes-demo`): el cliente
   // recibe ese enlace por QR o WhatsApp y nunca la dirección del sistema.
   const receiptsBase = process.env.NEXT_PUBLIC_RECEIPTS_URL?.replace(/\/+$/, '') ?? '';

@@ -27,6 +27,7 @@ import {
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { useTenant } from '@/components/tenant-provider';
+import { seccionesAdmin } from './secciones-admin';
 import { User } from 'next-auth';
 import { BoxListDialog } from '../box-list-dialog';
 import { CreateOtherPaymentDialog } from '@/app/(protected)/admin/other-payments/components/create-other-payment-dialog';
@@ -47,16 +48,6 @@ const SECCIONES_CLIENTES = [
   { label: 'Particulares', url: '/privates' },
 ];
 
-const SECCIONES_ADMIN = [
-  { label: 'Panel', url: '/admin/dashboard' },
-  { label: 'Usuarios', url: '/admin/users' },
-  { label: 'Tarifas', url: '/admin/tarifas' },
-  { label: 'Frecuentes', url: '/admin/frecuentes' },
-  // { label: 'Tipos de cochera', url: '/admin/parking-type' },
-  { label: 'Caja', url: '/admin/caja' },
-  { label: 'Configuración', url: '/admin/configuracion' },
-  { label: 'Mi plan', url: '/admin/plan' },
-];
 
 export type UserNav = {
   name: string;
@@ -75,7 +66,9 @@ export function OperationalNavUser({
   notas: Pick<ReturnType<typeof useNotifications>, 'unreadIds' | 'loaded'>;
 }) {
   const [openBoxDialog, setOpenBoxDialog] = useState(false);
-  const { inquilinosEnabled } = useTenant();
+  // En una playa gratuita no hay planilla de caja, gastos e ingresos, tarifas ni inquilinos.
+  const { inquilinosEnabled, cobroHabilitado } = useTenant();
+  const SECCIONES_ADMIN = seccionesAdmin(cobroHabilitado);
   const [openPaymentsDialog, setOpenPaymentsDialog] = useState(false);
   const unreadCount = notas.unreadIds.length;
   const hasNewNoteAlert = unreadCount > 0;
@@ -287,24 +280,24 @@ export function OperationalNavUser({
           {/* Hojas sueltas, sin codo: son acciones, no destinos. Las ramas llevan a una
               pantalla; esto abre algo encima de donde ya estás, así que colgarlo de un codo
               haría que el árbol mienta sobre lo que es. */}
-          <DropdownMenuItem
+          {cobroHabilitado && <DropdownMenuItem
             onClick={() => setOpenBoxDialog(true)}
             className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]"
           >
             <Box className="size-3.5 text-muted-foreground" />
             Planilla de caja
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
 
-          <DropdownMenuItem asChild className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]">
+          {cobroHabilitado && <DropdownMenuItem asChild className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]">
             <a href="https://estacionamiento-demo-landing.vercel.app/aprender" target="_blank" rel="noopener noreferrer" aria-label="Centro de aprendizaje (se abre en una pestaña nueva)">
               <ParkingMark size="sm" className="size-3.5 shrink-0" />
               Centro de aprendizaje
             </a>
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
 
           <InstallAppMenuItem />
 
-          {!esAdmin && (
+          {!esAdmin && cobroHabilitado && (
               <DropdownMenuItem onSelect={() => { setIsOpen(false); setOpenPaymentsDialog(true); }} className="min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-0 lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]">
                 <Banknote className="size-3.5 text-muted-foreground" />
                 Gastos e ingresos

@@ -72,12 +72,13 @@ export function DeleteUserDialog({ user }: { user: User }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-[#F08775] hover:bg-destructive/15 hover:text-[#F08775]"
+          variant="outline"
+          size="icon"
+          aria-label={`Eliminar a ${user.firstName} ${user.lastName}`}
+          title="Eliminar usuario"
+          className="size-9 shrink-0 border-gm-line-strong text-[#F08775] hover:border-destructive/50 hover:bg-destructive/15 hover:text-[#F08775]"
         >
           <Trash className="size-4" />
-          Eliminar usuario
         </Button>
       </DialogTrigger>
 

@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { PageHeader } from '@/components/page-header';
+import { modalidadActual } from '@/lib/modalidad.server';
+import { ModalidadGratuitaAviso } from '@/components/solo-con-cobro';
 import { CajaActions } from './components/caja-actions';
 import { PlanillaButton } from './components/planilla-button';
 import { getTicketRegistrations, getTicketSchedule } from '@/services/tickets.service';
@@ -15,6 +17,9 @@ import { expenseColumns } from '../other-payments/components/other-payment-colum
 export default async function CajaPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await auth();
   if ((session?.user?.role ?? '').toUpperCase() !== 'ADMIN') redirect('/tickets');
+  // En una playa gratuita no hay caja ni historial de cobros para mostrar. Lo cobrado antes se
+  // conserva en la base y vuelve a verse si la playa vuelve a cobrar.
+  if ((await modalidadActual()) === 'GRATUITO') return <ModalidadGratuitaAviso seccion="Caja" />;
   const query = await searchParams;
   const schedule = await getTicketSchedule();
   const shiftsEnabled = schedule?.shiftsEnabled === true;

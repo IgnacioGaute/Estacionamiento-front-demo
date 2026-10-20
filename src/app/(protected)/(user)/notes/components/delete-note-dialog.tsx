@@ -14,6 +14,7 @@ export function DeleteNoteDialog({ note }: { note: Note }) {
       toast.error(data?.error);
     } else {
       toast.success(data.success);
+      window.dispatchEvent(new Event('notes-changed'));
     }
   };
 
@@ -22,11 +23,12 @@ export function DeleteNoteDialog({ note }: { note: Note }) {
       trigger={
         <Button
           variant="ghost"
-          size="sm"
-          className="w-full justify-start text-[#F08775] hover:bg-destructive/15 hover:text-[#F08775]"
+          size="icon"
+          aria-label="Eliminar aviso"
+          title="Eliminar aviso"
+          className="size-9 text-muted-foreground hover:bg-destructive/15 hover:text-[#F08775]"
         >
           <Trash className="size-4" />
-          Eliminar aviso
         </Button>
       }
       title="Eliminar aviso"

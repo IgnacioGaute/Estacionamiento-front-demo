@@ -1,8 +1,11 @@
 'use client';
 
+import { useTenant } from '@/components/tenant-provider';
+import { seccionesAdmin } from './secciones-admin';
 import {
   Banknote,
   BookUser,
+  CarFront,
   Gauge,
   ReceiptText,
   SlidersHorizontal,
@@ -27,22 +30,25 @@ export function AdminNavbarSidebar({
   const role = session?.user?.role?.toUpperCase() ?? 'USER';
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const isAdmin = role === 'ADMIN' || isSuperAdmin;
+  const { cobroHabilitado } = useTenant();
 
   // El super admin administra la plataforma, no opera un estacionamiento: tiene su propia barra
   // con métricas, empresas y el acceso rápido. El acceso a los datos de cada playa existe en el
   // backend, pero no se muestra acá para no mezclar los dos trabajos.
   if (isSuperAdmin) return <SuperAdminSidebar {...props} />;
 
+  const iconos: Record<string, React.ReactNode> = {
+    '/admin/dashboard': <Gauge />,
+    '/admin/users': <UsersRound />,
+    '/admin/tarifas': <Tags />,
+    '/admin/vehiculos': <CarFront />,
+    '/admin/frecuentes': <BookUser />,
+    '/admin/caja': <Banknote />,
+    '/admin/configuracion': <SlidersHorizontal />,
+    '/admin/plan': <ReceiptText />,
+  };
   const navItems = isAdmin
-    ? [
-        { title: 'Panel', url: '/admin/dashboard', icon: <Gauge /> },
-        { title: 'Usuarios', url: '/admin/users', icon: <UsersRound /> },
-        { title: 'Tarifas', url: '/admin/tarifas', icon: <Tags /> },
-        { title: 'Frecuentes', url: '/admin/frecuentes', icon: <BookUser /> },
-        { title: 'Caja', url: '/admin/caja', icon: <Banknote /> },
-        { title: 'Configuración', url: '/admin/configuracion', icon: <SlidersHorizontal /> },
-        { title: 'Mi plan', url: '/admin/plan', icon: <ReceiptText /> },
-      ]
+    ? seccionesAdmin(cobroHabilitado).map((s) => ({ title: s.label, url: s.url, icon: iconos[s.url] }))
     : [];
 
   return (

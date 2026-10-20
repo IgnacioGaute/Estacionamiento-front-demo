@@ -29,7 +29,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,6 +41,8 @@ import { useCurrentUser } from '@/hooks/auth/use-current-user';
 import { updateUserAction } from '@/actions/users/update-user.action';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { User } from '@/types/user.type';
+import { useTenant } from '@/components/tenant-provider';
+import { SelectorPlaya, SelectorRol } from './selector-rol';
 
 export function UpdateUserDailog({ user }: { user: User }) {
   const session = useSession();
@@ -56,6 +58,10 @@ export function UpdateUserDailog({ user }: { user: User }) {
   let debounceTimeout: NodeJS.Timeout | null = null;
 
   const router = useRouter();
+  const { context, playaId } = useTenant();
+  // El rol propio no se cambia desde acá (el backend lo rechaza): que lo haga otro administrador.
+  const esPropio = session.data?.user.id === user.id;
+  const rolOriginal = user.role === 'ADMIN' ? 'ADMIN' : 'USER';
 
   const form = useForm<UpdateUserSchemaType>({
     resolver: zodResolver(updateUserSchema),
@@ -63,8 +69,13 @@ export function UpdateUserDailog({ user }: { user: User }) {
       username: user?.username || '',
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
+      role: rolOriginal,
+      playaId: context.playas.some((p) => p.id === playaId) ? playaId : context.playas[0]?.id,
     },
   });
+  const rol = form.watch('role') ?? rolOriginal;
+  const cambiaRol = rol !== rolOriginal;
+  const eligePlaya = cambiaRol && rol === 'USER' && context.playas.length > 1;
 
   const passwordForm = useForm<UpdateUserPasswordType>({
     resolver: zodResolver(updateUserPassword),
@@ -119,12 +130,14 @@ export function UpdateUserDailog({ user }: { user: User }) {
 
   const onSubmitProfile = async (values: UpdateUserSchemaType) => {
     if (!user?.id) return;
-    console.log(values)
+    // Rol y playa viajan solo si el rol cambia; con una sola playa la elige el backend.
+    const { role, playaId: playa, ...perfil } = values;
+    const payload = cambiaRol ? { ...perfil, role, ...(eligePlaya ? { playaId: playa } : {}) } : perfil;
 
     try {
       setIsLoading(true);
 
-      const result = await updateUserAction(user.id, values);
+      const result = await updateUserAction(user.id, payload);
 
       if (result.error) {
         const errorMessage =
@@ -134,7 +147,8 @@ export function UpdateUserDailog({ user }: { user: User }) {
 
         toast.error(errorMessage);
       } else if (result.success) {
-        toast.success('Perfil actualizado exitosamente');
+        toast.success(cambiaRol ? `Ahora es ${rol === 'ADMIN' ? 'administrador' : 'operador'}. Va a tener que volver a iniciar sesión.` : 'Perfil actualizado exitosamente');
+        if (cambiaRol) setOpen(false);
         router.refresh();
       }
     } catch (error) {
@@ -179,12 +193,14 @@ export function UpdateUserDailog({ user }: { user: User }) {
     <Dialog open={open} onOpenChange={setOpen}>
     <DialogTrigger asChild>
     <Button
-            variant="ghost"
-            className="w-full justify-start"
+            variant="outline"
             size="sm"
+            aria-label={`Editar a ${user.firstName} ${user.lastName}`}
+            className="h-9 gap-2 border-gm-line-strong"
             onClick={() => setOpen(true)}
           >
-            Editar Usuario
+            <Pencil className="size-3.5" aria-hidden />
+            Editar
           </Button>
     </DialogTrigger>
     <DialogContent className="max-w-md sm:max-w-lg">
@@ -213,6 +229,27 @@ export function UpdateUserDailog({ user }: { user: User }) {
               className="space-y-4"
             >
               <CardContent className="space-y-2">
+                {!esPropio && (
+                  <div className="space-y-3 pb-2">
+                    <FormField
+                      control={form.control}
+                      name="role"
+                      render={({ field }) => (
+                        <SelectorRol nombre={`rol-${user.id}`} valor={field.value ?? rolOriginal} onChange={field.onChange} disabled={isLoading} />
+                      )}
+                    />
+                    {eligePlaya && (
+                      <FormField
+                        control={form.control}
+                        name="playaId"
+                        render={({ field }) => (
+                          <SelectorPlaya nombre={`playa-rol-${user.id}`} playas={context.playas} valor={field.value ?? ''} onChange={field.onChange} disabled={isLoading} />
+                        )}
+                      />
+                    )}
+                    {cambiaRol && <p className="text-xs text-gm-yellow">Al guardar se cierra su sesión para que entre con el rol nuevo.</p>}
+                  </div>
+                )}
                 <FormField
                   control={form.control}
                   name="username"
