@@ -1022,7 +1022,10 @@ function describirMovimiento(h: DetalleSuscripcion["historial"][number]) {
 
 // ─── Diálogos ───────────────────────────────────────────────────────────────
 
-function AccionDialog({
+// El mismo tope de días de prueba que acepta el backend al dar el alta (ActivarCuentaDto).
+const MAX_DIAS_PRUEBA = 60;
+
+export function AccionDialog({
   accion,
   empresa,
   detalle,
@@ -1229,13 +1232,30 @@ function AccionDialog({
                   disabled={!conPrueba}
                   onChange={(e) => setDiasPrueba(Number(e.target.value))}
                 >
-                  {[3, 5, 7, 10, 14, 15, 21, 30].map((n) => (
-                    <option key={n} value={n}>
-                      {n} días
-                    </option>
-                  ))}
+                  {/* Los días que salen de elegir la fecha de fin también son una opción. */}
+                  {[...new Set([3, 5, 7, 10, 14, 15, 21, 30, diasPrueba])]
+                    .sort((a, b) => a - b)
+                    .map((n) => (
+                      <option key={n} value={n}>
+                        {n === 1 ? "1 día" : `${n} días`}
+                      </option>
+                    ))}
                 </select>
               </label>
+              {conPrueba && (
+                <div className="space-y-1.5">
+                  <Label>Prueba gratis hasta el</Label>
+                  {/* Un día exacto (un fin de semana, una fecha acordada) en lugar de una cantidad fija. */}
+                  <AppDatePicker
+                    title="Prueba gratis hasta el"
+                    value={finPrueba}
+                    min={alta}
+                    max={sumarDiasAR(alta, MAX_DIAS_PRUEBA - 1)}
+                    onChange={(v) => v && setDiasPrueba(diasEntreAR(alta, v) + 1)}
+                    trigger={botonFecha(finPrueba)}
+                  />
+                </div>
+              )}
               {resumen(
                 conPrueba ? (
                   <>
