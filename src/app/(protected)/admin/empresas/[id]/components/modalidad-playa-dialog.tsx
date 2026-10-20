@@ -19,16 +19,17 @@ export type CambioModalidad = { playaId: string; nombre: string };
 const ALCANCE: Record<Modalidad, { oculta: string[]; conserva: string[] }> = {
   GRATUITO: {
     oculta: [
-      "Tarifas, simuladores y precios por día, semana o mes",
+      "Tarifas, simuladores y estadías por día, semana o mes",
       "Cobros, anticipos, medios de pago, descuentos y devoluciones",
-      "Caja, planilla de caja, turnos de caja y arqueos",
+      "Caja, planilla de caja, turnos de caja, arqueos y el historial de cobros",
       "Recaudación, comisiones, Inquilinos, clientes mensuales y cobros con MercadoPago",
-      "Comprobantes de entrada y salida, y el modo sin conexión",
+      "Comprobantes de entrada y salida y el Centro de aprendizaje",
     ],
     conserva: [
       "Entradas por patente y por tarjeta, tipos de vehículo y controles de patentes repetidas",
+      "Modo sin conexión con entradas por patente y salidas sin cobro",
       "Vehículos adentro, búsquedas, historial y la planilla de vehículos con permanencia y operador",
-      "El historial de cobros anterior, de solo lectura para el administrador",
+      "Los registros anteriores (cobros, caja, turnos) se guardan sin cambios y vuelven a verse si la playa vuelve a cobrar",
     ],
   },
   CON_COBRO: {

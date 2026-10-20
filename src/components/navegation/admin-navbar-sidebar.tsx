@@ -41,7 +41,7 @@ export function AdminNavbarSidebar({
     '/admin/dashboard': <Gauge />,
     '/admin/users': <UsersRound />,
     '/admin/tarifas': <Tags />,
-    '/vehiculos': <CarFront />,
+    '/admin/vehiculos': <CarFront />,
     '/admin/frecuentes': <BookUser />,
     '/admin/caja': <Banknote />,
     '/admin/configuracion': <SlidersHorizontal />,

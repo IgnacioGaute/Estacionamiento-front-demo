@@ -566,7 +566,7 @@ export type PlanillaVehiculos = {
   data: FilaPlanillaVehiculos[];
   meta: { totalItems: number; currentPage: number; itemsPerPage: number; totalPages: number };
   desde: string; hasta: string; estado: EstadoPlanilla; operadores: string[];
-  resumen: { entradas: number; salidas: number; presentes: number };
+  resumen: { entradas: number; salidas: number; presentes: number; permanenciaMediana: number | null };
 };
 export async function getPlanillaVehiculos(filtros: FiltrosPlanillaVehiculos): Promise<PlanillaVehiculos | { error: string }> {
   const url = new URL(`${BASE_URL}/tickets/registrations/planilla`);

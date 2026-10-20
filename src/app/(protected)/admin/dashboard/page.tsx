@@ -105,7 +105,7 @@ export default async function DashboardPage({
         <div className="mb-4" data-tour="dashboard-hourly-activity">
           <HourlyActivityAreaChart data={hourly} date={hourlyDate} />
         </div>
-        <Link href="/vehiculos" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-semibold transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
+        <Link href="/admin/vehiculos" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-semibold transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
           Ver la planilla de vehículos
         </Link>
       </div>

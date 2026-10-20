@@ -18,7 +18,6 @@ export const ERRORES_MODALIDAD: Record<string, string> = {
   MODALIDAD_GRATUITA: 'Esta playa funciona en modalidad gratuita: no registra tarifas, cobros ni caja.',
   ESTADIA_GRATUITA: 'Esta estadía ingresó en modalidad gratuita: registrá la salida sin cobro.',
   ESTADIA_CON_COBRO: 'Esta estadía ingresó con cobro: registrá la salida desde Cobrar salida.',
-  OFFLINE_NO_DISPONIBLE_GRATUITO: 'El modo sin conexión no está disponible en la modalidad gratuita.',
 };
 
 // El resumen de salida de una estadía gratuita (sin importes) frente al de una con cobro.

@@ -251,6 +251,7 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar, onSeFueAntes }
   onCobrar: (id: string) => void;
   onSeFueAntes?: (r: TicketRegistration) => void;
 }) {
+  const { cobroHabilitado } = useTenant();
   const { confirmada, confirmar } = useConfirmadas();
   const [abierto, setAbierto] = useState(false);
   const pendientes = estadiasLargas(registros, ahora).filter(({ r }) => !confirmada(r.id, ahora));
@@ -290,7 +291,9 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar, onSeFueAntes }
           {/* La pregunta pasa a una segunda línea antes que cortarse en la columna angosta. */}
           <span className={cn('block text-[11.5px] leading-snug', sinRespuesta ? 'text-violet-100' : 'text-muted-foreground')}>
             {sinRespuesta
-              ? (varias ? '¿Siguen en la playa? Si se fueron, cobralos.' : '¿Sigue en la playa? Si se fue, cobralo.')
+              ? (cobroHabilitado
+                ? (varias ? '¿Siguen en la playa? Si se fueron, cobralos.' : '¿Sigue en la playa? Si se fue, cobralo.')
+                : (varias ? '¿Siguen en la playa? Si se fueron, registrá las salidas.' : '¿Sigue en la playa? Si se fue, registrá la salida.'))
               : `${varias ? 'El más largo lleva' : 'Lleva'} ${formatEstadia(primera.minutos)}`}
           </span>
         </span>
@@ -454,6 +457,8 @@ export function TodosLosVehiculos({
   diaRef?: (el: HTMLElement | null) => void;
 }) {
   const [busqueda, setBusqueda] = useState('');
+  // Día/Sem/Mes son abonos pagos: en una playa gratuita no existen.
+  const { cobroHabilitado } = useTenant();
   const total = activos.length + diaActivos.length;
   const pasados = activos.filter((r) => isOverdue(r, ahora));
   const conMinutos = activos
@@ -500,7 +505,7 @@ export function TodosLosVehiculos({
             {filtro !== 'excedidos' && <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" />}Tiempo superado · {pasados.length}
           </button>
         )}
-        <button type="button" aria-pressed={filtro === 'dia'} onClick={() => onFiltro('dia')} className={chip(filtro === 'dia')}>Día/Sem/Mes · {diaActivos.length}</button>
+        {cobroHabilitado && <button type="button" aria-pressed={filtro === 'dia'} onClick={() => onFiltro('dia')} className={chip(filtro === 'dia')}>Día/Sem/Mes · {diaActivos.length}</button>}
       </div>
 
       {filtro === 'dia' ? (

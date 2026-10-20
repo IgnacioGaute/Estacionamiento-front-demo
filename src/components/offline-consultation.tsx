@@ -40,7 +40,7 @@ export function OfflineConsultation({ revision }: { revision?: unknown }) {
         const sameScope = previous?.state.userId === snapshot.userId && previous?.state.playaId === snapshot.playaId;
         const freshReceipts = Array.isArray(snapshot.receipts) ? snapshot.receipts : [];
         const freshKeys = new Set(freshReceipts.map((receipt: { registrationId: string; kind: string }) => `${receipt.registrationId}:${receipt.kind}`));
-        const keptReceipts = sameScope ? (previous?.state.receipts || []).filter((receipt: { registrationId?: string; kind: string }) => !receipt.registrationId || !freshKeys.has(`${receipt.registrationId}:${receipt.kind}`)).slice(-150) : [];
+        const keptReceipts = sameScope && snapshot.modalidad !== 'GRATUITO' ? (previous?.state.receipts || []).filter((receipt: { registrationId?: string; kind: string }) => !receipt.registrationId || !freshKeys.has(`${receipt.registrationId}:${receipt.kind}`)).slice(-150) : [];
         await vault.saveOperations({ ...snapshot, receiptBase: process.env.NEXT_PUBLIC_RECEIPTS_URL?.replace(/\/+$/, '') || '', deviceId, pending: [], syncedCount: 0, receipts: [...freshReceipts, ...keptReceipts] }, access, previous?.revision || 0);
         setReady(true);
         setStatus('');

@@ -2,7 +2,7 @@ import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from "@/lib/auth";
 import { getCacheTag } from "./cache-tags";
 import { PaginatedResponse } from "@/types/paginated-response.type";
-import { Note } from "@/types/note.type";
+import { FiltrosAvisos, ListaAvisos, Note } from "@/types/note.type";
 import { NoteSchemaType, UpdateNoteSchemaType } from "@/schemas/note.schema";
 import { revalidateTag } from "next/cache";
 
@@ -10,9 +10,15 @@ import { revalidateTag } from "next/cache";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 
-export const getNotes = async (authToken?: string, page = 1, search = '') => {
+export const AVISOS_POR_PAGINA = 20;
+
+export const getNotes = async (authToken?: string, page = 1, search = '', filtros: FiltrosAvisos = {}) => {
     try {
-      const response = await fetch(`${BASE_URL}/notes?page=${page}&limit=6&sortBy=createdAt:DESC&sortBy=id:DESC&search=${encodeURIComponent(search)}`, {
+      const params = new URLSearchParams({ page: String(page), limit: String(AVISOS_POR_PAGINA), search });
+      params.append('sortBy', 'createdAt:DESC');
+      params.append('sortBy', 'id:DESC');
+      for (const [clave, valor] of Object.entries(filtros)) if (valor && valor !== 'TODOS') params.set(clave, valor);
+      const response = await fetch(`${BASE_URL}/notes?${params}`, {
         cache: 'no-store',
         headers: await getAuthHeaders(authToken),
         next: {
@@ -22,7 +28,7 @@ export const getNotes = async (authToken?: string, page = 1, search = '') => {
       const data = await response.json();
   
       if (response.ok) {
-        return data as PaginatedResponse<Note>;
+        return data as ListaAvisos;
       } else {
         console.error(data);
         return null;

@@ -13,7 +13,6 @@ import {
   Plus,
   TicketIcon,
   Users,
-  CarFront,
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -104,7 +103,6 @@ export function OperationalNavUser({
       label: 'Operación',
       children: [
         { value: '/tickets', label: 'Tickets', icon: <TicketIcon /> },
-        ...(!esAdmin ? [{ value: '/vehiculos', label: 'Planilla de vehículos', icon: <CarFront /> }] : []),
         ...(inquilinosEnabled ? [{ value: '/renters', label: 'Inquilinos', icon: <Users /> }] : []),
         ...(!hasNewNoteAlert ? [{ value: '/notes', label: 'Avisos', icon: <Bell /> }] : []),
       ],
@@ -221,15 +219,6 @@ export function OperationalNavUser({
               </HojaDeRama>
             </Link>
 
-            {!esAdmin && (
-              <Link href="/vehiculos">
-                <HojaDeRama activa={pathname === '/vehiculos'}>
-                  <CarFront className="size-3.5" />
-                  Planilla de vehículos
-                </HojaDeRama>
-              </Link>
-            )}
-
             {/* Sección opcional: la prende el super admin en cada playa. */}
             {inquilinosEnabled && (
               <Link href="/renters">
@@ -299,12 +288,12 @@ export function OperationalNavUser({
             Planilla de caja
           </DropdownMenuItem>}
 
-          <DropdownMenuItem asChild className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]">
+          {cobroHabilitado && <DropdownMenuItem asChild className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]">
             <a href="https://estacionamiento-demo-landing.vercel.app/aprender" target="_blank" rel="noopener noreferrer" aria-label="Centro de aprendizaje (se abre en una pestaña nueva)">
               <ParkingMark size="sm" className="size-3.5 shrink-0" />
               Centro de aprendizaje
             </a>
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
 
           <InstallAppMenuItem />
 

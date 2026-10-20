@@ -52,6 +52,7 @@ export function UpdateNoteDialog({ note }: { note: Note }) {
         toast.success('Aviso actualizado exitosamente');
         form.reset();
         setOpen(false);
+        window.dispatchEvent(new Event('notes-changed'));
       }
     });
   };
@@ -59,9 +60,8 @@ export function UpdateNoteDialog({ note }: { note: Note }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="w-full justify-start">
+        <Button variant="ghost" size="icon" aria-label="Editar aviso" title="Editar aviso" className="size-9 text-muted-foreground hover:text-foreground">
           <Edit3 className="size-4" />
-          Editar aviso
         </Button>
       </DialogTrigger>
 

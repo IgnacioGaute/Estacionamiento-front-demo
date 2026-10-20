@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { PageHeader } from '@/components/page-header';
 import { modalidadActual } from '@/lib/modalidad.server';
+import { ModalidadGratuitaAviso } from '@/components/solo-con-cobro';
 import { CajaActions } from './components/caja-actions';
 import { PlanillaButton } from './components/planilla-button';
 import { getTicketRegistrations, getTicketSchedule } from '@/services/tickets.service';
@@ -16,16 +17,9 @@ import { expenseColumns } from '../other-payments/components/other-payment-colum
 export default async function CajaPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await auth();
   if ((session?.user?.role ?? '').toUpperCase() !== 'ADMIN') redirect('/tickets');
-  // En una playa gratuita no hay caja: queda el historial de lo cobrado antes del cambio, solo
-  // para consultar (la planilla diaria por fecha, con sus turnos). El backend rechaza cualquier
-  // movimiento nuevo.
-  if ((await modalidadActual()) === 'GRATUITO')
-    return <div className="container mx-auto max-w-3xl space-y-6 px-4 py-6 sm:p-8">
-      <PageHeader breadcrumb={['Estacionamiento', 'Administración', 'Historial de cobros']} title="Historial de cobros" description="Solo lectura: lo que se cobró mientras la playa operaba con cobro." actions={<PlanillaButton />} />
-      <p className="rounded-2xl border border-gm-yellow/30 bg-gm-yellow/[0.06] p-4 text-sm leading-relaxed">
-        Esta playa funciona en <strong>modalidad gratuita</strong>: no tiene caja, turnos de caja ni cobros. Con «Planilla» elegís una fecha anterior y consultás su planilla diaria, sus turnos y su PDF. Los registros anteriores se conservan sin cambios.
-      </p>
-    </div>;
+  // En una playa gratuita no hay caja ni historial de cobros para mostrar. Lo cobrado antes se
+  // conserva en la base y vuelve a verse si la playa vuelve a cobrar.
+  if ((await modalidadActual()) === 'GRATUITO') return <ModalidadGratuitaAviso seccion="Caja" />;
   const query = await searchParams;
   const schedule = await getTicketSchedule();
   const shiftsEnabled = schedule?.shiftsEnabled === true;

@@ -50,6 +50,7 @@ import {
   Barcode,
   CalendarDays,
   CalendarPlus,
+  CarFront,
   ChevronRight,
   History,
   Hourglass,
@@ -391,6 +392,9 @@ export default function CardTicket({
   const atajoSutil = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
   const atajosAdmin = (alto: string) => isAdmin && (
     <nav aria-label="Accesos de administración" className="flex shrink-0 flex-wrap items-center gap-0.5">
+      <Link href="/admin/vehiculos" className={cn(alto, atajoSutil)}>
+        <CarFront className="size-3.5" aria-hidden />Vehículos
+      </Link>
       {TURNO_BAR_ENABLED && (
         <Link href="/admin/caja?tab=turnos#historial" className={cn(alto, atajoSutil)}>
           <History className="size-3.5" aria-hidden />Historial de turnos
@@ -499,7 +503,7 @@ export default function CardTicket({
       </div>
 
       {/* Prepara el acceso sin conexión (pide datos al servidor): una sola vez, en la pantalla que quedó. */}
-      {esEscritorio === false && cobroHabilitado && <OfflineConsultation revision={registrations} />}
+      {esEscritorio === false && <OfflineConsultation revision={registrations} />}
 
       <section aria-labelledby="ultimas-entradas" className="flex flex-col gap-2.5">
         <h2 id="ultimas-entradas" className="px-1 text-lg font-bold">Últimas entradas</h2>
@@ -643,7 +647,7 @@ export default function CardTicket({
             onTodos={() => irA('comprobantes')}
           />
           {lector && <div className="px-1">{lector}</div>}
-          {esEscritorio === true && cobroHabilitado && <OfflineConsultation revision={registrations} />}
+          {esEscritorio === true && <OfflineConsultation revision={registrations} />}
         </aside>
 
         <TableroPlaya

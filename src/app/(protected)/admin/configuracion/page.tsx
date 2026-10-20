@@ -21,7 +21,6 @@ export default async function ConfigurationPage() {
     : sections;
   return <div className="container mx-auto max-w-4xl space-y-6 px-4 py-6">
     <PageHeader title="Configuración" breadcrumb={['Administración', 'Configuración']} description="Las opciones de trabajo y entrega de comprobantes de esta playa." />
-    {gratuita && <p className="rounded-2xl border border-gm-yellow/30 bg-gm-yellow/[0.06] p-4 text-sm leading-relaxed">Esta playa funciona en <strong>modalidad gratuita</strong>: no tiene tarifas, cobros, caja ni comprobantes. La modalidad la define la plataforma.</p>}
     <div className="grid gap-4">{visibles.map(({ href, icon: Icon, title, description }) => <Link key={href} href={href} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-5 transition-colors hover:bg-secondary/30 sm:p-6">
       <Icon className="size-5 shrink-0 text-gm-yellow" />
       <div className="min-w-0 flex-1"><h2 className="font-semibold">{title}</h2><p className="mt-1 text-sm text-muted-foreground">{description}</p></div>

@@ -256,9 +256,6 @@ function SalidaGratuita({
             ))}
           </dl>
         </div>
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
-          Estacionamiento gratuito: se registra la salida con la hora actual y el operador que la confirma.
-        </p>
       </ActionDialogBody>
       <ActionDialogFooter>
         <ActionDialogPrimaryButton disabled={isPending} onClick={onRegistrar} detail={`Estuvo ${formatElapsed(summary.elapsedMinutes)}`}>

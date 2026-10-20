@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-import { NotesTable } from './components/notes-table';
-import { noteColumns } from './components/note-columns';
+import { AvisosBody } from './components/avisos-body';
+import { CreateNoteDialog } from './components/create-note-dialog';
 import { getNotes } from '@/services/notes.service';
 import { PageHeader } from '@/components/page-header';
 import { PageTour, type PageTourStep } from '@/components/page-tour';
@@ -18,39 +18,31 @@ const TOUR_STEPS: PageTourStep[] = [
   {
     key: 'filtro',
     selector: '[data-tour="avisos-filtro"]',
-    title: 'Buscar un aviso',
-    desc: 'Para encontrar un aviso viejo sin recorrer toda la lista.',
-    radius: 8,
+    title: 'Encontrar un aviso',
+    desc: 'Mirá solo los que te faltan leer, los de un período, los de un origen (del equipo, vehículos, caja o clientes) o los de una persona. También podés buscar una palabra o una patente.',
+    radius: 10,
   },
   {
     key: 'tabla',
     selector: '[data-tour="avisos-tabla"]',
     title: 'Los avisos del equipo',
-    desc: 'Cada tarjeta muestra el mensaje completo, autor y fecha. Marcá los avisos como leídos: esto solo cambia tu cuenta, no la del resto del equipo.',
-    radius: 8,
+    desc: 'Arriba quedan los que no leíste. Tocá un aviso para marcarlo como leído, o usá «Marcar todo como leído». La lectura es solo tuya: no cambia la del resto del equipo.',
+    radius: 10,
   },
 ];
 
 export default async function NotePage() {
-  const notes = await getNotes();
-  const count = notes?.meta?.totalItems ?? 0;
+  const inicial = await getNotes();
 
   return (
-    <div className="container mx-auto px-4 py-6 sm:p-8 max-w-7xl">
+    <div className="container mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:p-8">
       <PageHeader
         breadcrumb={['Estacionamiento', 'Operación', 'Avisos']}
         title="Avisos"
-        description={
-          count > 0
-            ? `${count} avisos · información compartida del equipo del día a día.`
-            : 'Creá el primer aviso para que todos en el turno lo vean.'
-        }
-        actions={<PageTour steps={TOUR_STEPS} />}
+        description="Lo que el equipo tiene que saber: avisos propios y los que deja la operación."
+        actions={<><PageTour steps={TOUR_STEPS} /><span data-tour="avisos-crear"><CreateNoteDialog /></span></>}
       />
-
-      <div className="mt-2">
-        <NotesTable columns={noteColumns} data={notes?.data || []} />
-      </div>
+      <AvisosBody inicial={inicial} />
     </div>
   );
 }

@@ -96,6 +96,8 @@ export function TarjetaAdentro({ total, porHora, largas, excedidos, vencidas, tu
   filtro: FiltroTablero;
   onFiltro: (filtro: FiltroTablero) => void;
 }) {
+  // En una playa gratuita no hay estadías por día, semana o mes.
+  const { cobroHabilitado } = useTenant();
   // Los avisos filtran el tablero de al lado; tocarlos de nuevo vuelve a mostrar todo.
   const aviso = (activo: boolean) => cn(
     'inline-flex h-[34px] items-center gap-1 rounded-full pl-3 pr-2 text-[12.5px] font-bold transition-[transform,background-color,color] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ink',
@@ -114,7 +116,7 @@ export function TarjetaAdentro({ total, porHora, largas, excedidos, vencidas, tu
           <span className="font-display text-[96px] font-bold leading-[0.84] tracking-[-0.01em] tabular-nums">{total}</span>
           <span className="flex flex-col gap-0.5 pb-1 text-sm font-bold">
             <span>{porHora} por hora</span>
-            <span className="text-gm-ink/70">{largas} por día, semana o mes</span>
+            {cobroHabilitado && <span className="text-gm-ink/70">{largas} por día, semana o mes</span>}
           </span>
         </p>
         {(excedidos > 0 || vencidas > 0) && (
@@ -125,7 +127,7 @@ export function TarjetaAdentro({ total, porHora, largas, excedidos, vencidas, tu
                 <ChevronRight className="size-4" aria-hidden />
               </button>
             )}
-            {vencidas > 0 && (
+            {cobroHabilitado && vencidas > 0 && (
               <button type="button" aria-pressed={filtro === 'vencidas'} onClick={() => onFiltro(filtro === 'vencidas' ? 'todos' : 'vencidas')} className={aviso(filtro === 'vencidas')}>
                 {vencidas === 1 ? '1 estadía larga vencida' : `${vencidas} estadías largas vencidas`}
                 <ChevronRight className="size-4" aria-hidden />
@@ -403,6 +405,7 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
   estadiasRef?: Refe;
   debajo?: ReactNode;
 }) {
+  const { cobroHabilitado } = useTenant();
   const total = activos.length + diaActivos.length;
   const conMinutos = activos.map((r) => ({ r, minutos: minutesSinceEntry(r, ahora) ?? 0, pasado: isOverdue(r, ahora) }));
   const excedidos = conMinutos.filter((v) => v.pasado).length;
@@ -457,7 +460,7 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
               {filtro !== 'excedidos' && <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" />}Tiempo superado · {excedidos}
             </button>
           )}
-          {vencidas > 0 && (
+          {cobroHabilitado && vencidas > 0 && (
             <button type="button" aria-pressed={filtro === 'vencidas'} onClick={() => onFiltro('vencidas')} className={chip(filtro === 'vencidas', true)}>
               {filtro !== 'vencidas' && <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" />}Vencidas · {vencidas}
             </button>
@@ -465,7 +468,7 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
         </div>
       </div>
 
-      <div className="grid grid-cols-2 items-start gap-3 xl:grid-cols-4">
+      <div className={cn('grid grid-cols-2 items-start gap-3', cobroHabilitado ? 'xl:grid-cols-4' : 'xl:grid-cols-3')}>
         {columnas.map((c) => (
           <Columna
             key={c.id}
@@ -480,7 +483,7 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
             {c.visibles.map((v) => <TarjetaTablero key={v.r.id} r={v.r} minutos={v.minutos} pasado={v.pasado} ahora={ahora} onSelect={onCobrar} />)}
           </Columna>
         ))}
-        <Columna
+        {cobroHabilitado && <Columna
           refEl={estadiasRef}
           estadias
           titulo="Estadías largas"
@@ -492,7 +495,7 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
           vacio={filtro === 'todos' ? 'No hay estadías largas.' : 'Ninguna vencida.'}
         >
           {estadiasVisibles.map((e) => <TarjetaEstadiaLarga key={e.r.id} r={e.r} vence={e.vence} vencida={e.vencida} ahora={ahora} onSelect={onAbrirDia} />)}
-        </Columna>
+        </Columna>}
       </div>
       {debajo}
     </section>
