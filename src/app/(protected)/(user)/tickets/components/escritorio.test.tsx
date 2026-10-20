@@ -8,6 +8,8 @@ import type { TicketRegistration } from '@/types/ticket-registration.type';
 import { BuscadorRapido, TableroPlaya } from './escritorio';
 
 // La lista con desplazamiento usa IntersectionObserver, que jsdom no tiene: acá alcanza con sus hijos.
+// useTenant vive junto a la acción de contexto (next-auth): se simula con una playa con cobro.
+jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ cobroHabilitado: true }) }));
 jest.mock('@/components/animated-scroll-list', () => ({
   AnimatedScrollList: ({ children, label }: { children: React.ReactNode; label: string }) => <div role="region" aria-label={label}>{children}</div>,
 }));

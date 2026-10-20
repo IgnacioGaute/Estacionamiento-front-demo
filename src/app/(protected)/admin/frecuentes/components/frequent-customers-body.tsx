@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from 'react';
 import dayjs from 'dayjs';
 import { CalendarDays, ChevronDown, Clock3, Filter, Inbox, Phone, RotateCcw, Users } from 'lucide-react';
 import { useVehicleTypes } from '@/components/vehicle-type-options';
+import { useTenant } from '@/components/tenant-provider';
 import { PageHeader } from '@/components/page-header';
 import { PageTour, type PageTourStep } from '@/components/page-tour';
 import { Input } from '@/components/ui/input';
@@ -73,6 +74,8 @@ export function FrequentCustomersBody({ initialCustomers, initialTotal }: { init
   const [isPending, startTransition] = useTransition();
   const request = useRef(0);
   const { types, error: vehicleError } = useVehicleTypes();
+  // Playa gratuita: las visitas no tienen importe.
+  const { cobroHabilitado } = useTenant();
   const names = new Map(types.map(type => [type.code, type.name]));
   const vehicleName = (code: string) => names.get(code) ?? ({ AUTO: 'Auto', CAMIONETA: 'Camioneta', MOTO: 'Moto' }[code] ?? code);
   const dirty = JSON.stringify(draft) !== JSON.stringify(applied);
@@ -127,16 +130,16 @@ export function FrequentCustomersBody({ initialCustomers, initialTotal }: { init
     <section data-tour="frecuentes-tabla" aria-busy={isPending} className="space-y-4 rounded-2xl border bg-card p-3 sm:p-5">
       <div className="space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Clientes <span className="ml-1 text-sm font-normal text-muted-foreground">{total.toLocaleString('es-AR')}</span></h2><p role="status" className="text-xs text-muted-foreground">{isPending ? 'Actualizando resultados…' : 'Ordenados por cantidad de visitas'}</p></div><div className="flex flex-wrap gap-2">{chips.map(chip => <span key={chip} className="rounded-full border bg-background/40 px-3 py-1 text-xs text-muted-foreground">{chip}</span>)}</div></div>
       <div className={'space-y-2 transition-opacity ' + (isPending ? 'opacity-50' : '')}>
-        <div className="hidden grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_140px] gap-4 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground xl:grid"><span>Cliente y vehículo</span><span>Visitas</span><span>Última visita</span><span>Gasto registrado</span><span className="text-right">Historial</span></div>
+        <div className={'hidden gap-4 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground xl:grid ' + (cobroHabilitado ? 'grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_140px]' : 'grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_140px]')}><span>Cliente y vehículo</span><span>Visitas</span><span>Última visita</span>{cobroHabilitado && <span>Gasto registrado</span>}<span className="text-right">Historial</span></div>
         {isPending ? <DataLoading label="Cargando clientes..." /> : !customers.length ? <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center"><Inbox className="size-8 text-muted-foreground" aria-hidden="true" /><h3 className="font-semibold">No encontramos clientes</h3><p className="text-sm text-muted-foreground">Probá ampliar el período o reducir el mínimo de visitas.</p></div> : customers.map(customer => {
           const open = expanded === customer.licensePlateNormalized;
           const detailsId = 'frequent-details-' + encodeURIComponent(customer.licensePlateNormalized);
           return <article key={customer.licensePlateNormalized} className="overflow-hidden rounded-xl border bg-background/40 transition-colors hover:border-neutral-500/50">
-            <div className="grid items-center gap-4 p-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_140px]">
+            <div className={'grid items-center gap-4 p-4 sm:grid-cols-2 ' + (cobroHabilitado ? 'xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_140px]' : 'xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_140px]')}>
               <div className="min-w-0 space-y-2"><div className="flex flex-wrap items-center gap-2"><span className="rounded-md border border-neutral-500/40 bg-white/[0.06] px-2.5 py-1 font-bold tracking-wide">{customer.licensePlateOriginal}</span><span className="text-xs text-muted-foreground">{vehicleName(customer.vehicleType)}</span></div><p className="break-words text-sm">{customer.lastNameCustomer || 'Sin apellido guardado'}</p><p className="flex items-center gap-1.5 break-all text-xs text-muted-foreground"><Phone className="size-3 shrink-0" aria-hidden="true" />{customer.phoneCustomer ? '+' + customer.phoneCustomer.replace(/^\+/, '') : 'Sin teléfono'}</p></div>
               <div><p className="mb-1 text-xs text-muted-foreground xl:hidden">Visitas</p><span className="inline-flex items-center rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-sm font-bold tabular-nums text-amber-300">{customer.visits} {customer.visits === 1 ? 'visita' : 'visitas'}</span><p className="mt-2 text-xs text-muted-foreground">{customer.avgDaysBetweenVisits !== null ? 'Cada ' + customer.avgDaysBetweenVisits.toLocaleString('es-AR',{maximumFractionDigits:1}) + ' días en promedio' : 'Sin intervalo suficiente'}</p></div>
               <div><p className="mb-1 text-xs text-muted-foreground xl:hidden">Última visita</p><p className="text-sm font-medium tabular-nums">{date(customer.lastVisit)}</p><p className="mt-1 text-xs text-muted-foreground">Primera: {date(customer.firstVisit)}</p></div>
-              <div><p className="mb-1 text-xs text-muted-foreground xl:hidden">Gasto registrado</p><p className="text-base font-bold tabular-nums">{money(customer.totalSpent)}</p><p className="mt-1 text-xs text-muted-foreground">En el período consultado</p></div>
+              {cobroHabilitado && <div><p className="mb-1 text-xs text-muted-foreground xl:hidden">Gasto registrado</p><p className="text-base font-bold tabular-nums">{money(customer.totalSpent)}</p><p className="mt-1 text-xs text-muted-foreground">En el período consultado</p></div>}
               <div className="flex flex-wrap gap-2 sm:col-span-2 xl:col-span-1 xl:justify-end"><PlateHistoryDialog licensePlateNormalized={customer.licensePlateNormalized} licensePlateOriginal={customer.licensePlateOriginal} /></div>
             </div>
             <button type="button" aria-expanded={open} aria-controls={detailsId} onClick={() => setExpanded(open ? null : customer.licensePlateNormalized)} className="flex min-h-10 w-full items-center justify-between gap-2 border-t px-4 py-2 text-left text-xs text-muted-foreground hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400"><span className="flex items-center gap-2"><Clock3 className="size-3.5" aria-hidden="true" />Duración y franja habitual</span><ChevronDown className={'size-4 transition-transform motion-reduce:transition-none ' + (open ? 'rotate-180' : '')} aria-hidden="true" /></button>

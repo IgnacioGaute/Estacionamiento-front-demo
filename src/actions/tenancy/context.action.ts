@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { cookies } from "next/headers";
 import { revalidateTag } from "next/cache";
 import type { SituacionCuenta } from "@/types/suscripcion.type";
+import type { Modalidad } from "@/lib/modalidad";
 export type OperationalContext = {
   role?: "USER" | "ADMIN" | "SUPER_ADMIN";
   empresa: { id: string; nombre: string } | null;
@@ -12,6 +13,8 @@ export type OperationalContext = {
     empresaId: string;
     // Secciones opcionales que el super admin prendió en la playa.
     modulos?: { inquilinos?: boolean };
+    // Con cobro o gratuita; la define el super admin. Ausente (backend anterior) = con cobro.
+    modalidad?: Modalidad;
     // Motor disponible: token propio de Plate Recognizer o fast-alpr de la plataforma.
     reconocimientoPatentes?: boolean;
   }[];

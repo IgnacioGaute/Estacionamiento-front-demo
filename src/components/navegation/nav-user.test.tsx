@@ -5,7 +5,7 @@ import { OperationalNavUser } from './nav-user';
 
 jest.mock('next/navigation', () => ({ usePathname: jest.fn(() => '/admin/caja') }));
 jest.mock('next-auth/react', () => ({ signOut: jest.fn() }));
-jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ inquilinosEnabled: true }) }));
+jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ inquilinosEnabled: true, cobroHabilitado: true }) }));
 jest.mock('@/hooks/use-notification', () => ({ useNotifications: jest.fn() }));
 jest.mock('../box-list-dialog', () => ({ BoxListDialog: () => null }));
 jest.mock('@/app/(protected)/admin/other-payments/components/create-other-payment-dialog', () => ({ CreateOtherPaymentDialog: () => null }));

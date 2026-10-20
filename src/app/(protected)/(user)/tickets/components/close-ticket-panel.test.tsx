@@ -10,6 +10,8 @@ import { pagoParcialEfectivoAction } from '@/actions/tickets/pago-parcial.action
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import type { CloseSummary } from '@/services/tickets.service';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
+// useTenant vive junto a la acción de contexto (next-auth): se simula con una playa con cobro.
+jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ cobroHabilitado: true }) }));
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn() }));
 jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn() }));
@@ -18,6 +20,7 @@ jest.mock('@/actions/tickets/corregir-entrada.action', () => ({ corregirEntradaA
 jest.mock('@/actions/tickets/corregir-datos.action', () => ({ corregirDatosEstadiaAction: jest.fn() }));
 jest.mock('@/actions/tickets/vehicle-types.action', () => ({ getVehicleTypesAction: jest.fn().mockResolvedValue([]) }));
 jest.mock('@/actions/tickets/close-registration.action', () => ({ closeRegistrationAction: jest.fn() }));
+jest.mock('@/actions/tickets/registrar-salida-gratuita.action', () => ({ registrarSalidaGratuitaAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/mercadopago.action', () => ({ crearCobroMercadoPagoAction: jest.fn() }));
 jest.mock('@/actions/tickets/pago-parcial.action', () => ({ pagoParcialEfectivoAction: jest.fn() }));
 jest.mock('@/actions/tickets/salida-anterior.action', () => ({ registrarSalidaAnteriorAction: jest.fn() }));

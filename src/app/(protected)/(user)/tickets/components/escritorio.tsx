@@ -15,6 +15,8 @@ import { PlateChip } from '@/components/plate-chip';
 import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
 import { formatImporte } from '@/components/pricing-breakdown';
 import { cn } from '@/lib/utils';
+import { esGratuita } from '@/lib/modalidad';
+import { useTenant } from '@/components/tenant-provider';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 import type { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
 import { cuandoEntro, formatEstadia, minutosDeEstadia, tramoDe, tramoInfo, TRAMOS } from '@/utils/estadia';
@@ -151,6 +153,8 @@ export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef,
   atajos: boolean;
   sinConfirmar?: number;
 }) {
+  // En una playa gratuita no hay cobros ni estadías por día, semana o mes (son abonos pagos).
+  const { cobroHabilitado } = useTenant();
   const accion = cn('group flex min-h-[132px] flex-col justify-between gap-5 rounded-[22px] border border-gm-line-strong bg-gm-surface-2 p-4 text-left transition-[border-color,transform] hover:border-gm-yellow active:scale-[0.98]', enfoque);
   return (
     <div className="flex flex-col gap-3">
@@ -174,7 +178,7 @@ export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef,
             </span>
           </span>
           <span>
-            <span className="gm-display block text-[19px] leading-tight tracking-[0.04em]">Cobrar salida</span>
+            <span className="gm-display block text-[19px] leading-tight tracking-[0.04em]">{cobroHabilitado ? 'Cobrar salida' : 'Registrar salida'}</span>
             {sinConfirmar > 0
               ? <span className="mt-0.5 block text-xs font-semibold text-violet-200">{sinConfirmar} sin confirmar</span>
               : <span className="mt-0.5 block text-xs text-muted-foreground">O tocá un vehículo del tablero</span>}
@@ -182,7 +186,7 @@ export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef,
         </button>
       </div>
       {/* Estadía larga es una operación como entrar o salir: se destaca. */}
-      <button
+      {cobroHabilitado && <button
         ref={estadiaRef}
         type="button"
         onClick={onEstadia}
@@ -195,7 +199,7 @@ export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef,
           <span className="block text-xs text-[#D9D1C3]">Por día, semana o mes · cobrás ahora o al retirar</span>
         </span>
         <ArrowUpRight className="relative size-5 shrink-0 text-gm-yellow transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
-      </button>
+      </button>}
     </div>
   );
 }
@@ -238,7 +242,7 @@ export function UltimosMovimientos({ registros, ahora, comprobantes, onComproban
                 </span>
                 <Identidad r={r} size="xs" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold">{entrada ? 'Entrada' : `Salida · ${formatImporte(r.price)}`}</span>
+                  <span className="block truncate text-[13px] font-semibold">{entrada ? 'Entrada' : esGratuita(r.modalidad) ? 'Salida' : `Salida · ${formatImporte(r.price)}`}</span>
                   {minutos != null && <span className="block truncate text-xs text-muted-foreground">{entrada ? `hace ${formatEstadia(minutos)}` : `estuvo ${formatEstadia(minutos)}`}</span>}
                 </span>
                 <span className="gm-mono shrink-0 text-xs text-muted-foreground">{hora}</span>
@@ -323,7 +327,7 @@ function TarjetaTablero({ r, minutos, pasado, ahora, onSelect }: { r: TicketRegi
           : 'border-gm-line bg-gm-surface-2 hover:border-gm-line-strong hover:bg-gm-surface-3',
       )}
     >
-      <span className="sr-only">Cobrar salida:</span>
+      <span className="sr-only">{esGratuita(r.modalidad) ? 'Registrar salida:' : 'Cobrar salida:'}</span>
       <span className="flex w-full items-center justify-between gap-2">
         <Identidad r={r} />
         <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-gm-yellow text-gm-ink opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
@@ -665,7 +669,7 @@ export function BuscadorRapido({ inputRef, activos, diaActivos, esDiaVencido, re
                           </span>
                         </span>
                       </>
-                    ), 'Cobrar salida');
+                    ), esGratuita(op.r.modalidad) ? 'Registrar salida' : 'Cobrar salida');
                   }
                   if (op.tipo === 'larga') {
                     const fecha = op.vence ? fechaCorta(op.vence, ahora) : null;
@@ -687,7 +691,7 @@ export function BuscadorRapido({ inputRef, activos, diaActivos, esDiaVencido, re
                       <>
                         <span className="opacity-75"><Identidad r={op.r} resaltar={texto} /></span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-bold">Salió {op.r.departureTime?.slice(0, 5)} · {formatImporte(op.r.price)}</span>
+                          <span className="block truncate text-sm font-bold">Salió {op.r.departureTime?.slice(0, 5)}{esGratuita(op.r.modalidad) ? '' : ` · ${formatImporte(op.r.price)}`}</span>
                           <span className="block truncate text-xs text-muted-foreground">{minutos != null ? `Estuvo ${formatEstadia(minutos)}` : 'Salida registrada'}</span>
                         </span>
                       </>

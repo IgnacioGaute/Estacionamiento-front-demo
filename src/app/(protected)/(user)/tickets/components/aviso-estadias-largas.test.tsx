@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { AvisoEstadiasLargas } from './inicio';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 
+// useTenant vive junto a la acción de contexto (next-auth): se simula con una playa con cobro.
+jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ cobroHabilitado: true }) }));
 jest.mock('next/navigation', () => ({ usePathname: () => '/tickets' }));
 jest.mock('./day-registrations-panel', () => ({ DayRegistrationsPanel: () => null }));
 const ahora = new Date('2026-10-15T22:19:00-03:00').getTime();

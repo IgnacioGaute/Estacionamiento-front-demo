@@ -82,6 +82,7 @@ const ACCIONES: Record<
   PLAYA_CREADA: { texto: "Creó la playa", categoria: "plataforma", Icono: Building2 },
   PLAYA_EDITADA: { texto: "Editó la playa", categoria: "plataforma", Icono: Building2 },
   PLAYA_MODULOS: { texto: "Cambió las secciones habilitadas de la playa", categoria: "plataforma", Icono: Building2 },
+  PLAYA_MODALIDAD: { texto: "Cambió la modalidad de operación de la playa", categoria: "plataforma", Icono: Building2 },
   PLAYA_ELIMINADA: { texto: "Eliminó la playa", categoria: "plataforma", Icono: Trash2, destructiva: true },
   PLAYA_PATENTES_CONFIGURADA: { texto: "Configuró el reconocimiento de patentes de la playa", categoria: "plataforma", Icono: ScanLine },
   PLAYA_PATENTES_QUITADA: { texto: "Quitó el reconocimiento de patentes de la playa", categoria: "plataforma", Icono: ScanLine, destructiva: true },

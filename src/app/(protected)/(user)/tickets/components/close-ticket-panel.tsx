@@ -36,7 +36,10 @@ import {
   disponibilidadAliasAction,
   iniciarCobroAliasAction,
 } from '@/actions/mercadopago/verificacion-alias.action';
-import { CloseSummary } from '@/services/tickets.service';
+import type { CloseSummary, ResumenSalida, SalidaGratuitaSummary } from '@/services/tickets.service';
+import { esSalidaGratuita } from '@/lib/modalidad';
+import { registrarSalidaGratuitaAction } from '@/actions/tickets/registrar-salida-gratuita.action';
+import { useTenant } from '@/components/tenant-provider';
 import { minutesSinceEntry, isOverdue, isBarcodeOrigin } from '@/utils/ticket-registration.utils';
 import { calcularVuelto, pagosSugeridos } from '@/utils/vuelto';
 import { cuandoEntro, formatEstadia as formatElapsed } from '@/utils/estadia';
@@ -110,7 +113,7 @@ function ResumenEstadia({
 }: {
   summary: CloseSummary;
   // Solo cuando se puede corregir la entrada (no mientras se espera un QR o una transferencia).
-  onCorregido?: (summary: CloseSummary) => void;
+  onCorregido?: (summary: ResumenSalida) => void;
   onEliminada?: () => void;
   // Abre «Se fue antes» (cobrar la tarifa que le correspondía). Mismas condiciones que corregir.
   onSeFueAntes?: () => void;
@@ -200,6 +203,72 @@ function ResumenEstadia({
   );
 }
 
+// La salida de una estadía que ingresó gratis: el vehículo, cuándo entró, quién lo registró y cuánto
+// estuvo, y un solo botón. Sin importes, medios de pago ni caja: nunca muestra un $0 ni una
+// «cortesía». Se puede corregir la patente, el tipo o la entrada, y el administrador la puede
+// eliminar si se cargó por error, igual que en una estadía con cobro.
+function SalidaGratuita({
+  summary,
+  isPending,
+  onCorregido,
+  onEliminada,
+  onRegistrar,
+}: {
+  summary: SalidaGratuitaSummary;
+  isPending: boolean;
+  onCorregido: (summary: ResumenSalida) => void;
+  onEliminada: () => void;
+  onRegistrar: () => void;
+}) {
+  const r = summary.registration;
+  const filas: [string, string][] = [
+    ['Entró', cuandoEntro(r)],
+    ['Registró la entrada', r.entryOperatorName || 'No registrado'],
+    ...(r.noPlate && r.lastNameCustomer ? [['Apellido', r.lastNameCustomer] as [string, string]] : []),
+    ...(r.casilleroNumber ? [['Casillero', r.casilleroNumber] as [string, string]] : []),
+  ];
+  return (
+    <>
+      <ActionDialogBody className="gap-4">
+        <div className="rounded-[18px] border border-border bg-gm-surface-2 p-3.5">
+          <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-col items-start gap-1.5">
+              <Identidad r={r} size="md" />
+              <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} />
+            </div>
+            <div className="ml-auto min-w-0 text-right">
+              <p className={etiqueta}>Permanencia</p>
+              <p className="gm-mono mt-1 text-[26px] font-bold leading-none tracking-tight">{formatElapsed(summary.elapsedMinutes)}</p>
+            </div>
+          </div>
+          <CorregirEntrada summary={summary} onCorregido={onCorregido} />
+          <div className="mt-1 flex flex-wrap items-center justify-end gap-x-1 [&:has(>[data-abierto])>:not([data-abierto])]:hidden">
+            <EditarDatosEstadia key={r.id} summary={summary} onCorregido={onCorregido} />
+            <EliminarEstadia summary={summary} onEliminada={onEliminada} />
+          </div>
+          <div className="my-3 h-px bg-border" />
+          <dl className="space-y-1.5 text-[13.5px]">
+            {filas.map(([dt, dd]) => (
+              <div key={dt} className="flex items-baseline justify-between gap-3">
+                <dt className="text-muted-foreground">{dt}</dt>
+                <dd className="min-w-0 truncate text-right font-semibold">{dd}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
+          Estacionamiento gratuito: se registra la salida con la hora actual y el operador que la confirma.
+        </p>
+      </ActionDialogBody>
+      <ActionDialogFooter>
+        <ActionDialogPrimaryButton disabled={isPending} onClick={onRegistrar} detail={`Estuvo ${formatElapsed(summary.elapsedMinutes)}`}>
+          {isPending ? 'Registrando…' : 'Registrar salida'}
+        </ActionDialogPrimaryButton>
+      </ActionDialogFooter>
+    </>
+  );
+}
+
 export function CloseTicketPanel({
   open,
   onOpenChange,
@@ -228,6 +297,13 @@ export function CloseTicketPanel({
   const [results, setResults] = useState<TicketRegistration[]>([]);
   const { confirmada, confirmar } = useConfirmadas();
   const [summary, setSummary] = useState<CloseSummary | null>(null);
+  // Una estadía que ingresó gratis: sin importes ni medios de pago, sale con «Registrar salida».
+  const [gratuita, setGratuita] = useState<SalidaGratuitaSummary | null>(null);
+  const { cobroHabilitado } = useTenant();
+  const aplicarResumen = (data: ResumenSalida) => {
+    if (esSalidaGratuita(data)) { setSummary(null); setGratuita(data); }
+    else { setGratuita(null); setSummary(data); }
+  };
   const [seFueAntesAbierto, setSeFueAntesAbierto] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<Medio | null>(null);
   const [showDiscount, setShowDiscount] = useState(false);
@@ -289,6 +365,7 @@ export function CloseTicketPanel({
     setQuery('');
     setResults([]);
     setSummary(null);
+    setGratuita(null);
     resetCobro();
     setCobroQr(null);
     setCobroAlias(null);
@@ -366,7 +443,7 @@ export function CloseTicketPanel({
       if (r.error || !r.summary) {
         toast.error(r.error ?? 'No se pudo cobrar el efectivo.');
         const refreshed = await getCloseSummaryAction(id);
-        if (refreshed) setSummary(refreshed);
+        if (refreshed) aplicarResumen(refreshed);
         return;
       }
       setSummary(r.summary);
@@ -416,7 +493,9 @@ export function CloseTicketPanel({
         toast.error('No se pudo cargar la estadía.');
         return;
       }
-      setSummary(data);
+      aplicarResumen(data);
+      // Sin importes no hay cobros por alias que retomar.
+      if (esSalidaGratuita(data)) return;
       // Si esta estadía ya estaba esperando una transferencia (se cerró la pantalla, se cortó la
       // conexión), se retoma desde el estado real del backend.
       const previo = await cobroAliasDeEstadiaAction(id);
@@ -447,7 +526,7 @@ export function CloseTicketPanel({
       if (result.error || !result.summary) {
         toast.error(result.error ?? 'No se pudo aplicar el descuento.');
         const refreshed = await getCloseSummaryAction(summary.registration.id);
-        if (refreshed) setSummary(refreshed);
+        if (refreshed) aplicarResumen(refreshed);
         return;
       }
       setSummary(result.summary);
@@ -471,7 +550,7 @@ export function CloseTicketPanel({
         const errorMessage = typeof data?.error === 'string' ? data.error : data?.error?.message;
         toast.error(errorMessage ?? 'Error desconocido');
         const refreshed = await getCloseSummaryAction(summary.registration.id);
-        if (refreshed) setSummary(refreshed);
+        if (refreshed) aplicarResumen(refreshed);
         setPaymentMethod(null);
       } else {
         toast.success('Salida registrada exitosamente');
@@ -479,6 +558,27 @@ export function CloseTicketPanel({
         onOpenChange(false);
         onSuccess?.();
       }
+    });
+  };
+
+  // La salida de una estadía gratuita: sin importe, medio de pago ni caja. Si falla (otro equipo ya
+  // la registró, se cortó la red) se recarga la estadía; repetirla no registra nada dos veces.
+  const registrarSalidaGratuita = () => {
+    if (!gratuita) return;
+    const id = gratuita.registration.id;
+    startTransition(async () => {
+      const r = await registrarSalidaGratuitaAction(id);
+      if (r.error) {
+        toast.error(r.error);
+        const refreshed = await getCloseSummaryAction(id);
+        if (refreshed) aplicarResumen(refreshed);
+        else { onOpenChange(false); onSuccess?.(); }
+        return;
+      }
+      toast.success('Salida registrada');
+      setReceiptId(id);
+      onOpenChange(false);
+      onSuccess?.();
     });
   };
 
@@ -571,7 +671,9 @@ export function CloseTicketPanel({
       ? 'Cobrar con QR'
       : aliasEsperando
         ? 'Transferencia al alias'
-        : 'Cobrar salida';
+        : gratuita || !cobroHabilitado
+          ? 'Registrar salida'
+          : 'Cobrar salida';
 
   const botonPrincipal = (() => {
     if (!summary || pagoConSalida || enEspera) return null;
@@ -622,19 +724,27 @@ export function CloseTicketPanel({
       <ActionDialogContent className={summary ? 'md:max-w-[920px]' : undefined}>
         <ActionDialogHeader
           title={titulo}
-          description={!summary && !abriendoDirecto ? 'Elegí el vehículo que se va' : undefined}
-          onBack={summary && !enEspera && !pagoConSalida ? volverABuscar : undefined}
+          description={!summary && !gratuita && !abriendoDirecto ? 'Elegí el vehículo que se va' : undefined}
+          onBack={(summary && !enEspera && !pagoConSalida) || gratuita ? volverABuscar : undefined}
           backLabel="Volver a buscar"
           backDisabled={isPending}
         />
 
-        {!summary && abriendoDirecto ? (
+        {!summary && !gratuita && abriendoDirecto ? (
           // Al entrar desde un vehículo ya elegido no hay nada que buscar: mostrar el buscador
           // mientras carga el resumen hacía aparecer una pantalla intermedia que nadie pidió y
           // que se iba sola.
           <ActionDialogBody className="justify-center">
             <DataLoading label="Cargando la estadía…" />
           </ActionDialogBody>
+        ) : gratuita ? (
+          <SalidaGratuita
+            summary={gratuita}
+            isPending={isPending}
+            onCorregido={aplicarResumen}
+            onEliminada={() => { toast.success('Estadía eliminada'); onOpenChange(false); onSuccess?.(); }}
+            onRegistrar={registrarSalidaGratuita}
+          />
         ) : !summary ? (
           <ActionDialogBody className="gap-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
             <div className="sticky top-0 z-10 -mt-1 flex shrink-0 gap-2 bg-card pt-1">
@@ -688,7 +798,7 @@ export function CloseTicketPanel({
                           <span className="gm-mono block text-[15px] font-semibold text-violet-200">{formatElapsed(minutos)}</span>
                           <span className="block truncate text-[12.5px] text-muted-foreground">Entró {cuandoEntro(r)}</span>
                         </span>
-                        <span className="shrink-0 text-[12.5px] font-bold text-gm-yellow">Cobrar</span>
+                        <span className="shrink-0 text-[12.5px] font-bold text-gm-yellow">{cobroHabilitado ? 'Cobrar' : 'Salida'}</span>
                       </button>
                       <button type="button" onClick={() => confirmar([r.id])} aria-label={`${r.licensePlateOriginal || r.lastNameCustomer || 'Este vehículo'} sigue en la playa`}
                         className="min-h-11 shrink-0 rounded-xl border border-gm-line-strong px-3 text-[12.5px] font-semibold text-[#D9D1C3] transition-colors hover:border-violet-300/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
@@ -725,7 +835,7 @@ export function CloseTicketPanel({
                 </p>
               )}
               {/* Un auto que se va sin entrada registrada: se cobra igual con la hora en que llegó. */}
-              {onSalidaSinEntrada && query.replace(/[^A-Za-z0-9]/g, '').length >= 5 && (
+              {onSalidaSinEntrada && cobroHabilitado && query.replace(/[^A-Za-z0-9]/g, '').length >= 5 && (
                 <button type="button" onClick={() => onSalidaSinEntrada(query.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                   className="mx-auto inline-flex min-h-11 items-center gap-2 rounded-xl border border-gm-line-strong px-4 text-[13px] font-semibold transition-colors hover:border-gm-yellow/50 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
                   {parecidas.length ? 'No es ninguno, se va sin entrada' : 'Se está yendo sin entrada'}: cobrar {query.toUpperCase().replace(/[^A-Z0-9]/g, '')}
@@ -743,7 +853,7 @@ export function CloseTicketPanel({
                   compactoEnBajas={(!!paymentMethod || showDiscount) && !verCalculo}
                   calculoAbierto={verCalculo}
                   onVerCalculo={() => setVerCalculo((v) => !v)}
-                  onCorregido={enEspera || pagoConSalida ? undefined : setSummary}
+                  onCorregido={enEspera || pagoConSalida ? undefined : aplicarResumen}
                   onEliminada={!enEspera && !pagoConSalida && !paymentMethod && !showDiscount ? () => {
                     toast.success('Estadía eliminada');
                     onOpenChange(false);

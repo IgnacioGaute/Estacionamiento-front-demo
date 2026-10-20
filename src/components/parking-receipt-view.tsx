@@ -37,6 +37,8 @@ function Row({ label, value }: { label: string; value: string }) {
 export function ParkingReceiptView({ receipt }: { receipt: ParkingReceiptSnapshot }) {
   const exit = receipt.kind === 'EXIT';
   const stay = stayLength(receipt);
+  // Estadía gratuita: constancia de entrada o salida, sin importes ni leyenda fiscal.
+  const gratuita = receipt.modalidad === 'GRATUITO';
 
   return (
     <article className="receipt break-words text-black">
@@ -71,7 +73,7 @@ export function ParkingReceiptView({ receipt }: { receipt: ParkingReceiptSnapsho
         <Row label="Operador" value={receipt.operatorName || 'No registrado'} />
       </dl>
 
-      {exit && (
+      {exit && !gratuita && (
         <section className="receipt-amounts mt-5 rounded-lg border border-neutral-300 px-4 py-3">
           <div className="flex items-baseline justify-between gap-4">
             <span className="text-xs text-neutral-500">Tarifa de la estadía</span>
@@ -91,7 +93,7 @@ export function ParkingReceiptView({ receipt }: { receipt: ParkingReceiptSnapsho
 
       <footer className="text-center text-[11px] leading-relaxed text-neutral-600">
         <p className="font-semibold text-black">Conservá este comprobante.</p>
-        <p>No válido como factura.</p>
+        <p>{gratuita ? 'Estacionamiento gratuito.' : 'No válido como factura.'}</p>
       </footer>
     </article>
   );

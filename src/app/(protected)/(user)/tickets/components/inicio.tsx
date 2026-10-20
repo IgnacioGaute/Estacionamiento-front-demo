@@ -12,6 +12,7 @@ import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { PlateChip } from '@/components/plate-chip';
 import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
 import { cn } from '@/lib/utils';
+import { useTenant } from '@/components/tenant-provider';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { Ticket } from '@/types/ticket.type';
 import { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
@@ -199,6 +200,7 @@ function FilaEstadia({ r, minutos, tono, onSigue, onSeFueAntes, onCobrar }: {
   onSeFueAntes?: () => void;
   onCobrar: () => void;
 }) {
+  const { cobroHabilitado } = useTenant();
   const patente = patenteDe(r);
   return (
     <li className="flex min-h-[56px] items-center gap-1.5 px-1.5 py-1.5">
@@ -219,9 +221,9 @@ function FilaEstadia({ r, minutos, tono, onSigue, onSeFueAntes, onCobrar }: {
             Se fue antes
           </button>
         )}
-        <button type="button" onClick={onCobrar} aria-label={`Cobrar ${patente}`}
+        <button type="button" onClick={onCobrar} aria-label={`${cobroHabilitado ? 'Cobrar' : 'Registrar la salida de'} ${patente}`}
           className={cn(BOTON_FILA, 'bg-gm-yellow/[0.12] font-bold text-gm-yellow hover:bg-gm-yellow/20 focus-visible:ring-gm-yellow')}>
-          Cobrar
+          {cobroHabilitado ? 'Cobrar' : 'Salida'}
         </button>
       </span>
     </li>
@@ -568,6 +570,7 @@ export function FichasEnElPlayon({ catalogo, registros, ahora, recienEscaneada, 
   onFicha: (ticket: Ticket, registro: TicketRegistration) => void;
 }) {
   const activas = catalogo.filter((t) => isTicketActive(t, registros));
+  const { cobroHabilitado } = useTenant();
   return (
     <section aria-label="Fichas en el playón" className="rounded-[20px] border border-border bg-card p-4">
       <div className="mb-1 flex items-center justify-between">
@@ -577,7 +580,7 @@ export function FichasEnElPlayon({ catalogo, registros, ahora, recienEscaneada, 
           <span className="gm-mono text-[11px] text-muted-foreground">{activas.length}/{catalogo.length}</span>
         </div>
       </div>
-      <p className="mb-3 text-xs text-muted-foreground">Tocá una ficha activa para avisar duración o cobrar por adelantado.</p>
+      <p className="mb-3 text-xs text-muted-foreground">{cobroHabilitado ? 'Tocá una ficha activa para avisar duración o cobrar por adelantado.' : 'Tocá una ficha activa para registrar su salida.'}</p>
       {catalogo.length > 0 ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(52px,1fr))] gap-[7px]">
           {catalogo.map((t) => {
@@ -634,6 +637,7 @@ export function MostradorDock({ onEntrada, onSalida, escanear, entradaRef, salid
   salidaRef?: (el: HTMLElement | null) => void;
   sinConfirmar?: number;
 }) {
+  const { cobroHabilitado } = useTenant();
   return (
     <>
       <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-36 bg-gradient-to-b from-transparent to-background lg:hidden" />
@@ -651,9 +655,9 @@ export function MostradorDock({ onEntrada, onSalida, escanear, entradaRef, salid
           </span>
         </button>
         {escanear}
-        <button ref={salidaRef} type="button" onClick={onSalida} aria-label={sinConfirmar > 0 ? `Salida: cobrar. ${sinConfirmar} sin confirmar` : undefined} className={cn(DOCK_LADO, 'relative bg-[#2E2A23] text-right text-foreground')}>
+        <button ref={salidaRef} type="button" onClick={onSalida} aria-label={sinConfirmar > 0 ? `Salida: ${cobroHabilitado ? 'cobrar' : 'registrar'}. ${sinConfirmar} sin confirmar` : undefined} className={cn(DOCK_LADO, 'relative bg-[#2E2A23] text-right text-foreground')}>
           <span className={cn(DOCK_DENTRO, 'justify-end pl-2.5 pr-1.5')}>
-            <span className={cn(DOCK_TEXTO, 'items-end')}><span className="gm-display max-w-full truncate text-base tracking-[0.03em]">Salida</span><span className="max-w-full truncate text-[11px] font-semibold text-muted-foreground">Cobrar</span></span>
+            <span className={cn(DOCK_TEXTO, 'items-end')}><span className="gm-display max-w-full truncate text-base tracking-[0.03em]">Salida</span><span className="max-w-full truncate text-[11px] font-semibold text-muted-foreground">{cobroHabilitado ? 'Cobrar' : 'Registrar'}</span></span>
             <span className={cn(DOCK_ICONO, 'bg-background text-gm-yellow')}><Banknote className="size-[18px]" aria-hidden /></span>
           </span>
           {sinConfirmar > 0 && (

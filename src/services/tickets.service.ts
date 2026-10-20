@@ -504,7 +504,13 @@ export type CloseSummary = {
   pricingDayType?: 'DAY' | 'NIGHT' | 'MIXED';
   pricingDayTypeBasis?: 'ENTRY' | 'EXIT' | 'SPLIT';
   tariffSnapshotUsed?: boolean;
+  modalidad?: 'CON_COBRO';
 };
+
+// Lo que devuelve el resumen de salida para una estadía que ingresó gratis: el vehículo y su
+// permanencia, sin importes. Sale con registrarSalidaGratuita, nunca con el cierre con cobro.
+export type SalidaGratuitaSummary = { registration: TicketRegistration; modalidad: 'GRATUITO'; elapsedMinutes: number };
+export type ResumenSalida = CloseSummary | SalidaGratuitaSummary;
 
 export const getCloseSummary = async (id: string, authToken?: string) => {
   try {
@@ -515,7 +521,7 @@ export const getCloseSummary = async (id: string, authToken?: string) => {
     const data = await response.json();
 
     if (response.ok) {
-      return data as CloseSummary;
+      return data as ResumenSalida;
     } else {
       console.error(data);
       return null;
@@ -525,6 +531,51 @@ export const getCloseSummary = async (id: string, authToken?: string) => {
     return null;
   }
 };
+
+// La salida de una estadía gratuita: sin importes, medio de pago ni caja. Repetirla devuelve la
+// misma salida (el backend no registra nada dos veces).
+export async function registrarSalidaGratuita(id: string): Promise<{ registration?: TicketRegistration; error?: string; code?: string }> {
+  const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/salida`, {
+    method: 'PATCH', headers: await getAuthHeaders(),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) return { code: data?.code, error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudo registrar la salida.' };
+  revalidateTag(getCacheTag('tickets', 'all'));
+  return { registration: data as TicketRegistration };
+}
+
+// Planilla operativa de vehículos: entradas, salidas y presentes con permanencia y operador.
+// Sin importes: es la misma en playas con cobro y gratuitas.
+export type FilaPlanillaVehiculos = {
+  id: string;
+  vehiculo: string;
+  tipo: string | null;
+  origen: 'PLATE' | 'BARCODE';
+  modalidad: 'CON_COBRO' | 'GRATUITO';
+  entradaDia: string | null;
+  entradaHora: string | null;
+  salidaDia: string | null;
+  salidaHora: string | null;
+  permanenciaMinutos: number | null;
+  operadorEntrada: string | null;
+  operadorSalida: string | null;
+};
+export type EstadoPlanilla = 'TODAS' | 'ENTRADAS' | 'SALIDAS' | 'PRESENTES';
+export type FiltrosPlanillaVehiculos = { desde: string; hasta: string; estado: EstadoPlanilla; operador?: string; tipo?: string; q?: string; page?: number; limit?: number };
+export type PlanillaVehiculos = {
+  data: FilaPlanillaVehiculos[];
+  meta: { totalItems: number; currentPage: number; itemsPerPage: number; totalPages: number };
+  desde: string; hasta: string; estado: EstadoPlanilla; operadores: string[];
+  resumen: { entradas: number; salidas: number; presentes: number };
+};
+export async function getPlanillaVehiculos(filtros: FiltrosPlanillaVehiculos): Promise<PlanillaVehiculos | { error: string }> {
+  const url = new URL(`${BASE_URL}/tickets/registrations/planilla`);
+  for (const [clave, valor] of Object.entries(filtros)) if (valor !== undefined && valor !== '') url.searchParams.set(clave, String(valor));
+  const response = await fetch(url.toString(), { cache: 'no-store', headers: await getAuthHeaders() });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) return { error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudo cargar la planilla.' };
+  return data as PlanillaVehiculos;
+}
 
 export const closeRegistrationByPlate = async (
   id: string,
@@ -708,26 +759,26 @@ async function getOperationalRecords<T>(endpoint: string, authToken?: string): P
 }
 
 // La entrada que se cargó tarde: pone la hora real en que entró y devuelve el cobro recalculado.
-export async function corregirEntrada(id: string, entrada: string): Promise<{ summary?: CloseSummary; error?: string }> {
+export async function corregirEntrada(id: string, entrada: string): Promise<{ summary?: ResumenSalida; error?: string }> {
   const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/entrada`, {
     method: 'PATCH', headers: await getAuthHeaders(), body: JSON.stringify({ entrada }),
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) return { error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudo corregir la entrada.' };
   revalidateTag(getCacheTag('tickets', 'all'));
-  return { summary: data.summary as CloseSummary };
+  return { summary: data.summary as ResumenSalida };
 }
 
 // La patente o el tipo de vehículo cargados mal, desde el cobro: devuelve el cobro recalculado con
 // la tarifa del tipo elegido. `code` DUPLICATE_ACTIVE_PLATE si la patente ya está adentro en otra.
-export async function corregirDatosEstadia(id: string, cambios: { licensePlate?: string; vehicleType?: string }): Promise<{ summary?: CloseSummary; error?: string; code?: string }> {
+export async function corregirDatosEstadia(id: string, cambios: { licensePlate?: string; vehicleType?: string }): Promise<{ summary?: ResumenSalida; error?: string; code?: string }> {
   const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/datos`, {
     method: 'PATCH', headers: await getAuthHeaders(), body: JSON.stringify(cambios),
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) return { code: data?.code, error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudo corregir la estadía.' };
   revalidateTag(getCacheTag('tickets', 'all'));
-  return { summary: data.summary as CloseSummary };
+  return { summary: data.summary as ResumenSalida };
 }
 
 // «Se fue antes»: las tarifas que pudo haber pagado (las franjas que la estadía ya pasó y, después

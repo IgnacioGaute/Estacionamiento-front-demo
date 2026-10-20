@@ -1,4 +1,5 @@
 import type { ResumenCuenta } from './suscripcion.type';
+import type { Modalidad } from '@/lib/modalidad';
 
 export type PlayaResumen = {
   id: string;
@@ -7,6 +8,8 @@ export type PlayaResumen = {
   direccion: string | null;
   // Secciones opcionales que prende el super admin.
   modulos?: { inquilinos?: boolean };
+  // Con cobro o gratuita (solo la cambia el super admin, con su propio diálogo).
+  modalidad?: Modalidad;
 };
 
 // Reconocimiento de patentes de una playa: su cuenta de Plate Recognizer. El token nunca llega
@@ -60,8 +63,10 @@ export type PlayaMetrics = {
   cobrado: number;
   estadiasAbiertas: number;
   turnosAbiertos: number;
-  // Sin franjas de precio cargadas la playa no puede registrar entradas.
+  // Sin franjas de precio cargadas la playa no puede registrar entradas. Una playa gratuita no
+  // las necesita: el backend la informa con tarifas para no mostrarla como bloqueada.
   tieneTarifas: boolean;
+  modalidad?: Modalidad;
   ultimaOperacion: string | null;
   // Canales de comprobante que la playa tiene encendidos.
   comprobantes?: { whatsapp: boolean; qr: boolean; print: boolean };

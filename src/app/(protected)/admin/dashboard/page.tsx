@@ -21,6 +21,8 @@ import { CustomersByTypeChart } from './components/customers-by-type-chart';
 import { PaymentTypesBulletChart } from './components/payment-types-bullet-chart';
 import { PageHeader } from '@/components/page-header';
 import { PageTour } from '@/components/page-tour';
+import Link from 'next/link';
+import { modalidadActual } from '@/lib/modalidad.server';
 
 const TOUR_STEPS = [
   {
@@ -87,6 +89,28 @@ export default async function DashboardPage({
   const from = params.from ?? argentinaNow.startOf('month').format('YYYY-MM-DD');
   const to = params.to ?? argentinaNow.format('YYYY-MM-DD');
   const hourlyDate = params.hourlyDate ?? argentinaNow.format('YYYY-MM-DD');
+
+  // Playa gratuita: sin recaudación, ingresos ni medios de pago. Queda el movimiento de vehículos.
+  if ((await modalidadActual()) === 'GRATUITO') {
+    const hourly = await getHourlyActivity(hourlyDate);
+    return (
+      <div className="gm-noise container mx-auto px-4 py-4 sm:p-6">
+        <PageHeader
+          breadcrumb={['Estacionamiento', 'Administración', 'Dashboard']}
+          title="Dashboard"
+          description="Playa en modalidad gratuita: entradas y salidas de vehículos, sin importes."
+          className="mb-6"
+          actions={<PageTour steps={TOUR_STEPS.filter((s) => s.key === 'hourly-activity')} />}
+        />
+        <div className="mb-4" data-tour="dashboard-hourly-activity">
+          <HourlyActivityAreaChart data={hourly} date={hourlyDate} />
+        </div>
+        <Link href="/vehiculos" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-semibold transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
+          Ver la planilla de vehículos
+        </Link>
+      </div>
+    );
+  }
 
   // La actividad de recaudación siempre muestra su propia ventana fija de 140 días
   // (como un heatmap de GitHub) independiente del selector de rango de la página.
