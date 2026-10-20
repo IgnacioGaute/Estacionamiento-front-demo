@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useTenant } from '@/components/tenant-provider';
 
 interface NavItem {
   title: string;
@@ -213,8 +214,11 @@ export function NavVolver() {
   );
 }
 
-// Al pie: el centro de aprendizaje (se abre en otra pestaña).
+// Al pie: el centro de aprendizaje (se abre en otra pestaña). Explica la operación con cobro: en
+// una playa gratuita no se ofrece.
 export function NavAprender() {
+  const { cobroHabilitado } = useTenant();
+  if (!cobroHabilitado) return null;
   return (
     <SidebarMenu className={CENTRADO}>
       <SidebarMenuItem>

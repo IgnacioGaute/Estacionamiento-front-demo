@@ -12,16 +12,16 @@ import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useCurrentRole } from '@/hooks/auth/use-current-role';
 import { eliminarEstadiaAction } from '@/actions/tickets/eliminar-estadia.action';
-import type { CloseSummary } from '@/services/tickets.service';
+import type { ResumenSalida } from '@/services/tickets.service';
 
-export function EliminarEstadia({ summary, onEliminada }: { summary: CloseSummary; onEliminada: () => void }) {
+export function EliminarEstadia({ summary, onEliminada }: { summary: Pick<ResumenSalida, 'registration'> & { totalCollectedSoFar?: number }; onEliminada: () => void }) {
   const rol = useCurrentRole()?.toUpperCase();
   const [confirmando, setConfirmando] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState('');
 
   if (rol !== 'ADMIN' && rol !== 'SUPER_ADMIN') return null;
-  if (summary.totalCollectedSoFar > 0) return null;
+  if ((summary.totalCollectedSoFar ?? 0) > 0) return null;
 
   const r = summary.registration;
   const quien = r.licensePlateOriginal || r.ticket?.codeBar || r.lastNameCustomer || 'este vehículo';

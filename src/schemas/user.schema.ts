@@ -43,6 +43,9 @@ lastName: z
     .string()
     .min(8, 'La contraseña debe tener al menos 8 caracteres')
     .optional(),
+  role: z.enum(USER_ROLES).optional(),
+  // Solo al pasar un administrador a operador: dónde va a operar.
+  playaId: z.string().optional(),
 });
 export type UpdateUserSchemaType = z.infer<typeof updateUserSchema>;
 

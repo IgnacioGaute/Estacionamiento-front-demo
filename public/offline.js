@@ -2,6 +2,7 @@ import { openOperations, saveOperations, rememberDeviceAccess, getDeviceAccess, 
 import { calculateStayPrice, assertPricingCoverage } from './offline-stay-pricing.js';
 import { receiptQrSvg } from './offline-qr.js';
 const $ = id => document.getElementById(id);
+const isFree = vehicle => (vehicle?.modalidad ?? state?.modalidad) === 'GRATUITO';
 let state = null, revision = 0, password = '', busy = false, exit = null, timer;
 let selectedReceipt = null;
 let receiptPage = 1, receiptKind = 'all';
@@ -22,7 +23,7 @@ function renderReceipts() {
   const status = $('receipt-state').value;
   const from = $('receipt-from').value, to = $('receipt-to').value;
   const hasFilters = !!($('receipt-search').value || status !== 'all' || receiptKind !== 'all' || from || to);
-  $('receipts-section').hidden = !all.length && !receiptEnabled();
+  $('receipts-section').hidden = isFree() || (!all.length && !receiptEnabled());
   $('receipt-total').textContent = all.length;
   $('receipt-reset').hidden = !hasFilters;
   document.querySelectorAll('[data-receipt-kind]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.receiptKind === receiptKind)));
@@ -65,10 +66,11 @@ function renderReceipts() {
   $('receipt-next').dataset.ineligible = String(receiptPage >= pages);
   controls();
 }
-const receiptEnabled = () => !!(state?.receiptDelivery?.print || state?.receiptDelivery?.qr || state?.receiptDelivery?.whatsapp);
+const receiptEnabled = () => !isFree() && !!(state?.receiptDelivery?.print || state?.receiptDelivery?.qr || state?.receiptDelivery?.whatsapp);
 function addReceipt(next, op) {
   if (!receiptEnabled()) return;
   const vehicle = next.vehicles.find(v => v.id === op.registrationId);
+  if (isFree(vehicle)) return;
   next.receipts ||= [];
   next.receipts.push({ id: op.id, registrationId: op.registrationId, kind: op.kind, plate: vehicle.plate, vehicleType: vehicle.vehicleType, entry: vehicle.entry, occurredAt: op.occurredAt, price: op.expectedPrice, collected: op.expectedCollected, method: op.method, operatorName: next.operatorName, business: next.business, synced: false });
 }
@@ -127,6 +129,17 @@ function render() {
       try {
         allowedTime();
         const occurredAt = timestamp();
+        const free = isFree(v);
+        if (Date.parse(occurredAt) < Date.parse(v.entry)) throw new Error('La salida no puede ser anterior a la entrada.');
+        $('payment-fields').hidden = free;
+        $('confirm-exit').textContent = free ? 'Guardar salida pendiente' : 'Guardar salida y cobro pendientes';
+        if (free) {
+          exit = { id: crypto.randomUUID(), registrationId: v.id, kind: 'EXIT', occurredAt };
+          const minutes = Math.floor((Date.parse(occurredAt) - Date.parse(v.entry)) / 60000);
+          $('amount').textContent = v.plate + ' · Permanencia: ' + minutes + ' min · Salida sin cobro';
+          $('exit').hidden = false; $('exit').scrollIntoView({ block: 'center' });
+          return;
+        }
         const preview = calculateStayPrice(v.pricing, v.vehicleType, new Date(v.entry), new Date(occurredAt));
         if (v.collected > preview.price) throw new Error('Hay un anticipo excedente. La devolución requiere revisión online.');
         exit = { id: crypto.randomUUID(), registrationId: v.id, kind: 'EXIT', occurredAt, expectedPrice: preview.price, expectedCollected: v.collected };
@@ -134,7 +147,7 @@ function render() {
         $('exit').hidden = false; $('exit').scrollIntoView({ block: 'center' });
       } catch (e) { message(e.message); }
     }; el.append(button);
-    if (receiptEnabled()) {
+    if (receiptEnabled() && !isFree(v)) {
       const receiptButton = document.createElement('button'); receiptButton.type = 'button'; receiptButton.textContent = 'Comprobante de entrada';
       receiptButton.onclick = () => showReceipt((state.receipts || []).find(r => r.kind === 'ENTRY' && r.plate === v.plate && r.entry === v.entry) || { id: v.id, kind: 'ENTRY', plate: v.plate, vehicleType: v.vehicleType, entry: v.entry, occurredAt: v.entry, business: state.business, synced: !state.pending.some(op => op.registrationId === v.id && op.kind === 'ENTRY') });
       el.append(receiptButton);
@@ -185,11 +198,13 @@ $('entry').onsubmit = async event => {
     if (!plate) throw new Error('Ingresá una patente válida.');
     if (state.vehicles.some(v => !v.departed && normalize(v.plate) === plate)) throw new Error('Ya hay un vehículo activo con esa patente.');
     const vehicleType = $('vehicle').value;
-    assertPricingCoverage(state.pricing, vehicleType, 'DAY'); assertPricingCoverage(state.pricing, vehicleType, 'NIGHT');
     const occurredAt = timestamp();
-    calculateStayPrice(state.pricing, vehicleType, new Date(occurredAt), new Date(Date.parse(occurredAt) + 3600000));
+    if (!isFree()) {
+      assertPricingCoverage(state.pricing, vehicleType, 'DAY'); assertPricingCoverage(state.pricing, vehicleType, 'NIGHT');
+      calculateStayPrice(state.pricing, vehicleType, new Date(occurredAt), new Date(Date.parse(occurredAt) + 3600000));
+    }
     const op = { id: crypto.randomUUID(), registrationId: crypto.randomUUID(), kind: 'ENTRY', occurredAt, plate, vehicleType };
-    const next = structuredClone(state); next.pending.push(op); next.vehicles.push({ id: op.registrationId, plate, vehicleType, entry: occurredAt, pricing: state.pricing, collected: 0, eligible: true });
+    const next = structuredClone(state); next.pending.push(op); next.vehicles.push({ id: op.registrationId, modalidad: state.modalidad ?? 'CON_COBRO', plate, vehicleType, entry: occurredAt, pricing: state.pricing, collected: 0, eligible: true });
     addReceipt(next, op);
     await persist(next); $('plate').value = ''; message('Entrada guardada en este dispositivo. Pendiente de sincronizar.');
   } catch (e) { message(e.message); }
@@ -203,9 +218,10 @@ $('confirm-exit').onclick = async () => {
     const next = structuredClone(state);
     const vehicle = next.vehicles.find(v => v.id === exit.registrationId);
     if (!vehicle || vehicle.departed) throw new Error('La salida ya fue registrada.');
-    const op = { ...exit, method: $('method').value };
+    const free = isFree(vehicle);
+    const op = free ? { ...exit } : { ...exit, method: $('method').value };
     next.pending.push(op); vehicle.departed = true; addReceipt(next, op);
-    await persist(next); exit = null; $('exit').hidden = true; message('Salida y cobro guardados. Pendientes de sincronizar.');
+    await persist(next); exit = null; $('exit').hidden = true; message(free ? 'Salida guardada. Pendiente de sincronizar.' : 'Salida y cobro guardados. Pendientes de sincronizar.');
   } catch (e) { message(e.message); }
   finally { busy = false; render(); }
   await sync();

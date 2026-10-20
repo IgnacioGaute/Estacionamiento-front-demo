@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { USER_ROLES } from '@/types/user.type';
 
 export const registerSchema = z
   .object({
@@ -17,6 +18,8 @@ export const registerSchema = z
       .min(8, 'La contraseña debe tener al menos 8 caracteres')
       .optional(),
     confirmPassword: z.string(),
+    // Lo elige el administrador al crear la cuenta; sin elegir, operador.
+    role: z.enum(USER_ROLES).optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Las contraseñas no coinciden',

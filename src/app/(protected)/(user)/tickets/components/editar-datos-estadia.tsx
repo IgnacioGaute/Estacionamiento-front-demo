@@ -9,11 +9,11 @@ import { Pencil } from 'lucide-react';
 import { VehicleTypeButtons } from '@/components/vehicle-type-options';
 import { cn } from '@/lib/utils';
 import { corregirDatosEstadiaAction } from '@/actions/tickets/corregir-datos.action';
-import type { CloseSummary } from '@/services/tickets.service';
+import type { ResumenSalida } from '@/services/tickets.service';
 import { isBarcodeOrigin } from '@/utils/ticket-registration.utils';
 import { sanitizePlateInput } from '@/utils/plate.utils';
 
-export function EditarDatosEstadia({ summary, onCorregido }: { summary: CloseSummary; onCorregido: (summary: CloseSummary) => void }) {
+export function EditarDatosEstadia({ summary, onCorregido }: { summary: Pick<ResumenSalida, 'registration'>; onCorregido: (summary: ResumenSalida) => void }) {
   const r = summary.registration;
   const tarjeta = isBarcodeOrigin(r);
   const tipoActual = r.vehicleType ?? r.ticket?.vehicleType ?? 'AUTO';

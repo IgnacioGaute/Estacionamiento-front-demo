@@ -20,7 +20,10 @@ import {
   getConsumoPatentes,
   configurarPatentes,
   quitarPatentes,
+  previsualizarModalidad,
+  cambiarModalidad,
 } from "@/services/tenancy.service";
+import type { Modalidad } from "@/lib/modalidad";
 
 const mensaje = (error: unknown, porDefecto: string) =>
   error instanceof Error ? error.message : porDefecto;
@@ -194,5 +197,21 @@ export async function quitarPatentesAction(playaId: string) {
     return { ok: true };
   } catch (error) {
     return { error: mensaje(error, "No se pudo quitar el reconocimiento de patentes.") };
+  }
+}
+
+// Modalidad de operación de una playa (Con cobro / Gratuito). Solo el super admin.
+export async function previsualizarModalidadAction(playaId: string) {
+  try {
+    return { datos: await previsualizarModalidad(playaId) };
+  } catch (error) {
+    return { error: mensaje(error, "No se pudo consultar la modalidad.") };
+  }
+}
+export async function cambiarModalidadAction(playaId: string, modalidad: Modalidad) {
+  try {
+    return await cambiarModalidad(playaId, modalidad);
+  } catch {
+    return { error: "No se pudo cambiar la modalidad. Revisá la conexión e intentá de nuevo." };
   }
 }

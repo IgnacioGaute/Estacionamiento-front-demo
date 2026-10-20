@@ -18,6 +18,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { getPlateHistoryAction } from '@/actions/tickets/get-plate-history.action';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { formatElapsed } from '@/utils/ticket-registration.utils';
+import { useTenant } from '@/components/tenant-provider';
+import { esGratuita } from '@/lib/modalidad';
 
 interface PlateHistoryDialogProps {
   licensePlateNormalized: string;
@@ -33,6 +35,8 @@ function minutesBetween(entryDay: string, entryTime: string, departureDay: strin
 
 export function PlateHistoryDialog({ licensePlateNormalized, licensePlateOriginal }: PlateHistoryDialogProps) {
   const [open, setOpen] = useState(false);
+  // Una visita gratuita no tiene franja ni importe; en una playa gratuita, ninguna.
+  const { cobroHabilitado } = useTenant();
   const [loading, setLoading] = useState(false);
   const [visits, setVisits] = useState<TicketRegistration[] | null>(null);
   const [page, setPage] = useState(0);
@@ -90,8 +94,8 @@ export function PlateHistoryDialog({ licensePlateNormalized, licensePlateOrigina
                   <TableHead>Entrada</TableHead>
                   <TableHead>Salida</TableHead>
                   <TableHead>Duración</TableHead>
-                  <TableHead>Franja</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
+                  {cobroHabilitado && <TableHead>Franja</TableHead>}
+                  {cobroHabilitado && <TableHead className="text-right">Monto</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -113,12 +117,12 @@ export function PlateHistoryDialog({ licensePlateNormalized, licensePlateOrigina
                       <TableCell className="whitespace-nowrap text-[12.5px]">
                         {minutes !== null ? formatElapsed(minutes) : '—'}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-[12.5px] text-muted-foreground">
-                        {visit.priceBracketLabel ?? '—'}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-right text-[12.5px] font-medium">
-                        ${visit.price?.toLocaleString('es-AR') ?? '0'}
-                      </TableCell>
+                      {cobroHabilitado && <TableCell className="whitespace-nowrap text-[12.5px] text-muted-foreground">
+                        {esGratuita(visit.modalidad) ? 'Gratuita' : visit.priceBracketLabel ?? '—'}
+                      </TableCell>}
+                      {cobroHabilitado && <TableCell className="whitespace-nowrap text-right text-[12.5px] font-medium">
+                        {esGratuita(visit.modalidad) ? '—' : `$${visit.price?.toLocaleString('es-AR') ?? '0'}`}
+                      </TableCell>}
                     </TableRow>
                   );
                 })}

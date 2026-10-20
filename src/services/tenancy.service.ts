@@ -10,6 +10,8 @@ import {
   ConsumoPatentes,
 } from "@/types/tenancy.type";
 
+import type { Modalidad } from "@/lib/modalidad";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // El backend devuelve { code, message } en los rechazos de negocio (empresa con playas, playa
@@ -157,6 +159,24 @@ async function modificar(path: string, method: string, body?: unknown) {
   if (!response.ok)
     throw new Error(await leerError(response, "No se pudo guardar el cambio."));
   return response.json();
+}
+// Modalidad de operación (Con cobro / Gratuito): qué bloquea o conviene saber antes, y el cambio.
+// Solo el super admin; el backend vuelve a verificar los pendientes dentro de la transacción.
+export type PendienteModalidad = { code: string; cantidad: number; mensaje: string };
+export type PrevisualizacionModalidad = { modalidad: Modalidad; destino: Modalidad; bloqueos: PendienteModalidad[]; avisos: PendienteModalidad[] };
+export async function previsualizarModalidad(playaId: string): Promise<PrevisualizacionModalidad> {
+  const response = await fetch(`${BASE_URL}/tenancy/playas/${playaId}/modalidad`, { cache: "no-store", headers: await getAuthHeaders() });
+  if (!response.ok) throw new Error(await leerError(response, "No se pudo consultar la modalidad."));
+  return response.json();
+}
+export async function cambiarModalidad(playaId: string, modalidad: Modalidad): Promise<{ modalidad?: Modalidad; avisos?: PendienteModalidad[]; error?: string; bloqueos?: PendienteModalidad[] }> {
+  const response = await fetch(`${BASE_URL}/tenancy/playas/${playaId}/modalidad`, {
+    method: "PATCH", headers: await getAuthHeaders(), body: JSON.stringify({ modalidad }),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok)
+    return { error: Array.isArray(data?.message) ? data.message.join(". ") : data?.message ?? "No se pudo cambiar la modalidad.", bloqueos: data?.bloqueos };
+  return data;
 }
 export const updatePlaya = (
   id: string,

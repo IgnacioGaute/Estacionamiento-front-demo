@@ -9,6 +9,9 @@ export type TicketRegistration = {
     operatorName?: string | null;
     discountNote?: string;
     entryMode?: 'BARCODE' | 'PLATE' | null;
+    // Con qué modalidad ingresó: una estadía gratuita no tiene importes y sale con «Registrar
+    // salida», aunque la playa haya vuelto a cobrar. Ausente (backend anterior) = con cobro.
+    modalidad?: 'CON_COBRO' | 'GRATUITO';
     // Solo en la búsqueda de Cobrar salida: no coincide, pero la patente es parecida (puede ser mal leída).
     parecida?: boolean;
     pricingSnapshot?: { capturedAt: string; brackets: import('./ticket-price-bracket.type').TicketPriceBracket[]; schedule: { pricingDayTypeBasis: 'ENTRY' | 'EXIT'; pricingOptions?: import('./pricing-options.type').PricingOptions | null } } | null;
