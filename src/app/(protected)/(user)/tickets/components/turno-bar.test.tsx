@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 import React from 'react';
-import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { writeFileSync } from 'node:fs';
 import { useSession } from 'next-auth/react';
 import { getCashContextAction } from '@/actions/turnos/cash-context.action';
@@ -136,16 +136,48 @@ test('un turno ya cerrado muestra un error y no ofrece abrir uno ajeno', async (
 });
 
 
-test('confirma el conteo y conserva el fondo objetivo sin escribir importes', async () => {
+test('Conté menos permite escribir el efectivo real y conserva Editar importe y el motivo de diferencia', async () => {
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift()) });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
+  await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  fireEvent.click(screen.getByRole('button', { name: /^Conté todo/ }));
+  const input = screen.getByLabelText('¿Cuánto efectivo contaste?');
+  await waitFor(() => expect(input).toBeEnabled());
+  expect(screen.getByRole('button', { name: 'Editar importe: ¿Cuánto efectivo contaste?' })).toBeInTheDocument();
+  const menos = screen.getByRole('button', { name: 'Conté menos' });
+  expect(menos).not.toHaveAttribute('aria-pressed');
+  fireEvent.click(menos);
+  expect(input).toHaveFocus();
+  expect(input).toHaveValue(900);
+  fireEvent.change(input, { target: { value: '800' } });
+  expect(screen.getByText(/Faltan/)).toHaveTextContent('100');
+  const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' });
+  expect(confirmar).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Motivo de la diferencia'), { target: { value: 'Faltante al contar' } });
+  await waitFor(() => expect(confirmar).toBeEnabled());
+  if (process.env.TURNOS_VISUAL_QA) {
+    const snapshot = document.body.cloneNode(true) as HTMLElement;
+    const inputs = document.body.querySelectorAll('input');
+    snapshot.querySelectorAll('input').forEach((element, index) => element.setAttribute('value', inputs[index].value));
+    writeFileSync('../estacionamiento-back-demo/.tmp/turnos-conte-menos.html', snapshot.innerHTML);
+  }
+  fireEvent.click(confirmar);
+  await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith('yo-turno', expect.objectContaining({ efectivoContado: 800, efectivoEsperado: 900, observaciones: 'Faltante al contar' })));
+});
+
+test('si hay menos que el fondo sugerido, propone dejar todo sin exigir ese fondo', async () => {
   jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift()) });
   render(<TurnoBar />); fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
   const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
   await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
-  expect(await screen.findByRole('button', { name: /^Dejar el fondo/ })).toBeDisabled();
+  expect(await screen.findByLabelText('¿Cuánto dejás en caja para el próximo turno?')).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: /^Conté todo/ }));
-  fireEvent.click(screen.getByRole('button', { name: /^Dejar el fondo/ }));
+  expect(screen.getByRole('button', { name: /^Usar sugerido/ })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: /^Dejar todo/ }));
   expect(screen.getByLabelText('¿Cuánto efectivo contaste?')).toHaveValue(900);
-  expect(screen.getByLabelText('Retiro de recaudación al cerrar (sin sueldo)')).toHaveValue(0);
+  expect(screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?')).toHaveValue(900);
   if (process.env.TURNOS_VISUAL_QA) writeFileSync('../estacionamiento-back-demo/.tmp/turnos-close.html', document.body.innerHTML);
   fireEvent.click(screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' }));
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith('yo-turno', expect.objectContaining({ efectivoContado: 900, efectivoEsperado: 900, efectivoParaSiguiente: 900 })));
@@ -226,11 +258,83 @@ test.each([{ counted: 105000, salary: 25000, withdrawn: 65000 }, { counted: 2300
   const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
   await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
   fireEvent.click(screen.getByRole('button', { name: /^Conté todo/ }));
-  expect(screen.getByLabelText('Retiro de recaudación al cerrar (sin sueldo)')).toHaveValue(withdrawn);
+  expect(screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?')).toHaveValue(15000);
+  expect(screen.getByRole('region', { name: 'Cómo queda la caja' })).toHaveTextContent(new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(withdrawn).replace(/\s/g, ' '));
   if (!salary) expect(screen.getByRole('alert')).toHaveTextContent('No se descontará el sueldo');
   if (process.env.TURNOS_VISUAL_QA) writeFileSync(`../estacionamiento-back-demo/.tmp/sueldo-${counted}.html`, document.body.innerHTML);
   const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: salary, efectivoParaSiguiente: 15000 })));
+});
+
+test.each([0, 10000, 20000, 80000])('el operador elige dejar %i y el retiro se calcula separado del sueldo', async (paraSiguiente) => {
+  const active = { ...shift(), efectivoDisponible: 105000, fondoObjetivo: 15000, sueldoPrevisto: 25000 };
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(active) });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
+  await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  fireEvent.click(screen.getByRole('button', { name: /^Conté todo/ }));
+  const input = screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?');
+  expect(input).toHaveValue(15000);
+  expect(screen.getByText(/es una referencia.*más, menos o \$0/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Cambiar importe: ¿Cuánto dejás en caja para el próximo turno?' }));
+  expect(input).toHaveFocus();
+  fireEvent.change(input, { target: { value: String(paraSiguiente) } });
+  const resumen = screen.getByRole('region', { name: 'Cómo queda la caja' });
+  const importe = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(80000 - paraSiguiente).replace(/\s/g, ' ');
+  expect(within(resumen).getByText('Retiro de recaudación').parentElement).toHaveTextContent('− ' + importe);
+  const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' });
+  await waitFor(() => expect(confirmar).toBeEnabled());
+  if (process.env.TURNOS_VISUAL_QA && paraSiguiente === 20000) {
+    const snapshot = document.body.cloneNode(true) as HTMLElement;
+    // innerHTML conserva el atributo inicial; la captura tiene que mostrar el importe editado.
+    const inputs = document.body.querySelectorAll('input');
+    snapshot.querySelectorAll('input').forEach((input, index) => input.setAttribute('value', inputs[index].value));
+    writeFileSync('../estacionamiento-back-demo/.tmp/turnos-dejar-importe.html', snapshot.innerHTML);
+  }
+  fireEvent.click(confirmar);
+  await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: 25000, efectivoContado: 105000, efectivoParaSiguiente: paraSiguiente })));
+  // Si el servidor pide revisar el cierre, se conserva la elección del operador.
+  expect(input).toHaveValue(paraSiguiente);
+});
+
+test('conserva lo que eligió dejar al corregir el conteo y permite volver al sugerido', async () => {
+  const active = { ...shift(), efectivoDisponible: 105000, fondoObjetivo: 15000, sueldoPrevisto: 25000 };
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(active) });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
+  await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  fireEvent.click(screen.getByRole('button', { name: /^Conté todo/ }));
+  const input = screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?');
+  fireEvent.change(input, { target: { value: '20000' } });
+  fireEvent.change(screen.getByLabelText('¿Cuánto efectivo contaste?'), { target: { value: '110000' } });
+  expect(input).toHaveValue(20000);
+  expect(screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Motivo de la diferencia'), { target: { value: 'Sobrante al contar' } });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: /^Usar sugerido/ }));
+  expect(input).toHaveValue(15000);
+  fireEvent.click(screen.getByRole('button', { name: /^Dejar todo/ }));
+  expect(input).toHaveValue(85000);
+});
+
+test('no confirma un cierre con importe vacío, negativo, fraccionario o mayor al efectivo después del sueldo', async () => {
+  const active = { ...shift(), efectivoDisponible: 105000, fondoObjetivo: 15000, sueldoPrevisto: 25000 };
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(active) });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
+  await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  fireEvent.click(screen.getByRole('button', { name: /^Conté todo/ }));
+  const input = screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?');
+  for (const value of ['', '-1', '1.5', '80001']) {
+    fireEvent.change(input, { target: { value } });
+    expect(screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' })).toBeDisabled();
+    fireEvent.submit(input.closest('form')!);
+    expect(closeTurnoAction).not.toHaveBeenCalled();
+  }
+  expect(screen.getByRole('alert')).toHaveTextContent('No podés dejar más de');
 });
 
 

@@ -49,6 +49,14 @@ Al abrir una caja, el efectivo recibido empieza vacío: el operador debe elegir 
 escribirlo, incluso si recibe cero. Se vuelve a pedir al reabrir el diálogo o cambiar de caja.
 Un importe distinto al cierre anterior exige motivo. Unirse a una caja ya abierta no vuelve a
 declarar el fondo compartido.
+En el arqueo final, «¿Cuánto dejás en caja para el próximo turno?» es el importe editable. El fondo
+objetivo es una sugerencia: se puede dejar más, menos o cero, hasta el efectivo contado después del
+sueldo. «Usar sugerido» repone la referencia y «Dejar todo» conserva todo el efectivo disponible.
+El retiro de recaudación se calcula aparte del sueldo. Corregir el conteo conserva la elección del
+operador; si ya no alcanza, debe corregirla antes de confirmar. El contrato sigue enviando
+`efectivoParaSiguiente`; el backend valida y registra el mismo cierre de caja.
+En el conteo, «Conté menos» enfoca el importe para escribir directamente el efectivo real, sin
+alterar el monto por su cuenta. Se mantienen «Conté todo», «No hay efectivo» y «Editar importe».
 Cash is not revenue: BoxList.totalPrice es efectivo físico neto, no ingresos ni fondos de traspaso.
 
 Las tarjetas de vehículos por hora y estadías largas muestran el tipo con ícono y nombre. `CardTicket` comparte el catálogo de tipos mediante `VehicleTypeLabelsContext`; las etiquetas incluyen tipos desactivados y usan el código como respaldo si el catálogo no está disponible. El color de estadía y los avisos conservan su significado.

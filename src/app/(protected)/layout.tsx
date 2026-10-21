@@ -36,7 +36,8 @@ export default async function ProtectedLayout({
   return (
     <SessionProvider session={session}>
       <TenantProvider context={context} playaId={chosen} shiftsEnabled={schedule?.shiftsEnabled === true}>
-        <div className="flex w-full flex-col overflow-hidden">
+        {/* clip recorta el desborde horizontal sin crear un contenedor de scroll que anule el topbar sticky. */}
+        <div className="flex w-full flex-col overflow-x-clip">
           {platform || chosen ? children : <NoPlaya message={error} />}
         </div>
       </TenantProvider>

@@ -49,7 +49,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const [added, setAdded] = useState('0');
   const [openingReason, setOpeningReason] = useState('');
   const [counted, setCounted] = useState('');
-  const [withdrawn, setWithdrawn] = useState('0');
+  // Sin una elección propia se sugiere el fondo de la caja. Corregir el conteo no pisa lo elegido.
+  const [cashForNext, setCashForNext] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [forcedReason, setForcedReason] = useState('');
   // Las entradas del operador que siguen abiertas: hay que confirmarlas para cerrar el turno.
@@ -74,12 +75,9 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const salaryBase = arqueo ? (amountValid(counted) ? Number(counted) : 0) : expected;
   const salary = salaryExpected > 0 && salaryBase - reserve >= salaryExpected ? salaryExpected : 0;
   const afterSalary = Math.max(0, Number(counted) - salary);
-  const countCash = (value: string) => {
-    setCounted(value);
-    const n = Number(value);
-    const pay = salaryExpected > 0 && n - reserve >= salaryExpected ? salaryExpected : 0;
-    setWithdrawn(String(Math.max(0, n - pay - reserve)));
-  };
+  const forNext = cashForNext ?? (amountValid(counted) ? String(Math.min(reserve, afterSalary)) : '');
+  const handoverValid = amountValid(counted) && amountValid(forNext) && Number(forNext) <= afterSalary;
+  const withdrawn = handoverValid ? afterSalary - Number(forNext) : null;
 
   const refresh = async (resetOpening = false) => {
     let result: Awaited<ReturnType<typeof getCashContextAction>>;
@@ -132,16 +130,18 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     toast.success(caja.session ? 'Te uniste a la caja. Tu turno está abierto.' : 'Caja y turno abiertos.'); setOpen(false); updated(); await refresh();
     });
   };
-  const submitClose = () => startTransition(async () => {
-    if (!active) return;
-    const result = await closeTurnoAction(active.id, { cerrarCaja: arqueo, sueldoEsperado: salary, efectivoEsperado: expected,
-      ...(arqueo ? { efectivoContado: Number(counted), efectivoEsperado: expected, efectivoParaSiguiente: Number(counted) - salary - Number(withdrawn) } : {}),
-      observaciones: notes, motivoCierreForzado: forzando ? forcedReason : undefined });
-    if (result.error) { toast.error(typeof result.error === 'string' ? result.error : result.error.message); await refresh(); return; }
-    if (result.turno?.alertaSueldo) toast.error(result.turno.alertaSueldo);
-    toast.success(arqueo ? 'Turno y caja cerrados. El fondo queda para el próximo operador.' : 'Turno cerrado. La caja sigue abierta para los demás operadores.');
-    setOpen(false); setClosing(false); updated(); await refresh();
-  });
+  const submitClose = () => {
+    if (!active || pending || !closingValid) return;
+    startTransition(async () => {
+      const result = await closeTurnoAction(active.id, { cerrarCaja: arqueo, sueldoEsperado: salary, efectivoEsperado: expected,
+        ...(arqueo ? { efectivoContado: Number(counted), efectivoEsperado: expected, efectivoParaSiguiente: Number(forNext) } : {}),
+        observaciones: notes, motivoCierreForzado: forzando ? forcedReason : undefined });
+      if (result.error) { toast.error(typeof result.error === 'string' ? result.error : result.error.message); await refresh(); return; }
+      if (result.turno?.alertaSueldo) toast.error(result.turno.alertaSueldo);
+      toast.success(arqueo ? `Turno y caja cerrados. Dejás ${money(Number(forNext))} para el próximo operador.` : 'Turno cerrado. La caja sigue abierta para los demás operadores.');
+      setOpen(false); setClosing(false); updated(); await refresh();
+    });
+  };
   // Solo se preguntan los de más de 4 horas; el turno se cierra cuando están todos revisados. Los que
   // ya se confirmaron en este dispositivo (franja del inicio o Cobrar salida) llegan marcados, y lo
   // que se marca acá queda confirmado también allá.
@@ -151,9 +151,9 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     setEstadiasConfirmadas(actuales => sigue ? [...new Set([...actuales, ...ids])] : actuales.filter(id => !ids.includes(id)));
     confirmarEnDispositivo(ids, sigue);
   };
-  const closingValid = canClose && estadias !== null && largas.every(e => confirmadas.includes(e.id)) &&(!forzando || forcedReason.trim()) && (!arqueo ||(amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= afterSalary && (closingDifference === 0 || notes.trim())));
+  const closingValid = canClose && estadias !== null && largas.every(e => confirmadas.includes(e.id)) &&(!forzando || forcedReason.trim()) && (!arqueo ||(handoverValid && (closingDifference === 0 || notes.trim())));
   const openingValid = !!caja && !context?.legacyOpen && (caja.session ? context?.multipleShiftsEnabled : amountValid(received) && amountValid(added) && (openingDifference === 0 || openingReason.trim()));
-  const abrir = () => { setClosing(!!turnoId); setReceived(''); setAdded('0'); setOpeningReason(''); setCounted(''); setWithdrawn('0'); setNotes(''); setForcedReason(''); setOpen(true); startTransition(() => refresh(true)); };
+  const abrir = () => { setClosing(!!turnoId); setReceived(''); setAdded('0'); setOpeningReason(''); setCounted(''); setCashForNext(null); setNotes(''); setForcedReason(''); setOpen(true); startTransition(() => refresh(true)); };
   const enlaceHistorial = esAdmin && <Link href="/admin/caja?tab=turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja?tab=turnos'), 200); }} className="mx-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow"><History className="size-3.5" aria-hidden />Ver turnos e historial</Link>;
   return <>
     {variant === 'pill' ? (
@@ -194,18 +194,25 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
 
           {arqueo ? <ol className="space-y-5">
             <Paso numero={1} listo={amountValid(counted) && (closingDifference === 0 || !!notes.trim())}>
-              <CashAmountField id="cash-counted" label="¿Cuánto efectivo contaste?" value={counted} onChange={countCash} disabled={pending} placeholder="Contá el dinero antes de confirmar" shortcuts={[{ label: 'Conté todo · ' + money(expected), amount: expected, disabled: expected < 0 }, { label: 'No hay efectivo', amount: 0 }]} description="Si contaste el importe esperado, tocá Conté todo. Si hay una diferencia, ingresá el monto real."
+              <CashAmountField id="cash-counted" label="¿Cuánto efectivo contaste?" value={counted} onChange={setCounted} disabled={pending} placeholder="Contá el dinero antes de confirmar" shortcuts={[{ label: 'Conté todo · ' + money(expected), amount: expected, disabled: expected < 0 }, { label: 'No hay efectivo', amount: 0 }, { label: 'Conté menos', edit: true, disabled: expected <= 0 }]} description="Si coincide, tocá Conté todo. Con Conté menos podés escribir el importe real; si hay una diferencia, explicá el motivo."
                 status={amountValid(counted) && <Pill tono={closingDifference === 0 ? 'ok' : 'aviso'}>{closingDifference === 0 ? 'Coincide' : closingDifference > 0 ? 'Faltan ' + money(closingDifference) : 'Sobran ' + money(-closingDifference)}</Pill>} />
             </Paso>
-            <Paso numero={2} listo={amountValid(counted) && amountValid(withdrawn) && Number(withdrawn) <= afterSalary} ultimo>
-              <CashAmountField id="cash-withdrawn" label="Retiro de recaudación al cerrar (sin sueldo)" value={withdrawn} onChange={setWithdrawn} disabled={pending} max={amountValid(counted) ? afterSalary : undefined} shortcuts={[{ label: 'No retiro efectivo', amount: 0 }, { label: 'Dejar el fondo · ' + money(reserve), amount: Math.max(0, afterSalary - reserve), disabled: !amountValid(counted) }]} description={amountValid(counted) ? 'Retirá todo o una parte. Lo que no retires queda en esta caja para el próximo operador.' : 'Primero indicá cuánto contaste; después podés retirar todo o una parte.'} />
+            <Paso numero={2} listo={handoverValid} ultimo>
+              <CashAmountField id="cash-for-next" label="¿Cuánto dejás en caja para el próximo turno?" labelClassName="min-w-[min(100%,14rem)] text-[13px] normal-case tracking-normal text-foreground" value={forNext} onChange={setCashForNext} disabled={pending || !amountValid(counted)} max={amountValid(counted) ? afterSalary : undefined} editLabel="Cambiar importe"
+                shortcuts={[{ label: 'Usar sugerido · ' + money(reserve), amount: reserve, disabled: reserve > afterSalary }, { label: 'Dejar todo · ' + money(afterSalary), amount: afterSalary }]}
+                description={amountValid(counted) ? `El fondo sugerido de ${money(reserve)} es una referencia. Podés dejar más, menos o $0. El cambio vale solo para este cierre.` : 'Primero indicá cuánto contaste; después elegí cuánto dejás para el próximo turno.'} />
+              {amountValid(counted) && amountValid(forNext) && Number(forNext) > afterSalary && <p role="alert" className="mt-2 text-sm text-destructive">No podés dejar más de {money(afterSalary)}: es el efectivo disponible después del sueldo.</p>}
+              {amountValid(counted) && <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2 rounded-xl bg-gm-surface-2 px-3.5 py-3 text-sm" aria-live="polite">
+                <span className="text-muted-foreground">Retirás de recaudación (sin sueldo)</span>
+                <strong className="gm-mono tabular-nums">{withdrawn === null ? '—' : money(withdrawn)}</strong>
+              </div>}
             </Paso>
           </ol> : <div className="flex gap-3 rounded-2xl border border-gm-yellow/25 bg-gm-yellow/[0.06] p-4 text-sm"><Users className="mt-0.5 size-4 shrink-0 text-gm-yellow" aria-hidden /><div><p className="font-semibold">La caja continúa abierta</p><p className="mt-1 leading-relaxed text-muted-foreground">Tus operaciones quedan registradas a tu nombre. El fondo y el efectivo siguen en {active.caja?.nombre ?? 'la caja compartida'}; el cierre registra solamente el retiro de sueldo si está configurado y hay efectivo suficiente.</p></div></div>}
 
           {salaryExpected > 0 && <div className="flex gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] p-4 text-sm">
             <Banknote className="mt-0.5 size-4 shrink-0 text-amber-400" aria-hidden />
             <div className="min-w-0">
-              <p>Sueldo previsto: <strong className="tabular-nums">{money(salaryExpected)}</strong> · Fondo protegido: <span className="tabular-nums">{money(reserve)}</span></p>
+              <p>Sueldo previsto: <strong className="tabular-nums">{money(salaryExpected)}</strong> · Fondo de referencia: <span className="tabular-nums">{money(reserve)}</span></p>
               {arqueo && !amountValid(counted) ? <p className="mt-1 text-muted-foreground">Contá el efectivo para comprobar si alcanza.</p> : salary > 0 ? <p className="mt-1 leading-relaxed text-muted-foreground">Se registrará el retiro de {money(salary)}. Retirá físicamente ese importe al confirmar. Está separado del retiro de recaudación.</p> : <p role="alert" className="mt-1 leading-relaxed text-amber-600 dark:text-amber-400">El efectivo no alcanza para preservar el fondo. No se descontará el sueldo y quedará una alerta en el historial.</p>}
             </div>
           </div>}
@@ -215,12 +222,12 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             <dl className="space-y-2 px-4 py-3 text-sm">
               <Linea label="Contaste" value={money(Number(counted))} />
               {salaryExpected > 0 && <Linea label="Sueldo" value={salary > 0 ? '− ' + money(salary) : 'No se descuenta'} />}
-              <Linea label="Retiro de recaudación" value={'− ' + money(amountValid(withdrawn) ? Number(withdrawn) : 0)} />
+              <Linea label="Retiro de recaudación" value={withdrawn === null ? '—' : '− ' + money(withdrawn)} />
             </dl>
-            {(() => { const queda = Number(counted) - salary - (amountValid(withdrawn) ? Number(withdrawn) : 0); return <div className={cn('flex items-center justify-between gap-3 border-t border-gm-line px-4 py-3', queda < 0 ? 'bg-destructive/10' : 'bg-emerald-400/[0.06]')}>
-              <span className="text-[13px] font-semibold">{queda < 0 ? 'El retiro supera lo que hay' : 'Queda para el próximo operador'}</span>
-              <strong className={cn('tabular-nums', queda < 0 ? 'text-destructive' : 'text-emerald-400')}>{money(queda)}</strong>
-            </div>; })()}
+            <div className={cn('flex items-center justify-between gap-3 border-t border-gm-line px-4 py-3', handoverValid ? 'bg-emerald-400/[0.06]' : 'bg-destructive/10')}>
+              <span className="text-[13px] font-semibold">{handoverValid ? 'Queda para el próximo operador' : 'Revisá cuánto dejás en caja'}</span>
+              <strong className={cn('tabular-nums', handoverValid ? 'text-emerald-400' : 'text-destructive')}>{handoverValid ? money(Number(forNext)) : '—'}</strong>
+            </div>
           </section>}
 
           <details className="group rounded-2xl border border-gm-line text-xs">
