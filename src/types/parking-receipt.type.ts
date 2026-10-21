@@ -20,6 +20,8 @@ export type ParkingReceiptSnapshot = {
   total: number | null;
   collected: number | null;
   operatorName?: string | null;
+  // Gratuita: constancia sin importes (total y collected vienen en null). Ausente = con cobro.
+  modalidad?: 'CON_COBRO' | 'GRATUITO';
 };
 export type IssuedParkingReceipt = {
   phoneCustomer: string | null;

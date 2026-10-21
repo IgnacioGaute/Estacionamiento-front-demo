@@ -5,7 +5,6 @@ import { OfflineConsultation } from '@/components/offline-consultation';
 
 export function OfflinePreparation() {
   const pathname = usePathname();
-
   // Tickets refreshes its own snapshot after each registration change.
   if (pathname === '/tickets') return null;
 

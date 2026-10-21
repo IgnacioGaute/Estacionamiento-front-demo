@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 import { getUsers } from '@/services/users.service';
-import { UsersTable } from './components/users-table';
+import { UsersBody } from './components/users-body';
+import { CreateUserDialog } from './components/create-user-dialog';
 import { PageHeader } from '@/components/page-header';
 import { PageTour } from '@/components/page-tour';
 import { operatorAssignmentsAction } from '@/actions/tenancy/context.action';
@@ -18,37 +19,32 @@ const TOUR_STEPS = [
   {
     key: 'filter',
     selector: '[data-tour="users-filter"]',
-    title: 'Buscar por email',
-    desc: 'Filtrá la lista escribiendo el email de la cuenta que buscás.',
-    radius: 6,
+    title: 'Filtrar la lista',
+    desc: 'Mostrá solo administradores u operadores, o buscá por nombre, usuario o email.',
+    radius: 10,
   },
   {
     key: 'table',
     selector: '[data-tour="users-table"]',
     title: 'Cuentas del sistema',
-    desc: 'El badge indica el rol: Admin tiene acceso completo, Operador solo a las tareas del día a día. Desde el menú de cada fila podés editar la cuenta o eliminarla.',
+    desc: 'Administrador tiene acceso completo; Operador, solo a las tareas del día a día en su playa. Desde el menú de cada fila podés editar la cuenta, cambiarle el rol o eliminarla.',
     radius: 10,
   },
 ];
 
 export default async function UserPage() {
   const [users, assignments] = await Promise.all([getUsers(), operatorAssignmentsAction()]);
-  const total = users?.data?.length ?? 0;
 
   return (
-    <div className="container mx-auto px-4 py-6 sm:p-8 max-w-7xl">
+    <div className="container mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:p-8">
       <PageHeader
         breadcrumb={['Estacionamiento', 'Administración', 'Usuarios']}
         title="Usuarios del sistema"
-        description={
-          total > 0
-            ? `${total} cuentas activas — operadores y administradores.`
-            : 'Creá la primera cuenta para empezar a operar.'
-        }
-        actions={<PageTour steps={TOUR_STEPS} />}
+        description="Operadores y administradores de la empresa, su rol y su playa."
+        actions={<><PageTour steps={TOUR_STEPS} /><CreateUserDialog /></>}
       />
-      {!assignments && <p role="alert" className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">No se pudieron consultar las playas asignadas. Actualizá la página para volver a intentarlo.</p>}
-      <UsersTable assignments={assignments} data={users?.data || []} />
+      {!assignments && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">No se pudieron consultar las playas asignadas. Actualizá la página para volver a intentarlo.</p>}
+      <UsersBody assignments={assignments} data={users?.data || []} />
     </div>
   );
 }

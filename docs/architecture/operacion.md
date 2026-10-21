@@ -87,3 +87,17 @@ Three customer types: `OWNER`, `RENTER`, `PRIVATE` (`CUSTOMER_TYPE`). Each has `
 - Detalles y semántica: documentación del backend `docs/tickets-tarifas.md`, `docs/caja-turnos.md`,
   `docs/administracion-plataforma.md` y `docs/comprobantes.md`. No presentar la antigua escalera como importe
   final cuando hay opciones avanzadas activas.
+
+### Modalidad gratuita
+
+`useTenant()` expone `modalidad` y `cobroHabilitado` (la playa la recibe en `/tenant/context`; la define el super
+admin). Con `cobroHabilitado` en false también salen falsos `shiftsEnabled` e `inquilinosEnabled`, y las páginas
+server usan `modalidadActual()` (`src/lib/modalidad.server.ts`). En una playa gratuita: menús sin Tarifas, planilla
+de caja, gastos e ingresos, Caja, Inquilinos ni Centro de aprendizaje; las secciones de
+dinero muestran `SoloConCobro`; el dashboard solo trae actividad por hora; no hay comprobantes, estadías por
+día, semana o mes (ni su columna, filtro o contador),
+anticipos ni «Se fue antes». El modo sin conexión prepara entradas por patente y salidas sin importes ni caja. `CloseTicketPanel` reconoce un resumen con `modalidad: 'GRATUITO'`
+(`esSalidaGratuita`) y muestra la salida sin importes con «Registrar salida» (`PATCH …/salida`); vale también para
+una estadía que entró gratis en una playa que volvió a cobrar. Si el super admin cambia la modalidad, el evento
+`playa-modalidad` recarga la pantalla. La planilla de vehículos está en `/admin/vehiculos`, con acceso rápido para administradores desde Tickets en móvil y escritorio. Detalle en
+`docs/modalidad-gratuita.md` del backend.

@@ -6,6 +6,8 @@ import {
 } from "@/actions/tenancy/context.action";
 import { signOut } from "next-auth/react";
 import { ChevronDown } from "lucide-react";
+import { esGratuita, type Modalidad } from "@/lib/modalidad";
+import { useTenantEvent } from "@/hooks/use-tenant-event";
 const TenantContext = createContext<{
   playaId: string;
   context: OperationalContext;
@@ -14,8 +16,19 @@ const TenantContext = createContext<{
   inquilinosEnabled: boolean;
   // Escanear con el motor disponible de la playa: token propio o reconocimiento de la plataforma.
   reconocimientoPatentes: boolean;
-}>({ playaId: "", context: { empresa: null, playas: [] }, shiftsEnabled: false, inquilinosEnabled: false, reconocimientoPatentes: false });
+  // Modalidad de la playa (la define el super admin). Gratuita: sin tarifas, cobros ni caja.
+  modalidad: Modalidad;
+  cobroHabilitado: boolean;
+}>({ playaId: "", context: { empresa: null, playas: [] }, shiftsEnabled: false, inquilinosEnabled: false, reconocimientoPatentes: false, modalidad: "CON_COBRO", cobroHabilitado: true });
 export const useTenant = () => useContext(TenantContext);
+// El super admin cambió la modalidad con la pantalla abierta: se recarga entera, como al cambiar de
+// playa, para no seguir mostrando cobros (o esconderlos) con la configuración anterior.
+function RecargarAlCambiarModalidad({ modalidad }: { modalidad: Modalidad }) {
+  useTenantEvent("playa-modalidad", (data: { modalidad?: string }) => {
+    if (data?.modalidad && data.modalidad !== modalidad) window.location.reload();
+  });
+  return null;
+}
 export function TenantProvider({
   context,
   playaId,
@@ -28,10 +41,15 @@ export function TenantProvider({
   shiftsEnabled?: boolean;
 }) {
   const playa = context.playas.find((p) => p.id === playaId);
-  const inquilinosEnabled = !!playa?.modulos?.inquilinos;
+  const modalidad: Modalidad = esGratuita(playa?.modalidad) ? "GRATUITO" : "CON_COBRO";
+  const cobroHabilitado = modalidad === "CON_COBRO";
+  // Turnos de caja e inquilinos son dinero: en una playa gratuita no existen, aunque su
+  // configuración quede guardada para cuando vuelva a cobrar.
+  const inquilinosEnabled = cobroHabilitado && !!playa?.modulos?.inquilinos;
   const reconocimientoPatentes = !!playa?.reconocimientoPatentes;
   return (
-    <TenantContext.Provider value={{ context, playaId, shiftsEnabled, inquilinosEnabled, reconocimientoPatentes }}>
+    <TenantContext.Provider value={{ context, playaId, shiftsEnabled: cobroHabilitado && shiftsEnabled, inquilinosEnabled, reconocimientoPatentes, modalidad, cobroHabilitado }}>
+      {playaId && <RecargarAlCambiarModalidad modalidad={modalidad} />}
       {children}
     </TenantContext.Provider>
   );

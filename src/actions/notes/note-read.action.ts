@@ -7,6 +7,10 @@ export async function unreadNotesAction(): Promise<string[]> {
   if (!response.ok) throw new Error('No se pudieron consultar los avisos pendientes.');
   return response.json();
 }
+export async function readAllNotesAction() {
+  const response = await tenantFetch(`${process.env.NEXT_PUBLIC_API_URL}/notes/read-all`, { method: 'POST', headers: await getAuthHeaders() });
+  if (!response.ok) throw new Error('No se pudieron marcar los avisos como leídos.');
+}
 export async function readNoteAction(id: string) {
   const response = await tenantFetch(`${process.env.NEXT_PUBLIC_API_URL}/notes/${encodeURIComponent(id)}/read`, { method: 'POST', headers: await getAuthHeaders() });
   if (!response.ok) throw new Error('No se pudo marcar el aviso como leído.');

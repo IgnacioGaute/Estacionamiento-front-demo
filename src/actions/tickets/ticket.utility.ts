@@ -1,3 +1,5 @@
+import { ERRORES_MODALIDAD } from '@/lib/modalidad';
+
 export interface TicketError {
     code: string;
     message: string;
@@ -19,7 +21,8 @@ export function handleTicketError(error: TicketError): TicketError {
       errorMessage = error.message || 'No hay tarifas configuradas para este tipo de vehículo.';
       break;
     default:
-      errorMessage = error.message || 'Error desconocido.';
+      // Modalidad gratuita: el texto propio del frontend, con el del backend como respaldo.
+      errorMessage = ERRORES_MODALIDAD[errorCode] || error.message || 'Error desconocido.';
   }
 
   return {
