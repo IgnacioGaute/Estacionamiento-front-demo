@@ -82,7 +82,8 @@ import { PlanDeEmpresa } from "./plan-empresa";
 import { PatentesPlayas } from "./patentes-playas";
 import { CambioModalidad, ModalidadPlayaDialog } from "./modalidad-playa-dialog";
 import { esGratuita, NOMBRE_MODALIDAD } from "@/lib/modalidad";
-import { EstadoCuentaPill, diaAR, hoyAR, sufijoPeriodo, textoVencimiento } from "@/components/plataforma/cuenta";
+import { Segmento } from "@/components/ui/segmento";
+import { EstadoCuentaPill, MEDIOS_PAGO, diaAR, hoyAR, sufijoPeriodo, textoVencimiento } from "@/components/plataforma/cuenta";
 
 type Tab = "resumen" | "plan" | "playas" | "usuarios" | "actividad";
 const TABS: Tab[] = ["resumen", "plan", "playas", "usuarios", "actividad"];
@@ -100,13 +101,13 @@ function formatoEje(v: number) {
 }
 
 const botonSecundario =
-  "flex h-11 items-center gap-2 rounded-xl border border-border px-3.5 text-[13.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2";
+  "flex h-9 items-center gap-2 rounded-lg border border-[#2A2824] bg-[#151411] px-3.5 text-[13px] font-medium transition-colors hover:border-[#3A362F]";
 const botonPrimario =
-  "flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-4 text-[13.5px] font-bold text-gm-ink transition-colors hover:bg-[#FFD23A]";
+  "flex h-9 items-center gap-2 rounded-lg bg-gm-yellow px-3.5 text-[13px] font-semibold text-gm-ink transition-colors hover:bg-[#FFD23A]";
 const botonChico =
-  "h-8 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2";
+  "h-8 rounded-md border border-[#2A2824] px-3 text-[12.5px] font-medium transition-colors hover:border-[#3A362F]";
 const botonPeligro =
-  "h-8 rounded-[9px] px-2.5 text-[12.5px] font-semibold text-[#FF7A4D] transition-colors hover:bg-[#FF7A4D]/10";
+  "h-8 rounded-md px-2.5 text-[12.5px] font-medium text-[#F2725B] transition-colors hover:bg-[#F2725B]/10";
 
 export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
   const params = useSearchParams();
@@ -380,20 +381,19 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
         Empresas
       </Link>
 
-      <section className="overflow-hidden rounded-3xl border border-border bg-gm-surface">
-        <div aria-hidden className="gm-stripes h-1.5" />
-        <div className="flex flex-col gap-5 p-5 sm:px-6 sm:py-[22px] lg:flex-row lg:items-center">
+      <section aria-label="Empresa" className="border-b border-[#211F1B] pb-5">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
           <div className="flex min-w-0 flex-1 items-center gap-5">
             <span
               aria-hidden
-              className="flex size-[72px] shrink-0 items-center justify-center rounded-[20px] border border-gm-line-strong font-display text-[28px] font-semibold text-gm-yellow"
+              className="flex size-14 shrink-0 items-center justify-center rounded-xl border border-gm-line-strong text-[22px] font-semibold text-gm-yellow"
               style={{ background: colorAvatar(empresa.id) }}
             >
               {iniciales(empresa.nombre)}
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="break-words font-display text-[32px] font-semibold leading-none tracking-[0.01em] sm:text-[38px]">
+                <h1 className="break-words text-[22px] font-semibold leading-tight tracking-[-0.02em]">
                   {empresa.nombre}
                 </h1>
                 <EstadoEmpresa estado={empresa.estado} />
@@ -410,7 +410,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   </span>
                 )}
                 {mp?.estado === "ERROR" && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FF7A4D]/[0.14] px-2.5 py-1 text-xs font-bold text-[#FF7A4D]">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F2725B]/[0.14] px-2.5 py-1 text-xs font-bold text-[#F2725B]">
                     <AlertTriangle aria-hidden className="size-[13px]" />
                     MercadoPago con error
                   </span>
@@ -463,38 +463,43 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
         </div>
       </section>
 
-      <div role="tablist" aria-label="Secciones de la empresa" className="flex gap-1 overflow-x-auto border-b border-[#2E2A23]">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={`-mb-px flex h-12 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-bold transition-colors ${
-              tab === t.id
-                ? "border-gm-yellow text-gm-yellow"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t.label}
-            {!!t.aviso && (
-              <span
-                // El contador se apaga al entrar a la solapa: marca lo que todavía no viste.
-                title={`${t.aviso} movimiento(s) sin ver`}
-                className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gm-yellow px-1.5 text-[11px] font-extrabold tabular-nums text-gm-ink"
-              >
-                {t.aviso}
-              </span>
-            )}
+      {/* La cuenta vencida o suspendida va arriba de todo: es lo primero que hay que resolver. */}
+      {cuenta && (cuenta.estado === "VENCIDA" || cuenta.estado === "SUSPENDIDA") && (
+        <div
+          role="alert"
+          className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3 ${
+            cuenta.estado === "SUSPENDIDA" ? "border-[#5A2A22] bg-[#1F1210]" : "border-[#5A4220] bg-[#1E170C]"
+          }`}
+        >
+          <AlertTriangle
+            aria-hidden
+            className={`size-[18px] shrink-0 ${cuenta.estado === "SUSPENDIDA" ? "text-[#F2725B]" : "text-[#F0A43A]"}`}
+          />
+          <p className="m-0 min-w-0 flex-[1_1_320px] text-[13px]">
+            <span className="font-semibold">
+              {cuenta.estado === "SUSPENDIDA" ? "Cuenta suspendida." : "Cuenta vencida."}
+            </span>{" "}
+            <span className="text-[#D2C3A6]">{textoVencimiento(cuenta)}</span>
+          </p>
+          <button type="button" onClick={() => setTab("plan")} className="text-[13px] font-medium text-gm-yellow hover:text-[#FFD84D]">
+            Ver plan y facturas
           </button>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* Rubber Segment (ui/segmento). El contador marca lo que todavía no viste y se apaga al entrar. */}
+      <Segmento
+        aria-label="Secciones de la empresa"
+        size="lg"
+        value={tab}
+        onChange={(id) => setTab(id as typeof tab)}
+        items={tabs.map((t) => ({ value: t.id, label: t.label, badge: t.aviso ? t.aviso : undefined }))}
+      />
 
       {tab === "resumen" && (
         <div className="space-y-5">
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            <Tarjeta className="min-h-[150px] justify-between gap-3 overflow-hidden pt-4">
+          <div className="grid gap-px overflow-hidden rounded-xl border border-[#26231E] bg-[#26231E] sm:grid-cols-2 xl:grid-cols-4">
+            <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 overflow-hidden rounded-none border-0">
               <div className="flex items-center justify-between">
                 <Rotulo>Cobrado · 30 días</Rotulo>
                 <Variacion
@@ -502,19 +507,19 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   decimales={0}
                 />
               </div>
-              <span className="font-display text-[34px] font-semibold leading-none text-gm-yellow">
+              <span className="font-mono text-[26px] font-medium leading-none tracking-[-0.03em] text-gm-yellow">
                 {metrics || detalle ? corto(cobrado) : "—"}
               </span>
               <Chispa valores={resumir(serieEmpresa)} color={AMARILLO} alto={30} />
             </Tarjeta>
-            <Tarjeta className="min-h-[150px] justify-between gap-3 pt-4">
+            <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 rounded-none border-0">
               <div className="flex items-center justify-between">
                 <Rotulo>Estadías abiertas</Rotulo>
                 <Pastilla tono="verde" vivo>
                   En vivo
                 </Pastilla>
               </div>
-              <span className="font-display text-[34px] font-semibold leading-none">{numero(abiertas)}</span>
+              <span className="font-mono text-[26px] font-medium leading-none tracking-[-0.03em]">{numero(abiertas)}</span>
               {abiertas > 0 ? (
                 <div
                   className="flex gap-[3px]"
@@ -536,36 +541,38 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                     ))}
                 </div>
               ) : (
-                <span className="font-mono text-[11px]" style={{ color: EJE }}>
+                <span className="text-[12px]" style={{ color: EJE }}>
                   Ningún vehículo adentro
                 </span>
               )}
             </Tarjeta>
-            <Tarjeta className="min-h-[150px] justify-between gap-3 pt-4">
+            <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 rounded-none border-0">
               <Rotulo>Turnos en curso</Rotulo>
-              <span className="font-display text-[34px] font-semibold leading-none">{turnos}</span>
-              <span className="truncate border-t border-[#2E2A23] pt-2 font-mono text-[11px]" style={{ color: EJE }}>
+              <span className="font-mono text-[26px] font-medium leading-none tracking-[-0.03em]">{turnos}</span>
+              <span className="truncate border-t border-[#211F1B] pt-2 text-[12px]" style={{ color: EJE }}>
                 {turnosPorPlaya.length
                   ? turnosPorPlaya.map((p) => `${p.nombre} ${p.m?.turnosAbiertos}`).join(" · ")
                   : "Ninguna caja abierta"}
               </span>
             </Tarjeta>
-            <Tarjeta className="min-h-[150px] justify-between gap-3 pt-4">
+            <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 rounded-none border-0">
               <Rotulo>Registros de operación</Rotulo>
-              <span className="font-display text-[34px] font-semibold leading-none">
+              <span className="font-mono text-[26px] font-medium leading-none tracking-[-0.03em]">
                 {eliminacion === null ? "—" : numero(eliminacion.registros)}
               </span>
-              <span className="border-t border-[#2E2A23] pt-2 font-mono text-[11px]" style={{ color: EJE }}>
+              <span className="border-t border-[#211F1B] pt-2 text-[12px]" style={{ color: EJE }}>
                 {eliminacion?.registros ? "Bloquean el borrado de la empresa" : "Tickets, movimientos y turnos"}
               </span>
             </Tarjeta>
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-3">
-            <Tarjeta className="min-h-[360px] lg:col-span-2">
+          {/* Como el diseño: lo de la operación a la izquierda; cuenta, configuración y actividad al costado. */}
+          <div className="flex flex-wrap items-start gap-5">
+            <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-5">
+            <Tarjeta className="min-h-[360px]">
               <Encabezado
                 rotulo="Cobrado por día"
-                pastilla={<Pastilla>Onda</Pastilla>}
+
                 valor={corto(serie.reduce((n, v) => n + v, 0))}
                 unidad={`${nombreSerie} · 30 días`}
                 derecha={
@@ -627,7 +634,152 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
               />
             </Tarjeta>
 
-            <Tarjeta className="min-h-[360px] pb-3.5">
+            <Tarjeta>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Rotulo>Playas</Rotulo>
+                  <Pastilla>Ahora · 30 días</Pastilla>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTab("playas")}
+                  className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
+                >
+                  Gestionar playas →
+                </button>
+              </div>
+              {!playas.length ? (
+                <div className="m-auto flex flex-col items-center gap-3 py-8 text-center">
+                  <p className="max-w-sm text-sm text-muted-foreground">
+                    Todavía no hay playas. Cada playa lleva sus propios tickets, tarifas, caja y turnos.
+                  </p>
+                  <button type="button" className={botonPrimario} onClick={() => setEditor({ tipo: "playa", empresa })}>
+                    <Plus className="size-4" />
+                    Agregar playa
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <div className="min-w-[620px]">
+                    <div
+                      className="mt-3 grid grid-cols-[minmax(0,1fr)_100px_80px_80px_230px] gap-3 px-3.5 text-[12px] font-medium"
+                      style={{ color: EJE }}
+                    >
+                      <span>Playa</span>
+                      <span>Estado</span>
+                      <span>Abiertas</span>
+                      <span>Turnos</span>
+                      <span>Cobrado 30 d</span>
+                    </div>
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      {playas.map((p, i) => (
+                        <div
+                          key={p.id}
+                          className="grid h-14 grid-cols-[minmax(0,1fr)_100px_80px_80px_230px] items-center gap-3 rounded-lg border border-[#211F1B] bg-[#12110E] px-3.5"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate text-[13.5px] font-semibold">{p.nombre}</div>
+                            <div className="truncate text-xs" style={{ color: EJE }}>
+                              {p.direccion || "Sin dirección cargada"}
+                            </div>
+                          </div>
+                          <EstadoPlaya conTarifas={p.m?.tieneTarifas !== false} />
+                          <span className="font-mono text-base font-medium">{p.m?.estadiasAbiertas ?? 0}</span>
+                          <span className="font-mono text-base font-medium">{p.m?.turnosAbiertos ?? 0}</span>
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-2 flex-1 rounded-full bg-[#221F1A]">
+                              <div
+                                className="h-2 rounded-full"
+                                style={{
+                                  width: `${Math.max(2, ((p.m?.cobrado ?? 0) / topeCobrado) * 100)}%`,
+                                  background: i === 0 ? AMARILLO : CREMA,
+                                }}
+                              />
+                            </div>
+                            <span className="w-[70px] text-right text-[13px] font-semibold tabular-nums">
+                              {corto(p.m?.cobrado ?? 0)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Tarjeta>
+            </div>
+            <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-5">
+              {cuenta && (
+                <Tarjeta>
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="m-0 text-[14px] font-semibold">Suscripción</h2>
+                    <button
+                      type="button"
+                      onClick={() => setTab("plan")}
+                      className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
+                    >
+                      Ver plan →
+                    </button>
+                  </div>
+                  <dl className="m-0 mt-3.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-[13px]">
+                    <dt className="text-muted-foreground">Estado</dt>
+                    <dd className="m-0 flex justify-end">
+                      <EstadoCuentaPill cuenta={cuenta} />
+                    </dd>
+                    <dt className="text-muted-foreground">Plan</dt>
+                    <dd className="m-0 truncate text-right">
+                      {cuenta.planes.length === 1
+                        ? cuenta.planes[0].plan
+                        : cuenta.planes.length
+                          ? `${cuenta.planes.length} playas con plan`
+                          : "Sin plan elegido"}
+                    </dd>
+                    <dt className="text-muted-foreground">Período</dt>
+                    <dd className="m-0 text-right">
+                      {cuenta.periodo.nombre}
+                      {cuenta.periodo.descuento ? ` · −${cuenta.periodo.descuento} %` : ""}
+                    </dd>
+                    <dt className="text-muted-foreground">Paga</dt>
+                    <dd className="m-0 text-right font-mono">
+                      {plata(cuenta.importePeriodo)}
+                      {sufijoPeriodo(cuenta.periodo.meses)}
+                    </dd>
+                    {cuenta.proximoVencimiento && cuenta.estado !== "BONIFICADA" && (
+                      <>
+                        <dt className="text-muted-foreground">Próximo vencimiento</dt>
+                        <dd className="m-0 text-right font-mono">{diaAR(cuenta.proximoVencimiento, false)}</dd>
+                      </>
+                    )}
+                    {cuenta.facturaPendiente && (
+                      <>
+                        <dt className="text-muted-foreground">Factura pendiente</dt>
+                        <dd className="m-0 text-right font-mono text-[#F0A43A]">{plata(cuenta.facturaPendiente.importe)}</dd>
+                      </>
+                    )}
+                    <dt className="text-muted-foreground">Último pago</dt>
+                    <dd className="m-0 text-right">
+                      {cuenta.ultimoPago
+                        ? `${plata(cuenta.ultimoPago.importe)} · ${diaAR(cuenta.ultimoPago.fecha, false)}${cuenta.ultimoPago.medio ? ` · ${MEDIOS_PAGO[cuenta.ultimoPago.medio]}` : ""}`
+                        : "Todavía no pagó"}
+                    </dd>
+                    <dt className="text-muted-foreground">Débito automático</dt>
+                    <dd
+                      className={`m-0 text-right ${
+                        cuenta.debito?.estado === "authorized" ? "text-[#3DD68C]" : cuenta.debito ? "text-[#F0A43A]" : "text-muted-foreground"
+                      }`}
+                    >
+                      {cuenta.debito?.estado === "authorized"
+                        ? "Activo"
+                        : cuenta.debito?.estado === "pending"
+                          ? "Falta cargar la tarjeta"
+                          : cuenta.debito?.estado === "paused"
+                            ? "Pausado"
+                            : "No activado"}
+                    </dd>
+                  </dl>
+                </Tarjeta>
+              )}
+            <Tarjeta>
               <div className="flex items-center gap-3.5">
                 <div className="relative size-16 shrink-0">
                   <svg
@@ -652,7 +804,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                       />
                     )}
                   </svg>
-                  <span className="absolute inset-0 flex items-center justify-center font-display text-[17px] font-semibold">
+                  <span className="absolute inset-0 flex items-center justify-center font-mono text-[15px] font-medium">
                     {completos}/{puntos.length}
                   </span>
                 </div>
@@ -665,17 +817,17 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                 {puntos.map((p) => (
                   <li
                     key={p.id}
-                    className={`flex items-center gap-3 rounded-[14px] border bg-background px-3 py-2.5 ${
-                      p.ok || p.bloquea ? "border-[#26221C]" : "border-dashed border-gm-line-strong"
+                    className={`flex items-center gap-3 rounded-lg border bg-[#12110E] px-3 py-2.5 ${
+                      p.ok || p.bloquea ? "border-[#211F1B]" : "border-dashed border-[#3A362F]"
                     }`}
                   >
                     {p.ok ? (
-                      <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-emerald-400/[0.14]">
-                        <Check aria-label="Listo" className="size-3.5 text-emerald-400" strokeWidth={3} />
+                      <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[#3DD68C]/[0.14]">
+                        <Check aria-label="Listo" className="size-3.5 text-[#3DD68C]" strokeWidth={3} />
                       </span>
                     ) : p.bloquea ? (
-                      <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[#FF7A4D]/[0.14]">
-                        <AlertTriangle aria-label="Frena la operación" className="size-3.5 text-[#FF7A4D]" />
+                      <span className="flex size-[26px] shrink-0 items-center justify-center rounded-full bg-[#F2725B]/[0.14]">
+                        <AlertTriangle aria-label="Frena la operación" className="size-3.5 text-[#F2725B]" />
                       </span>
                     ) : (
                       <span
@@ -699,84 +851,8 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                 ))}
               </ul>
             </Tarjeta>
-          </div>
 
-          <div className="grid gap-5 lg:grid-cols-3">
-            <Tarjeta className="min-h-[340px] lg:col-span-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Rotulo>Playas</Rotulo>
-                  <Pastilla>Ahora · 30 días</Pastilla>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setTab("playas")}
-                  className="text-[12.5px] font-semibold text-gm-yellow hover:text-[#FFD84D]"
-                >
-                  Gestionar playas →
-                </button>
-              </div>
-              {!playas.length ? (
-                <div className="m-auto flex flex-col items-center gap-3 py-8 text-center">
-                  <p className="max-w-sm text-sm text-muted-foreground">
-                    Todavía no hay playas. Cada playa lleva sus propios tickets, tarifas, caja y turnos.
-                  </p>
-                  <button type="button" className={botonPrimario} onClick={() => setEditor({ tipo: "playa", empresa })}>
-                    <Plus className="size-4" />
-                    Agregar playa
-                  </button>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <div className="min-w-[620px]">
-                    <div
-                      className="mt-3 grid grid-cols-[minmax(0,1fr)_100px_80px_80px_230px] gap-3 px-3.5 font-mono text-[10px] tracking-[0.1em]"
-                      style={{ color: EJE }}
-                    >
-                      <span>PLAYA</span>
-                      <span>ESTADO</span>
-                      <span>ABIERTAS</span>
-                      <span>TURNOS</span>
-                      <span>COBRADO 30 D</span>
-                    </div>
-                    <div className="mt-2 flex flex-col gap-1.5">
-                      {playas.map((p, i) => (
-                        <div
-                          key={p.id}
-                          className="grid h-14 grid-cols-[minmax(0,1fr)_100px_80px_80px_230px] items-center gap-3 rounded-[14px] border border-[#26221C] bg-background px-3.5"
-                        >
-                          <div className="min-w-0">
-                            <div className="truncate text-[13.5px] font-semibold">{p.nombre}</div>
-                            <div className="truncate text-xs" style={{ color: EJE }}>
-                              {p.direccion || "Sin dirección cargada"}
-                            </div>
-                          </div>
-                          <EstadoPlaya conTarifas={p.m?.tieneTarifas !== false} />
-                          <span className="font-display text-lg font-semibold">{p.m?.estadiasAbiertas ?? 0}</span>
-                          <span className="font-display text-lg font-semibold">{p.m?.turnosAbiertos ?? 0}</span>
-                          <div className="flex items-center gap-2.5">
-                            <div className="h-2 flex-1 rounded-full bg-[#221F1A]">
-                              <div
-                                className="h-2 rounded-full"
-                                style={{
-                                  width: `${Math.max(2, ((p.m?.cobrado ?? 0) / topeCobrado) * 100)}%`,
-                                  background: i === 0 ? AMARILLO : CREMA,
-                                }}
-                              />
-                            </div>
-                            <span className="w-[70px] text-right text-[13px] font-semibold tabular-nums">
-                              {corto(p.m?.cobrado ?? 0)}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </Tarjeta>
-
-            <Tarjeta className="min-h-[340px]">
+            <Tarjeta>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Rotulo>Actividad reciente</Rotulo>
@@ -789,7 +865,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                 <button
                   type="button"
                   onClick={() => setTab("actividad")}
-                  className="text-[12.5px] font-semibold text-gm-yellow hover:text-[#FFD84D]"
+                  className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
                 >
                   Ver todo →
                 </button>
@@ -818,7 +894,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                             <span className="font-bold">{d.quien}</span>{" "}
                             <span className="text-[#C9BFB1]">{d.que}</span>
                           </div>
-                          <div className="mt-[3px] font-mono text-[10.5px]" style={{ color: EJE }}>
+                          <div className="mt-[3px] text-[12px]" style={{ color: EJE }}>
                             {cuandoFue(a.fecha)} · {a.playa ?? "toda la empresa"}
                           </div>
                         </div>
@@ -828,15 +904,16 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                 </ol>
               )}
             </Tarjeta>
+            </div>
           </div>
         </div>
       )}
 
       {tab === "playas" && (
-        <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2A23] px-5 py-4">
+        <section className="overflow-hidden rounded-xl border border-[#26231E] bg-[#161411]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#211F1B] px-5 py-4">
             <div>
-              <h2 className="font-display text-[22px] font-semibold">
+              <h2 className="text-[15px] font-semibold">
                 {empresa.playas.length} {empresa.playas.length === 1 ? "playa" : "playas"}
               </h2>
               <p className="mt-1 text-[13px] text-muted-foreground">
@@ -857,18 +934,18 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
               <div role="table" aria-label="Playas de la empresa" className="min-w-[1300px]">
                 <div
                   role="row"
-                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_120px_130px_160px] items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_120px_130px_160px] items-center gap-3 bg-[#12110E] px-5 text-[12px] font-medium"
                   style={{ color: EJE }}
                 >
-                  <span role="columnheader">PLAYA</span>
-                  <span role="columnheader">ESTADO</span>
-                  <span role="columnheader">ABIERTAS</span>
-                  <span role="columnheader">TURNOS</span>
-                  <span role="columnheader">OPERADORES</span>
-                  <span role="columnheader">COBRADO 30 D</span>
-                  <span role="columnheader">COMPROBANTES</span>
-                  <span role="columnheader">MODALIDAD</span>
-                  <span role="columnheader">SECCIONES</span>
+                  <span role="columnheader">Playa</span>
+                  <span role="columnheader">Estado</span>
+                  <span role="columnheader">Abiertas</span>
+                  <span role="columnheader">Turnos</span>
+                  <span role="columnheader">Operadores</span>
+                  <span role="columnheader">Cobrado 30 d</span>
+                  <span role="columnheader">Comprobantes</span>
+                  <span role="columnheader">Modalidad</span>
+                  <span role="columnheader">Secciones</span>
                   <span role="columnheader" className="sr-only">
                     Acciones
                   </span>
@@ -883,7 +960,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                     <div
                       key={p.id}
                       role="row"
-                      className="grid h-[76px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_120px_130px_160px] items-center gap-3 border-t border-[#2B2620] px-5 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
+                      className="grid h-[76px] grid-cols-[minmax(0,1fr)_110px_80px_70px_90px_130px_150px_120px_130px_160px] items-center gap-3 border-t border-[#211F1B] px-5 text-[13.5px] transition-colors hover:bg-[#1B1915]"
                     >
                       <span role="cell" className="min-w-0">
                         <span className="block truncate font-semibold">{p.nombre}</span>
@@ -1000,17 +1077,17 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
       {tab === "playas" && empresa.playas.length > 0 && <PatentesPlayas empresaId={empresa.id} />}
 
       {tab === "usuarios" && (
-        <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2A23] px-5 py-4">
+        <section className="overflow-hidden rounded-xl border border-[#26231E] bg-[#161411]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#211F1B] px-5 py-4">
             <div>
-              <h2 className="font-display text-[22px] font-semibold">
+              <h2 className="text-[15px] font-semibold">
                 {empresa.usuarios.length} {empresa.usuarios.length === 1 ? "usuario" : "usuarios"}
               </h2>
               <p className="mt-1 text-[13px] text-muted-foreground">
                 {administradores.length} {administradores.length === 1 ? "administrador" : "administradores"} ·{" "}
                 {operadores.length} {operadores.length === 1 ? "operador" : "operadores"}
                 {sinPlaya.length ? (
-                  <span className="text-[#FF7A4D]">, {sinPlaya.length} sin playa asignada</span>
+                  <span className="text-[#F2725B]">, {sinPlaya.length} sin playa asignada</span>
                 ) : operadores.length ? (
                   ", todos con playa asignada"
                 ) : (
@@ -1032,12 +1109,12 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
               <div role="table" aria-label="Usuarios de la empresa" className="min-w-[900px]">
                 <div
                   role="row"
-                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_290px] items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_290px] items-center gap-3 bg-[#12110E] px-5 text-[12px] font-medium"
                   style={{ color: EJE }}
                 >
-                  <span role="columnheader">USUARIO</span>
-                  <span role="columnheader">ROL</span>
-                  <span role="columnheader">PLAYAS</span>
+                  <span role="columnheader">Usuario</span>
+                  <span role="columnheader">Rol</span>
+                  <span role="columnheader">Playas</span>
                   <span role="columnheader" className="sr-only">
                     Acciones
                   </span>
@@ -1049,12 +1126,12 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                     <div
                       key={u.id}
                       role="row"
-                      className="grid min-h-[62px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_290px] items-center gap-3 border-t border-[#2B2620] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
+                      className="grid min-h-[62px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_290px] items-center gap-3 border-t border-[#211F1B] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#1B1915]"
                     >
                       <span role="cell" className="flex min-w-0 items-center gap-3">
                         <span
                           aria-hidden
-                          className={`flex size-[34px] shrink-0 items-center justify-center rounded-full font-display text-[13px] font-semibold ${
+                          className={`flex size-[34px] shrink-0 items-center justify-center rounded-full text-[12px] font-semibold ${
                             admin ? "bg-gm-yellow text-gm-ink" : "bg-[#2B2620] text-[#E9E1D4]"
                           }`}
                         >
@@ -1064,7 +1141,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                           <span className="block truncate font-semibold">
                             {u.firstName} {u.lastName}
                           </span>
-                          <span className="mt-0.5 block truncate font-mono text-[11px]" style={{ color: EJE }}>
+                          <span className="mt-0.5 block truncate text-[12px]" style={{ color: EJE }}>
                             @{u.username} · {u.email}
                           </span>
                         </span>
@@ -1090,7 +1167,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                           ))
                         ) : (
                           <span
-                            className={`flex items-center gap-1.5 text-[12px] ${admin ? "" : "text-[#FF7A4D]"}`}
+                            className={`flex items-center gap-1.5 text-[12px] ${admin ? "" : "text-[#F2725B]"}`}
                             style={admin ? { color: EJE } : undefined}
                           >
                             {!admin && <AlertTriangle aria-hidden className="size-3.5" />}
@@ -1141,13 +1218,13 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
 
       {tab === "actividad" && <ActividadDeEmpresa actividad={actividad} desdeQue={visto} />}
 
-      <section className="overflow-hidden rounded-[22px] border border-[#FF7A4D]/35 bg-[#17140F]">
-        <div className="flex items-center gap-2 border-b border-[#FF7A4D]/20 px-5 py-3 text-[11px] font-bold tracking-[0.12em] text-[#FF7A4D]">
+      <section className="overflow-hidden rounded-xl border border-[#F2725B]/35 bg-[#17140F]">
+        <div className="flex items-center gap-2 border-b border-[#F2725B]/20 px-5 py-3 text-[13px] font-semibold text-[#F2725B]">
           <AlertTriangle aria-hidden className="size-3.5" />
-          ACCIONES SENSIBLES
+          Acciones sensibles
         </div>
         <div className="grid md:grid-cols-2">
-          <div className="flex items-center gap-4 border-b border-[#FF7A4D]/20 px-5 py-[18px] md:border-b-0 md:border-r">
+          <div className="flex items-center gap-4 border-b border-[#F2725B]/20 px-5 py-[18px] md:border-b-0 md:border-r">
             <div className="flex-1">
               <div className="text-sm font-bold">{activa ? "Suspender la empresa" : "Reactivar la empresa"}</div>
               <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
@@ -1161,7 +1238,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
             <button
               type="button"
               onClick={() => void suspender()}
-              className="h-[38px] shrink-0 rounded-[10px] border border-[#FF7A4D]/50 px-3.5 text-[13px] font-bold text-[#FF7A4D] transition-colors hover:bg-[#FF7A4D]/10"
+              className="h-[38px] shrink-0 rounded-[10px] border border-[#F2725B]/50 px-3.5 text-[13px] font-bold text-[#F2725B] transition-colors hover:bg-[#F2725B]/10"
             >
               {activa ? "Suspender" : "Reactivar"}
             </button>
@@ -1193,7 +1270,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   ejecutar: () => deleteEmpresaAction(empresa.id),
                 })
               }
-              className="h-[38px] shrink-0 rounded-[10px] border border-[#FF7A4D]/50 px-3.5 text-[13px] font-bold text-[#FF7A4D] transition-colors hover:bg-[#FF7A4D]/10 disabled:cursor-not-allowed disabled:border-[#2E2A23] disabled:text-[#6E6457] disabled:hover:bg-transparent"
+              className="h-[38px] shrink-0 rounded-[10px] border border-[#F2725B]/50 px-3.5 text-[13px] font-bold text-[#F2725B] transition-colors hover:bg-[#F2725B]/10 disabled:cursor-not-allowed disabled:border-[#211F1B] disabled:text-[#6E6457] disabled:hover:bg-transparent"
             >
               Eliminar
             </button>
@@ -1244,10 +1321,10 @@ function EstadoPlaya({ conTarifas }: { conTarifas: boolean }) {
   return (
     <span
       className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-[3px] text-[11.5px] font-bold ${
-        conTarifas ? "bg-emerald-400/[0.12] text-emerald-400" : "bg-[#FF7A4D]/[0.14] text-[#FF7A4D]"
+        conTarifas ? "bg-[#3DD68C]/[0.12] text-[#3DD68C]" : "bg-[#F2725B]/[0.14] text-[#F2725B]"
       }`}
     >
-      <span aria-hidden className={`size-1.5 rounded-full ${conTarifas ? "bg-emerald-400" : "bg-[#FF7A4D]"}`} />
+      <span aria-hidden className={`size-1.5 rounded-full ${conTarifas ? "bg-[#3DD68C]" : "bg-[#F2725B]"}`} />
       {conTarifas ? "Operando" : "Sin tarifas"}
     </span>
   );

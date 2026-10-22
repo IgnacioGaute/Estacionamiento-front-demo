@@ -2,7 +2,7 @@
 // En una playa gratuita no hay tarifas ni caja: esas secciones no aparecen.
 export type SeccionAdmin = { label: string; url: string };
 
-export function seccionesAdmin(cobroHabilitado: boolean): SeccionAdmin[] {
+export function seccionesAdmin(cobroHabilitado: boolean, superAdmin = false): SeccionAdmin[] {
   return [
     { label: 'Panel', url: '/admin/dashboard' },
     { label: 'Usuarios', url: '/admin/users' },
@@ -12,6 +12,6 @@ export function seccionesAdmin(cobroHabilitado: boolean): SeccionAdmin[] {
     // { label: 'Tipos de cochera', url: '/admin/parking-type' },
     ...(cobroHabilitado ? [{ label: 'Caja', url: '/admin/caja' }] : []),
     { label: 'Configuración', url: '/admin/configuracion' },
-    { label: 'Mi plan', url: '/admin/plan' },
+    ...(!superAdmin ? [{ label: 'Mi plan', url: '/admin/plan' }] : []),
   ];
 }

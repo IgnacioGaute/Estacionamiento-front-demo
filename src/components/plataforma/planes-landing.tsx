@@ -10,6 +10,8 @@
 import { ReactNode } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Segmento } from "@/components/ui/segmento";
+import { TarjetaPixel } from "@/components/ui/tarjeta-pixel";
 import { pesos } from "./cuenta";
 
 export type PeriodoVista = { meses: number; descuento: number };
@@ -29,7 +31,7 @@ export const puntosDePlan = (cocheras: boolean) => [
   cocheras ? "Cocheras mensuales y cuenta corriente" : "Comprobantes y reportes",
 ];
 
-/** El selector de la landing: botones juntos en una cápsula, el elegido en claro. */
+/** El selector de la landing: Rubber Segment (ui/segmento) con la pastilla en claro y el descuento al lado. */
 export function Selector<T extends string | boolean>({
   etiqueta,
   opciones,
@@ -44,39 +46,20 @@ export function Selector<T extends string | boolean>({
   return (
     <div className="flex min-w-0 flex-col gap-[9px]">
       <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#8F8676]">{etiqueta}</span>
-      <div
-        role="group"
+      <Segmento
         aria-label={etiqueta}
-        className="inline-flex w-fit max-w-full flex-wrap gap-1 rounded-[10px] border border-[#2E2A23] bg-[#1B1915] p-1"
-      >
-        {opciones.map((o) => {
-          const activo = o.valor === valor;
-          return (
-            <button
-              key={String(o.valor)}
-              type="button"
-              aria-pressed={activo}
-              onClick={() => onChange(o.valor)}
-              className={cn(
-                "inline-flex h-10 items-center gap-[7px] rounded-[7px] px-4 text-sm font-semibold transition-colors",
-                activo ? "bg-[#F6F0E6] text-[#12100D]" : "text-[#BDB4A6] hover:text-[#F6F0E6]",
-              )}
-            >
-              {o.etiqueta}
-              {!!o.descuento && (
-                <span
-                  className={cn(
-                    "rounded px-[5px] py-[3px] text-[11px] font-bold leading-none",
-                    activo ? "bg-gm-yellow text-[#12100D]" : "bg-gm-yellow/[0.14] text-gm-yellow",
-                  )}
-                >
-                  −{o.descuento}%
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+        claro
+        value={String(valor)}
+        onChange={(v) => {
+          const elegida = opciones.find((o) => String(o.valor) === v);
+          if (elegida) onChange(elegida.valor);
+        }}
+        items={opciones.map((o) => ({
+          value: String(o.valor),
+          label: o.etiqueta,
+          badge: o.descuento ? `−${o.descuento}%` : undefined,
+        }))}
+      />
     </div>
   );
 }
@@ -120,18 +103,9 @@ export function TarjetaPlan({
   children?: ReactNode;
 }) {
   const { total, porMes, ahorro } = precioEnPeriodo(mensual, periodo);
+  // Pixel Card de React Bits (ui/tarjeta-pixel), con la etiqueta y el borde de la destacada.
   return (
-    <article
-      className={cn(
-        "relative flex flex-col gap-5 rounded-2xl bg-[#1B1915] p-8",
-        destacada ? "border-[1.5px] border-[#F6F0E6] shadow-[0_24px_48px_-32px_rgba(0,0,0,0.9)]" : "border border-[#2E2A23]",
-      )}
-    >
-      {distintivo && (
-        <span className="absolute -top-3 left-8 rounded-full bg-gm-yellow px-2.5 py-1 text-xs font-bold text-[#12100D]">
-          {distintivo}
-        </span>
-      )}
+    <TarjetaPixel destacada={destacada} distintivo={distintivo} className="gap-5 p-8">
       <div className="flex flex-col gap-1">
         <h3 className="m-0 text-lg font-semibold text-[#F6F0E6]">{nombre}</h3>
         <p className="m-0 text-sm text-[#BDB4A6]">{tamano}</p>
@@ -165,6 +139,6 @@ export function TarjetaPlan({
         ))}
       </ul>
       {children && <div className="mt-auto">{children}</div>}
-    </article>
+    </TarjetaPixel>
   );
 }

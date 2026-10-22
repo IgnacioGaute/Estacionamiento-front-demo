@@ -67,6 +67,20 @@ The caja planilla is computed by `src/utils/ticket-box-rows.ts` (`ticketBoxRows`
 with a legacy fallback for old records. Courtesy is zero income; negative adjustments are outflows. It is the one
 piece of business math in this repo with unit tests — keep them passing.
 
+### Actualización y consumo en celulares
+
+Tickets usa `TicketsLiveData`: la lectura inicial y el control autenticado de respaldo calculan huellas por
+colección en el servidor. Cada minuto visible, al recuperar conexión y al volver a la app, la acción devuelve
+solo las partes que cambiaron (incluidas tarifas, configuración y estadías largas); no refresca todo el router.
+Los eventos `new-registration` siguen actualizando inmediatamente los vehículos entre cuentas de la misma
+playa. La mezcla por fecha conserva eventos más nuevos que una lectura en vuelo. Cambiar cuenta/playa descarta
+respuestas pendientes. No hay caché compartida de datos ni permisos.
+
+Al bloquear el teléfono o salir de la app, la cámara y la linterna se liberan inmediatamente, aun con una
+lectura remota pendiente; esa respuesta se descarta y el operador vuelve a abrir el escáner. Las consultas de
+caja, avisos, QR y alias se pausan con la pantalla oculta y recuperan el estado al volver. Las animaciones del
+botón de escáner y del asistente se conservan.
+
 ### Customer model
 
 Three customer types: `OWNER`, `RENTER`, `PRIVATE` (`CUSTOMER_TYPE`). Each has `receipts[]`, `vehicles[]` and
@@ -96,8 +110,29 @@ server usan `modalidadActual()` (`src/lib/modalidad.server.ts`). En una playa gr
 de caja, gastos e ingresos, Caja, Inquilinos ni Centro de aprendizaje; las secciones de
 dinero muestran `SoloConCobro`; el dashboard solo trae actividad por hora; no hay comprobantes, estadías por
 día, semana o mes (ni su columna, filtro o contador),
-anticipos ni «Se fue antes». El modo sin conexión prepara entradas por patente y salidas sin importes ni caja. `CloseTicketPanel` reconoce un resumen con `modalidad: 'GRATUITO'`
+anticipos ni «Se fue antes». El modo sin conexión prepara entradas por patente, apellido o tarjeta, correcciones y salidas sin importes ni caja. `CloseTicketPanel` reconoce un resumen con `modalidad: 'GRATUITO'`
 (`esSalidaGratuita`) y muestra la salida sin importes con «Registrar salida» (`PATCH …/salida`); vale también para
 una estadía que entró gratis en una playa que volvió a cobrar. Si el super admin cambia la modalidad, el evento
 `playa-modalidad` recarga la pantalla. La planilla de vehículos está en `/admin/vehiculos`, con acceso rápido para administradores desde Tickets en móvil y escritorio. Detalle en
 `docs/modalidad-gratuita.md` del backend.
+
+### Operación sin conexión
+
+El enlace «Abrir modo sin conexión» está siempre disponible, incluso si falta la sesión, no hay red o
+falla la preparación. Abrir el shell público no llama a la API para autorizar el acceso local: usa los
+datos ya guardados y mantiene sus límites de vigencia. Una respuesta 401 al preparar ofrece iniciar
+sesión para descargar/actualizar los datos, conservando el enlace local y todos los pendientes.
+
+La copia con `operationVersion: 3` conserva el formato cifrado versión 2 y los pendientes anteriores.
+`public/offline-operations.js` valida y aplica cada operación local antes de guardarla; usa el motor de precios
+generado del backend. `public/offline-workspace.js` presenta los formularios de ingreso, detalle y salida,
+anticipos/duración, descuentos, pagos mixtos, cortesías, devoluciones, correcciones y estadías por día/semana/mes.
+Caja, turnos, ingresos/gastos y retiros/aportes se operan desde el sistema con conexión. Se conserva la
+sincronización de pendientes de caja creados con versiones anteriores.
+Sólo se habilitan funciones y permisos descargados; el servidor vuelve a autorizarlos al sincronizar.
+
+La cola usa UUID, estado esperado de estadía/abono, importes y efectivo esperado. Cada acción se reproduce
+atómicamente mediante los servicios normales del backend con la fecha original; un conflicto detiene la cola
+y conserva el movimiento para revisión. El panel permite descargar un respaldo JSON. Las nuevas operaciones
+siguen sujetas a las 24 horas de autorización; los pendientes no vencen. No se pueden ver cambios remotos
+hasta recuperar la conexión. QR de cobro, verificación bancaria, ALPR, asistente y WhatsApp requieren red.

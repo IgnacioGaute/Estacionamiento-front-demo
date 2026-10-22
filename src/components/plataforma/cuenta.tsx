@@ -18,7 +18,7 @@ export const DESCUENTO_PLAYA_ADICIONAL = 0.3;
 export const COLORES_CUENTA: Record<EstadoCuenta, string> = {
   PRUEBA: "#F5C219",
   AL_DIA: "#34D399",
-  VENCIDA: "#FF7A4D",
+  VENCIDA: "#F2725B",
   SUSPENDIDA: "#E5484D",
   BAJA: "#6E6457",
   BONIFICADA: "#A9AFFF",
@@ -27,8 +27,8 @@ export const COLORES_CUENTA: Record<EstadoCuenta, string> = {
 
 export const ESTADOS_CUENTA: Record<EstadoCuenta, { label: string; clase: string }> = {
   PRUEBA: { label: "En prueba", clase: "bg-gm-yellow/[0.14] text-gm-yellow" },
-  AL_DIA: { label: "Al día", clase: "bg-emerald-400/[0.12] text-emerald-400" },
-  VENCIDA: { label: "Vencida", clase: "bg-[#FF7A4D]/[0.14] text-[#FF7A4D]" },
+  AL_DIA: { label: "Al día", clase: "bg-[#3DD68C]/[0.12] text-[#3DD68C]" },
+  VENCIDA: { label: "Vencida", clase: "bg-[#F2725B]/[0.14] text-[#F2725B]" },
   SUSPENDIDA: { label: "Suspendida", clase: "bg-[#E5484D]/[0.16] text-[#FF8A8D]" },
   BAJA: { label: "De baja", clase: "bg-[#221F1A] text-muted-foreground" },
   BONIFICADA: { label: "Bonificada", clase: "bg-[#7E86F0]/[0.14] text-[#A9AFFF]" },

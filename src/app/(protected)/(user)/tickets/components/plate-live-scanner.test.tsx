@@ -30,10 +30,27 @@ function abrir() {
 }
 
 beforeEach(() => {
+  Object.defineProperty(document, 'hidden', { configurable: true, value: false });
   jest.clearAllMocks();
   jest.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
   // La búsqueda sigue abierta: el test mira la cámara, no la lectura.
   jest.mocked(buscarPatente).mockReturnValue(new Promise(() => undefined));
+});
+
+test('bloquear el celular corta cámara y linterna aun con el reconocimiento pendiente, y descarta su resultado', async () => {
+  const pista = camara({ torch: true });
+  let finish!: (result: Awaited<ReturnType<typeof buscarPatente>>) => void;
+  jest.mocked(buscarPatente).mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const onOpenChange = jest.fn(), onRecognized = jest.fn();
+  render(<PlateLiveScanner open onOpenChange={onOpenChange} onRecognized={onRecognized} onTakePhoto={jest.fn()} />);
+  const linterna = await screen.findByRole('button', { name: 'Linterna' });
+  fireEvent.click(linterna);
+  await waitFor(() => expect(linterna).toHaveAttribute('aria-pressed', 'true'));
+  Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+  fireEvent(document, new Event('visibilitychange'));
+  expect(pista.stop).toHaveBeenCalled(); expect(onOpenChange).toHaveBeenCalledWith(false);
+  finish({ tipo: 'patente', plate: 'AB123CD', dudosa: false });
+  await waitFor(() => expect(onRecognized).not.toHaveBeenCalled());
 });
 
 test('con linterna la ofrece, la prende y pide foco continuo', async () => {

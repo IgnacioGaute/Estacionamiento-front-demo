@@ -10,6 +10,7 @@ import timezone from 'dayjs/plugin/timezone';
 import { useNotifications } from '@/hooks/use-notification';
 import { cn } from '@/lib/utils';
 import { OperationalNavUser, type UserNav } from './nav-user';
+import { useForegroundPoll } from '@/hooks/use-foreground-poll';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -23,16 +24,13 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 function Hora() {
   const [ahora, setAhora] = useState<number | null>(null);
   const [enLinea, setEnLinea] = useState(true);
+  useForegroundPoll(() => setAhora(Date.now()), 60_000, { onlineOnly: false });
   useEffect(() => {
-    const tic = () => setAhora(Date.now());
     const red = () => setEnLinea(navigator.onLine);
-    tic();
     red();
-    const id = window.setInterval(tic, 15_000);
     window.addEventListener('online', red);
     window.addEventListener('offline', red);
     return () => {
-      window.clearInterval(id);
       window.removeEventListener('online', red);
       window.removeEventListener('offline', red);
     };

@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef } from 'react';
+import { useForegroundPoll } from './use-foreground-poll';
 
 // Los avisos en vivo no se reenvían: lo que pasa mientras el socket está caído (equipo
 // suspendido, pestaña congelada, corte de red, reinicio del backend) se pierde. Por eso la
@@ -16,30 +17,19 @@ export function useResincronizar(resincronizar: () => void, cadaMs = 60_000) {
   const pendiente = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pedir = useCallback(() => {
+    if (document.hidden || !navigator.onLine) return;
     if (pendiente.current) return;
     const espera = ultima.current + VENTANA_MS - Date.now();
     const correr = () => {
       pendiente.current = null;
-      ultima.current = Date.now();
-      fn.current();
+      if (!document.hidden && navigator.onLine) { ultima.current = Date.now(); fn.current(); }
     };
     if (espera <= 0) correr();
     else pendiente.current = setTimeout(correr, espera);
   }, []);
 
-  useEffect(() => {
-    const siSeVe = () => { if (document.visibilityState === 'visible') pedir(); };
-    const id = setInterval(siSeVe, cadaMs);
-    document.addEventListener('visibilitychange', siSeVe);
-    window.addEventListener('online', siSeVe);
-    return () => {
-      clearInterval(id);
-      document.removeEventListener('visibilitychange', siSeVe);
-      window.removeEventListener('online', siSeVe);
-      if (pendiente.current) clearTimeout(pendiente.current);
-      pendiente.current = null;
-    };
-  }, [cadaMs, pedir]);
+  useForegroundPoll(pedir, cadaMs, { immediate: false });
+  useEffect(() => () => { if (pendiente.current) clearTimeout(pendiente.current); pendiente.current = null; }, []);
 
   return pedir;
 }

@@ -58,7 +58,7 @@ export function PlayaSelector() {
   const { context, playaId } = useTenant();
   const [pending, setPending] = useState(false),
     [error, setError] = useState("");
-  if (!context.empresa || context.playas.length === 0) return null;
+  if ((!context.empresa && context.role !== 'SUPER_ADMIN') || context.playas.length === 0) return null;
   // El operador trabaja en una sola playa y el administrador puede tener varias: con una, el nombre
   // solo dice dónde estás; con varias, es un selector (el nativo del navegador, invisible encima del
   // nombre, así anda igual con teclado y en el celular).

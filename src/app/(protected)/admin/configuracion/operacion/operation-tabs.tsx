@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, type ReactNode } from 'react';
 import { CarFront, Wallet } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Segmento } from '@/components/ui/segmento';
 import { useTenant } from '@/components/tenant-provider';
 
 // Tickets por código de barras (BarcodeTicketsSetting) está oculto por ahora; volverá como pestaña.
@@ -26,13 +26,9 @@ export function OperationTabs({ panels }: { panels: Record<TabId, ReactNode> }) 
   }, []);
   const choose = (id: TabId) => { setTab(id); window.history.replaceState(null, '', '#' + id); };
   return <div className="space-y-6">
-    <div role="tablist" aria-label="Secciones de operación" className={cn("grid gap-1 rounded-2xl border border-gm-line bg-gm-surface p-1", tabs.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
-      {tabs.map(({ id, label, icon: Icon }) => <button key={id} type="button" role="tab" id={'tab-' + id} aria-selected={tab === id} aria-controls={'panel-' + id} onClick={() => choose(id)}
-        className={cn('flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-center text-[12.5px] font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow sm:flex-row sm:gap-2 sm:text-sm',
-          tab === id ? 'bg-gm-surface-3 text-foreground shadow-[inset_0_0_0_1px_hsl(var(--gm-line-strong))]' : 'text-muted-foreground hover:bg-gm-surface-2 hover:text-foreground')}>
-        <Icon className={cn('size-4 shrink-0', tab === id && 'text-gm-yellow')} aria-hidden />{label}
-      </button>)}
-    </div>
-    {tabs.map(({ id }) => <div key={id} role="tabpanel" id={'panel-' + id} aria-labelledby={'tab-' + id} hidden={tab !== id} className="space-y-6">{panels[id]}</div>)}
+    {/* Rubber Segment (ui/segmento): la pastilla se estira hacia la sección elegida. */}
+    <Segmento aria-label="Secciones de operación" size="lg" ancho value={tab} onChange={(id) => choose(id as TabId)}
+      items={tabs.map(({ id, label, icon: Icon }) => ({ value: id, label, icon: <Icon className="size-4 shrink-0" aria-hidden /> }))} />
+    {tabs.map(({ id }) => <div key={id} role="tabpanel" id={'panel-' + id} aria-label={tabs.find((item) => item.id === id)?.label} hidden={tab !== id} className="space-y-6">{panels[id]}</div>)}
   </div>;
 }

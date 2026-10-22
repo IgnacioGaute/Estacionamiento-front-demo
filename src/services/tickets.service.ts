@@ -748,7 +748,7 @@ async function getOperationalRecords<T>(endpoint: string, authToken?: string): P
   let page = 1, pages = 1;
   do {
     const response = await fetch(`${BASE_URL}/tickets/${endpoint}?operation=true&limit=100&page=${page}`, { headers, cache: 'no-store' });
-    if (!response.ok) throw new Error('No se pudieron consultar los vehículos activos.');
+    if (!response.ok) throw Object.assign(new Error('No se pudieron consultar los vehículos activos.'), { status: response.status });
     const result = await response.json();
     if (!Array.isArray(result.data) || !result.meta) throw new Error('Actualizá backend y frontend juntos.');
     records.push(...result.data);

@@ -8,32 +8,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { numero } from "./formato";
+import { Segmento } from "@/components/ui/segmento";
 
-// Las piezas de tarjeta de las pantallas de plataforma, con el lenguaje de Mono Charts: rótulo
-// en mayúsculas con su pastilla, el número grande, un escenario más oscuro donde vive el gráfico
-// y un pie en monoespaciada. Se comparten para que métricas, empresas y ficha se lean como un
-// mismo sistema.
+// Las piezas de tarjeta de las pantallas de plataforma (diseño «Plataforma Super Admin»,
+// https://claude.ai/artifact/YHebQCMJ4zHLKjeahVabw9): título de tarjeta en semibold, la cifra en
+// monoespaciada, el gráfico directo sobre la tarjeta y un pie con la lectura. El amarillo queda
+// para lo activo y lo principal. Se comparten para que métricas, empresas, ficha y planes se lean
+// como un mismo sistema.
 
-export const EJE = "#8A8073";
+export const EJE = "#8F8A80";
+
+// Superficie, borde y línea interna de las tarjetas de plataforma.
+export const SUPERFICIE = "bg-[#161411]";
+export const BORDE = "border-[#26231E]";
 
 export function Rotulo({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <span
-      className={cn(
-        "text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground",
-        className,
-      )}
-    >
+    <span className={cn("text-[12.5px] font-medium text-muted-foreground", className)}>
       {children}
     </span>
   );
 }
 
 const TONOS = {
-  amarillo: "border-gm-yellow/30 bg-gm-yellow/[0.12] text-gm-yellow",
-  verde: "border-emerald-400/35 bg-emerald-400/10 text-emerald-400",
-  lavanda: "border-[#7E86F0]/35 bg-[#7E86F0]/[0.14] text-[#A9AFFF]",
-  naranja: "border-transparent bg-[#FF7A4D] font-semibold text-gm-ink",
+  amarillo: "border-gm-yellow/25 bg-gm-yellow/[0.08] text-gm-yellow",
+  verde: "border-[#3DD68C]/25 bg-[#3DD68C]/[0.08] text-[#3DD68C]",
+  lavanda: "border-[#7E86F0]/30 bg-[#7E86F0]/[0.1] text-[#A9AFFF]",
+  naranja: "border-transparent bg-[#F0A43A] font-semibold text-gm-ink",
   lleno: "border-transparent bg-gm-yellow font-semibold text-gm-ink",
 } as const;
 
@@ -51,7 +52,7 @@ export function Pastilla({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-[7px] py-0.5 font-mono text-[10px] leading-4",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-px text-[11px] font-medium leading-[18px]",
         TONOS[tono],
         className,
       )}
@@ -68,14 +69,14 @@ export function PuntoVivo({ className }: { className?: string }) {
     <span
       aria-hidden
       className={cn(
-        "size-1.5 shrink-0 animate-[latido_1.6s_ease-in-out_infinite] rounded-full bg-emerald-400",
+        "size-1.5 shrink-0 animate-[latido_1.6s_ease-in-out_infinite] rounded-full bg-[#3DD68C]",
         className,
       )}
     />
   );
 }
 
-// Subida en verde y bajada en naranja, siempre con su flecha: el color solo no alcanza.
+// Subida en verde y bajada en coral, siempre con su flecha: el color solo no alcanza.
 export function Variacion({
   valor,
   decimales = 1,
@@ -87,12 +88,7 @@ export function Variacion({
 }) {
   if (valor === null)
     return (
-      <span
-        className={cn(
-          "shrink-0 rounded-full bg-gm-surface-3 px-2 py-[3px] text-[11.5px] font-bold text-muted-foreground",
-          className,
-        )}
-      >
+      <span className={cn("shrink-0 text-[12px] text-muted-foreground", className)}>
         Sin datos
       </span>
     );
@@ -107,8 +103,8 @@ export function Variacion({
     <span
       title={`${sube ? "+" : "−"}${numero(Math.abs(valor), 1)}% contra el período anterior`}
       className={cn(
-        "shrink-0 whitespace-nowrap rounded-full px-2 py-[3px] text-[11.5px] font-bold tabular-nums",
-        sube ? "bg-emerald-400/[0.13] text-emerald-400" : "bg-[#FF7A4D]/[0.14] text-[#FF7A4D]",
+        "shrink-0 whitespace-nowrap font-mono text-[12px] font-medium tabular-nums",
+        sube ? "text-[#3DD68C]" : "text-[#F2725B]",
         className,
       )}
     >
@@ -127,19 +123,14 @@ export function Tarjeta({
   as?: "section" | "div";
 }) {
   return (
-    <Tag
-      className={cn(
-        "flex flex-col rounded-[22px] border border-border bg-gm-surface p-[18px] pb-3 transition-colors duration-200 hover:border-gm-line-strong",
-        className,
-      )}
-    >
+    <Tag className={cn("flex flex-col rounded-xl border p-5", SUPERFICIE, BORDE, className)}>
       {children}
     </Tag>
   );
 }
 
-// Encabezado de tarjeta: rótulo y pastilla arriba, la cifra con su unidad abajo, y a la derecha
-// lo que haga falta (un selector, una leyenda).
+// Encabezado de tarjeta: el título y su pastilla arriba, la cifra con su unidad abajo, y a la
+// derecha lo que haga falta (un selector, una leyenda).
 export function Encabezado({
   rotulo,
   pastilla,
@@ -159,14 +150,14 @@ export function Encabezado({
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <Rotulo>{rotulo}</Rotulo>
+          <h2 className="m-0 text-[14px] font-semibold text-foreground">{rotulo}</h2>
           {pastilla}
         </div>
         {valor !== undefined && (
-          <div className="mt-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <div className="mt-2.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
             <span
               className={cn(
-                "font-display text-[30px] font-semibold leading-none tabular-nums",
+                "font-mono text-[26px] font-medium leading-none tracking-[-0.03em] tabular-nums",
                 valorClassName,
               )}
             >
@@ -181,28 +172,20 @@ export function Encabezado({
   );
 }
 
-// El escenario: el recuadro oscuro donde se dibuja el gráfico.
+// El escenario: el lugar del gráfico, directo sobre la tarjeta (sin recuadro: cada caja de más
+// era ruido).
 export function Escenario({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div
-      className={cn(
-        "mt-3.5 flex-1 rounded-2xl border border-[#26221C] bg-background",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
+  return <div className={cn("mt-4 flex-1", className)}>{children}</div>;
 }
 
 export function Pie({ izquierda, derecha }: { izquierda: ReactNode; derecha?: ReactNode }) {
   return (
-    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2.5 font-mono text-[11px]">
+    <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#211F1B] pt-3 text-[12px]">
       <span className="min-w-0 truncate" style={{ color: EJE }}>
         {izquierda}
       </span>
       {derecha !== undefined && (
-        <span className="shrink-0 font-medium text-foreground">{derecha}</span>
+        <span className="shrink-0 font-mono font-medium text-foreground">{derecha}</span>
       )}
     </div>
   );
@@ -227,49 +210,20 @@ export function Segmentos<T extends string | number>({
   claro?: boolean;
   className?: string;
 }) {
+  // Rubber Segment (ui/segmento): la pastilla se estira hacia la opción elegida y se puede arrastrar.
   return (
-    <div
-      role="group"
+    <Segmento
       aria-label={etiqueta}
-      className={cn(
-        "flex gap-1 border border-border p-1",
-        redondo ? "rounded-full bg-background p-[3px]" : "rounded-[13px] bg-gm-surface",
-        className,
-      )}
-    >
-      {opciones.map((o) => {
-        const activo = o.id === valor;
-        return (
-          <button
-            key={String(o.id)}
-            type="button"
-            aria-pressed={activo}
-            onClick={() => onChange(o.id)}
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 font-bold transition-colors",
-              redondo ? "h-7 rounded-full px-3 text-xs" : "h-9 rounded-[9px] px-3.5 text-[13.5px]",
-              activo
-                ? claro
-                  ? "bg-foreground text-gm-ink"
-                  : "bg-gm-yellow text-gm-ink"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {o.label}
-            {o.cuenta !== undefined && (
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-px font-mono text-[10.5px]",
-                  activo ? "bg-gm-ink/20 text-gm-ink" : "bg-gm-surface-3 text-[#C9BFB1]",
-                )}
-              >
-                {o.cuenta}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
+      size={redondo ? "sm" : "md"}
+      claro={claro}
+      className={className}
+      items={opciones.map((o) => ({ value: String(o.id), label: o.label, badge: o.cuenta }))}
+      value={String(valor)}
+      onChange={(id) => {
+        const elegida = opciones.find((o) => String(o.id) === id);
+        if (elegida) onChange(elegida.id);
+      }}
+    />
   );
 }
 
@@ -298,14 +252,14 @@ export function Selector({
       <SelectTrigger
         aria-label={ariaLabel}
         className={cn(
-          "w-auto gap-2 border-border bg-gm-surface text-[13.5px] font-semibold transition-colors hover:border-gm-line-strong focus:ring-2 focus:ring-gm-yellow focus:ring-offset-0 data-[state=open]:border-gm-line-strong [&>svg]:opacity-70",
-          redondo ? "h-9 rounded-full bg-background px-3.5 text-xs" : "h-[46px] rounded-[13px] px-3",
+          "w-auto gap-2 border-[#2A2824] bg-[#151411] text-[13px] font-medium transition-colors hover:border-[#3A362F] focus:ring-2 focus:ring-gm-yellow focus:ring-offset-0 data-[state=open]:border-[#3A362F] [&>svg]:opacity-70",
+          redondo ? "h-8 rounded-lg px-3 text-xs" : "h-9 rounded-lg px-3",
           className,
         )}
       >
         {etiqueta && (
-          <span className="shrink-0 font-mono text-[10.5px] font-normal tracking-[0.1em] text-[#8A8073]">
-            {etiqueta}
+          <span className="shrink-0 text-[12.5px] font-normal text-[#8F8A80]">
+            {etiqueta.charAt(0) + etiqueta.slice(1).toLowerCase()}
           </span>
         )}
         <SelectValue />
@@ -338,7 +292,7 @@ export function Leyenda({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10.5px] text-muted-foreground", className)}>
+    <div className={cn("flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-muted-foreground", className)}>
       {items.map((i) => (
         <span key={i.label} className="flex items-center gap-1.5">
           <span aria-hidden className="size-2 rounded-[3px]" style={{ background: i.color }} />
@@ -363,7 +317,7 @@ export function Avatar({
     <span
       aria-hidden
       className={cn(
-        "flex size-[38px] shrink-0 items-center justify-center rounded-[11px] font-display text-sm font-semibold text-foreground",
+        "flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] text-[12px] font-semibold text-foreground",
         className,
       )}
       style={{ background: fondo }}
@@ -378,13 +332,13 @@ export function EstadoEmpresa({ estado }: { estado: "ACTIVA" | "SUSPENDIDA" | "B
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold",
-        activa ? "bg-emerald-400/[0.12] text-emerald-400" : "bg-[#FF7A4D]/[0.14] text-[#FF7A4D]",
+        "inline-flex h-[22px] shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium",
+        activa ? "bg-[#12271C] text-[#3DD68C]" : "bg-[#2C1612] text-[#F2725B]",
       )}
     >
       <span
         aria-hidden
-        className={cn("size-1.5 rounded-full", activa ? "bg-emerald-400" : "bg-[#FF7A4D]")}
+        className={cn("size-1.5 rounded-full", activa ? "bg-[#3DD68C]" : "bg-[#F2725B]")}
       />
       {activa ? "Activa" : estado === "SUSPENDIDA" ? "Suspendida" : "De baja"}
     </span>

@@ -12,6 +12,7 @@ import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { PlateChip } from '@/components/plate-chip';
 import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
 import { cn } from '@/lib/utils';
+import { Segmento } from '@/components/ui/segmento';
 import { useTenant } from '@/components/tenant-provider';
 import { TicketRegistration } from '@/types/ticket-registration.type';
 import { Ticket } from '@/types/ticket.type';
@@ -489,24 +490,18 @@ export function TodosLosVehiculos({
     })),
   ].filter((g) => g.filas.length);
 
-  const chip = (activo: boolean, alerta = false) => cn(
-    'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
-    activo ? 'bg-foreground text-card' : alerta ? 'bg-gm-orange/15 text-[#F0714A]' : 'bg-card text-[#D9D1C3] hover:text-foreground',
-  );
 
   return (
     <div className="flex flex-col gap-4">
       <EncabezadoVista titulo="En la playa" cantidad={total} onVolver={onVolver} acciones={acciones} />
 
-      <div role="group" aria-label="Filtrar" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
-        <button type="button" aria-pressed={filtro === 'hora'} onClick={() => onFiltro('hora')} className={chip(filtro === 'hora')}>Por hora · {activos.length}</button>
-        {pasados.length > 0 && (
-          <button type="button" aria-pressed={filtro === 'excedidos'} onClick={() => onFiltro('excedidos')} className={chip(filtro === 'excedidos', true)}>
-            {filtro !== 'excedidos' && <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" />}Tiempo superado · {pasados.length}
-          </button>
-        )}
-        {cobroHabilitado && <button type="button" aria-pressed={filtro === 'dia'} onClick={() => onFiltro('dia')} className={chip(filtro === 'dia')}>Día/Sem/Mes · {diaActivos.length}</button>}
-      </div>
+      {/* Rubber Segment (ui/segmento); el punto naranja marca el filtro de alerta. */}
+      <Segmento aria-label="Filtrar" size="lg" value={filtro} onChange={(id) => onFiltro(id as FiltroVehiculos)}
+        items={[
+          { value: 'hora', label: `Por hora · ${activos.length}` },
+          ...(pasados.length > 0 ? [{ value: 'excedidos', label: `Tiempo superado · ${pasados.length}`, icon: <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" /> }] : []),
+          ...(cobroHabilitado ? [{ value: 'dia', label: `Día/Sem/Mes · ${diaActivos.length}` }] : []),
+        ]} />
 
       {filtro === 'dia' ? (
         <div ref={diaRef} className="rounded-[20px] border border-border bg-card p-4">

@@ -16,3 +16,8 @@ test('gratuita: sin Tarifas ni Caja, con la planilla de vehículos', () => {
   // La facturación del sistema (Mi plan) no depende de la modalidad.
   expect(secciones).toContainEqual({ label: 'Mi plan', url: '/admin/plan' });
 });
+
+test('el superadministrador ve la administración de la playa sin el plan de una empresa propia', () => {
+  expect(seccionesAdmin(true, true)).not.toContainEqual({ label: 'Mi plan', url: '/admin/plan' });
+  expect(seccionesAdmin(true, true)).toContainEqual({ label: 'Caja', url: '/admin/caja' });
+});

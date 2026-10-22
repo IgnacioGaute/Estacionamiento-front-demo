@@ -10,7 +10,7 @@ interface RoleGateProps {
 export async function RoleGate({ children, allowedRole }: RoleGateProps) {
   const role = await currentRole();
 
-  if (role !== allowedRole) {
+  if (role !== allowedRole && !(role === 'SUPER_ADMIN' && allowedRole === 'ADMIN')) {
     return redirect('/');
   }
 

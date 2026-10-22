@@ -1,5 +1,6 @@
 'use server';
 import { cookies } from 'next/headers';
+import { PLATFORM_SELECTION } from './access-scope';
 import { auth } from '@/auth';
 
 /**
@@ -43,5 +44,5 @@ export const getAuthHeaders = async (authToken?: string): Promise<Record<string,
   }
   const prefix = userId ? `${userId}:` : '';
   const playaId = session?.user.role !== 'USER' && prefix && selection?.startsWith(prefix) ? selection.slice(prefix.length) : '';
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(playaId ? { 'X-Playa-Id': playaId } : {}) };
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(playaId && playaId !== PLATFORM_SELECTION ? { 'X-Playa-Id': playaId } : {}) };
 };

@@ -322,7 +322,7 @@ export function InquilinosPanel() {
             />
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="min-w-0">
           <Segmentos
             etiqueta="Filtrar"
             className="w-max"

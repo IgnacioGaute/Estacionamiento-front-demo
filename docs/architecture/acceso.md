@@ -20,6 +20,14 @@ The backend scopes all operational data to a *playa* (parking lot) inside an *em
 ### Roles
 
 USER opera una playa; ADMIN administra su empresa; SUPER_ADMIN administra la plataforma.
+Al iniciar sesión, SUPER_ADMIN pasa por `/seleccionar-acceso`: Plataforma es la primera opción y
+debajo aparecen todas las playas. La cookie `parking-playa` guarda `<userId>:platform` para la consola
+o `<userId>:<playaId>` para operar una playa. El valor `platform` nunca se envía como `X-Playa-Id`.
+El menú de la cuenta ofrece Cambiar de playa (vuelve a este selector, que también permite volver a
+la plataforma) y Cerrar sesión. Cada selección se valida en servidor y recarga toda la aplicación.
+En una playa ve la navegación administrativa; Mi plan y la conexión de MercadoPago siguen a cargo
+del administrador de la empresa. El middleware exige una elección antes de abrir el ámbito y el
+backend continúa validando los permisos y el aislamiento en cada solicitud.
 Revisar src/middleware.ts y src/routes.ts: las rutas de plataforma incluyen empresas, métricas y planes.
 Los comprobantes públicos viven en estacionamiento-comprobantes-demo, no en un bypass /comprobantes aquí.
 La UI refleja permisos; el backend es la autoridad. Las rutas del operador necesitan la entrada pertinente
@@ -58,9 +66,15 @@ assume tags actually cache anything today.
 
 ### Real-time updates
 
-All sockets go through `useTenantEvent(event, cb)` (`src/hooks/use-tenant-event.ts`): one `socket.io-client`
-connection to `NEXT_PUBLIC_API_URL` authenticated with `{ token, playaId }`, torn down when either changes. The
+All sockets go through `useTenantEvent(event, cb)` (`src/hooks/use-tenant-event.ts`): subscriptions share one `socket.io-client`
+connection per token/playa in each tab (`src/lib/tenant-socket-client.ts`), authenticated with `{ token, playaId }`.
+The last subscriber disconnects it; changing token or playa uses a different connection. Every subscriber receives
+its own events and reconnect callback, including one added to an already connected socket. The
 backend re-validates the account, its `authVersion` and playa access before every emit. `useTicketRealtime`
 (`new-registration`), `useNotifications` (`notification`) and `use-notification-interest` are thin wrappers — do
 not open a socket directly. Unread-note state is server-derived (`unreadNotesAction`, refreshed on an interval,
 on focus and on DOM events), not localStorage.
+
+`useForegroundPoll` cancels periodic timers while hidden or offline and refreshes on return before restarting.
+The operational clock and elapsed-time counters also pause while hidden. Live socket subscriptions remain active;
+the browser may suspend them and the reconnect callback resynchronizes missed changes.

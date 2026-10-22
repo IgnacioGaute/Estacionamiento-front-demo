@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "./auth";
+import { ACCESS_SELECTION_ROUTE, PLATFORM_HOME, PLATFORM_SELECTION, selectedAccess } from './lib/access-scope';
 import {
   DEFAULT_LOGIN_REDIRECT,
   apiAuthPrefix,
@@ -29,18 +30,27 @@ export default async function middleware(req: NextRequest) {
 
   if (nextUrl.pathname === '/' && !isLoggedIn) return NextResponse.redirect(new URL('/auth/login', nextUrl));
 
-  // Las secciones de plataforma: solo el super admin entra, y solo a estas. Agregar una ruta
-  // nueva de administración de la plataforma exige sumarla acá, o el super admin rebota a su
-  // pantalla inicial.
-  const platformHome = "/admin/empresas";
+  // La elección es por cuenta: una sesión nueva no hereda la playa de otra persona.
+  const platformHome = PLATFORM_HOME;
   const platformRoutes = [platformHome, "/admin/metricas", "/admin/planes"];
   const enPlataforma = platformRoutes.some(
     (ruta) =>
       nextUrl.pathname === ruta || nextUrl.pathname.startsWith(ruta + "/"),
   );
   if (isLoggedIn && role === "SUPER_ADMIN") {
-    if (enPlataforma) return NextResponse.next();
-    return NextResponse.redirect(new URL(platformHome, nextUrl));
+    if (nextUrl.pathname === ACCESS_SELECTION_ROUTE) return NextResponse.next();
+    const access = selectedAccess(req.cookies.get('parking-playa')?.value, session!.user.id);
+    if (!access) return NextResponse.redirect(new URL(ACCESS_SELECTION_ROUTE, nextUrl));
+    const home = access === PLATFORM_SELECTION ? platformHome : DEFAULT_LOGIN_REDIRECT;
+    if (isAuthRoute || nextUrl.pathname === '/' || (access === PLATFORM_SELECTION && !enPlataforma) || (access !== PLATFORM_SELECTION && enPlataforma)) {
+      return NextResponse.redirect(new URL(home, nextUrl));
+    }
+    return NextResponse.next();
+  }
+  if (nextUrl.pathname === ACCESS_SELECTION_ROUTE) {
+    const callback = nextUrl.searchParams.get('callbackUrl');
+    const destination = callback?.startsWith('/') && !callback.startsWith('//') && !callback.includes('\\') && callback.split('?')[0].replace(/\/$/, '') !== ACCESS_SELECTION_ROUTE ? callback : DEFAULT_LOGIN_REDIRECT;
+    return NextResponse.redirect(new URL(isLoggedIn ? destination : '/auth/login', nextUrl));
   }
   if (enPlataforma) {
     return NextResponse.redirect(

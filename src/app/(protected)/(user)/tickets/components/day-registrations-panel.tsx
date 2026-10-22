@@ -63,9 +63,8 @@ export function DayRegistrationsPanel({
                 }
                 title="¿Eliminar los abonos vencidos?"
                 description={`Se van a sacar ${overdue.length} abono${overdue.length === 1 ? "" : "s"} vencido${overdue.length === 1 ? "" : "s"} de esta lista.`}
-                tone="warning"
+                tone="danger"
                 actionLabel="Eliminar vencidos"
-                actionVariant="destructive"
                 onConfirm={async () => {
                   const result = await retireOverdueRegistrationsAction(overdue.map((r) => r.id));
                   if ("error" in result && result.error) {

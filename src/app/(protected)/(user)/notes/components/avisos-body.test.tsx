@@ -43,7 +43,7 @@ test('tocar cualquier parte de un aviso pendiente lo marca como leído al instan
   render(<AvisosBody inicial={lista()} />);
   const pendiente = tarjeta('Mañana revisamos las luces de la entrada.');
   expect(pendiente).toHaveAttribute('data-pendiente');
-  expect(within(screen.getByRole('group', { name: 'Estado de lectura' })).getByRole('button', { name: /Sin leer\s*2/ })).toBeInTheDocument();
+  expect(within(screen.getByRole('radiogroup', { name: 'Estado de lectura' })).getByRole('radio', { name: /Sin leer\s*2/ })).toBeInTheDocument();
 
   // Los avisos automáticos muestran su origen y contexto, y no se editan desde acá.
   const automatico = tarjeta('Se perdió plata. Revisar los cobros del turno.');
@@ -59,7 +59,7 @@ test('tocar cualquier parte de un aviso pendiente lo marca como leído al instan
   fireEvent.click(within(pendiente).getByText('Andrés Gaute'));
   expect(pendiente).not.toHaveAttribute('data-pendiente');
   await waitFor(() => expect(readNoteAction).toHaveBeenCalledWith('equipo'));
-  expect(within(screen.getByRole('group', { name: 'Estado de lectura' })).getByRole('button', { name: /Sin leer\s*1/ })).toBeInTheDocument();
+  expect(within(screen.getByRole('radiogroup', { name: 'Estado de lectura' })).getByRole('radio', { name: /Sin leer\s*1/ })).toBeInTheDocument();
 
   // Con teclado: Enter sobre el aviso enfocado.
   fireEvent.keyDown(automatico, { key: 'Enter' });
@@ -78,7 +78,7 @@ test('si no se puede guardar la lectura, el aviso vuelve a quedar pendiente y se
 
 test('los filtros piden al backend y «Marcar todo como leído» recarga la lista', async () => {
   render(<AvisosBody inicial={lista()} />);
-  fireEvent.click(within(screen.getByRole('group', { name: 'Estado de lectura' })).getByRole('button', { name: /Sin leer/ }));
+  fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Estado de lectura' })).getByRole('radio', { name: /Sin leer/ }));
   await waitFor(() => expect(listNotesAction).toHaveBeenLastCalledWith(1, '', expect.objectContaining({ estado: 'SIN_LEER' })));
   fireEvent.change(screen.getByLabelText('Origen'), { target: { value: 'VEHICULOS' } });
   await waitFor(() => expect(listNotesAction).toHaveBeenLastCalledWith(1, '', expect.objectContaining({ estado: 'SIN_LEER', origen: 'VEHICULOS' })));

@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BotonMantener } from "@/components/ui/boton-mantener";
 import {
   Dialog,
   DialogContent,
@@ -263,13 +264,15 @@ export function BorradoDialog({
           <Button variant="outline" disabled={trabajando} onClick={cerrar}>
             Cancelar
           </Button>
-          <Button
-            variant="destructive"
+          {/* Además de lo que pide el diálogo, se confirma manteniendo apretado (BotonMantener). */}
+          <BotonMantener
             disabled={!habilitado || trabajando}
-            onClick={() => borrado && correr(borrado.ejecutar)}
+            hecho={trabajando ? "Eliminando…" : "Eliminada"}
+            holdTime={2000}
+            onHold={() => borrado && correr(borrado.ejecutar)}
           >
-            {trabajando ? "Eliminando…" : "Eliminar definitivamente"}
-          </Button>
+            Mantené para eliminar definitivamente
+          </BotonMantener>
         </div>
       </DialogContent>
     </Dialog>

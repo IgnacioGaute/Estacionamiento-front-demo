@@ -13,6 +13,7 @@
 // mano, aunque haya varias transferencias para elegir.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useForegroundPoll } from '@/hooks/use-foreground-poll';
 import { AlertTriangle, Check, Copy, Info, RefreshCw, RotateCcw } from 'lucide-react';
 import {
   ActionDialogFooterPortal,
@@ -57,10 +58,7 @@ const transcurridoDesde = (desde: string) => {
 
 function useTranscurrido(desde: string) {
   const [texto, setTexto] = useState(() => transcurridoDesde(desde));
-  useEffect(() => {
-    const reloj = setInterval(() => setTexto(transcurridoDesde(desde)), 1000);
-    return () => clearInterval(reloj);
-  }, [desde]);
+  useForegroundPoll(() => setTexto(transcurridoDesde(desde)), 1000, { onlineOnly: false });
   return texto;
 }
 
@@ -169,11 +167,7 @@ export function CobroAliasPanel({
 
   // Mientras espera, se consulta solo. Lo que pasa entre consultas lo decide el backend, que es
   // quien recupera el estado real si se cierra la pantalla o se corta la conexión.
-  useEffect(() => {
-    if (!abierto) return;
-    const reloj = setInterval(() => void consultar(), SEGUNDOS_ENTRE_CONSULTAS * 1000);
-    return () => clearInterval(reloj);
-  }, [abierto, consultar]);
+  useForegroundPoll(() => void consultar(), SEGUNDOS_ENTRE_CONSULTAS * 1000, { enabled: abierto, immediate: false });
 
   // Si la opción elegida desapareció (la usó otra caja, o llegó otro auto del mismo importe y ya
   // no se puede ofrecer), se deselecciona.

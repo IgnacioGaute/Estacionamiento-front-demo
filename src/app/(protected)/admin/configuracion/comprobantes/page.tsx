@@ -9,7 +9,7 @@ import { ReceiptDeliveryCard } from '../../tickets/components/receipt-delivery-c
 
 export default async function ReceiptSettingsPage() {
   const user = await currentUser();
-  if (user?.role?.toUpperCase() !== 'ADMIN') redirect('/tickets');
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '')) redirect('/tickets');
   const schedule = await getTicketSchedule();
   return <div className="container mx-auto max-w-4xl space-y-6 px-4 py-6">
     <Link href="/admin/configuracion" className="inline-flex items-center gap-2 text-sm font-medium hover:underline"><ArrowLeft className="size-4" />Configuración</Link>

@@ -9,7 +9,7 @@ import { TariffsBody } from './tariffs-body';
 
 export default async function TariffsPage() {
   const user = await currentUser();
-  if (user?.role !== 'ADMIN') redirect('/');
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '')) redirect('/');
   const [tariff, passes] = await Promise.all([getTariffPlanAction(), getTicketsPrice()]);
   const passPrices = (passes?.data || []).filter(price => ['DIA', 'SEMANA', 'MES'].includes(price.ticketTimeType ?? ''));
   return <div className="container mx-auto space-y-6 px-4 py-6">

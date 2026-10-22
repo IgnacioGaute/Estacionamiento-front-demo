@@ -3,6 +3,8 @@ import { SidebarInset } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { ReactNode } from 'react';
 import { currentUser } from '@/lib/auth';
+import { cookies } from 'next/headers';
+import { PLATFORM_SELECTION, selectedAccess } from '@/lib/access-scope';
 import { NavUser } from './nav-user';
 import { BarraOperativa } from './barra-operativa';
 import { PestaniaMovil } from './nav-main';
@@ -21,6 +23,7 @@ interface AppNavbarProps {
 
 export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavbarProps) {
   const user = await currentUser();
+  const platform = user?.role === 'SUPER_ADMIN' && selectedAccess((await cookies()).get('parking-playa')?.value, user.id) === PLATFORM_SELECTION;
   const userNav = {
     avatar: user?.image ?? '',
     email: user?.email ?? '',
@@ -57,17 +60,16 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
             )}
           >
             <Link
-              href={user?.role === 'SUPER_ADMIN' ? '/admin/empresas' : '/tickets'}
-              aria-label={user?.role === 'SUPER_ADMIN' ? 'Ir a empresas' : 'Ir a Entradas y salidas'}
+              href={platform ? '/admin/empresas' : '/tickets'}
+              aria-label={platform ? 'Ir a empresas' : 'Ir a Entradas y salidas'}
               className="group grid size-10 shrink-0 place-items-center rounded-[9px] transition-[filter] hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow"
             >
               {/* El mismo ícono que la pestaña y la pantalla de carga. */}
               <AppIcon className="size-10" />
             </Link>
 
-            {/* El super admin no opera una playa: en vez del selector lleva la ruta actual, el
-                buscador de la plataforma y su estado. */}
-            {user?.role === 'SUPER_ADMIN' ? (
+            {/* La barra sigue el ámbito elegido, conservando el rol del superadministrador. */}
+            {platform ? (
               <>
                 <PlatformBar />
                 <NavUser userNav={userNav} />
@@ -86,7 +88,7 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
         </header>
 
         {user?.role !== 'SUPER_ADMIN' && <AvisoCuenta />}
-        {user?.role !== 'SUPER_ADMIN' && <OfflinePreparation />}
+        {!platform && <OfflinePreparation />}
         {children}
         <AssistantWidget />
       </SidebarInset>

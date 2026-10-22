@@ -13,12 +13,13 @@ const sections = [
 ];
 export default async function ConfigurationPage() {
   const user = await currentUser();
-  if (user?.role?.toUpperCase() !== 'ADMIN') redirect('/tickets');
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '')) redirect('/tickets');
   // En una playa gratuita no hay cobros ni comprobantes: ni MercadoPago, turnos de caja ni Tarifas.
   const gratuita = (await modalidadActual()) === 'GRATUITO';
+  const disponibles = user?.role === 'SUPER_ADMIN' ? sections.filter(s => s.href !== '/admin/configuracion/mercadopago') : sections;
   const visibles = gratuita
-    ? sections.filter((s) => s.href !== '/admin/configuracion/mercadopago' && s.href !== '/admin/configuracion/comprobantes').map((s) => s.href === '/admin/configuracion/operacion' ? { ...s, description: 'Tipos de vehículo de esta playa.' } : s)
-    : sections;
+    ? disponibles.filter((s) => s.href !== '/admin/configuracion/mercadopago' && s.href !== '/admin/configuracion/comprobantes').map((s) => s.href === '/admin/configuracion/operacion' ? { ...s, description: 'Tipos de vehículo de esta playa.' } : s)
+    : disponibles;
   return <div className="container mx-auto max-w-4xl space-y-6 px-4 py-6">
     <PageHeader title="Configuración" breadcrumb={['Administración', 'Configuración']} description="Las opciones de trabajo y entrega de comprobantes de esta playa." />
     <div className="grid gap-4">{visibles.map(({ href, icon: Icon, title, description }) => <Link key={href} href={href} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-5 transition-colors hover:bg-secondary/30 sm:p-6">

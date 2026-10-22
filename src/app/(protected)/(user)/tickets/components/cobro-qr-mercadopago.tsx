@@ -9,7 +9,8 @@
 // cliente está parado enfrente y escanea. La consulta automática hace innecesario el primero y
 // los otros dos son de un flujo distinto, el del cobro sin pasar por caja.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useForegroundPoll } from '@/hooks/use-foreground-poll';
 import { QRCodeSVG } from 'qrcode.react';
 import { CheckCircle2 } from 'lucide-react';
 import { ActionDialogFooterPortal, ActionDialogSecondaryButton } from '@/components/ui/action-dialog';
@@ -82,19 +83,9 @@ export function CobroQrMercadoPago({
   }, [cobro.id, onAcreditado]);
 
   // La cuenta regresiva corre cada segundo; la consulta a MercadoPago, cada pocos.
-  useEffect(() => {
-    if (!pendiente) return;
-    const reloj = setInterval(() => setRestante(cuentaRegresiva(cobro.expiraEl)), 1000);
-    return () => clearInterval(reloj);
-  }, [pendiente, cobro.expiraEl]);
-
-  useEffect(() => {
-    if (!pendiente) return;
-    // Se sigue consultando un rato después de vencido: el cliente puede haber apretado pagar
-    // justo sobre la hora y sería absurdo perder ese pago.
-    const reloj = setInterval(() => void consultar(), SEGUNDOS_ENTRE_CONSULTAS * 1000);
-    return () => clearInterval(reloj);
-  }, [pendiente, consultar]);
+  useForegroundPoll(() => setRestante(cuentaRegresiva(cobro.expiraEl)), 1000, { enabled: pendiente, onlineOnly: false });
+  // También al volver de bloquear el teléfono, incluso si el QR venció mientras pagaba.
+  useForegroundPoll(() => void consultar(), SEGUNDOS_ENTRE_CONSULTAS * 1000, { enabled: pendiente, immediate: false });
 
   // Queda en el lugar donde estaba el QR cuando el pago no terminó la operación: quedó un saldo
   // (la tarifa subió mientras pagaba) o es el pago de un inquilino. Si registró la salida, la

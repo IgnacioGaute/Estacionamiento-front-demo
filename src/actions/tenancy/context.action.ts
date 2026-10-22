@@ -2,6 +2,7 @@
 import { auth } from "@/auth";
 import { cookies } from "next/headers";
 import { revalidateTag } from "next/cache";
+import { PLATFORM_SELECTION } from '@/lib/access-scope';
 import type { SituacionCuenta } from "@/types/suscripcion.type";
 import type { Modalidad } from "@/lib/modalidad";
 export type OperationalContext = {
@@ -49,6 +50,19 @@ export async function selectPlayaAction(playaId: string) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
+  });
+  return { ok: true };
+}
+
+export async function selectPlatformAction() {
+  const session = await auth();
+  if (!session?.token || session.user.role !== 'SUPER_ADMIN')
+    return { error: 'Solo el superadministrador puede entrar a la plataforma.' };
+  (await cookies()).set('parking-playa', `${session.user.id}:${PLATFORM_SELECTION}`, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
   });
   return { ok: true };
 }

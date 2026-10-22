@@ -15,6 +15,7 @@ import { PlateChip } from '@/components/plate-chip';
 import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
 import { formatImporte } from '@/components/pricing-breakdown';
 import { cn } from '@/lib/utils';
+import { Segmento } from '@/components/ui/segmento';
 import { esGratuita } from '@/lib/modalidad';
 import { useTenant } from '@/components/tenant-provider';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
@@ -436,11 +437,6 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
   });
   const estadiasVisibles = filtro === 'excedidos' ? [] : filtro === 'vencidas' ? estadias.filter((e) => e.vencida) : estadias;
 
-  const chip = (activo: boolean, alerta = false) => cn(
-    'inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-bold transition-colors',
-    enfoque,
-    activo ? 'bg-foreground text-card' : alerta ? 'bg-gm-orange/15 text-[#F0714A] hover:bg-gm-orange/25' : 'border border-gm-line-strong bg-card text-[#D9D1C3] hover:text-foreground',
-  );
 
   return (
     <section ref={tableroRef} aria-labelledby="titulo-tablero" className="flex min-w-0 flex-col gap-3.5">
@@ -453,19 +449,13 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
             En vivo
           </span>
         </div>
-        <div role="group" aria-label="Filtrar el tablero" className="flex flex-wrap gap-1.5">
-          <button type="button" aria-pressed={filtro === 'todos'} onClick={() => onFiltro('todos')} className={chip(filtro === 'todos')}>Todos · {total}</button>
-          {excedidos > 0 && (
-            <button type="button" aria-pressed={filtro === 'excedidos'} onClick={() => onFiltro('excedidos')} className={chip(filtro === 'excedidos', true)}>
-              {filtro !== 'excedidos' && <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" />}Tiempo superado · {excedidos}
-            </button>
-          )}
-          {cobroHabilitado && vencidas > 0 && (
-            <button type="button" aria-pressed={filtro === 'vencidas'} onClick={() => onFiltro('vencidas')} className={chip(filtro === 'vencidas', true)}>
-              {filtro !== 'vencidas' && <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" />}Vencidas · {vencidas}
-            </button>
-          )}
-        </div>
+        {/* Rubber Segment (ui/segmento); el punto naranja marca los filtros de alerta. */}
+        <Segmento aria-label="Filtrar el tablero" size="sm" value={filtro} onChange={(id) => onFiltro(id as FiltroTablero)}
+          items={[
+            { value: 'todos', label: `Todos · ${total}` },
+            ...(excedidos > 0 ? [{ value: 'excedidos', label: `Tiempo superado · ${excedidos}`, icon: <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" /> }] : []),
+            ...(cobroHabilitado && vencidas > 0 ? [{ value: 'vencidas', label: `Vencidas · ${vencidas}`, icon: <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" /> }] : []),
+          ]} />
       </div>
 
       <div className={cn('grid grid-cols-2 items-start gap-3', cobroHabilitado ? 'xl:grid-cols-4' : 'xl:grid-cols-3')}>

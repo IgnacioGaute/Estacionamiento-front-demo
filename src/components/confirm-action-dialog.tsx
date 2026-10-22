@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BotonMantener } from '@/components/ui/boton-mantener';
 
 type Tone = 'danger' | 'warning' | 'info' | 'success';
 
@@ -38,8 +39,8 @@ interface ConfirmActionDialogProps {
   actionLabel: string;
   /** Variant for the action button. Defaults based on tone. */
   actionVariant?: ButtonProps['variant'];
-  /** Async confirm handler. */
-  onConfirm: () => void | Promise<void>;
+  /** Async confirm handler. Returning `false` keeps the dialog open (the action failed). */
+  onConfirm: () => void | boolean | Promise<void | boolean>;
   /** External pending flag. */
   pending?: boolean;
 }
@@ -88,10 +89,16 @@ export function ConfirmActionDialog({
   const [internalPending, startTransition] = useTransition();
   const isPending = !!pending || internalPending;
 
+  // Las bajas se confirman manteniendo apretado el botón (BotonMantener): reemplaza a escribir el
+  // texto, que sigue pidiéndose solo en los demás tonos.
+  const mantener = tone === 'danger';
+  const pideTexto = !!confirmText && !mantener;
+
   const handleConfirm = () => {
-    if (confirmText && text !== confirmText) return;
+    if (pideTexto && text !== confirmText) return;
     startTransition(async () => {
-      await onConfirm();
+      // `false`: no se pudo (ya avisó con un toast); el diálogo queda abierto para reintentar.
+      if ((await onConfirm()) === false) return;
       setText('');
       setOpen(false);
     });
@@ -139,7 +146,7 @@ export function ConfirmActionDialog({
           </div>
         )}
 
-        {confirmText && (
+        {pideTexto && (
           <div className="space-y-1.5">
             <Label>
               Para confirmar, escribí{' '}
@@ -163,14 +170,20 @@ export function ConfirmActionDialog({
           >
             Cancelar
           </Button>
-          <Button
-            variant={actionVariant ?? fallbackVariant}
-            onClick={handleConfirm}
-            disabled={isPending || (!!confirmText && text !== confirmText)}
-          >
-            {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
-            {actionLabel}
-          </Button>
+          {mantener ? (
+            <BotonMantener onHold={handleConfirm} disabled={isPending} hecho={isPending ? 'Eliminando…' : 'Eliminado'}>
+              Mantené para {actionLabel.charAt(0).toLowerCase() + actionLabel.slice(1)}
+            </BotonMantener>
+          ) : (
+            <Button
+              variant={actionVariant ?? fallbackVariant}
+              onClick={handleConfirm}
+              disabled={isPending || (pideTexto && text !== confirmText)}
+            >
+              {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
+              {actionLabel}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

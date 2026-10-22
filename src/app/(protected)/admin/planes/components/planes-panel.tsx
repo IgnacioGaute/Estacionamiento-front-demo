@@ -40,6 +40,7 @@ import {
   sufijoPeriodo,
 } from "@/components/plataforma/cuenta";
 import { GrillaPlanes, Selector, porPeriodo, precioEnPeriodo } from "@/components/plataforma/planes-landing";
+import { TarjetaPixel } from "@/components/ui/tarjeta-pixel";
 
 // Lo que entra por mes de una cuenta: con un período largo, su importe repartido en los meses.
 const porMes = (c: ResumenCuenta) => Math.round(c.importePeriodo / Math.max(1, c.periodo.meses));
@@ -161,19 +162,18 @@ export function PlanesPanel() {
     <div className="space-y-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="font-mono text-[11px] tracking-[0.14em] text-gm-yellow">
-            PLATAFORMA · {cuentas.length} CUENTAS · {planes.filter((p) => p.activo !== false).length} PLANES VIGENTES
-          </div>
-          <h1 className="mt-2 font-display text-[34px] font-semibold leading-none tracking-[0.01em] sm:text-[40px]">
-            Planes y cobros
-          </h1>
+          <h1 className="m-0 text-2xl font-semibold leading-tight tracking-[-0.02em]">Planes y cobros</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {cuentas.length} cuentas · {planes.filter((p) => p.activo !== false).length} planes vigentes. Facturas,
+            pagos, deuda y la lista de precios que muestra la landing.
+          </p>
         </div>
         <button
           type="button"
           onClick={() => void revisar()}
           disabled={revisando}
           title="Corre ahora la revisión diaria: emite las facturas del día y suspende lo que pasó la gracia"
-          className="flex h-11 items-center gap-2 rounded-xl border border-border bg-gm-surface px-4 text-[13.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2 disabled:opacity-50"
+          className="flex h-9 items-center gap-2 rounded-lg border border-[#2A2824] bg-[#151411] px-3.5 text-[13px] font-medium transition-colors hover:border-[#3A362F] disabled:opacity-50"
         >
           {revisando ? <LatticeLoader compact cellSize={4} gap={1} showTimer={false} /> : <RefreshCw className="size-4" />}
           Revisar vencimientos
@@ -186,7 +186,7 @@ export function PlanesPanel() {
         </p>
       )}
 
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-px overflow-hidden rounded-xl border border-[#26231E] bg-[#26231E] sm:grid-cols-2 xl:grid-cols-4">
         <Kpi
           rotulo="Ingreso mensual"
           valor={corto(mensual)}
@@ -196,7 +196,7 @@ export function PlanesPanel() {
         <Kpi
           rotulo="Por cobrar"
           valor={corto(adeudado)}
-          color={morosas.length ? "#FF7A4D" : undefined}
+          color={morosas.length ? "#F2725B" : undefined}
           pie={morosas.length ? `${plural(morosas.length, "cuenta con atraso", "cuentas con atraso")}` : "Nadie debe"}
           accion={morosas.length ? { label: "Ver", hacer: () => setFiltro("cobrar") } : undefined}
         />
@@ -218,9 +218,9 @@ export function PlanesPanel() {
         <Tarjeta className="min-h-[300px] lg:col-span-2">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <Rotulo>Cobrado por mes</Rotulo>
+              <h2 className="m-0 text-[14px] font-semibold">Cobrado por mes</h2>
               <div className="mt-2 flex items-baseline gap-2.5">
-                <span className="font-display text-[30px] font-semibold leading-none tabular-nums">
+                <span className="font-mono text-[24px] font-medium tracking-[-0.03em] leading-none tabular-nums">
                   {corto(cobradoPorMes.reduce((n, v) => n + v, 0))}
                 </span>
                 <span className="text-[12.5px] text-muted-foreground">últimos 6 meses</span>
@@ -237,16 +237,16 @@ export function PlanesPanel() {
         </Tarjeta>
 
         <Tarjeta className="min-h-[300px]">
-          <Rotulo>Cuentas por estado</Rotulo>
+          <h2 className="m-0 text-[14px] font-semibold">Cuentas por estado</h2>
           <div className="mt-3 flex flex-1 flex-col items-center gap-4">
             <Anillo
               tamano={150}
               ariaLabel={porEstado.map((e) => `${ESTADOS_CUENTA[e.estado].label} ${e.n}`).join(", ")}
               segmentos={porEstado.map((e) => ({ id: e.estado, valor: e.n, color: COLORES_CUENTA[e.estado] }))}
             >
-              <span className="font-display text-[30px] font-semibold leading-none">{cuentas.length}</span>
-              <span className="font-mono text-[10px] tracking-[0.1em]" style={{ color: EJE }}>
-                CUENTAS
+              <span className="font-mono text-[24px] font-medium tracking-[-0.03em] leading-none">{cuentas.length}</span>
+              <span className="text-[12px] font-medium" style={{ color: EJE }}>
+                cuentas
               </span>
             </Anillo>
             <Leyenda
@@ -260,15 +260,15 @@ export function PlanesPanel() {
         </Tarjeta>
       </div>
 
-      <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2A23] px-5 py-4">
+      <section className="overflow-hidden rounded-xl border border-[#26231E] bg-[#161411]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#211F1B] px-5 py-4">
           <div>
-            <h2 className="font-display text-[22px] font-semibold">Cuentas</h2>
+            <h2 className="text-[15px] font-semibold">Cuentas</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
               Primero las que deben, con más atraso arriba; después lo que vence antes.
             </p>
           </div>
-          <div className="overflow-x-auto">
+          <div className="min-w-0">
             <Segmentos
               etiqueta="Estado"
               className="w-max"
@@ -289,24 +289,24 @@ export function PlanesPanel() {
           <div role="table" aria-label="Cuentas" className="min-w-[1040px]">
             <div
               role="row"
-              className="grid h-11 grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_150px_minmax(0,1.2fr)_120px_120px_48px] items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+              className="grid h-11 grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_150px_minmax(0,1.2fr)_120px_120px_48px] items-center gap-3 bg-[#12110E] px-5 text-[12px] font-medium"
               style={{ color: EJE }}
             >
-              <span role="columnheader">EMPRESA</span>
-              <span role="columnheader">PLAN</span>
-              <span role="columnheader">ESTADO</span>
-              <span role="columnheader">VENCIMIENTO</span>
-              <span role="columnheader">PAGA</span>
-              <span role="columnheader">DEBE</span>
+              <span role="columnheader">Empresa</span>
+              <span role="columnheader">Plan</span>
+              <span role="columnheader">Estado</span>
+              <span role="columnheader">Vencimiento</span>
+              <span role="columnheader">Paga</span>
+              <span role="columnheader">Debe</span>
               <span role="columnheader" className="sr-only">
                 Abrir
               </span>
             </div>
             {cargando && !cuentas.length && (
-              <DataLoading label="Cargando cuentas…" className="border-t border-[#2B2620] p-4" />
+              <DataLoading label="Cargando cuentas…" className="border-t border-[#211F1B] p-4" />
             )}
             {!cargando && !filtradas.length && (
-              <p className="border-t border-[#2B2620] px-5 py-12 text-center text-sm text-muted-foreground">
+              <p className="border-t border-[#211F1B] px-5 py-12 text-center text-sm text-muted-foreground">
                 No hay cuentas en este estado.
               </p>
             )}
@@ -316,7 +316,7 @@ export function PlanesPanel() {
                 <div
                   key={empresa.id}
                   role="row"
-                  className="grid min-h-[66px] grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_150px_minmax(0,1.2fr)_120px_120px_48px] items-center gap-3 border-t border-[#2B2620] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
+                  className="grid min-h-[66px] grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_150px_minmax(0,1.2fr)_120px_120px_48px] items-center gap-3 border-t border-[#211F1B] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#1B1915]"
                 >
                   <span role="cell" className="flex min-w-0 items-center gap-3">
                     <Avatar texto={iniciales(empresa.nombre)} fondo={colorAvatar(empresa.id)} />
@@ -362,14 +362,14 @@ export function PlanesPanel() {
                       "—"
                     )}
                   </span>
-                  <span role="cell" className={`font-mono font-semibold tabular-nums ${debe ? "text-[#FF7A4D]" : ""}`}>
+                  <span role="cell" className={`font-mono font-semibold tabular-nums ${debe ? "text-[#F2725B]" : ""}`}>
                     {debe ? pesos(debe) : "—"}
                   </span>
                   <span role="cell" className="flex justify-end">
                     <Link
                       href={`/admin/empresas/${empresa.id}?tab=plan`}
                       aria-label={`Abrir el plan de ${empresa.nombre}`}
-                      className="flex size-[34px] items-center justify-center rounded-[10px] border border-border transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2"
+                      className="flex size-8 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-[#2A2824] hover:text-foreground"
                     >
                       <ChevronRight className="size-4" />
                     </Link>
@@ -383,10 +383,10 @@ export function PlanesPanel() {
 
       <ListaDePrecios planes={planes} periodos={periodos} alGuardarPlanes={setPlanes} alGuardarPeriodos={setPeriodos} />
 
-      <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2A23] px-5 py-4">
+      <section className="overflow-hidden rounded-xl border border-[#26231E] bg-[#161411]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#211F1B] px-5 py-4">
           <div>
-            <h2 className="font-display text-[22px] font-semibold">Pagos recibidos</h2>
+            <h2 className="text-[15px] font-semibold">Pagos recibidos</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">Por fecha en que entró la plata. Los anulados quedan tachados.</p>
           </div>
           <div className="flex items-center gap-1.5">
@@ -395,7 +395,7 @@ export function PlanesPanel() {
               aria-label="Mes anterior"
               disabled={mes <= meses[0]}
               onClick={() => setMes((m) => moverMes(m, -1))}
-              className="flex size-9 items-center justify-center rounded-[10px] border border-border hover:bg-gm-surface-2 disabled:opacity-40"
+              className="flex size-8 items-center justify-center rounded-md border border-[#2A2824] hover:border-[#3A362F] disabled:opacity-40"
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -407,7 +407,7 @@ export function PlanesPanel() {
               aria-label="Mes siguiente"
               disabled={mes >= mesActual}
               onClick={() => setMes((m) => moverMes(m, 1))}
-              className="flex size-9 items-center justify-center rounded-[10px] border border-border hover:bg-gm-surface-2 disabled:opacity-40"
+              className="flex size-8 items-center justify-center rounded-md border border-[#2A2824] hover:border-[#3A362F] disabled:opacity-40"
             >
               <ChevronRight className="size-4" />
             </button>
@@ -420,21 +420,21 @@ export function PlanesPanel() {
             <div role="table" aria-label="Pagos recibidos" className="min-w-[860px]">
               <div
                 role="row"
-                className="grid h-[42px] grid-cols-[90px_minmax(0,1fr)_130px_130px_200px_minmax(0,1fr)] items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+                className="grid h-[42px] grid-cols-[90px_minmax(0,1fr)_130px_130px_200px_minmax(0,1fr)] items-center gap-3 bg-[#12110E] px-5 text-[12px] font-medium"
                 style={{ color: EJE }}
               >
-                <span role="columnheader">FECHA</span>
-                <span role="columnheader">EMPRESA</span>
-                <span role="columnheader">IMPORTE</span>
-                <span role="columnheader">MEDIO</span>
-                <span role="columnheader">CUBRE</span>
-                <span role="columnheader">REFERENCIA</span>
+                <span role="columnheader">Fecha</span>
+                <span role="columnheader">Empresa</span>
+                <span role="columnheader">Importe</span>
+                <span role="columnheader">Medio</span>
+                <span role="columnheader">Cubre</span>
+                <span role="columnheader">Referencia</span>
               </div>
               {pagosDelMes.map((p) => (
                 <div
                   key={p.id}
                   role="row"
-                  className={`grid min-h-[52px] grid-cols-[90px_minmax(0,1fr)_130px_130px_200px_minmax(0,1fr)] items-center gap-3 border-t border-[#2B2620] px-5 py-2 text-[13.5px] ${p.estado === "ANULADA" ? "opacity-50" : ""}`}
+                  className={`grid min-h-[52px] grid-cols-[90px_minmax(0,1fr)_130px_130px_200px_minmax(0,1fr)] items-center gap-3 border-t border-[#211F1B] px-5 py-2 text-[13.5px] ${p.estado === "ANULADA" ? "opacity-50" : ""}`}
                 >
                   <span role="cell" className="tabular-nums">
                     {diaAR(p.pagadaEl, false)}
@@ -480,20 +480,20 @@ function Kpi({
   accion?: { label: string; hacer: () => void };
 }) {
   return (
-    <Tarjeta className="min-h-[150px] justify-between gap-3 pb-4 pt-4">
+    <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 rounded-none border-0">
       <div className="flex items-center justify-between gap-2">
         <Rotulo>{rotulo}</Rotulo>
         {derecha}
         {accion && (
-          <button type="button" onClick={accion.hacer} className="text-[12.5px] font-semibold text-gm-yellow hover:text-[#FFD84D]">
+          <button type="button" onClick={accion.hacer} className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]">
             {accion.label} →
           </button>
         )}
       </div>
-      <span className="font-display text-[36px] font-semibold leading-none tabular-nums" style={{ color }}>
+      <span className="font-mono text-[28px] font-medium tracking-[-0.03em] leading-none tabular-nums" style={{ color }}>
         {valor}
       </span>
-      <span className="border-t border-[#2E2A23] pt-2 font-mono text-[11px]" style={{ color: EJE }}>
+      <span className="border-t border-[#211F1B] pt-2.5 text-[12px]" style={{ color: EJE }}>
         {pie}
       </span>
     </Tarjeta>
@@ -508,11 +508,11 @@ function Vencimiento({ cuenta, hoy }: { cuenta: ResumenCuenta; hoy: string }) {
   const atrasado = cuenta.diasDeAtraso > 0;
   return (
     <>
-      <span className={`block font-semibold tabular-nums ${atrasado ? "text-[#FF7A4D]" : ""}`}>
+      <span className={`block font-semibold tabular-nums ${atrasado ? "text-[#F2725B]" : ""}`}>
         {cuenta.estado === "PRUEBA" ? "Primera factura " : ""}
         {diaAR(fecha, false)}
       </span>
-      <span className="block truncate text-xs" style={{ color: atrasado ? "#FF7A4D" : EJE }}>
+      <span className="block truncate text-xs" style={{ color: atrasado ? "#F2725B" : EJE }}>
         {atrasado
           ? cuenta.estado === "SUSPENDIDA"
             ? `Suspendida el ${cuenta.suspendidaEl ? diaAR(cuenta.suspendidaEl.slice(0, 10), false) : "—"}`
@@ -542,7 +542,7 @@ function Barras({
 }) {
   const maximo = Math.max(1, ...valores);
   return (
-    <div className="mt-4 flex flex-1 items-end gap-3 rounded-2xl border border-[#26221C] bg-background px-4 pb-3 pt-6">
+    <div className="mt-4 flex flex-1 items-end gap-3 rounded-lg border border-[#211F1B] bg-[#12110E] px-4 pb-3 pt-6">
       {meses.map((m, i) => {
         const activo = m === seleccionado;
         return (
@@ -565,7 +565,7 @@ function Barras({
                 opacity: activo ? 1 : 0.85,
               }}
             />
-            <span className={`font-mono text-[10.5px] uppercase ${activo ? "text-gm-yellow" : ""}`} style={activo ? undefined : { color: EJE }}>
+            <span className={`text-[12px] ${activo ? "text-gm-yellow" : ""}`} style={activo ? undefined : { color: EJE }}>
               {nombreMes(m).slice(0, 3)}
             </span>
           </button>
@@ -692,14 +692,14 @@ function ListaDePrecios({
     <section className="space-y-7">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div className="max-w-3xl space-y-1.5">
-          <h2 className="font-display text-[22px] font-semibold">Lista de precios</h2>
+          <h2 className="text-[15px] font-semibold">Lista de precios</h2>
           <p className="text-[14px] leading-relaxed text-muted-foreground">
             Lo que cargues acá es lo que muestra la landing y lo que se ofrece a las playas nuevas. Lo que cada playa
             ya tiene pactado no cambia (para subirle a un cliente, cambiá su precio en su ficha). Las playas
             adicionales de una empresa pagan 30% menos.
           </p>
         </div>
-        <span className="inline-flex items-center gap-2 rounded-xl border border-[#2E2A23] bg-[#1B1915] px-4 py-3 text-[13px] text-[#BDB4A6]">
+        <span className="inline-flex items-center gap-2 rounded-xl border border-[#211F1B] bg-[#1B1915] px-4 py-3 text-[13px] text-[#BDB4A6]">
           <span aria-hidden className="size-[7px] rounded-full bg-[#4ADE9B]" />
           La landing toma estos precios: los cambios se ven ahí en unos minutos
         </span>
@@ -743,15 +743,14 @@ function ListaDePrecios({
           const destacado = g.tamano === "MEDIANA";
           const maximo = maximoDe(g);
           return (
-            <article
+            // Pixel Card de React Bits (ui/tarjeta-pixel), como las tarjetas de Mi plan.
+            <TarjetaPixel
               key={g.tamano}
-              className={`relative flex flex-col gap-[18px] rounded-2xl bg-[#1B1915] px-7 pb-[22px] pt-7 ${destacado ? "border-[1.5px] border-[#F6F0E6]" : "border border-[#2E2A23]"} ${ofrecido ? "" : "opacity-60"}`}
+              destacada={destacado}
+              distintivo={destacado ? "Más elegido" : undefined}
+              atenuada={!ofrecido}
+              className="gap-[18px] px-7 pb-[22px] pt-7"
             >
-              {destacado && (
-                <span className="absolute -top-3 left-7 rounded-full bg-gm-yellow px-2.5 py-1 text-xs font-bold text-[#12100D]">
-                  Más elegido
-                </span>
-              )}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-1.5">
                   <h3 className="text-lg font-semibold text-[#F6F0E6]">{g.nombre}</h3>
@@ -814,7 +813,7 @@ function ListaDePrecios({
                 ))}
               </div>
 
-              <div className="mt-auto flex items-center justify-between gap-3 border-t border-[#2B2620] pt-4">
+              <div className="mt-auto flex items-center justify-between gap-3 border-t border-[#211F1B] pt-4">
                 <span className="text-sm text-[#BDB4A6]">Se ofrece en la landing</span>
                 <Switch
                   checked={ofrecido}
@@ -823,7 +822,7 @@ function ListaDePrecios({
                   className={switchClase}
                 />
               </div>
-            </article>
+            </TarjetaPixel>
           );
         })}
       </GrillaPlanes>
@@ -845,7 +844,7 @@ function ListaDePrecios({
             return (
               <article
                 key={p.codigo}
-                className={`flex flex-col gap-3.5 rounded-2xl border border-[#2E2A23] bg-[#1B1915] px-7 pb-5 pt-6 ${p.activo === false ? "opacity-60" : ""}`}
+                className={`flex flex-col gap-3.5 rounded-2xl border border-[#211F1B] bg-[#1B1915] px-7 pb-5 pt-6 ${p.activo === false ? "opacity-60" : ""}`}
               >
                 <div className="flex items-baseline justify-between gap-3">
                   <h4 className="text-lg font-semibold text-[#F6F0E6]">{p.nombre}</h4>
@@ -878,7 +877,7 @@ function ListaDePrecios({
                       : `${ejemplo.nombre}: ${pesos(total)} ${porPeriodo(p.meses)}${total < lista ? ` · ahorra ${pesos(lista - total)}` : ""}`}
                   </p>
                 )}
-                <div className="mt-auto flex items-center justify-between gap-3 border-t border-[#2B2620] pt-3.5 text-[13px] text-[#8F8676]">
+                <div className="mt-auto flex items-center justify-between gap-3 border-t border-[#211F1B] pt-3.5 text-[13px] text-[#8F8676]">
                   <span>{p.empresas ? plural(p.empresas, "empresa", "empresas") : "Sin uso"}</span>
                   {base ? (
                     <span>Siempre se ofrece</span>
@@ -897,7 +896,7 @@ function ListaDePrecios({
         </GrillaPlanes>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3.5 rounded-[14px] border border-[#2E2A23] bg-[#1B1915] px-[22px] py-[18px]">
+      <div className="flex flex-wrap items-center justify-between gap-3.5 rounded-xl border border-[#26231E] bg-[#161411] px-5 py-4">
         <p className="text-sm leading-relaxed text-[#BDB4A6]">
           {hayCambios
             ? "Tenés cambios sin guardar. Rigen para las playas nuevas y se publican en la landing; a quien ya tiene plan no le cambia nada."
@@ -908,7 +907,7 @@ function ListaDePrecios({
             type="button"
             disabled={!hayCambios || guardando}
             onClick={descartar}
-            className="h-11 rounded-[10px] border border-[#3A342B] px-4 text-sm font-semibold text-[#F6F0E6] transition-colors hover:border-[#F6F0E6] disabled:opacity-40"
+            className="h-9 rounded-lg border border-[#2A2824] px-3.5 text-[13px] font-medium transition-colors hover:border-[#3A362F] disabled:opacity-40"
           >
             Descartar
           </button>
@@ -916,7 +915,7 @@ function ListaDePrecios({
             type="button"
             disabled={!hayCambios || guardando}
             onClick={() => void guardar()}
-            className="h-11 rounded-[10px] bg-[#F6F0E6] px-[18px] text-sm font-semibold text-[#12100D] transition-colors hover:bg-white disabled:opacity-40"
+            className="h-9 rounded-lg bg-gm-yellow px-4 text-[13px] font-semibold text-gm-ink transition-colors hover:bg-[#FFD23A] disabled:opacity-40"
           >
             {guardando ? "Guardando…" : "Guardar y publicar"}
           </button>

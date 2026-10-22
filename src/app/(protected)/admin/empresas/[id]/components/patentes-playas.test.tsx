@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { getConsumoPatentesAction, quitarPatentesAction } from '@/actions/tenancy/tenancy.action';
 import { PatentesPlayas } from './patentes-playas';
@@ -19,8 +19,13 @@ test('quitar el token conserva el reconocimiento cuando está configurado fast-a
   jest.mocked(getConsumoPatentesAction).mockResolvedValueOnce({ consumo: [{ ...free, configurado: true, gratuito: false, uso: { total: 100, usadas: 10, restantes: 90, seRenueva: null } }] }).mockResolvedValue({ consumo: [free] });
   jest.mocked(quitarPatentesAction).mockResolvedValue({ ok: true });
   render(<PatentesPlayas empresaId="empresa" />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Quitar' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Sí, quitar' }));
+  // Se quita manteniendo apretado (Enter sostenido) el botón, sin diálogo.
+  const boton = await screen.findByRole('button', { name: /Mantené para quitar/ });
+  jest.useFakeTimers();
+  fireEvent.keyDown(boton, { key: 'Enter' });
+  await act(async () => { jest.advanceTimersByTime(1700); });
+  fireEvent.keyUp(boton, { key: 'Enter' });
+  jest.useRealTimers();
   expect(await screen.findByText(/Reconocimiento gratuito/)).toBeInTheDocument();
   await waitFor(() => expect(quitarPatentesAction).toHaveBeenCalledWith('playa'));
   expect(toast.success).toHaveBeenCalledWith('Token de Plate Recognizer quitado de Entrada principal.');

@@ -1,6 +1,7 @@
 'use server';
 
 import { signIn } from '@/auth';
+import { ACCESS_SELECTION_ROUTE } from '@/lib/access-scope';
 import { DEFAULT_LOGIN_REDIRECT } from '@/routes';
 import { loginSchema, LoginSchemaType } from '@/schemas/auth/login.schema';
 
@@ -24,7 +25,8 @@ export async function loginAction(
       });
 
       const safeRedirect = callbackUrl?.startsWith('/') && !callbackUrl.startsWith('//') && !callbackUrl.includes('\\') ? callbackUrl : DEFAULT_LOGIN_REDIRECT;
-      return { success: "Sesión iniciada", redirectTo: safeRedirect };
+      // El siguiente pedido ya tiene la sesión nueva: el middleware resuelve el rol y el destino.
+      return { success: "Sesión iniciada", redirectTo: `${ACCESS_SELECTION_ROUTE}?callbackUrl=${encodeURIComponent(safeRedirect)}` };
     } catch (error: unknown) {
       console.error("Error en signIn:", error);
 

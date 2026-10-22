@@ -36,6 +36,7 @@ import { TurnoBar } from "./turno-bar";
 import { useTour } from "./ticket-tour";
 import { useTicketRealtime } from "@/hooks/use-ticket-realtime";
 import { useResincronizar } from "@/hooks/use-resincronizar";
+import { useForegroundPoll } from '@/hooks/use-foreground-poll';
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { isBarcodeOrigin, isOverdue, mergeServerSnapshot, minutesSinceEntry, upsertRegistration } from "@/utils/ticket-registration.utils";
 import { estadiaLargaActiva as isDayRegistrationActive, estadiaLargaVencida as isDayRegistrationOverdue } from "@/utils/estadia-larga";
@@ -80,6 +81,7 @@ export default function CardTicket({
   schedule,
   isAdmin,
   barcodeTicketsEnabled,
+  onResync,
 }: {
   initialRegistrations: TicketRegistration[];
   ticketCatalog: Ticket[];
@@ -88,6 +90,7 @@ export default function CardTicket({
   schedule: TicketSchedule | null;
   isAdmin: boolean;
   barcodeTicketsEnabled: boolean;
+  onResync?: () => void;
 }) {
   const { types: vehicleTypes } = useVehicleTypes();
   const [registrations, setRegistrations] = useState<TicketRegistration[]>(initialRegistrations);
@@ -213,7 +216,7 @@ export default function CardTicket({
   const handleRealtimeUpdate = useCallback((incoming: TicketRegistration) => {
     setRegistrations((prev) => upsertRegistration(prev, incoming));
   }, []);
-  const resincronizar = useResincronizar(() => router.refresh());
+  const resincronizar = useResincronizar(onResync ?? (() => router.refresh()));
   useTicketRealtime(handleRealtimeUpdate, resincronizar);
 
   // Si el flujo por código de barras está apagado desde Admin, no se muestra nada de él acá.
@@ -224,10 +227,7 @@ export default function CardTicket({
   // Reloj compartido para calcular en vivo los tiempos y qué vehículos ya se pasaron de la
   // duración que avisaron, sin depender del servidor.
   const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), OVERDUE_CHECK_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, []);
+  useForegroundPoll(() => setNow(Date.now()), OVERDUE_CHECK_INTERVAL_MS, { onlineOnly: false });
 
   // Avisa una sola vez por registro cuando cruza a "vencido" — no avisa por lo que ya estaba
   // vencido al cargar la página (evita spam apenas se abre/refresca).
@@ -391,7 +391,7 @@ export default function CardTicket({
   // Accesos secundarios del administrador: texto sin borde para no competir con las acciones del mostrador.
   const atajoSutil = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
   const atajosAdmin = (alto: string) => isAdmin && (
-    <nav aria-label="Accesos de administración" className="flex shrink-0 flex-wrap items-center gap-0.5">
+    <nav aria-label="Accesos de administración" className="flex min-w-0 flex-wrap items-center gap-0.5">
       <Link href="/admin/vehiculos" className={cn(alto, atajoSutil)}>
         <CarFront className="size-3.5" aria-hidden />Vehículos
       </Link>
@@ -575,13 +575,12 @@ export default function CardTicket({
   const escritorio = (
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-        {/* basis-0: los accesos junto al saludo no ensanchan la columna ni bajan el buscador de la derecha. */}
+        {/* Los accesos bajan de línea cuando falta espacio para conservar el saludo completo. */}
         <div className="min-w-[20rem] flex-1 basis-0">
-          <div className="flex min-w-0 items-center gap-2">
-            <p className="min-w-0 truncate text-[13.5px] text-muted-foreground">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="min-w-0 max-w-full break-words text-[13.5px] text-muted-foreground">
               {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-[#6F665A]">· {fechaLarga}</span>
             </p>
-            {isAdmin && <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden />}
             {atajosAdmin("h-7 -my-1")}
           </div>
           <h1 className="mt-1.5 text-[40px] font-bold leading-[1.05] tracking-tight">{barcodeTicketsEnabled ? "Tickets y patentes" : "Entradas y salidas"}</h1>

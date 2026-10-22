@@ -1,14 +1,17 @@
 /** @jest-environment jsdom */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { usePathname } from 'next/navigation';
-import { OperationalNavUser } from './nav-user';
+import { NavUser, OperationalNavUser } from './nav-user';
+import { signOut } from 'next-auth/react';
 
 jest.mock('next/navigation', () => ({ usePathname: jest.fn(() => '/admin/caja') }));
 jest.mock('next-auth/react', () => ({ signOut: jest.fn() }));
 jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ inquilinosEnabled: true, cobroHabilitado: true }) }));
 jest.mock('@/hooks/use-notification', () => ({ useNotifications: jest.fn() }));
 jest.mock('../box-list-dialog', () => ({ BoxListDialog: () => null }));
-jest.mock('@/app/(protected)/admin/other-payments/components/create-other-payment-dialog', () => ({ CreateOtherPaymentDialog: () => null }));
+jest.mock('@/app/(protected)/admin/other-payments/components/create-other-payment-dialog', () => ({
+  CreateOtherPaymentDialog: ({ open }: { open: boolean }) => (open ? <div role="dialog" aria-label="Gastos e ingresos" /> : null),
+}));
 jest.mock('./install-app-menu-item', () => ({ InstallAppMenuItem: () => null }));
 
 const userNav = { name: 'Álvaro García', email: 'usuario@example.test', avatar: '', role: 'ADMIN' as const };
@@ -64,8 +67,38 @@ test('en Avisos sin pendientes se despliega Operación en escritorio y celular',
   expect(screen.queryByText('Sin pendientes')).not.toBeInTheDocument();
 });
 
+test('el operador tiene Gastos e ingresos dentro de Operación y abre el diálogo sin navegar', async () => {
+  jest.mocked(usePathname).mockReturnValue('/tickets');
+  render(<OperationalNavUser userNav={{ ...userNav, role: 'USER' }} notas={{ unreadIds: [], loaded: true }} />);
+  open();
+  const gastos = await screen.findAllByRole('menuitem', { name: 'Gastos e ingresos' });
+  // Uno en escritorio y otro en celular, los dos colgados de Operación y ninguno suelto.
+  expect(gastos).toHaveLength(2);
+  expect(gastos[0].closest('.branched-menu__section')?.querySelector('.branched-menu__head')).toHaveTextContent('Operación');
+  gastos.forEach(item => expect(item).not.toHaveAttribute('href'));
+  fireEvent.click(gastos[0]);
+  expect(await screen.findByRole('dialog', { name: 'Gastos e ingresos' })).toBeInTheDocument();
+});
+
 test('la etiqueta accesible conserva el número real cuando el contador compacto muestra 99+', () => {
   render(<OperationalNavUser userNav={userNav} notas={{ unreadIds: Array.from({ length: 123 }, (_, i) => String(i)), loaded: true }} />);
   expect(screen.getByText('99+')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Tenés 123 avisos sin leer/ })).toBeInTheDocument();
+});
+
+test('el superadministrador puede cambiar de playa y cerrar sesión desde la operación', async () => {
+  render(<OperationalNavUser userNav={{ ...userNav, role: 'SUPER_ADMIN' }} notas={{ unreadIds: [], loaded: true }} />);
+  open();
+  expect(await screen.findByRole('menuitem', { name: 'Cambiar de playa' })).toHaveAttribute('href', '/seleccionar-acceso');
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Cerrar sesión' }));
+  expect(signOut).toHaveBeenCalled();
+});
+
+test('el menú de plataforma permite cambiar de playa y cerrar sesión sin montar avisos', async () => {
+  jest.mocked(signOut).mockClear();
+  render(<NavUser userNav={{ ...userNav, role: 'SUPER_ADMIN' }} />);
+  fireEvent.pointerDown(screen.getByRole('button', { name: /Tu cuenta:/ }), { button: 0, ctrlKey: false });
+  expect(await screen.findByRole('menuitem', { name: 'Cambiar de playa' })).toHaveAttribute('href', '/seleccionar-acceso');
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Cerrar sesión' }));
+  expect(signOut).toHaveBeenCalledTimes(1);
 });

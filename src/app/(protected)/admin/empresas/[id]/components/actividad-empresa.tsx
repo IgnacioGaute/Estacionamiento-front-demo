@@ -510,15 +510,15 @@ export function ActividadDeEmpresa({
   })).filter((c) => c.id === "todo" || c.cuenta > 0);
 
   return (
-    <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2E2A23] px-5 py-4">
+    <section className="overflow-hidden rounded-xl border border-[#26231E] bg-[#161411]">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#211F1B] px-5 py-4">
         <div>
-          <h2 className="font-display text-[22px] font-semibold leading-tight">Actividad</h2>
+          <h2 className="text-[15px] font-semibold leading-tight">Actividad</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             Todo lo que cambia la administración: reglas, usuarios, MercadoPago y el plan. Nunca muestra contraseñas ni tokens.
           </p>
         </div>
-        <div className="max-w-full overflow-x-auto">
+        <div className="min-w-0 max-w-full">
           <Segmentos
             etiqueta="Tipo de cambio"
             className="w-max"
@@ -544,25 +544,25 @@ export function ActividadDeEmpresa({
           const Icono = d.Icono;
           const desplegable = d.cambios.length > 1;
           return (
-            <li key={`${a.fecha}-${i}`} className="border-b border-[#2B2620] last:border-b-0">
+            <li key={`${a.fecha}-${i}`} className="border-b border-[#211F1B] last:border-b-0">
               {/* Cerrado por defecto; los movimientos sin ver arrancan abiertos, que son los que
                   se vienen a mirar. `details` da el plegado y el foco de teclado sin estado. */}
               <details open={nueva && desplegable} className="group">
                 <summary
-                  className={`grid min-h-16 list-none grid-cols-[40px_minmax(0,1fr)] items-center gap-3.5 rounded-xl px-2.5 py-2 transition-colors hover:bg-[#1E1A14] sm:grid-cols-[40px_minmax(0,1fr)_190px_140px] [&::-webkit-details-marker]:hidden ${
+                  className={`grid min-h-16 list-none grid-cols-[40px_minmax(0,1fr)] items-center gap-3.5 rounded-xl px-2.5 py-2 transition-colors hover:bg-[#1B1915] sm:grid-cols-[40px_minmax(0,1fr)_190px_140px] [&::-webkit-details-marker]:hidden ${
                     desplegable ? "cursor-pointer" : "cursor-default"
                   }`}
                 >
                   <span
                     className={`flex size-9 items-center justify-center rounded-[11px] ${
-                      d.destructiva ? "bg-[#FF7A4D]/[0.14]" : "bg-[#221F1A]"
+                      d.destructiva ? "bg-[#F2725B]/[0.14]" : "bg-[#221F1A]"
                     }`}
                   >
                     <Icono
                       aria-hidden
                       className={`size-4 ${
                         d.destructiva
-                          ? "text-[#FF7A4D]"
+                          ? "text-[#F2725B]"
                           : nueva
                             ? "text-gm-yellow"
                             : "text-muted-foreground"
@@ -617,9 +617,9 @@ export function ActividadDeEmpresa({
                           <span
                             className={`font-semibold ${
                               f.verbo === "Desactivó" || f.verbo === "Quitó"
-                                ? "text-[#FF7A4D]"
+                                ? "text-[#F2725B]"
                                 : f.verbo === "Activó" || f.verbo === "Agregó"
-                                  ? "text-emerald-400"
+                                  ? "text-[#3DD68C]"
                                   : "text-foreground"
                             }`}
                           >

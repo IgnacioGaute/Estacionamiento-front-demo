@@ -1,9 +1,18 @@
 import { openOperations, saveOperations, rememberDeviceAccess, getDeviceAccess, hasOperations } from './offline-vault.js';
 import { calculateStayPrice, assertPricingCoverage } from './offline-stay-pricing.js';
 import { receiptQrSvg } from './offline-qr.js';
+import { makeOperation, applyOperation } from './offline-operations.js';
+import { createOfflineWorkspace } from './offline-workspace.js';
 const $ = id => document.getElementById(id);
 const isFree = vehicle => (vehicle?.modalidad ?? state?.modalidad) === 'GRATUITO';
 let state = null, revision = 0, password = '', busy = false, exit = null, timer;
+const extended = createOfflineWorkspace({ getState: () => state, isBusy: () => busy, showReceipt, commit: async (action, id, data, at) => {
+  if (!state || busy) throw new Error('Esperá a que termine la operación actual.');
+  allowedTime(); busy = true; controls();
+  try { await persist(applyOperation(state, makeOperation(state, action, id, data, at))); message('Operación guardada en este equipo. Pendiente de sincronizar.'); }
+  finally { busy = false; render(); }
+  await sync();
+} });
 let selectedReceipt = null;
 let receiptPage = 1, receiptKind = 'all';
 const RECEIPTS_PER_PAGE = 8;
@@ -77,7 +86,7 @@ function addReceipt(next, op) {
 function receiptLines(r) {
   const exitLines = r.kind !== 'EXIT' ? [] : r.historical
     ? ['Salida: ' + new Date(r.occurredAt).toLocaleString('es-AR'), 'Tarifa total: ' + money(r.price)]
-    : ['Salida: ' + new Date(r.occurredAt).toLocaleString('es-AR'), 'Tarifa total: ' + money(r.price), 'Anticipos: ' + money(r.collected), 'Cobrado: ' + money(r.price - r.collected), r.method === 'CASH' ? 'Efectivo' : 'Transferencia confirmada'];
+    : ['Salida: ' + new Date(r.occurredAt).toLocaleString('es-AR'), 'Tarifa total: ' + money(r.price), 'Anticipos: ' + money(r.collected), (r.charged < 0 ? 'Devuelto: ' : 'Cobrado: ') + money(Math.abs(r.charged ?? (r.price - r.collected))), r.method === 'MIXED' ? 'Efectivo + transferencia confirmada' : r.method === 'CASH' ? 'Efectivo' : r.method === 'TRANSFER' ? 'Transferencia confirmada' : 'Sin cobro'];
   return [r.business?.name || 'Estacionamiento', r.business?.address || '', 'Comprobante de ' + (r.kind === 'ENTRY' ? 'entrada' : 'salida'), r.plate, r.vehicleType, 'Entrada: ' + new Date(r.entry).toLocaleString('es-AR'), ...exitLines, r.operatorName ? 'Operador: ' + r.operatorName : '', r.historical ? 'Copia local del registro anterior' : r.synced ? 'Movimiento sincronizado' : 'Registro local · pendiente de sincronización', 'No válido como factura.', 'Referencia: ' + r.id];
 }
 function receiptQrValue(r) {
@@ -155,6 +164,7 @@ function render() {
     return el;
   }));
   if (!vehicles.length) $('rows').textContent = 'No hay vehículos activos en esta búsqueda.';
+  extended.render();
   renderReceipts();
   controls();
 }
@@ -191,6 +201,7 @@ async function openWorkspace(accessPassword) {
 $('unlock').onsubmit = event => { event.preventDefault(); void openWorkspace($('password').value); };
 $('entry').onsubmit = async event => {
   event.preventDefault(); if (!state || busy) return;
+  if (state.operationVersion === 3) { extended.entry(); return; }
   busy = true; controls();
   try {
     allowedTime();
@@ -276,8 +287,20 @@ returnLinks.forEach(link => link.addEventListener('click', async event => {
   }
 }));
 function connection() { $('connection').textContent = navigator.onLine ? 'Modo local · conexión disponible' : 'Sin conexión · guardado automático'; }
-window.addEventListener('online', () => { connection(); sync(); }); window.addEventListener('offline', connection); connection();
-setInterval(() => { if (state && state.pending.length) sync(); }, 30000);
+let syncTimer;
+const stopSyncTimer = () => { clearInterval(syncTimer); syncTimer = undefined; };
+function resumeSync() {
+  stopSyncTimer();
+  if (document.hidden || !navigator.onLine) return;
+  if (state && state.pending.length) sync();
+  syncTimer = setInterval(() => { if (!document.hidden && navigator.onLine && state && state.pending.length) sync(); }, 30000);
+}
+window.addEventListener('online', () => { connection(); resumeSync(); });
+window.addEventListener('offline', () => { connection(); stopSyncTimer(); });
+document.addEventListener('visibilitychange', resumeSync);
+window.addEventListener('pagehide', stopSyncTimer);
+window.addEventListener('pageshow', resumeSync);
+connection(); resumeSync();
 async function initialize() {
   try {
     if (!(await hasOperations())) { message('Este dispositivo todavía no tiene vehículos y tarifas guardados. Al iniciar sesión con conexión, el sistema los prepara automáticamente. Volvé al sistema cuando recuperes internet.'); return; }

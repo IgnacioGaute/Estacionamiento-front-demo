@@ -9,6 +9,7 @@ import {
   ChevronDown,
   LayoutDashboard,
   LogOut,
+  MapPin,
   Banknote,
   Plus,
   TicketIcon,
@@ -37,6 +38,7 @@ import { InstallAppMenuItem } from './install-app-menu-item';
 import { HojaDeRama, Rama as RamaMenu } from './branched-menu';
 import DesktopBranchedMenu, { type BranchedMenuItem } from './desktop-branched-menu';
 import { ParkingMark } from '@/components/brand/logo';
+import { ACCESS_SELECTION_ROUTE } from '@/lib/access-scope';
 
 type RamaId = 'operacion' | 'clientes' | 'admin';
 
@@ -68,7 +70,7 @@ export function OperationalNavUser({
   const [openBoxDialog, setOpenBoxDialog] = useState(false);
   // En una playa gratuita no hay planilla de caja, gastos e ingresos, tarifas ni inquilinos.
   const { inquilinosEnabled, cobroHabilitado } = useTenant();
-  const SECCIONES_ADMIN = seccionesAdmin(cobroHabilitado);
+  const SECCIONES_ADMIN = seccionesAdmin(cobroHabilitado, userNav.role === 'SUPER_ADMIN');
   const [openPaymentsDialog, setOpenPaymentsDialog] = useState(false);
   const unreadCount = notas.unreadIds.length;
   const hasNewNoteAlert = unreadCount > 0;
@@ -76,12 +78,17 @@ export function OperationalNavUser({
   const alertLabel = `Tenés ${unreadCount} ${unreadCount === 1 ? 'aviso' : 'avisos'} sin leer`;
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const esAdmin = userNav.role === 'ADMIN';
+  const esAdmin = userNav.role === 'ADMIN' || userNav.role === 'SUPER_ADMIN';
 
   // Se abre una rama por vez. Con Administración desplegada son siete hijos: las tres ramas
   // abiertas a la vez pasarían de alto la pantalla en un monitor chico.
   const [rama, setRama] = useState<RamaId | null>(null);
   const alternarRama = (id: RamaId) => setRama((actual) => (actual === id ? null : id));
+
+  // El operador carga gastos e ingresos desde Operación: abre el diálogo encima de donde está.
+  // El administrador los tiene en Administración, con su pantalla.
+  const gastosOperador = !esAdmin && cobroHabilitado;
+  const abrirGastos = () => { setIsOpen(false); setOpenPaymentsDialog(true); };
 
   useEffect(() => {
     setIsOpen(false);
@@ -104,6 +111,7 @@ export function OperationalNavUser({
       children: [
         { value: '/tickets', label: 'Tickets', icon: <TicketIcon /> },
         ...(inquilinosEnabled ? [{ value: '/renters', label: 'Inquilinos', icon: <Users /> }] : []),
+        ...(gastosOperador ? [{ label: 'Gastos e ingresos', icon: <Banknote />, accion: abrirGastos }] : []),
         ...(!hasNewNoteAlert ? [{ value: '/notes', label: 'Avisos', icon: <Bell /> }] : []),
       ],
     },
@@ -148,7 +156,7 @@ export function OperationalNavUser({
                 {userNav.name.trim() || 'Usuario'}
               </span>
               <span className="text-[11.5px] text-muted-foreground">
-                {userNav.role === 'ADMIN' ? 'Administrador' : 'Operador'}
+                {userNav.role === 'SUPER_ADMIN' ? 'Super admin' : esAdmin ? 'Administrador' : 'Operador'}
               </span>
             </span>
             <ChevronDown className={cn('hidden size-4 shrink-0 text-muted-foreground transition-transform duration-200 lg:block', isOpen && 'rotate-180')} aria-hidden />
@@ -178,7 +186,7 @@ export function OperationalNavUser({
               </span>
             </div>
             <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-gm-yellow">
-              {userNav.role === 'ADMIN' ? 'Admin' : 'Op.'}
+              {userNav.role === 'SUPER_ADMIN' ? 'Super' : esAdmin ? 'Admin' : 'Op.'}
             </span>
           </div>
 
@@ -227,6 +235,13 @@ export function OperationalNavUser({
                   Inquilinos
                 </HojaDeRama>
               </Link>
+            )}
+
+            {gastosOperador && (
+              <HojaDeRama onSelect={abrirGastos}>
+                <Banknote className="size-3.5" />
+                Gastos e ingresos
+              </HojaDeRama>
             )}
 
             {!hasNewNoteAlert && (
@@ -297,16 +312,15 @@ export function OperationalNavUser({
 
           <InstallAppMenuItem />
 
-          {!esAdmin && cobroHabilitado && (
-              <DropdownMenuItem onSelect={() => { setIsOpen(false); setOpenPaymentsDialog(true); }} className="min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-0 lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]">
-                <Banknote className="size-3.5 text-muted-foreground" />
-                Gastos e ingresos
-              </DropdownMenuItem>
-          )}
-
           <DropdownMenuSeparator className="bg-border/40 -mx-1.5 my-1" />
 
           {/* Logout */}
+          {userNav.role === 'SUPER_ADMIN' && <DropdownMenuItem asChild className="min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm lg:min-h-[38px] lg:text-[12.5px]">
+            <a href={ACCESS_SELECTION_ROUTE}>
+              <MapPin className="size-3.5 text-muted-foreground" />
+              Cambiar de playa
+            </a>
+          </DropdownMenuItem>}
           <DropdownMenuItem
             onClick={() => signOut()}
             className="desktop-user-action desktop-user-action--danger min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-[#F08775] transition-colors duration-150 hover:bg-destructive/15 focus:bg-destructive/15 lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]"
@@ -408,6 +422,12 @@ function PlatformNavUser({
 
         <DropdownMenuSeparator className="-mx-1.5 my-1 bg-border/40" />
 
+        <DropdownMenuItem asChild className={item}>
+          <a href={ACCESS_SELECTION_ROUTE}>
+            <MapPin className="size-3.5 text-muted-foreground" />
+            Cambiar de playa
+          </a>
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => signOut()}
           className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-[#F08775] transition-colors duration-150 hover:bg-destructive/15 focus:bg-destructive/15"
@@ -426,6 +446,7 @@ function OperationalNavUserConAvisos(props: { userNav: UserNav }) {
 }
 
 export function NavUser(props: { userNav: UserNav }) {
-  if (props.userNav.role !== 'SUPER_ADMIN') return <OperationalNavUserConAvisos {...props} />;
+  const { playaId } = useTenant();
+  if (props.userNav.role !== 'SUPER_ADMIN' || playaId) return <OperationalNavUserConAvisos {...props} />;
   return <PlatformNavUser {...props} />;
 }

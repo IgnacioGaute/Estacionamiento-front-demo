@@ -3,6 +3,7 @@
 import { FormError } from '@/components/form-error';
 import { FormSuccess } from '@/components/form-success';
 import { Button } from '@/components/ui/button';
+import SpecularButton from '@/components/reactbits/SpecularButton';
 import {
   Form,
   FormControl,
@@ -136,14 +137,24 @@ export function LoginForm() {
         <FormError message={error} />
         <FormSuccess message={success} detail="Abriendo el sistema…" pending />
 
-        <Button
-          className="!mt-5 h-[54px] w-full gap-2.5 rounded-[14px] bg-gm-yellow font-display text-lg font-bold tracking-[0.04em] text-gm-ink hover:bg-gm-yellow hover:brightness-105 active:scale-[0.98] disabled:opacity-70"
+        {/* Specular Button de React Bits: el brillo del borde sigue al puntero. Con el amarillo de la
+            marca de fondo y la letra oscura, como el botón anterior. */}
+        <SpecularButton
+          className="!mt-5 h-[54px] w-full !py-0 font-display text-lg font-bold tracking-[0.04em] disabled:!opacity-70"
           type="submit"
           disabled={entrando}
+          radius={14}
+          tint="#F5C219"
+          tintOpacity={1}
+          textColor="#201204"
+          lineColor="#FFF6D6"
+          baseColor="#8A6A0C"
+          intensity={1.2}
+          idleIntensity={0.45}
         >
           {entrando ? 'ENTRANDO…' : 'ENTRAR'}
           <ArrowRight className="size-[18px]" strokeWidth={2.4} aria-hidden />
-        </Button>
+        </SpecularButton>
       </form>
     </Form>
   );

@@ -78,6 +78,7 @@ export function PlateLiveScanner({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const alReconocer = useRef(onRecognized);
+  const alCerrar = useRef(onOpenChange);
   const [estado, setEstado] = useState<Estado>({ tipo: 'iniciando' });
   const [ronda, setRonda] = useState(0);
   // null: la cámara no tiene linterna o el navegador no deja usarla.
@@ -85,6 +86,7 @@ export function PlateLiveScanner({
 
   useEffect(() => {
     alReconocer.current = onRecognized;
+    alCerrar.current = onOpenChange;
   });
 
   useEffect(() => {
@@ -95,8 +97,15 @@ export function PlateLiveScanner({
       streamRef.current = null;
       setLinterna(null);
     };
+    // El reconocimiento remoto puede seguir pendiente al bloquear el teléfono. Soltamos el
+    // hardware inmediatamente y descartamos esa respuesta, sin esperar a que vuelva la red.
+    const suspender = () => { cancelado = true; apagar(); alCerrar.current(false); };
+    const visibilidad = () => { if (document.hidden) suspender(); };
+    document.addEventListener('visibilitychange', visibilidad);
+    window.addEventListener('pagehide', suspender);
 
     (async () => {
+      if (document.hidden) { suspender(); return; }
       setEstado({ tipo: 'iniciando' });
       let stream: MediaStream;
       try {
@@ -139,7 +148,7 @@ export function PlateLiveScanner({
         alCambiar: (tipo) => setEstado({ tipo }),
         cancelado: () => cancelado,
       });
-      if (resultado.tipo === 'cancelado') return;
+      if (cancelado || resultado.tipo === 'cancelado') return;
       apagar();
       if (resultado.tipo === 'patente') {
         navigator.vibrate?.(80);
@@ -154,6 +163,8 @@ export function PlateLiveScanner({
     return () => {
       cancelado = true;
       apagar();
+      document.removeEventListener('visibilitychange', visibilidad);
+      window.removeEventListener('pagehide', suspender);
     };
   }, [open, ronda]);
 

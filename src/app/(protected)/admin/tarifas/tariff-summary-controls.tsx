@@ -1,36 +1,16 @@
 'use client';
 
-import { useId } from 'react';
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Segmento } from '@/components/ui/segmento';
 import { Moon, Sun } from 'lucide-react';
 
-// Adapted from Amicro: A / B Segmented Tabs and Light / Dark Mode Toggle.
-// https://amicro.vercel.app/Anime — controlled values, vehicle labels and keyboard support.
-export function VehicleTariffTabs({ vehicles, value, onChange, panelId, label = 'Tipo de vehículo de las tarifas vigentes' }: {
+// Las pestañas de tipo de vehículo: el Rubber Segment de toda la app (ui/segmento). `panelId` queda
+// por compatibilidad con quien lo usa.
+export function VehicleTariffTabs({ vehicles, value, onChange, label = 'Tipo de vehículo de las tarifas vigentes' }: {
   vehicles: { code: string; name: string }[]; value: string; onChange: (code: string) => void; panelId: string; label?: string;
 }) {
-  const layoutId = useId();
-  const reduce = useReducedMotion();
-  return <div className="min-w-0 max-w-full overflow-x-auto pb-1">
-    <LayoutGroup id={layoutId}>
-      <div role="tablist" aria-label={label} className="relative inline-flex min-w-max items-center gap-1 rounded-2xl border border-neutral-700/60 bg-neutral-950/40 p-1.5 shadow-inner">
-        {vehicles.map((vehicle, index) => {
-          const active = value === vehicle.code;
-          return <button key={vehicle.code} id={panelId + '-tab-' + vehicle.code} type="button" role="tab" aria-selected={active} aria-controls={panelId} tabIndex={active ? 0 : -1}
-            onClick={() => onChange(vehicle.code)} onKeyDown={event => {
-              const next = event.key === 'ArrowRight' ? (index + 1) % vehicles.length : event.key === 'ArrowLeft' ? (index - 1 + vehicles.length) % vehicles.length : event.key === 'Home' ? 0 : event.key === 'End' ? vehicles.length - 1 : -1;
-              if (next < 0) return;
-              event.preventDefault(); onChange(vehicles[next].code);
-              const target = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next];
-              target?.focus({ preventScroll: true }); target?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-            }} className={'relative min-h-11 shrink-0 rounded-xl px-5 py-2.5 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background ' + (active ? 'text-neutral-950' : 'text-muted-foreground hover:text-foreground')}>
-            {active && <motion.span layoutId="vehicle-pill" transition={reduce ? { duration: 0 } : { type: 'spring', bounce: 0.2, duration: 0.4 }} className="absolute inset-0 rounded-xl bg-neutral-200 shadow-md" />}
-            <span className="relative z-10">{vehicle.name}</span>
-          </button>;
-        })}
-      </div>
-    </LayoutGroup>
-  </div>;
+  return <Segmento aria-label={label} size="lg" value={value} onChange={onChange}
+    items={vehicles.map((vehicle) => ({ value: vehicle.code, label: vehicle.name }))} />;
 }
 
 export function TariffDayNightToggle({ value, onChange, description, panelId }: {

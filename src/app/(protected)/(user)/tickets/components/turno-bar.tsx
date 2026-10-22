@@ -1,4 +1,5 @@
 'use client';
+import { useForegroundPoll } from '@/hooks/use-foreground-poll';
 import { useEffect, useId, useState, useTransition } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -57,7 +58,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const [estadias, setEstadias] = useState<EstadiaAbiertaTurno[] | null>(null);
   const [estadiasConfirmadas, setEstadiasConfirmadas] = useState<string[]>([]);
   const { confirmada: confirmadaEnDispositivo, confirmar: confirmarEnDispositivo } = useConfirmadas();
-  const esAdmin = session?.user?.role === 'ADMIN';
+  const esAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN';
   const nombreUsuario = [session?.user?.firstName, session?.user?.lastName].filter(Boolean).join(' ').trim() || session?.user?.username || 'Tu usuario';
   const active = turnoId ? context?.openTurnos.find(t => t.id === turnoId) : context?.active;
   const caja = context?.cajas?.find(c => c.id === (active?.cajaId ?? cajaId));
@@ -99,13 +100,12 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   };
   useEffect(() => {
     if (turnoId) return;
-    startTransition(() => refresh());
-    const update = () => startTransition(() => refresh());
-    const timer = window.setInterval(update, 60000);
+    const update = () => { if (!document.hidden && navigator.onLine) startTransition(() => refresh()); };
+    update();
     window.addEventListener('parking-shift-changed', update);
-    window.addEventListener('online', update);
-    return () => { window.clearInterval(timer); window.removeEventListener('parking-shift-changed', update); window.removeEventListener('online', update); };
+    return () => { window.removeEventListener('parking-shift-changed', update); };
   }, [turnoId, revision, cajaId]);
+  useForegroundPoll(() => startTransition(() => refresh()), 60000, { immediate: false, enabled: !turnoId });
   // Se consultan al entrar al cierre. Si la consulta falla no se traba el cierre.
   const activeId = active?.id;
   useEffect(() => {
@@ -325,7 +325,7 @@ export function CashMovementForm({ sesionId, expected, onUpdated }: { sesionId: 
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [pending, startTransition] = useTransition();
-  if (session?.user?.role !== 'ADMIN') return null;
+  if (!['ADMIN', 'SUPER_ADMIN'].includes(session?.user?.role ?? '')) return null;
   const withdrawal = type === 'RETIRO';
   const valid = amountValid(amount) && Number(amount) > 0 && (!withdrawal || Number(amount) <= expected) && !!reason.trim();
   const nextCash = expected + (withdrawal ? -Number(amount) : Number(amount));

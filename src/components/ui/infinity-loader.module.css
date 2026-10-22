@@ -1,0 +1,43 @@
+.loader {
+  --infinity-size: 96px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 100%;
+  vertical-align: middle;
+  color: #ffe347;
+}
+
+.sm { --infinity-size: 44px; }
+.lg { --infinity-size: 144px; }
+
+.symbol {
+  display: block;
+  flex: none;
+  width: var(--infinity-size);
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.track { stroke: rgb(245 194 25 / 0.16); }
+.trail {
+  stroke: #ffe347;
+  filter: drop-shadow(0 0 1px #fff8b3) drop-shadow(0 0 3px #f5c219) drop-shadow(0 0 8px rgb(255 166 0 / 0.7));
+  animation: infinity-path 2s linear infinite;
+}
+
+.label { color: hsl(var(--muted-foreground)); font-size: 0.8125rem; line-height: 1.5; }
+
+.loader[data-status='done'] .trail { animation: none; stroke: #86efac; filter: none; }
+.loader[data-status='error'] .trail { animation: none; stroke: #f08775; filter: none; }
+
+@keyframes infinity-path {
+  from { stroke-dashoffset: 100; }
+  to { stroke-dashoffset: -100; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trail { animation: none; stroke-dasharray: none; }
+}

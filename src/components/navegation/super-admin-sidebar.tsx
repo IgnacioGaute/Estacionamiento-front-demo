@@ -146,7 +146,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       <span
                         aria-hidden
                         className={cn(
-                          'grid size-8 shrink-0 place-items-center rounded-[10px] font-display text-[11.5px] font-semibold',
+                          'grid size-8 shrink-0 place-items-center rounded-[10px] text-[11px] font-semibold',
                           actual ? 'bg-gm-yellow text-gm-ink' : 'bg-white/[0.05] text-[#E9E1D4]',
                         )}
                       >

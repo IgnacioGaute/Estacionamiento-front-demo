@@ -10,17 +10,37 @@ jest.mock('next/server', () => ({
 
 import middleware from './middleware';
 
-const visit = (route: string, role?: string) => {
+const visit = (route: string, role?: string, selection?: string) => {
   mockSession = role ? { user: { role, id: 'test-user' }, token: 'test-token' } : null;
-  return middleware({ nextUrl: new URL(route, 'http://localhost') } as unknown as NextRequest) as unknown as Promise<string>;
+  return middleware({ nextUrl: new URL(route, 'http://localhost'), cookies: { get: () => selection ? { value: selection } : undefined } } as unknown as NextRequest) as unknown as Promise<string>;
 };
 
-test('SUPER_ADMIN solo ve administración de plataforma, también al ingresar por URL', async () => {
+test('SUPER_ADMIN debe elegir destino antes de entrar, también por URL directa', async () => {
   for (const route of ['/tickets', '/admin/tickets', '/admin/caja', '/notes', '/', '/auth/login', '/admin/users']) {
-    expect(await visit(route, 'SUPER_ADMIN')).toBe('/admin/empresas');
+    expect(await visit(route, 'SUPER_ADMIN')).toBe('/seleccionar-acceso');
   }
-  expect(await visit('/admin/empresas', 'SUPER_ADMIN')).toBe('next');
+  expect(await visit('/admin/empresas', 'SUPER_ADMIN')).toBe('/seleccionar-acceso');
+  expect(await visit('/seleccionar-acceso', 'SUPER_ADMIN')).toBe('next');
   expect(await visit('/api/auth/signout', 'SUPER_ADMIN')).toBe('next');
+});
+
+test('SUPER_ADMIN navega según el ámbito elegido y puede volver al selector', async () => {
+  const playa = 'test-user:11111111-1111-4111-8111-111111111111';
+  for (const route of ['/tickets', '/admin/caja', '/notes', '/admin/users']) {
+    expect(await visit(route, 'SUPER_ADMIN', playa)).toBe('next');
+    expect(await visit(route, 'SUPER_ADMIN', 'test-user:platform')).toBe('/admin/empresas');
+  }
+  expect(await visit('/admin/empresas', 'SUPER_ADMIN', 'test-user:platform')).toBe('next');
+  expect(await visit('/admin/empresas', 'SUPER_ADMIN', playa)).toBe('/tickets');
+  expect(await visit('/seleccionar-acceso', 'SUPER_ADMIN', playa)).toBe('next');
+  expect(await visit('/tickets', 'SUPER_ADMIN', 'otro:platform')).toBe('/seleccionar-acceso');
+  expect(await visit('/tickets', 'SUPER_ADMIN', 'test-user:invalido')).toBe('/seleccionar-acceso');
+});
+
+test('el selector de superadministrador requiere sesión y rol', async () => {
+  expect(await visit('/seleccionar-acceso')).toBe('/auth/login');
+  expect(await visit('/seleccionar-acceso', 'ADMIN')).toBe('/tickets');
+  expect(await visit('/seleccionar-acceso', 'USER')).toBe('/tickets');
 });
 
 test('administración de plataforma no admite operadores ni administradores de empresa', async () => {

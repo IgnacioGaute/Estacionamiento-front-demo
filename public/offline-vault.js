@@ -43,6 +43,9 @@ export async function openSnapshot(password) {
 export async function clearSnapshot() { await access('readwrite', store => store.delete('current')); }
 
 export async function hasOperations() { return !!(await access('readonly', store => store.get('operations'))); }
+// La revisión permite reutilizar una lectura en memoria sin descifrar en cada control. Ningún
+// dato de la operación se agrega en claro; cualquier escritura desde otra pestaña la invalida.
+export async function getOperationsRevision() { return (await access('readonly', store => store.get('operations')))?.revision ?? null; }
 // Trusted-device access. The browser stores a non-exportable wrapping key;
 // anyone with access to this browser profile can operate this device.
 export async function rememberDeviceAccess(password) {

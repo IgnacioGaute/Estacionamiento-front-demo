@@ -106,7 +106,7 @@ test('el tablero reparte por hace cuánto entraron y el filtro deja solo a los q
   // El que se pasó del tiempo avisado lo dice con cuánto avisó y cuánto se pasó.
   expect(within(columna('De 1 a 4 h')).getByText('Avisó 2 h · se pasó 32 min')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('button', { name: /Tiempo superado · 1/ }));
+  fireEvent.click(screen.getByRole('radio', { name: /Tiempo superado · 1/ }));
   expect(onFiltro).toHaveBeenCalledWith('excedidos');
   rerender(
     <TableroPlaya activos={activos} ahora={ahora} diaActivos={[]} esDiaVencido={() => false} filtro="excedidos" onFiltro={onFiltro} onCobrar={jest.fn()} onAbrirDia={jest.fn()} />,

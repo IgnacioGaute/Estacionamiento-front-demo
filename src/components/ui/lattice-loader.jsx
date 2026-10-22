@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { InfinityLoader } from './infinity-loader';
 
 import './lattice-loader.css';
 
@@ -124,7 +125,7 @@ export default function LatticeLoader({
         ...style
       }}
     >
-      <span className="lattice-loader__grid" aria-hidden="true">
+      {compact ? <span className="lattice-loader__grid" aria-hidden="true">
         <span className="lattice-loader__layer lattice-loader__run">
           {pat.cells.map((unit, i) => (
             <span
@@ -141,7 +142,7 @@ export default function LatticeLoader({
             <span key={i} className="lattice-loader__cell" data-on={marks[mark].includes(i) ? '' : undefined} />
           ))}
         </span>
-      </span>
+      </span> : <span aria-hidden="true"><InfinityLoader compact status={status} size={cellSize >= 7 ? 'lg' : 'md'} /></span>}
       {!compact && <span className="lattice-loader__label" aria-hidden="true">
         <span className="lattice-loader__text" data-active={status === 'working' ? '' : undefined}>
           {label}

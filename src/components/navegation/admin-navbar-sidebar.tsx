@@ -30,12 +30,10 @@ export function AdminNavbarSidebar({
   const role = session?.user?.role?.toUpperCase() ?? 'USER';
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const isAdmin = role === 'ADMIN' || isSuperAdmin;
-  const { cobroHabilitado } = useTenant();
+  const { cobroHabilitado, playaId } = useTenant();
 
-  // El super admin administra la plataforma, no opera un estacionamiento: tiene su propia barra
-  // con métricas, empresas y el acceso rápido. El acceso a los datos de cada playa existe en el
-  // backend, pero no se muestra acá para no mezclar los dos trabajos.
-  if (isSuperAdmin) return <SuperAdminSidebar {...props} />;
+  // En una playa se muestran sus secciones; la consola conserva su navegación de plataforma.
+  if (isSuperAdmin && !playaId) return <SuperAdminSidebar {...props} />;
 
   const iconos: Record<string, React.ReactNode> = {
     '/admin/dashboard': <Gauge />,
@@ -48,7 +46,7 @@ export function AdminNavbarSidebar({
     '/admin/plan': <ReceiptText />,
   };
   const navItems = isAdmin
-    ? seccionesAdmin(cobroHabilitado).map((s) => ({ title: s.label, url: s.url, icon: iconos[s.url] }))
+    ? seccionesAdmin(cobroHabilitado, isSuperAdmin).map((s) => ({ title: s.label, url: s.url, icon: iconos[s.url] }))
     : [];
 
   return (

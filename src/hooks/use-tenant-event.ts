@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { io } from 'socket.io-client';
+import { subscribeTenantEvent } from '@/lib/tenant-socket-client';
 import { useTenant } from '@/components/tenant-provider';
 // `onConnect` corre en cada conexión, también la primera: entre que el servidor armó la página y
 // el socket se conectó (o mientras estuvo caído) pudo pasar algo de lo que no llegó aviso.
@@ -13,9 +13,6 @@ export function useTenantEvent(event: string, callback: (data: any) => void, onC
   useEffect(() => { handler.current = callback; alConectar.current = onConnect; });
   useEffect(() => {
     if (!session?.token || !playaId) return;
-    const socket = io(process.env.NEXT_PUBLIC_API_URL, { transports: ['websocket'], auth: { token: session.token, playaId } });
-    socket.on(event, data => handler.current(data));
-    socket.on('connect', () => alConectar.current?.());
-    return () => { socket.disconnect(); };
+    return subscribeTenantEvent(session.token, playaId, event, data => handler.current(data), () => alConectar.current?.());
   }, [event, session?.token, playaId]);
 }

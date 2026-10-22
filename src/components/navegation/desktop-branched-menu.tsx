@@ -10,6 +10,8 @@ export type BranchedMenuItem = {
   value?: string;
   icon?: ReactNode;
   children?: BranchedMenuItem[];
+  // Hoja que abre algo encima (un diálogo) en vez de navegar: no queda marcada como activa.
+  accion?: () => void;
 };
 type Props = {
   items: BranchedMenuItem[];
@@ -174,26 +176,31 @@ export default function BranchedMenu({
                         />
                       ))}
                     </svg>
-                    {kids.map(kid => (
-                      <Item
-                        key={kid.value}
-                        className="branched-menu__item"
-                        aria-current={kid.value === active ? 'true' : undefined}
-                        data-active={kid.value === active ? '' : undefined}
-                        disabled={!isOpen}
-                        asChild
-                        onSelect={() => select(kid.value ?? kid.label, kid)}
-                      >
-                        <Link href={kid.value ?? "#"}>
+                    {kids.map(kid => {
+                      const contenido = (
+                        <>
                           {kid.icon ? (
                             <span className="branched-menu__icon" aria-hidden="true">
                               {kid.icon}
                             </span>
                           ) : null}
                           <span className="branched-menu__label">{kid.label}</span>
-                        </Link>
-                      </Item>
-                    ))}
+                        </>
+                      );
+                      return (
+                        <Item
+                          key={kid.value ?? kid.label}
+                          className="branched-menu__item"
+                          aria-current={kid.value === active ? 'true' : undefined}
+                          data-active={kid.value === active ? '' : undefined}
+                          disabled={!isOpen}
+                          asChild
+                          onSelect={() => (kid.accion ? kid.accion() : select(kid.value ?? kid.label, kid))}
+                        >
+                          {kid.accion ? <button type="button">{contenido}</button> : <Link href={kid.value ?? "#"}>{contenido}</Link>}
+                        </Item>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

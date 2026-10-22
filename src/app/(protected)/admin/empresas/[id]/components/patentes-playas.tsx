@@ -19,11 +19,10 @@ import {
   quitarPatentesAction,
 } from "@/actions/tenancy/tenancy.action";
 import type { ConsumoPatentes } from "@/types/tenancy.type";
+import { BotonMantener } from "@/components/ui/boton-mantener";
 
 const botonChico =
-  "h-8 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2 disabled:opacity-50";
-const botonPeligro =
-  "h-8 rounded-[9px] px-2.5 text-[12.5px] font-semibold text-[#FF7A4D] transition-colors hover:bg-[#FF7A4D]/10 disabled:opacity-50";
+  "h-8 rounded-md border border-[#2A2824] px-3 text-[12.5px] font-medium transition-colors hover:border-[#3A362F] disabled:opacity-50";
 
 const numero = (n: number) => n.toLocaleString("es-AR");
 const diaMes = (iso: string) =>
@@ -50,7 +49,7 @@ function Consumo({ playa }: { playa: ConsumoPatentes }) {
     );
   if (playa.error || !playa.uso)
     return (
-      <p className="m-0 text-[12.5px] text-[#FF7A4D]">
+      <p className="m-0 text-[12.5px] text-[#F2725B]">
         {playa.error ?? "No se pudo consultar el consumo."}
       </p>
     );
@@ -66,7 +65,7 @@ function Consumo({ playa }: { playa: ConsumoPatentes }) {
           <b className="font-semibold">{numero(usadas)}</b>
           <span style={{ color: EJE }}> de {numero(total)} fotos usadas</span>
         </span>
-        <span className={poco ? "font-semibold text-[#FF7A4D]" : "text-muted-foreground"}>
+        <span className={poco ? "font-semibold text-[#F2725B]" : "text-muted-foreground"}>
           {restantes === 0 ? "Plan agotado" : `Quedan ${numero(restantes)}`}
           {seRenueva && <span style={{ color: EJE }}> · se renueva el {diaMes(seRenueva)}</span>}
         </span>
@@ -74,7 +73,7 @@ function Consumo({ playa }: { playa: ConsumoPatentes }) {
       <span className="block h-[5px] overflow-hidden rounded-full bg-[#2B2620]" aria-hidden>
         <span
           className="block h-full rounded-full"
-          style={{ width: `${Math.max(2, proporcion * 100)}%`, background: poco ? "#FF7A4D" : AMARILLO }}
+          style={{ width: `${Math.max(2, proporcion * 100)}%`, background: poco ? "#F2725B" : AMARILLO }}
         />
       </span>
       {playa.compartidaCon && (
@@ -92,7 +91,6 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
   const [editando, setEditando] = useState<string | null>(null);
   const [token, setToken] = useState("");
   const [errorToken, setErrorToken] = useState("");
-  const [quitando, setQuitando] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
@@ -112,7 +110,6 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
     setEditando(playaId);
     setToken("");
     setErrorToken("");
-    setQuitando(null);
   };
 
   const guardar = async (playa: ConsumoPatentes) => {
@@ -134,7 +131,6 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
     setOcupado(playa.playaId);
     const r = await quitarPatentesAction(playa.playaId);
     setOcupado(null);
-    setQuitando(null);
     if (r.error) {
       toast.error(r.error);
       return;
@@ -144,9 +140,9 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
   };
 
   return (
-    <section className="mt-4 overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-      <div className="border-b border-[#2E2A23] px-5 py-4">
-        <h2 className="flex items-center gap-2 font-display text-[20px] font-semibold">
+    <section className="mt-4 overflow-hidden rounded-xl border border-[#26231E] bg-[#161411]">
+      <div className="border-b border-[#211F1B] px-5 py-4">
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold">
           <Camera className="size-[18px] text-gm-yellow" />
           Reconocimiento de patentes
         </h2>
@@ -158,7 +154,7 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
       </div>
 
       {error ? (
-        <p className="m-0 px-5 py-6 text-[13px] text-[#FF7A4D]">{error}</p>
+        <p className="m-0 px-5 py-6 text-[13px] text-[#F2725B]">{error}</p>
       ) : !consumo ? (
         <p className="m-0 flex items-center gap-2 px-5 py-6 text-[13px]" style={{ color: EJE }}>
           <Loader2 className="size-4 animate-spin" />
@@ -167,7 +163,7 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
       ) : (
         <ul className="m-0 list-none p-0">
           {consumo.map((playa) => (
-            <li key={playa.playaId} className="border-t border-[#2B2620] px-5 py-4 first:border-t-0">
+            <li key={playa.playaId} className="border-t border-[#211F1B] px-5 py-4 first:border-t-0">
               <div className="grid items-center gap-x-6 gap-y-3 md:grid-cols-[minmax(0,200px)_minmax(0,1fr)_auto]">
                 <div className="min-w-0">
                   <span className="block truncate font-semibold">{playa.nombre}</span>
@@ -179,46 +175,29 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
                 </div>
                 <Consumo playa={playa} />
                 <div className="flex justify-end gap-1.5">
-                  {quitando === playa.playaId ? (
-                    <>
-                      <span className="self-center text-[12.5px] text-muted-foreground">¿Quitar token?</span>
-                      <button
-                        type="button"
-                        className={botonPeligro}
-                        disabled={ocupado === playa.playaId}
-                        onClick={() => void quitar(playa)}
-                      >
-                        Sí, quitar
-                      </button>
-                      <button type="button" className={botonChico} onClick={() => setQuitando(null)}>
-                        No
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button type="button" className={botonChico} onClick={() => abrirEditor(playa.playaId)}>
-                        {playa.configurado ? "Cambiar token" : "Cargar token"}
-                      </button>
-                      {playa.configurado && (
-                        <button
-                          type="button"
-                          className={botonPeligro}
-                          onClick={() => {
-                            setQuitando(playa.playaId);
-                            setEditando(null);
-                          }}
-                        >
-                          Quitar
-                        </button>
-                      )}
-                    </>
+                  <button type="button" className={botonChico} onClick={() => abrirEditor(playa.playaId)}>
+                    {playa.configurado ? "Cambiar token" : "Cargar token"}
+                  </button>
+                  {/* Quitar el token se confirma manteniendo apretado el botón (BotonMantener). */}
+                  {playa.configurado && (
+                    <BotonMantener
+                      size="sm"
+                      hecho="Quitado"
+                      disabled={ocupado === playa.playaId}
+                      onHold={() => {
+                        setEditando(null);
+                        void quitar(playa);
+                      }}
+                    >
+                      Mantené para quitar
+                    </BotonMantener>
                   )}
                 </div>
               </div>
 
               {editando === playa.playaId && (
                 <form
-                  className="mt-3 grid gap-2 rounded-[14px] border border-[#26221C] bg-background p-3.5"
+                  className="mt-3 grid gap-2 rounded-lg border border-[#211F1B] bg-[#12110E] p-3.5"
                   onSubmit={(e) => {
                     e.preventDefault();
                     void guardar(playa);
@@ -253,7 +232,7 @@ export function PatentesPlayas({ empresaId }: { empresaId: string }) {
                       Cancelar
                     </button>
                   </div>
-                  {errorToken && <p className="m-0 text-[12.5px] text-[#FF7A4D]">{errorToken}</p>}
+                  {errorToken && <p className="m-0 text-[12.5px] text-[#F2725B]">{errorToken}</p>}
                 </form>
               )}
             </li>

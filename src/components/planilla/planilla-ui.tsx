@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TRAMOS, tramoInfo, formatEstadia } from '@/utils/estadia';
+import { Segmento } from '@/components/ui/segmento';
 
 export const tarjetaPlanilla = 'rounded-[20px] border border-gm-line bg-card';
 export const thPlanilla = 'px-3 py-3 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground first:pl-[18px] last:pr-[18px]';
@@ -42,26 +43,11 @@ export function EtiquetaTipo({ children }: { children: ReactNode }) {
 export function SelectorSegmentado<T extends string>({ opciones, valor, onChange, etiqueta, disabled }: {
   opciones: { id: T; label: string; cantidad?: number | null }[]; valor: T; onChange: (id: T) => void; etiqueta: string; disabled?: boolean;
 }) {
+  // Rubber Segment (ui/segmento), con la pastilla en crema como antes. En el celular la fila se
+  // desliza de costado si no entra.
   return (
-    // En el celular ocupa el ancho y las opciones se reparten: si una baja de renglón, los dos
-    // renglones quedan parejos en vez de dejar un hueco.
-    <div role="group" aria-label={etiqueta} className="flex w-full flex-wrap gap-1 rounded-[14px] border border-gm-line bg-background p-1 sm:inline-flex sm:w-auto sm:max-w-full">
-      {opciones.map((o) => {
-        const activo = o.id === valor;
-        return (
-          <button key={o.id} type="button" aria-pressed={activo} disabled={disabled} onClick={() => onChange(o.id)}
-            className={cn('inline-flex min-h-10 flex-auto items-center justify-center gap-1.5 rounded-[10px] px-3 text-[13.5px] font-bold sm:flex-none sm:gap-2 sm:px-3.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
-              activo ? 'bg-foreground text-background' : 'text-[#D9D1C3] hover:text-foreground')}>
-            {o.label}
-            {o.cantidad != null && (
-              <span className={cn('gm-mono inline-grid h-5 min-w-[22px] place-items-center rounded-full px-1.5 text-[11.5px]', activo ? 'bg-background text-foreground' : 'bg-gm-surface-3 text-muted-foreground')}>
-                {o.cantidad.toLocaleString('es-AR')}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
+    <Segmento aria-label={etiqueta} size="lg" claro disabled={disabled} value={valor} onChange={(id) => onChange(id as T)}
+      items={opciones.map((o) => ({ value: o.id, label: o.label, badge: o.cantidad != null ? o.cantidad.toLocaleString('es-AR') : undefined }))} />
   );
 }
 

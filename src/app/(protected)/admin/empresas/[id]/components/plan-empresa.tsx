@@ -77,11 +77,11 @@ import { describirMovimientoCuenta } from "./describir-cuenta";
 import { AdicionalesEmpresa } from "./adicionales-empresa";
 
 const botonSecundario =
-  "flex h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 text-[13.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2 disabled:opacity-50";
+  "flex h-9 items-center justify-center gap-2 rounded-lg border border-[#2A2824] bg-[#151411] px-3.5 text-[13px] font-medium transition-colors hover:border-[#3A362F] disabled:opacity-50";
 const botonPrimario =
-  "flex h-11 items-center justify-center gap-2 rounded-xl bg-gm-yellow px-5 text-[13.5px] font-bold text-gm-ink transition-colors hover:bg-[#FFD23A] disabled:opacity-50";
+  "flex h-9 items-center justify-center gap-2 rounded-lg bg-gm-yellow px-4 text-[13px] font-semibold text-gm-ink transition-colors hover:bg-[#FFD23A] disabled:opacity-50";
 const botonChico =
-  "h-8 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2 disabled:opacity-50";
+  "h-8 rounded-md border border-[#2A2824] px-3 text-[12.5px] font-medium transition-colors hover:border-[#3A362F] disabled:opacity-50";
 
 type Accion =
   | { tipo: "alta" }
@@ -286,7 +286,7 @@ function EstadoDeCuenta({
             <Rotulo>Estado de la cuenta</Rotulo>
             <EstadoCuentaPill cuenta={cuenta} />
           </div>
-          <h2 className="mt-3 font-display text-[34px] font-semibold leading-none tracking-[0.01em] sm:text-[40px]">
+          <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-[-0.02em]">
             {titular}
           </h2>
           <p className="mt-2.5 max-w-3xl text-[14px] leading-relaxed text-[#C9BFB1]">{bajada}</p>
@@ -352,7 +352,7 @@ function EstadoDeCuenta({
         </div>
       </div>
       {cuenta.estado !== "SIN_ACTIVAR" && (
-        <div className="border-t border-[#2E2A23] bg-[#15120E] px-5 py-5 sm:px-6">
+        <div className="border-t border-[#211F1B] bg-[#12110E] px-5 py-5 sm:px-6">
           <Ciclo cuenta={cuenta} editarAlta={() => accion({ tipo: "fechaAlta" })} />
         </div>
       )}
@@ -427,7 +427,7 @@ function Ciclo({ cuenta, editarAlta }: { cuenta: ResumenCuenta; editarAlta: () =
             n.tono === "peligro"
               ? "#E5484D"
               : n.tono === "alerta"
-                ? "#FF7A4D"
+                ? "#F2725B"
                 : esHoy
                   ? "#F5C219"
                   : pasado
@@ -456,12 +456,12 @@ function Ciclo({ cuenta, editarAlta }: { cuenta: ResumenCuenta; editarAlta: () =
               />
               <div className="mt-3">
                 <div
-                  className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]"
+                  className="text-[12px] font-medium"
                   style={{ color: n.tono === "hoy" ? "#F5C219" : n.tono === "peligro" ? "#FF8A8D" : EJE }}
                 >
                   {n.titulo}
                 </div>
-                <div className="mt-1 flex items-center gap-1.5 font-display text-[20px] font-semibold leading-none">
+                <div className="mt-1 flex items-center gap-1.5 text-[18px] font-semibold leading-none">
                   {diaAR(n.fecha, false)}
                   {n.editar && (
                     <button
@@ -476,7 +476,7 @@ function Ciclo({ cuenta, editarAlta }: { cuenta: ResumenCuenta; editarAlta: () =
                   )}
                 </div>
                 {n.detalle && (
-                  <div className="mt-1 text-[11.5px] leading-snug" style={{ color: n.tono === "alerta" ? "#FF7A4D" : "#A59B8D" }}>
+                  <div className="mt-1 text-[11.5px] leading-snug" style={{ color: n.tono === "alerta" ? "#F2725B" : "#A59B8D" }}>
                     {n.detalle}
                   </div>
                 )}
@@ -707,7 +707,7 @@ function UsoDePlayas({ playas }: { playas: UsoPlaya[] }) {
             {playas.length > 1 && <div className="text-[13px] font-semibold">{p.nombre}</div>}
             <div className="flex items-end justify-between gap-3">
               <div>
-                <div className="font-display text-[34px] font-semibold leading-none tabular-nums">
+                <div className="font-mono text-[26px] font-medium leading-none tracking-[-0.03em] tabular-nums">
                   {numero(p.activos)}
                   <span className="ml-1 text-[15px] font-normal text-muted-foreground">
                     / {limite === null ? "∞" : numero(limite)}
@@ -728,12 +728,12 @@ function UsoDePlayas({ playas }: { playas: UsoPlaya[] }) {
               <div className="h-1.5 rounded-full bg-[#221F1A]">
                 <div
                   className="h-1.5 rounded-full"
-                  style={{ width: `${Math.max(2, fraccion * 100)}%`, background: fraccion >= 1 ? "#FF7A4D" : "#F5C219" }}
+                  style={{ width: `${Math.max(2, fraccion * 100)}%`, background: fraccion >= 1 ? "#F2725B" : "#F5C219" }}
                 />
               </div>
             )}
             <PicoDelMes uso={p} limite={limite} />
-            <p className={`text-[12px] leading-snug ${p.diasExcedidos ? "text-[#FF7A4D]" : ""}`} style={p.diasExcedidos ? undefined : { color: EJE }}>
+            <p className={`text-[12px] leading-snug ${p.diasExcedidos ? "text-[#F2725B]" : ""}`} style={p.diasExcedidos ? undefined : { color: EJE }}>
               {p.diasExcedidos
                 ? `Pasó el límite ${enDias(p.diasExcedidos)} del último mes: conviene ofrecerle el plan siguiente.`
                 : limite === null
@@ -760,7 +760,7 @@ function PicoDelMes({ uso, limite }: { uso: UsoPlaya; limite: number | null }) {
   const tope = Math.max(1, limite ?? 0, ...dias.map((d) => d.pico));
   return (
     <div
-      className="flex h-10 items-end gap-[2px] rounded-xl border border-[#26221C] bg-background px-2 pb-1.5 pt-2"
+      className="flex h-10 items-end gap-[2px] rounded-xl border border-[#211F1B] bg-background px-2 pb-1.5 pt-2"
       role="img"
       aria-label={`Pico diario de estadías a la vez en los últimos 30 días, máximo ${uso.pico}`}
     >
@@ -771,7 +771,7 @@ function PicoDelMes({ uso, limite }: { uso: UsoPlaya; limite: number | null }) {
           className="flex-1 rounded-[1px]"
           style={{
             height: `${Math.max(8, (d.pico / tope) * 100)}%`,
-            background: limite !== null && d.pico > limite ? "#FF7A4D" : d.pico ? "#A59B8D" : "#2E2A23",
+            background: limite !== null && d.pico > limite ? "#F2725B" : d.pico ? "#A59B8D" : "#2E2A23",
           }}
         />
       ))}
@@ -868,13 +868,13 @@ function Ajustes({
 function EstadoFactura({ factura }: { factura: FacturaSaas }) {
   const hoy = hoyAR();
   if (factura.estado === "PAGADA")
-    return <span className="rounded-full bg-emerald-400/[0.12] px-2.5 py-[3px] text-[11.5px] font-bold text-emerald-400">Pagada</span>;
+    return <span className="rounded-full bg-[#3DD68C]/[0.12] px-2.5 py-[3px] text-[11.5px] font-bold text-[#3DD68C]">Pagada</span>;
   if (factura.estado === "ANULADA")
     return <span className="rounded-full bg-[#221F1A] px-2.5 py-[3px] text-[11.5px] font-bold text-muted-foreground">Anulada</span>;
   const atraso = diasEntreAR(factura.desde, hoy);
   return (
     <span
-      className={`whitespace-nowrap rounded-full px-2.5 py-[3px] text-[11.5px] font-bold ${atraso > 0 ? "bg-[#FF7A4D]/[0.14] text-[#FF7A4D]" : "bg-gm-yellow/[0.14] text-gm-yellow"}`}
+      className={`whitespace-nowrap rounded-full px-2.5 py-[3px] text-[11.5px] font-bold ${atraso > 0 ? "bg-[#F2725B]/[0.14] text-[#F2725B]" : "bg-gm-yellow/[0.14] text-gm-yellow"}`}
     >
       {atraso > 0 ? `${enDias(atraso)} de atraso` : atraso === 0 ? "Vence hoy" : "Pendiente"}
     </span>
@@ -892,10 +892,10 @@ function Facturas({
 }) {
   const columnas = "grid-cols-[190px_100px_130px_150px_minmax(0,1fr)_120px]";
   return (
-    <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2A23] px-5 py-4">
+    <section className="overflow-hidden rounded-xl border border-[#26231E] bg-[#161411]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#211F1B] px-5 py-4">
         <div>
-          <h2 className="font-display text-[22px] font-semibold">Facturas y pagos</h2>
+          <h2 className="text-[15px] font-semibold">Facturas y pagos</h2>
           <p className="mt-1 text-[13px] text-muted-foreground">
             Cada período se factura el día en que vence. Un pago cargado por error se anula: nunca se borra.
           </p>
@@ -908,14 +908,14 @@ function Facturas({
           <div role="table" aria-label="Facturas y pagos" className="min-w-[920px]">
             <div
               role="row"
-              className={`grid h-[42px] ${columnas} items-center gap-3 bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]`}
+              className={`grid h-[42px] ${columnas} items-center gap-3 bg-[#12110E] px-5 text-[12px] font-medium`}
               style={{ color: EJE }}
             >
-              <span role="columnheader">PERÍODO</span>
-              <span role="columnheader">VENCE</span>
-              <span role="columnheader">IMPORTE</span>
-              <span role="columnheader">ESTADO</span>
-              <span role="columnheader">PAGO</span>
+              <span role="columnheader">Período</span>
+              <span role="columnheader">Vence</span>
+              <span role="columnheader">Importe</span>
+              <span role="columnheader">Estado</span>
+              <span role="columnheader">Pago</span>
               <span role="columnheader" className="sr-only">
                 Acciones
               </span>
@@ -924,7 +924,7 @@ function Facturas({
               <div
                 key={f.id}
                 role="row"
-                className={`grid min-h-[60px] ${columnas} items-center gap-3 border-t border-[#2B2620] px-5 py-2 text-[13.5px]`}
+                className={`grid min-h-[60px] ${columnas} items-center gap-3 border-t border-[#211F1B] px-5 py-2 text-[13.5px]`}
               >
                 <span role="cell" className="tabular-nums">
                   {diaAR(f.desde, false)} al {diaAR(f.hasta)}
@@ -966,7 +966,7 @@ function Facturas({
                   {f.id === ultimoPagado && (
                     <button
                       type="button"
-                      className="h-8 rounded-[9px] px-2.5 text-[12.5px] font-semibold text-[#FF7A4D] transition-colors hover:bg-[#FF7A4D]/10"
+                      className="h-8 rounded-[9px] px-2.5 text-[12.5px] font-semibold text-[#F2725B] transition-colors hover:bg-[#F2725B]/10"
                       onClick={() => accion({ tipo: "anular", factura: f })}
                     >
                       Anular
@@ -1004,7 +1004,7 @@ function Historial({ historial }: { historial: DetalleSuscripcion["historial"] }
                   <span className="font-bold">{h.usuario ?? "Sistema"}</span>{" "}
                   <span className="text-[#C9BFB1]">{describirMovimiento(h)}</span>
                 </div>
-                <div className="mt-[3px] font-mono text-[10.5px]" style={{ color: EJE }}>
+                <div className="mt-[3px] text-[12px]" style={{ color: EJE }}>
                   {cuandoFue(h.fecha)}
                 </div>
               </div>
@@ -1186,12 +1186,12 @@ export function AccionDialog({
   const motivoMinimo = accion.tipo === "anular" ? 10 : 3;
   const resumen = (contenido: ReactNode, tono: "ok" | "alerta" = "ok") => (
     <p
-      className={`flex gap-2 rounded-xl border p-3 text-[13px] leading-snug ${tono === "ok" ? "border-gm-yellow/30 bg-gm-yellow/[0.08]" : "border-[#FF7A4D]/40 bg-[#FF7A4D]/[0.08]"}`}
+      className={`flex gap-2 rounded-xl border p-3 text-[13px] leading-snug ${tono === "ok" ? "border-gm-yellow/30 bg-gm-yellow/[0.08]" : "border-[#F2725B]/40 bg-[#F2725B]/[0.08]"}`}
     >
       {tono === "ok" ? (
         <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-gm-yellow" />
       ) : (
-        <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0 text-[#FF7A4D]" />
+        <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0 text-[#F2725B]" />
       )}
       <span>{contenido}</span>
     </p>

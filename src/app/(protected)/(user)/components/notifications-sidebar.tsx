@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { BotonMantener } from '@/components/ui/boton-mantener';
 import { Badge } from '@/components/ui/badge';
 import {
   Sheet,
@@ -72,16 +73,11 @@ export function NotificationSidebar() {
             )}
           </div>
 
+          {/* Liviano: se limpia manteniendo apretado el botón (BotonMantener), sin diálogo. */}
           {count > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="self-end text-[#F08775] hover:text-[#F08775] hover:bg-destructive/15"
-              onClick={clearNotifications}
-            >
-              <Trash2 className="size-3.5" />
-              Limpiar todo
-            </Button>
+            <BotonMantener size="sm" hecho="Limpias" icono={<Trash2 className="size-3.5" />} onHold={clearNotifications} className="self-end">
+              Mantené para limpiar todo
+            </BotonMantener>
           )}
         </SheetHeader>
 

@@ -283,35 +283,35 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
     <div className="space-y-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="font-mono text-[11px] tracking-[0.14em] text-gm-yellow">
-            PLATAFORMA · {empresas.length} EMPRESAS · {todasLasPlayas.length} PLAYAS · {usuarios.length} USUARIOS
-          </div>
-          <h1 className="mt-2 font-display text-[34px] font-semibold leading-none tracking-[0.01em] sm:text-[40px]">
-            Empresas
-          </h1>
+          <h1 className="m-0 text-2xl font-semibold leading-tight tracking-[-0.02em]">Empresas</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            {plural(empresas.length, "empresa", "empresas")} · {plural(todasLasPlayas.length, "playa", "playas")} ·{" "}
+            {plural(usuarios.length, "usuario", "usuarios")}. Su cuenta, su operación y lo que hay que resolver.
+          </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           {tour}
           <button
             type="button"
             onClick={exportar}
             disabled={!filtradas.length}
-            className="flex h-11 items-center gap-2 rounded-xl border border-border bg-gm-surface px-4 text-[13.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2 disabled:opacity-50"
+            className="flex h-9 items-center gap-2 rounded-lg border border-[#2A2824] bg-[#151411] px-3.5 text-[13px] font-medium transition-colors hover:border-[#3A362F] disabled:opacity-50"
           >
             <Download className="size-4" />
             Exportar CSV
           </button>
+          {/* «Nueva empresa» está en la barra superior, en todas las pantallas de plataforma. */}
         </div>
       </div>
 
-      <div data-tour="empresas-resumen" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <Tarjeta className="min-h-[150px] justify-between gap-3 pb-4 pt-4">
+      <div data-tour="empresas-resumen" className="grid gap-px overflow-hidden rounded-xl border border-[#26231E] bg-[#26231E] sm:grid-cols-2 xl:grid-cols-4">
+        <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 rounded-none border-0">
           <div className="flex items-center justify-between">
             <Rotulo>Empresas</Rotulo>
-            <Building2 aria-hidden className="size-4 text-gm-yellow" />
+            <Building2 aria-hidden className="size-4 text-muted-foreground" />
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="font-display text-[34px] font-semibold leading-none">{empresas.length}</span>
+            <span className="font-mono text-[26px] font-medium leading-none tracking-[-0.03em]">{empresas.length}</span>
             <Salud
               ok={!sinPlayas && !suspendidas}
               texto={
@@ -325,30 +325,30 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
             <BarraEstado
               etiqueta={`${operando} operando, ${sinPlayas} sin playas, ${suspendidas} suspendidas`}
               segmentos={[
-                { n: operando, color: "#34D399" },
+                { n: operando, color: "#3DD68C" },
                 { n: sinPlayas, color: EJE },
-                { n: suspendidas, color: "#FF7A4D" },
+                { n: suspendidas, color: "#F2725B" },
               ]}
             />
             <Leyenda
               items={[
-                { color: "#34D399", label: "operando", n: operando },
+                { color: "#3DD68C", label: "operando", n: operando },
                 ...(sinPlayas ? [{ color: EJE, label: "sin playas", n: sinPlayas }] : []),
                 ...(suspendidas
-                  ? [{ color: "#FF7A4D", label: suspendidas === 1 ? "suspendida" : "suspendidas", n: suspendidas }]
+                  ? [{ color: "#F2725B", label: suspendidas === 1 ? "suspendida" : "suspendidas", n: suspendidas }]
                   : []),
               ]}
             />
           </div>
         </Tarjeta>
 
-        <Tarjeta className="min-h-[150px] justify-between gap-3 pb-4 pt-4">
+        <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 rounded-none border-0">
           <div className="flex items-center justify-between">
             <Rotulo>Playas</Rotulo>
-            <MapPin aria-hidden className="size-4 text-gm-yellow" />
+            <MapPin aria-hidden className="size-4 text-muted-foreground" />
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="font-display text-[34px] font-semibold leading-none">{todasLasPlayas.length}</span>
+            <span className="font-mono text-[26px] font-medium leading-none tracking-[-0.03em]">{todasLasPlayas.length}</span>
             <Salud
               ok={!sinTarifas.length}
               texto={
@@ -364,26 +364,26 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
             <BarraEstado
               etiqueta={`${todasLasPlayas.length - sinTarifas.length} playas con tarifas y ${sinTarifas.length} sin tarifas`}
               segmentos={[
-                { n: todasLasPlayas.length - sinTarifas.length, color: "#34D399" },
-                { n: sinTarifas.length, color: "#FF7A4D" },
+                { n: todasLasPlayas.length - sinTarifas.length, color: "#3DD68C" },
+                { n: sinTarifas.length, color: "#F2725B" },
               ]}
             />
             <Leyenda
               items={[
-                { color: "#34D399", label: "con tarifas", n: todasLasPlayas.length - sinTarifas.length },
-                ...(sinTarifas.length ? [{ color: "#FF7A4D", label: "sin tarifas", n: sinTarifas.length }] : []),
+                { color: "#3DD68C", label: "con tarifas", n: todasLasPlayas.length - sinTarifas.length },
+                ...(sinTarifas.length ? [{ color: "#F2725B", label: "sin tarifas", n: sinTarifas.length }] : []),
               ]}
             />
           </div>
         </Tarjeta>
 
-        <Tarjeta className="min-h-[150px] justify-between gap-3 pb-4 pt-4">
+        <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 rounded-none border-0">
           <div className="flex items-center justify-between">
             <Rotulo>Usuarios con acceso</Rotulo>
-            <Users aria-hidden className="size-4 text-gm-yellow" />
+            <Users aria-hidden className="size-4 text-muted-foreground" />
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="font-display text-[34px] font-semibold leading-none">{usuarios.length}</span>
+            <span className="font-mono text-[26px] font-medium leading-none tracking-[-0.03em]">{usuarios.length}</span>
             <Salud
               ok={!operadoresSinPlaya}
               texto={
@@ -399,7 +399,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               segmentos={[
                 { n: admins, color: AMARILLO },
                 { n: operadores.length - operadoresSinPlaya, color: CREMA },
-                { n: operadoresSinPlaya, color: "#FF7A4D" },
+                { n: operadoresSinPlaya, color: "#F2725B" },
               ]}
             />
             <Leyenda
@@ -411,20 +411,20 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                   n: operadores.length - operadoresSinPlaya,
                 },
                 ...(operadoresSinPlaya
-                  ? [{ color: "#FF7A4D", label: "sin playa", n: operadoresSinPlaya }]
+                  ? [{ color: "#F2725B", label: "sin playa", n: operadoresSinPlaya }]
                   : []),
               ]}
             />
           </div>
         </Tarjeta>
 
-        <Tarjeta className="min-h-[150px] justify-between gap-3 overflow-hidden pb-4 pt-4">
+        <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 overflow-hidden rounded-none border-0">
           <div className="flex items-center justify-between">
             <Rotulo>Cobrado · 30 días</Rotulo>
             <Variacion valor={variacion(total, totalPrevio)} />
           </div>
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="font-display text-[34px] font-semibold leading-none text-gm-yellow">
+            <span className="font-mono text-[26px] font-medium leading-none tracking-[-0.03em] text-gm-yellow">
               {detalle ? corto(total) : "—"}
             </span>
             <span className="text-[12.5px] text-muted-foreground">vs {corto(totalPrevio)}</span>
@@ -437,16 +437,16 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
         <Tarjeta className="min-h-[390px] lg:col-span-2">
           <Encabezado
             rotulo="Dónde está el volumen"
-            pastilla={<Pastilla>Mosaico</Pastilla>}
             valor={`${cuantasTop} empresa${cuantasTop === 1 ? "" : "s"}`}
+            valorClassName="font-sans text-[22px] font-semibold tracking-[-0.02em]"
             unidad={`concentran el ${numero(concentracion)}% de lo cobrado`}
             derecha={
-              <span className="mt-1 font-mono text-[11px]" style={{ color: EJE }}>
+              <span className="mt-1 text-[12px]" style={{ color: EJE }}>
                 Tamaño = cobrado en 30 días
               </span>
             }
           />
-          <Escenario className="p-1.5">
+          <Escenario>
             <Mosaicos items={mosaicos} />
           </Escenario>
           <Pie
@@ -455,27 +455,31 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
           />
         </Tarjeta>
 
-        <Tarjeta className="min-h-[390px]" as="div">
-          <div data-tour="empresas-atencion" className="flex items-center justify-between">
+        <Tarjeta className="min-h-[390px] p-0" as="div">
+          <div data-tour="empresas-atencion" className="flex items-center justify-between gap-2 px-5 pb-3 pt-5">
             <div className="flex items-center gap-2">
-              <Rotulo>Requiere atención</Rotulo>
-              {alertas.length > 0 && <Pastilla tono="naranja">{alertas.length}</Pastilla>}
+              <h2 className="m-0 text-[14px] font-semibold">Requiere atención</h2>
+              {alertas.length > 0 && (
+                <span className="rounded-full border border-[#5A4220] px-2 font-mono text-[11.5px] leading-5 text-[#F0A43A]">
+                  {alertas.length}
+                </span>
+              )}
             </div>
             {alertas.length > 0 && (
               <button
                 type="button"
                 onClick={() => cambiarFiltro("alertas")}
-                className="text-[12.5px] font-semibold text-gm-yellow hover:text-[#FFD84D]"
+                className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
               >
                 Filtrar tabla
               </button>
             )}
           </div>
-          <div className="mt-3.5 flex max-h-[318px] flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
+          <div className="flex max-h-[330px] flex-1 flex-col overflow-y-auto">
             {!alertas.length && !cargando && (
-              <div className="m-auto flex flex-col items-center gap-2 text-center">
-                <span className="flex size-10 items-center justify-center rounded-full bg-emerald-400/[0.14]">
-                  <Check className="size-5 text-emerald-400" />
+              <div className="m-auto flex flex-col items-center gap-2 px-5 text-center">
+                <span className="flex size-10 items-center justify-center rounded-full bg-[#3DD68C]/[0.14]">
+                  <Check className="size-5 text-[#3DD68C]" />
                 </span>
                 <p className="max-w-[240px] text-sm text-muted-foreground">
                   Nada pendiente: todas las playas con tarifas y todas las empresas activas.
@@ -492,7 +496,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
       <div className="flex flex-col gap-3 pt-2 lg:flex-row lg:items-center">
         <label
           data-tour="empresas-buscar"
-          className="flex h-11 items-center gap-2.5 rounded-xl border border-border bg-gm-surface px-3 lg:w-[340px]"
+          className="flex h-9 items-center gap-2.5 rounded-lg border border-[#2A2824] bg-[#151411] px-3 focus-within:ring-2 focus-within:ring-gm-yellow lg:w-[320px]"
         >
           <Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           <input
@@ -506,7 +510,8 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#8A8073]"
           />
         </label>
-        <div data-tour="empresas-filtro" className="overflow-x-auto">
+        {/* El segmentado se desliza solo si no entra: sin scroll propio acá (se veía una barra). */}
+        <div data-tour="empresas-filtro" className="min-w-0">
           <Segmentos
             etiqueta="Estado"
             className="w-max"
@@ -526,7 +531,6 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
         <Selector
           etiqueta="ORDENAR"
           ariaLabel="Ordenar"
-          className="h-11 rounded-xl"
           valor={orden}
           opciones={[
             { id: "cobrado", label: "Más cobrado" },
@@ -552,32 +556,32 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
         </div>
       )}
 
-      <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
+      <section className="overflow-hidden rounded-xl border border-[#26231E] bg-[#161411]">
         <div className="overflow-x-auto">
           <div role="table" aria-label="Empresas" className="min-w-[1290px]">
             <div
               role="row"
-              className="grid h-11 grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center bg-[#15120E] pl-5 pr-4 font-mono text-[10.5px] tracking-[0.1em]"
+              className="grid h-11 grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center bg-[#12110E] pl-5 pr-4 text-[12px] font-medium"
               style={{ color: EJE }}
             >
-              <span role="columnheader">EMPRESA</span>
-              <span role="columnheader">ESTADO</span>
-              <span role="columnheader">PLAN</span>
-              <span role="columnheader">PLAYAS</span>
-              <span role="columnheader">USUARIOS</span>
-              <span role="columnheader">COBRADO 30 D</span>
-              <span role="columnheader">VS ANTERIOR</span>
-              <span role="columnheader">ÚLTIMA OPERACIÓN</span>
-              <span role="columnheader">MERCADOPAGO</span>
+              <span role="columnheader">Empresa</span>
+              <span role="columnheader">Estado</span>
+              <span role="columnheader">Plan</span>
+              <span role="columnheader">Playas</span>
+              <span role="columnheader">Usuarios</span>
+              <span role="columnheader">Cobrado 30 d</span>
+              <span role="columnheader">Vs. anterior</span>
+              <span role="columnheader">Última operación</span>
+              <span role="columnheader">MercadoPago</span>
               <span role="columnheader" className="sr-only">
                 Abrir
               </span>
             </div>
             {cargando && !empresas.length && (
-              <DataLoading label="Cargando empresas…" className="border-t border-[#2B2620] p-4" />
+              <DataLoading label="Cargando empresas…" className="border-t border-[#211F1B] p-4" />
             )}
             {!cargando && !filtradas.length && (
-              <p className="border-t border-[#2B2620] px-5 py-12 text-center text-sm text-muted-foreground">
+              <p className="border-t border-[#211F1B] px-5 py-12 text-center text-sm text-muted-foreground">
                 {empresas.length
                   ? "No hay empresas que coincidan con la búsqueda."
                   : "Creá tu primera empresa. Después agregá sus playas y usuarios."}
@@ -598,14 +602,14 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                   key={e.id}
                   role="row"
                   data-tour={i === 0 ? "empresas-ficha" : undefined}
-                  className="grid h-[68px] grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center border-t border-[#2B2620] pl-5 pr-4 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
+                  className="grid h-16 grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center border-t border-[#211F1B] pl-5 pr-4 text-[13.5px] transition-colors hover:bg-[#1B1915]"
                 >
                   <span role="cell" className="flex min-w-0 items-center gap-3">
                     <Avatar texto={iniciales(e.nombre)} fondo={colorAvatar(e.id)} />
                     <span className="flex min-w-0 flex-col gap-[3px]">
                       <Link
                         href={`/admin/empresas/${e.id}`}
-                        className="truncate font-semibold text-foreground hover:text-gm-yellow"
+                        className="truncate font-medium text-foreground hover:text-gm-yellow"
                       >
                         {e.nombre}
                       </Link>
@@ -621,7 +625,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                         <AlertTriangle
                           role="img"
                           aria-label={alertasEmpresa.map((a) => a.titulo).join(". ")}
-                          className="size-[15px] text-[#FF7A4D]"
+                          className="size-[15px] text-[#F2725B]"
                         />
                       </span>
                     )}
@@ -643,7 +647,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                           <EstadoCuentaPill cuenta={e.suscripcion} className="px-2 py-0.5 text-[10.5px]" />
                           {e.suscripcion.proximoVencimiento &&
                             ["PRUEBA", "AL_DIA"].includes(e.suscripcion.estado) && (
-                              <span className="truncate text-[11px]" style={{ color: cuentaConAlerta(e.suscripcion) ? "#FF7A4D" : EJE }}>
+                              <span className="truncate text-[11px]" style={{ color: cuentaConAlerta(e.suscripcion) ? "#F2725B" : EJE }}>
                                 {e.suscripcion.estado === "PRUEBA" ? "factura" : "vence"} {diaAR(e.suscripcion.proximoVencimiento, false)}
                               </span>
                             )}
@@ -654,7 +658,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                     )}
                   </span>
                   <span role="cell" className="flex flex-col gap-[5px]">
-                    <span className="font-semibold">{e.playas.length || "—"}</span>
+                    <span className="font-mono font-medium">{e.playas.length || "—"}</span>
                     <span className="flex flex-wrap gap-[3px]">
                       {e.playas.slice(0, 8).map((p) => {
                         const ok = porPlaya.get(p.id)?.tieneTarifas !== false;
@@ -663,28 +667,28 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                             key={p.id}
                             title={`${p.nombre}: ${ok ? "con tarifas" : "sin tarifas"}`}
                             className="h-[5px] w-3 rounded-full"
-                            style={{ background: ok ? CREMA : "#FF7A4D" }}
+                            style={{ background: ok ? CREMA : "#F2725B" }}
                           />
                         );
                       })}
                     </span>
                   </span>
                   <span role="cell" className="flex flex-col gap-[3px]">
-                    <span className="font-semibold">{e.usuarios.length}</span>
-                    <span className="text-[11.5px]" style={{ color: sinPlaya ? "#FF7A4D" : EJE }}>
+                    <span className="font-mono font-medium">{e.usuarios.length}</span>
+                    <span className="text-[11.5px]" style={{ color: sinPlaya ? "#F2725B" : EJE }}>
                       {sinPlaya
                         ? `${sinPlaya} sin playa`
                         : `${adminsEmpresa} admin · ${e.usuarios.length - adminsEmpresa} oper.`}
                     </span>
                   </span>
                   <span role="cell" className="flex items-center gap-3">
-                    <span className="w-[84px] font-semibold tabular-nums">{corto(cobro?.cobrado ?? 0)}</span>
+                    <span className="w-[84px] font-mono text-[13px] font-medium tabular-nums">{corto(cobro?.cobrado ?? 0)}</span>
                     <Chispa
                       valores={tendencia}
                       ancho={64}
                       alto={24}
                       relleno={false}
-                      color={cambio === null ? "#3A342B" : cambio >= 0 ? CREMA : "#FF7A4D"}
+                      color={cambio === null ? "#3A342B" : cambio >= 0 ? CREMA : "#F2725B"}
                     />
                   </span>
                   <span role="cell">
@@ -695,7 +699,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                     className="flex items-center gap-2 text-[12.5px]"
                     style={{
                       color:
-                        minutos === null ? EJE : minutos > 48 * 60 ? "#FF7A4D" : "#C9BFB1",
+                        minutos === null ? EJE : minutos > 48 * 60 ? "#F2725B" : "#C9BFB1",
                     }}
                   >
                     {minutos !== null && minutos <= 15 && <PuntoVivo className="size-[7px]" />}
@@ -704,7 +708,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                   <span
                     role="cell"
                     className="flex items-center gap-1.5 text-[12.5px]"
-                    style={{ color: mp === "ACTIVA" ? "#C9BFB1" : mp === "ERROR" ? "#FF7A4D" : EJE }}
+                    style={{ color: mp === "ACTIVA" ? "#C9BFB1" : mp === "ERROR" ? "#F2725B" : EJE }}
                   >
                     {mp === "ACTIVA" && <Check aria-hidden className="size-3.5 text-[#A9AFFF]" strokeWidth={2.5} />}
                     {mp === "ACTIVA"
@@ -719,7 +723,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                     <Link
                       href={`/admin/empresas/${e.id}`}
                       aria-label={`Abrir ficha de ${e.nombre}`}
-                      className="flex size-[34px] items-center justify-center rounded-[10px] border border-border transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2"
+                      className="flex size-8 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:border-[#2A2824] hover:text-foreground"
                     >
                       <ChevronRight className="size-4" />
                     </Link>
@@ -729,7 +733,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
             })}
           </div>
         </div>
-        <div className="flex h-14 items-center justify-between gap-3 border-t border-[#2B2620] bg-[#15120E] px-5 text-[12.5px] text-muted-foreground">
+        <div className="flex h-14 items-center justify-between gap-3 border-t border-[#211F1B] bg-[#12110E] px-5 text-[12.5px] text-muted-foreground">
           <span>
             {filtradas.length
               ? `Mostrando ${(paginaActual - 1) * POR_PAGINA + 1}–${(paginaActual - 1) * POR_PAGINA + visibles.length} de ${filtradas.length} empresas`
@@ -740,7 +744,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               type="button"
               disabled={paginaActual <= 1}
               onClick={() => setPagina(paginaActual - 1)}
-              className="h-8 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold text-foreground transition-colors hover:bg-gm-surface-2 disabled:border-[#2E2A23] disabled:text-[#53493C] disabled:hover:bg-transparent"
+              className="h-8 rounded-md border border-[#2A2824] px-3 text-[12.5px] font-medium text-foreground transition-colors hover:border-[#3A362F] disabled:text-[#57534B]"
             >
               Anterior
             </button>
@@ -751,7 +755,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               type="button"
               disabled={paginaActual >= paginas}
               onClick={() => setPagina(paginaActual + 1)}
-              className="h-8 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold text-foreground transition-colors hover:bg-gm-surface-2 disabled:border-[#2E2A23] disabled:text-[#53493C] disabled:hover:bg-transparent"
+              className="h-8 rounded-md border border-[#2A2824] px-3 text-[12.5px] font-medium text-foreground transition-colors hover:border-[#3A362F] disabled:text-[#57534B]"
             >
               Siguiente
             </button>
@@ -777,8 +781,8 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
 function Salud({ ok, texto }: { ok: boolean; texto: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11.5px] font-bold ${
-        ok ? "bg-emerald-400/[0.12] text-emerald-400" : "bg-[#FF7A4D]/[0.14] text-[#FF7A4D]"
+      className={`inline-flex items-center gap-1 text-[12px] font-medium ${
+        ok ? "text-[#3DD68C]" : "text-[#F0A43A]"
       }`}
     >
       {ok ? (
@@ -801,17 +805,17 @@ function BarraEstado({
 }) {
   const visibles = segmentos.filter((s) => s.n > 0);
   return (
-    <div role="img" aria-label={etiqueta} className="flex h-2 gap-[3px]">
+    <div role="img" aria-label={etiqueta} className="flex h-1.5 gap-[2px] overflow-hidden rounded-full">
       {visibles.length ? (
         visibles.map((s, i) => (
           <span
             key={i}
-            className="h-2 min-w-2 rounded-full"
+            className="h-1.5 min-w-1.5"
             style={{ flexGrow: s.n, background: s.color }}
           />
         ))
       ) : (
-        <span className="h-2 flex-1 rounded-full bg-[#221F1A]" />
+        <span className="h-1.5 flex-1 bg-[#24221E]" />
       )}
     </div>
   );
@@ -820,22 +824,16 @@ function BarraEstado({
 function FilaAlerta({ alerta }: { alerta: Alerta }) {
   const Icono = ICONOS[alerta.tipo];
   return (
-    <div className="flex items-center gap-3 rounded-[14px] border border-[#26221C] bg-background px-3 py-2.5">
-      <span
-        className={`flex size-[34px] shrink-0 items-center justify-center rounded-[10px] ${
-          alerta.grave ? "bg-[#FF7A4D]/[0.14]" : "bg-[#2B2620]"
-        }`}
-      >
-        <Icono aria-hidden className={`size-4 ${alerta.grave ? "text-[#FF7A4D]" : "text-[#C9BFB1]"}`} />
-      </span>
+    <div className="flex items-start gap-3 border-t border-[#211F1B] px-5 py-3">
+      <Icono aria-hidden className={`mt-0.5 size-4 shrink-0 ${alerta.grave ? "text-[#F2725B]" : "text-[#F0A43A]"}`} />
       <div className="min-w-0 flex-1">
         {/* Dos renglones: con nombres largos de empresa, cortar en uno se comía el problema. */}
-        <div className="line-clamp-2 text-[13px] font-semibold leading-snug">{alerta.titulo}</div>
-        <div className="truncate text-xs text-muted-foreground">{alerta.detalle}</div>
+        <div className="line-clamp-2 text-[13px] font-medium leading-snug">{alerta.titulo}</div>
+        <div className="truncate text-[12.5px] text-muted-foreground">{alerta.detalle}</div>
       </div>
       <Link
         href={alerta.href}
-        className="flex h-[30px] shrink-0 items-center rounded-[9px] border border-border px-2.5 text-xs font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2"
+        className="flex h-7 shrink-0 items-center rounded-md border border-[#2A2824] px-2.5 text-[12.5px] font-medium transition-colors hover:border-[#3A362F]"
       >
         {alerta.accion}
       </Link>
