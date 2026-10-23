@@ -12,7 +12,7 @@ export function InfinityLoader({
   status = 'working', className, style,
 }: {
   label?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   compact?: boolean;
   status?: 'working' | 'done' | 'error';
   className?: string;

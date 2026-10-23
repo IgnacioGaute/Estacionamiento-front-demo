@@ -5,6 +5,7 @@ import { getFrequentCustomersAction } from '@/actions/tickets/get-frequent-custo
 import { getVehicleTypesAction } from '@/actions/tickets/vehicle-types.action';
 import { createRegistrationByPlateAction } from '@/actions/tickets/create-registration-by-plate.action';
 import { getPlateStatusAction } from '@/actions/tickets/get-plate-status.action';
+import { detectVehicleTypeAction } from '@/actions/tickets/detect-vehicle-type.action';
 import type { FrequentCustomer } from '@/types/frequent-customer.type';
 import type { PlateStatus } from '@/types/plate-status.type';
 jest.mock('next/navigation', () => ({ usePathname: () => '/tickets' }));
@@ -17,8 +18,9 @@ jest.mock('@/actions/tickets/get-frequent-customers.action', () => ({ getFrequen
 jest.mock('@/actions/tickets/vehicle-types.action', () => ({ getVehicleTypesAction: jest.fn() }));
 jest.mock('@/actions/tickets/create-registration-by-plate.action', () => ({ createRegistrationByPlateAction: jest.fn() }));
 jest.mock('@/services/scanner.service', () => ({ startScanner: jest.fn() }));
+jest.mock('@/actions/tickets/detect-vehicle-type.action', () => ({ detectVehicleTypeAction: jest.fn() }));
 jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
-jest.mock('./plate-camera-scan-button', () => ({ PlateCameraScanButton: ({ onRecognized }: { onRecognized: (plate: string) => void }) => <button type="button" onClick={() => onRecognized('AB123CD')}>Escanear patente con la cámara</button> }));
+jest.mock('./plate-camera-scan-button', () => ({ PlateCameraScanButton: ({ onRecognized }: { onRecognized: (plate: string, foto?: File) => void }) => <button type="button" onClick={() => onRecognized('AB123CD', new File(['x'], 'cuadro.jpg', { type: 'image/jpeg' }))}>Escanear patente con la cámara</button> }));
 const customer = { licensePlateOriginal: 'AB123CD', licensePlateNormalized: 'AB123CD', lastNameCustomer: 'Pérez', phoneCustomer: '5491112345678', vehicleType: 'MOTO', visits: 4 } as FrequentCustomer;
 beforeEach(() => {
   jest.clearAllMocks();
@@ -80,6 +82,46 @@ test('en la playa gratuita los datos opcionales son apellido, DNI y modelo, sin 
   await waitFor(() => expect(createRegistrationByPlateAction).toHaveBeenCalledWith(expect.objectContaining({
     lastNameCustomer: 'Gómez', documentoCustomer: '30123456', modeloVehiculo: 'Honda Wave 110', vehicleType: 'MOTO',
   })));
+});
+
+test('la foto del escaneo sugiere el tipo y el modelo, sin pisar el modelo escrito', async () => {
+  let responder!: (valor: Awaited<ReturnType<typeof detectVehicleTypeAction>>) => void;
+  jest.mocked(detectVehicleTypeAction).mockImplementation(() => new Promise((resolve) => { responder = resolve; }));
+  await open();
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente con la cámara' }));
+  // Una sola carga, en el lugar de los botones de tipo.
+  expect(await screen.findByText('Detectando el vehículo…')).toBeInTheDocument();
+  expect(screen.queryByRole('radio', { name: 'Auto' })).not.toBeInTheDocument();
+  await act(async () => responder({ vehicleType: 'MOTO', modelo: 'Honda Wave 110' }));
+  expect(screen.getByRole('radio', { name: 'Moto' })).toHaveAttribute('aria-checked', 'true');
+  expect(screen.getByText(/Tipo detectado: Moto/)).toBeInTheDocument();
+  // El modelo completa el campo vacío y abre los datos opcionales.
+  expect(screen.getByLabelText('Modelo del vehículo')).toHaveValue('Honda Wave 110');
+  expect(screen.getByText(/Modelo: Honda Wave 110/)).toBeInTheDocument();
+
+  // Otro escaneo: el tipo se vuelve a sugerir, pero el modelo ya cargado no se pisa.
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente con la cámara' }));
+  await act(async () => responder({ vehicleType: 'AUTO', modelo: 'Fiat Strada' }));
+  expect(screen.getByRole('radio', { name: 'Auto' })).toHaveAttribute('aria-checked', 'true');
+  expect(screen.getByLabelText('Modelo del vehículo')).toHaveValue('Honda Wave 110');
+});
+
+test('en la playa gratuita también se detecta el vehículo', async () => {
+  tenant.cobroHabilitado = false;
+  jest.mocked(detectVehicleTypeAction).mockResolvedValue({ vehicleType: 'MOTO', modelo: null });
+  await open();
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente con la cámara' }));
+  expect(await screen.findByText(/Tipo detectado: Moto/)).toBeInTheDocument();
+  expect(screen.queryByText(/Modelo:/)).not.toBeInTheDocument();
+});
+
+test('la entrada abierta desde el escáner usa la detección que ya empezó', async () => {
+  const { rerender } = render(<EntryByPlateDialog />);
+  rerender(<EntryByPlateDialog scanRequest={{ plate: 'AD920HV', sequence: 1, vehiculo: Promise.resolve({ vehicleType: 'MOTO', modelo: 'Fiat Strada' }) }} />);
+  expect(await screen.findByText(/Tipo detectado: Moto/)).toBeInTheDocument();
+  expect(screen.getByLabelText('Patente, apellido o teléfono')).toHaveValue('AD920HV');
+  expect(screen.getByLabelText('Modelo del vehículo')).toHaveValue('Fiat Strada');
+  expect(detectVehicleTypeAction).not.toHaveBeenCalled();
 });
 
 test('el escaneo identifica automáticamente al frecuente sin crear la entrada', async () => {

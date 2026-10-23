@@ -36,8 +36,9 @@ export const ANCHO_GUIA = 0.78;
 
 export type EstadoBusqueda = 'apuntando' | 'leyendo' | 'mover';
 
+// `foto`: el cuadro con el que se leyó la patente; en la playa gratuita sirve para sugerir el tipo.
 export type ResultadoBusqueda =
-  | { tipo: 'patente'; plate: string; dudosa: boolean }
+  | { tipo: 'patente'; plate: string; dudosa: boolean; foto: File }
   | { tipo: 'sin-resultado' }
   | { tipo: 'error'; mensaje: string }
   | { tipo: 'cancelado' };
@@ -90,7 +91,7 @@ export async function buscarPatente(
   let recientes: { t: number; valor: number }[] = [];
   let ultimaConsulta = 0;
   let consultas = 0;
-  let mejor: { plate: string; score: number } | null = null;
+  let mejor: { plate: string; score: number; foto: File } | null = null;
 
   // Con la app en segundo plano el video se congela o queda en negro: se corta la búsqueda.
   while (!document.hidden && Date.now() < fin && consultas < CONSULTAS_MAXIMAS) {
@@ -152,13 +153,13 @@ export async function buscarPatente(
     // Los cuatro formatos argentinos, motos incluidas; una lectura con otro formato no se carga
     // sola (puede ser un cartel o una patente extranjera: se escribe a mano).
     if (looksLikeKnownPlateFormat(plate)) {
-      if (score >= CONFIANZA_MINIMA) return { tipo: 'patente', plate, dudosa: false };
-      if (!mejor || score > mejor.score) mejor = { plate, score };
+      if (score >= CONFIANZA_MINIMA) return { tipo: 'patente', plate, dudosa: false, foto: cuadro };
+      if (!mejor || score > mejor.score) mejor = { plate, score, foto: cuadro };
     }
     fallida = muestra.gris;
   }
 
   if (cancelado()) return { tipo: 'cancelado' };
-  if (mejor) return { tipo: 'patente', plate: mejor.plate, dudosa: true };
+  if (mejor) return { tipo: 'patente', plate: mejor.plate, dudosa: true, foto: mejor.foto };
   return { tipo: 'sin-resultado' };
 }

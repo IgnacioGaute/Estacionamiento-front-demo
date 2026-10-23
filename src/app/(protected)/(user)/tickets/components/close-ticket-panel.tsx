@@ -7,6 +7,7 @@ import { PricingBreakdown, formatImporte } from '@/components/pricing-breakdown'
 import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
 import { PlateChip } from '@/components/plate-chip';
 import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
+import { DatosClienteEstadia } from './datos-cliente-estadia';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import {
@@ -146,13 +147,14 @@ function ResumenEstadia({
           {/* El tipo va debajo de la patente: así la fila de abajo queda para las acciones, juntas. */}
           <div className="flex min-w-0 flex-col items-start gap-1.5">
             <Identidad r={r} size="md" />
-            <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} />
+            <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} modelo={r.modeloVehiculo} />
           </div>
           <div className="ml-auto min-w-0 text-right">
             <p className="gm-mono text-base font-semibold">{formatElapsed(summary.elapsedMinutes)}</p>
             <p className="truncate text-[12.5px] text-muted-foreground">{detalle}</p>
           </div>
         </div>
+        <DatosClienteEstadia r={r} />
         {onCorregido && <CorregirEntrada summary={summary} onCorregido={onCorregido} />}
         {/* Las acciones en una fila, una al lado de la otra («Corregir», «Se fue antes», eliminar). El
             que se abre (formulario o confirmación) se marca con data-abierto y ocupa la fila: el resto
@@ -225,7 +227,7 @@ function SalidaGratuita({
   const filas: [string, string][] = [
     ['Entró', cuandoEntro(r)],
     ['Registró la entrada', r.entryOperatorName || 'No registrado'],
-    ...(r.noPlate && r.lastNameCustomer ? [['Apellido', r.lastNameCustomer] as [string, string]] : []),
+    // El apellido y el resto de los datos del cliente están en el desplegable de arriba.
     ...(r.casilleroNumber ? [['Casillero', r.casilleroNumber] as [string, string]] : []),
   ];
   return (
@@ -235,13 +237,14 @@ function SalidaGratuita({
           <div className="flex items-center gap-3">
             <div className="flex min-w-0 flex-col items-start gap-1.5">
               <Identidad r={r} size="md" />
-              <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} />
+              <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} modelo={r.modeloVehiculo} />
             </div>
             <div className="ml-auto min-w-0 text-right">
               <p className={etiqueta}>Permanencia</p>
               <p className="gm-mono mt-1 text-[26px] font-bold leading-none tracking-tight">{formatElapsed(summary.elapsedMinutes)}</p>
             </div>
           </div>
+          <DatosClienteEstadia r={r} />
           <CorregirEntrada summary={summary} onCorregido={onCorregido} />
           <div className="mt-1 flex flex-wrap items-center justify-end gap-x-1 [&:has(>[data-abierto])>:not([data-abierto])]:hidden">
             <EditarDatosEstadia key={r.id} summary={summary} onCorregido={onCorregido} />

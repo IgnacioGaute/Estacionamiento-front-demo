@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useId, useMemo, useRef, useState, type InputHTMLAttributes, type KeyboardEvent } from 'react';
 import { cn } from '@/lib/utils';
+import { iconoTipoVehiculo } from '@/components/vehicle-type-badge';
 import { buscarModelos, claseDeTipo, ejemploModelo, NOMBRE_CLASE, type ModeloVehiculo } from '@/utils/modelos-vehiculos';
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & {
@@ -56,35 +57,43 @@ export const ModeloVehiculoInput = forwardRef<HTMLInputElement, Props>(function 
     }
   };
 
+  const Icono = iconoTipoVehiculo(tipoVehiculo);
+
   return (
     <div>
-      <input
-        ref={ref}
-        {...props}
-        role="combobox"
-        aria-expanded={abierto}
-        aria-controls={`${base}-modelos`}
-        aria-activedescendant={abierto ? `${base}-m-${activa}` : undefined}
-        aria-autocomplete="list"
-        autoComplete="off"
-        spellCheck={false}
-        placeholder={placeholder ?? `Ej.: ${ejemploModelo(tipoVehiculo)}`}
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setElegido(false);
-        }}
-        onFocus={(e) => {
-          setEnfocado(true);
-          onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setEnfocado(false);
-          onBlur?.(e);
-        }}
-        onKeyDown={alTeclear}
-        className={className}
-      />
+      {/* Distinto de los datos del cliente: es el vehículo, con el ícono del tipo elegido. */}
+      <div className="relative">
+        <span aria-hidden className="pointer-events-none absolute left-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg bg-gm-yellow/15 text-gm-yellow">
+          <Icono className="size-[18px]" strokeWidth={1.9} />
+        </span>
+        <input
+          ref={ref}
+          {...props}
+          role="combobox"
+          aria-expanded={abierto}
+          aria-controls={`${base}-modelos`}
+          aria-activedescendant={abierto ? `${base}-m-${activa}` : undefined}
+          aria-autocomplete="list"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={placeholder ?? `Ej.: ${ejemploModelo(tipoVehiculo)}`}
+          value={value}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setElegido(false);
+          }}
+          onFocus={(e) => {
+            setEnfocado(true);
+            onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setEnfocado(false);
+            onBlur?.(e);
+          }}
+          onKeyDown={alTeclear}
+          className={cn(className, 'border-gm-yellow/30 bg-gm-yellow/[0.04] pl-12 font-medium')}
+        />
+      </div>
       {abierto && (
         <div
           ref={listaRef}

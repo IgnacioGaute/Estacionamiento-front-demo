@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, CarFront, ChevronRight, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,13 +7,16 @@ import { toast } from '@/lib/toast';
 import { getPlateStatusAction } from '@/actions/tickets/get-plate-status.action';
 import type { PlateStatus } from '@/types/plate-status.type';
 import type { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
+import { detectarVehiculo, type DeteccionVehiculo } from '@/utils/detectar-vehiculo';
 import { PlateCameraScanButton } from './plate-camera-scan-button';
 
 // `dock`: el botón redondo de la barra de abajo del inicio. Ahí no hay lugar para mensajes debajo
 // del botón: la consulta se ve en el propio botón y los errores como aviso.
 export function ScanPlateAction({ onEntry, onHourlyExit, onDailyExit, onSalidaSinEntrada, onBusyChange, variant = 'action' }: {
   // `parecidasRevisadas`: ya se ofrecieron las patentes parecidas y el operador dijo que es otro auto.
-  onEntry: (plate: string, parecidasRevisadas?: boolean) => void;
+  // `vehiculo`: la detección del tipo y el modelo con la foto del escaneo, ya en curso; la entrada
+  // la usa en vez de volver a pedirla.
+  onEntry: (plate: string, parecidasRevisadas?: boolean, vehiculo?: DeteccionVehiculo) => void;
   onHourlyExit: (id: string) => void;
   onDailyExit: (registration: TicketRegistrationForDay) => void;
   // Una patente que no está adentro: antes de abrir la entrada se pregunta si entra o se va. Si se
@@ -28,17 +31,29 @@ export function ScanPlateAction({ onEntry, onHourlyExit, onDailyExit, onSalidaSi
   const [lastPlate, setLastPlate] = useState('');
   const [choices, setChoices] = useState<PlateStatus | null>(null);
   const [nueva, setNueva] = useState<{ plate: string; revisadas: boolean } | null>(null);
+  const fotoRef = useRef<File | undefined>(undefined);
+  const vehiculoRef = useRef<DeteccionVehiculo | undefined>(undefined);
   useEffect(() => { onBusyChange?.(cameraBusy || loading || !!choices || !!nueva); }, [cameraBusy, loading, choices, nueva, onBusyChange]);
 
-  // Abrir la entrada directamente dejaba abiertas para siempre las de autos que se estaban yendo sin
-  // entrada registrada: se confirmaba la entrada, el auto salía y nadie la cerraba.
-  const sinCoincidencia = (plate: string, revisadas: boolean) => {
-    if (onSalidaSinEntrada) setNueva({ plate, revisadas });
+  const entrar = (plate: string, revisadas: boolean) => {
+    const vehiculo = vehiculoRef.current;
+    if (vehiculo) onEntry(plate, revisadas || undefined, vehiculo);
     else if (revisadas) onEntry(plate, true);
     else onEntry(plate);
   };
 
-  const resolve = async (plate: string) => {
+  // Abrir la entrada directamente dejaba abiertas para siempre las de autos que se estaban yendo sin
+  // entrada registrada: se confirmaba la entrada, el auto salía y nadie la cerraba.
+  // La patente no está adentro, así que probablemente entra: el vehículo se detecta ya, mientras el
+  // operador responde, y la entrada se abre con el resultado (o termina de esperarlo).
+  const sinCoincidencia = (plate: string, revisadas: boolean) => {
+    vehiculoRef.current = fotoRef.current ? detectarVehiculo(fotoRef.current) : undefined;
+    if (onSalidaSinEntrada) setNueva({ plate, revisadas });
+    else entrar(plate, revisadas);
+  };
+
+  const resolve = async (plate: string, foto?: File) => {
+    fotoRef.current = foto;
     setLastPlate(plate);
     setError('');
     setLoading(true);
@@ -100,7 +115,7 @@ export function ScanPlateAction({ onEntry, onHourlyExit, onDailyExit, onSalidaSi
       <DialogContent className="max-w-md">
         <DialogHeader><DialogTitle>{nueva?.plate} no está adentro</DialogTitle><DialogDescription>¿El auto está entrando o se está yendo?</DialogDescription></DialogHeader>
         <div className="grid gap-2">
-          <button type="button" onClick={() => { const n = nueva!; setNueva(null); if (n.revisadas) onEntry(n.plate, true); else onEntry(n.plate); }}
+          <button type="button" onClick={() => { const n = nueva!; setNueva(null); entrar(n.plate, n.revisadas); }}
             className="flex min-h-16 w-full items-center gap-3 rounded-xl border border-gm-yellow/50 bg-gm-yellow/[0.08] p-3 text-left hover:border-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
             <ArrowDownLeft className="size-5 shrink-0 text-gm-yellow" aria-hidden /><span className="min-w-0 flex-1"><span className="block font-semibold">Está entrando</span><span className="block text-xs text-muted-foreground">Registrar la entrada</span></span><ChevronRight className="size-4" aria-hidden />
           </button>

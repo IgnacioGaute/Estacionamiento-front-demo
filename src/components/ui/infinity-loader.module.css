@@ -9,6 +9,8 @@
   color: #ffe347;
 }
 
+/* El de los botones (LatticeLoader compacto): del alto de una línea de texto. */
+.xs { --infinity-size: 30px; }
 .sm { --infinity-size: 44px; }
 .lg { --infinity-size: 144px; }
 

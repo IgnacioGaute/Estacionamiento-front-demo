@@ -155,7 +155,7 @@ export function ActiveTicketsList({
                       </>
                     )}
                   </span>
-                  <span className="mt-1.5 flex"><VehicleTypeBadge code={vehicleType} /></span>
+                  <span className="mt-1.5 flex"><VehicleTypeBadge code={vehicleType} modelo={registration.modeloVehiculo} /></span>
                   {registration.expectedBracketLabel && !overdue && (
                     <span className="block mt-0.5 text-[10px] text-muted-foreground truncate">
                       Avisó: <span className="text-foreground">{registration.expectedBracketLabel}</span>

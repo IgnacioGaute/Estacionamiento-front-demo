@@ -34,7 +34,8 @@ test('el loader genérico también queda en el componente desde el render inicia
 test('el indicador compacto conserva su espacio y su descripción dentro del botón', () => {
   render(<button disabled><LatticeLoader compact label="Procesando…" showTimer={false} />Guardar</button>);
   expect(screen.getByRole('button')).toContainElement(screen.getByRole('status'));
-  expect(screen.getByRole('button').querySelector('.lattice-loader__grid')).toBeInTheDocument();
+  // El mismo infinito que el resto de las cargas, en chico (ya no la grilla de puntos).
+  expect(screen.getByRole('button').querySelector('.lattice-loader__icono svg')).toBeInTheDocument();
   expect(screen.queryByText('Procesando…')).not.toBeInTheDocument();
 });
 

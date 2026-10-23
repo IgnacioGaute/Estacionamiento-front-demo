@@ -29,6 +29,7 @@ import { ActiveDayTicketDialog } from "./active-day-ticket-dialog";
 import { PriceBracketMapDialog } from "./price-bracket-map-dialog";
 import { AdvancePaymentDialog } from "./advance-payment-dialog";
 import { ScanPlateAction } from './scan-plate-action';
+import type { DeteccionVehiculo } from '@/utils/detectar-vehiculo';
 import { SalidaSinEntradaDialog, type EntradaParecida } from './salida-sin-entrada-dialog';
 import { EntryByPlateDialog } from "./entry-by-plate-dialog";
 import { CloseTicketPanel } from "./close-ticket-panel";
@@ -109,7 +110,7 @@ export default function CardTicket({
     vehicleType: string;
     existing: TicketRegistration | null;
   } | null>(null);
-  const [entryScanRequest, setEntryScanRequest] = useState<{ plate: string; sequence: number; parecidasRevisadas?: boolean } | null>(null);
+  const [entryScanRequest, setEntryScanRequest] = useState<{ plate: string; sequence: number; parecidasRevisadas?: boolean; vehiculo?: DeteccionVehiculo } | null>(null);
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
   const [plateScanBusy, setPlateScanBusy] = useState(false);
   const [scannedDayRegistration, setScannedDayRegistration] = useState<TicketRegistrationForDay | null>(null);
@@ -749,7 +750,7 @@ export default function CardTicket({
             <ScanPlateAction
               variant="dock"
               onBusyChange={setPlateScanBusy}
-              onEntry={(plate, parecidasRevisadas) => setEntryScanRequest((previous) => ({ plate, sequence: (previous?.sequence ?? 0) + 1, parecidasRevisadas }))}
+              onEntry={(plate, parecidasRevisadas, vehiculo) => setEntryScanRequest((previous) => ({ plate, sequence: (previous?.sequence ?? 0) + 1, parecidasRevisadas, vehiculo }))}
               onHourlyExit={(id) => abrirCobro(id)}
               onSalidaSinEntrada={cobroHabilitado ? setSalidaSinEntrada : undefined}
               onDailyExit={(registration) => { setScannedDayRegistration(registration); setOpenDayRegistrationId(registration.id); }}

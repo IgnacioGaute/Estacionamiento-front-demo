@@ -385,7 +385,7 @@ export function VehiculoFila({ r, ahora, onSelect, resaltar }: {
         ) : (
           <PlateChip plate={r.licensePlateOriginal || '—'} size="sm" highlight={resaltar} />
         )}
-        <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} />
+        <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} modelo={r.modeloVehiculo} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="gm-mono flex items-center gap-1.5 text-base font-bold" style={{ color: pasado ? NARANJA_AVISO : tramoInfo(minutos).color }}>

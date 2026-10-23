@@ -26,7 +26,8 @@ export function PlateCameraScanButton({
   notifyRecognition = true,
 }: {
   disabled?: boolean;
-  onRecognized: (plate: string) => void | Promise<void>;
+  // `foto`: la imagen con la que se leyó la patente (la entrada de la playa gratuita sugiere el tipo).
+  onRecognized: (plate: string, foto?: File) => void | Promise<void>;
   // `square`: al lado del campo de patente, del mismo alto (diálogo de entrada).
   // `dock`: el botón redondo del centro de la barra de abajo del inicio, en el celular.
   variant?: 'field' | 'action' | 'square' | 'dock';
@@ -58,8 +59,9 @@ export function PlateCameraScanButton({
 
     setIsScanning(true);
     try {
+      const foto = await prepararFotoPatente(file);
       const formData = new FormData();
-      formData.append('image', await prepararFotoPatente(file));
+      formData.append('image', foto);
       const result = await recognizePlateAction(formData);
 
       if ('error' in result) {
@@ -67,7 +69,7 @@ export function PlateCameraScanButton({
         return;
       }
 
-      await onRecognized(sanitizePlateInput(result.plate));
+      await onRecognized(sanitizePlateInput(result.plate), foto);
       if (notifyRecognition) toast.success('Patente reconocida — revisala antes de confirmar.');
     } catch (err) {
       console.error(err);
@@ -146,10 +148,10 @@ export function PlateCameraScanButton({
       <PlateLiveScanner
         open={enVivo}
         onOpenChange={setEnVivo}
-        onRecognized={async (plate, dudosa) => {
+        onRecognized={async (plate, dudosa, foto) => {
           setEnVivo(false);
           setIsScanning(true);
-          try { await onRecognized(sanitizePlateInput(plate)); }
+          try { await onRecognized(sanitizePlateInput(plate), foto); }
           catch { toast.error('No se pudo consultar la patente. Intentá de nuevo.'); return; }
           finally { setIsScanning(false); }
           if (dudosa) toast.warning('La lectura no fue segura: revisá la patente antes de confirmar.');

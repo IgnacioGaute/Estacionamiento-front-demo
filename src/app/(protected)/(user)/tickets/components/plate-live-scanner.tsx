@@ -72,7 +72,8 @@ export function PlateLiveScanner({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // `dudosa`: no hubo lectura segura y se entrega la mejor que hubo; hay que revisarla.
-  onRecognized: (plate: string, dudosa: boolean) => void;
+  // `foto`: el cuadro que se leyó, para sugerir el tipo de vehículo en la playa gratuita.
+  onRecognized: (plate: string, dudosa: boolean, foto: File) => void;
   onTakePhoto: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -152,7 +153,7 @@ export function PlateLiveScanner({
       apagar();
       if (resultado.tipo === 'patente') {
         navigator.vibrate?.(80);
-        alReconocer.current(resultado.plate, resultado.dudosa);
+        alReconocer.current(resultado.plate, resultado.dudosa, resultado.foto);
       } else if (resultado.tipo === 'error') {
         setEstado({ tipo: 'error', mensaje: resultado.mensaje });
       } else {

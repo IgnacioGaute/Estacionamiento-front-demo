@@ -342,7 +342,7 @@ function TarjetaTablero({ r, minutos, pasado, ahora, onSelect }: { r: TicketRegi
           {formatEstadia(minutos)}
           {pasado && <span className="sr-only">, superó el tiempo avisado</span>}
         </span>
-        <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} />
+        <VehicleTypeBadge code={r.vehicleType ?? r.ticket?.vehicleType} modelo={r.modeloVehiculo} />
       </span>
       <span className="truncate text-xs text-muted-foreground">{detalle}</span>
       <AvisoAnticipo r={r} ahora={ahora} />

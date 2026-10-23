@@ -39,6 +39,7 @@ test('la foto completa la patente para revisión sin registrar una entrada', asy
   const input = view.container.querySelector('input[type=file]')!;
   expect(input).toHaveAttribute('capture', 'environment');
   fireEvent.change(input, { target: { files: [file] } });
-  await waitFor(() => expect(onRecognized).toHaveBeenCalledWith('AB123CD'));
+  // También entrega la foto que se leyó (la entrada gratuita sugiere el tipo con ella).
+  await waitFor(() => expect(onRecognized).toHaveBeenCalledWith('AB123CD', expect.anything()));
   expect(jest.mocked(recognizePlateAction).mock.calls[0][0].get('image')).toBe(file);
 });

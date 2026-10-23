@@ -49,7 +49,7 @@ test('bloquear el celular corta cámara y linterna aun con el reconocimiento pen
   Object.defineProperty(document, 'hidden', { configurable: true, value: true });
   fireEvent(document, new Event('visibilitychange'));
   expect(pista.stop).toHaveBeenCalled(); expect(onOpenChange).toHaveBeenCalledWith(false);
-  finish({ tipo: 'patente', plate: 'AB123CD', dudosa: false });
+  finish({ tipo: 'patente', plate: 'AB123CD', dudosa: false, foto: new File(['x'], 'cuadro.jpg') });
   await waitFor(() => expect(onRecognized).not.toHaveBeenCalled());
 });
 

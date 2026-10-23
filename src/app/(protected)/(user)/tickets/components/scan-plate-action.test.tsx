@@ -3,9 +3,14 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ScanPlateAction } from './scan-plate-action';
 import { getPlateStatusAction } from '@/actions/tickets/get-plate-status.action';
 import type { PlateStatus } from '@/types/plate-status.type';
+import { detectVehicleTypeAction } from '@/actions/tickets/detect-vehicle-type.action';
 jest.mock('next/navigation', () => ({ usePathname: () => '/tickets' }));
 jest.mock('@/actions/tickets/get-plate-status.action', () => ({ getPlateStatusAction: jest.fn() }));
-jest.mock('./plate-camera-scan-button', () => ({ PlateCameraScanButton: ({ onRecognized }: { onRecognized: (plate: string) => void }) => <button onClick={() => onRecognized('AB123CD')}>Escanear patente</button> }));
+jest.mock('./plate-camera-scan-button', () => ({ PlateCameraScanButton: ({ onRecognized }: { onRecognized: (plate: string, foto?: File) => void }) => <>
+  <button onClick={() => onRecognized('AB123CD')}>Escanear patente</button>
+  <button onClick={() => onRecognized('AB123CD', new File(['x'], 'cuadro.jpg', { type: 'image/jpeg' }))}>Escanear con foto</button>
+</> }));
+jest.mock('@/actions/tickets/detect-vehicle-type.action', () => ({ detectVehicleTypeAction: jest.fn() }));
 const callbacks = () => ({ onEntry: jest.fn(), onHourlyExit: jest.fn(), onDailyExit: jest.fn() });
 beforeEach(() => jest.clearAllMocks());
 
@@ -89,6 +94,20 @@ test('una patente que no está adentro pregunta si entra o se va antes de abrir 
   expect(handlers.onEntry).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: /Está entrando/ }));
   expect(handlers.onEntry).toHaveBeenCalledWith('AB123CD');
+});
+
+test('mientras pregunta si entra o se va, ya detecta el vehículo y la entrada recibe esa detección', async () => {
+  jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'AB123CD', hourly: [], daily: [], similares: [] } });
+  jest.mocked(detectVehicleTypeAction).mockResolvedValue({ vehicleType: 'CAMIONETA', modelo: 'Fiat Strada' });
+  const handlers = { ...callbacks(), onSalidaSinEntrada: jest.fn() }; render(<ScanPlateAction {...handlers} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear con foto' }));
+  await screen.findByText('AB123CD no está adentro');
+  // Empezó antes de que el operador responda.
+  expect(detectVehicleTypeAction).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: /Está entrando/ }));
+  const [plate, revisadas, vehiculo] = handlers.onEntry.mock.calls[0];
+  expect([plate, revisadas]).toEqual(['AB123CD', undefined]);
+  await expect(vehiculo).resolves.toEqual({ vehicleType: 'CAMIONETA', modelo: 'Fiat Strada' });
 });
 
 test('si se está yendo sin entrada, se cobra igual en vez de registrar una entrada', async () => {

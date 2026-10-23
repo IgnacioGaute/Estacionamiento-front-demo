@@ -41,7 +41,10 @@ export const VehicleTypeButtons = forwardRef<HTMLDivElement, {
   // Para lugares angostos, como la tarjeta de Cobrar salida: siempre el ícono arriba y de a dos por
   // fila. Al costado, con el tilde, «Camioneta» no entraba y se partía letra por letra.
   compact?: boolean;
-}>(({ value, onChange, disabled, onValidityChange, onSelectedNameChange, compact, ...props }, ref) => {
+  // La entrada de la playa gratuita está detectando el tipo con la foto: una sola carga en el lugar
+  // de los botones, que cubre también la de los tipos.
+  detectando?: boolean;
+}>(({ value, onChange, disabled, onValidityChange, onSelectedNameChange, compact, detectando, ...props }, ref) => {
   const { types, error, loading } = useVehicleTypes();
   const active = types.filter(type => type.enabled);
   const valid = !loading && !error && active.some(type => type.code === value);
@@ -52,7 +55,7 @@ export const VehicleTypeButtons = forwardRef<HTMLDivElement, {
   // Bajos a propósito: el diálogo de entrada tiene que entrar en la pantalla sin desplazar.
   const wide = !compact && active.length <= 2;
   return <div {...props} ref={ref}>
-    {loading ? <LatticeLoader label="Cargando vehículos…" showTimer={false} cellSize={4} gap={1} fontSize={12} />
+    {loading || detectando ? <LatticeLoader label={detectando ? 'Detectando el vehículo…' : 'Cargando vehículos…'} showTimer={false} cellSize={4} gap={1} fontSize={12} />
       : error ? <p role="alert" className="text-xs text-gm-orange">{error}</p>
       : !active.length ? <p role="alert" className="text-xs text-muted-foreground">No hay tipos de vehículo habilitados. Pedile al administrador que los configure.</p>
       : <>

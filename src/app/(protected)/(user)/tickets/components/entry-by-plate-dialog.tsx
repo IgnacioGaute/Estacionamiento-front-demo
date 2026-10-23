@@ -21,7 +21,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/lib/toast';
-import { AlertTriangle, Barcode, CarFront, ChevronDown, ChevronRight, CircleX, Plus, Search, UserCheck } from 'lucide-react';
+import { AlertTriangle, Barcode, CarFront, ChevronDown, ChevronRight, CircleX, Plus, Search, Sparkles, UserCheck } from 'lucide-react';
+import { detectarVehiculo, type DeteccionVehiculo } from '@/utils/detectar-vehiculo';
+import type { VehiculoDetectado } from '@/services/plate-recognition.service';
 import { cn } from '@/lib/utils';
 import { entryByPlateSchema, EntryByPlateSchemaType } from '@/schemas/entry-by-plate.schema';
 import { createRegistrationByPlateAction } from '@/actions/tickets/create-registration-by-plate.action';
@@ -35,6 +37,10 @@ import { FrequentCustomer } from '@/types/frequent-customer.type';
 import { PlateCameraScanButton } from './plate-camera-scan-button';
 
 const VEHICLE_TYPE_LABEL: Record<string, string> = { AUTO: 'Auto', CAMIONETA: 'Camioneta' };
+// Para nombrar lo que dijo cada motor sin pedir otra vez los tipos: «PICKUP» → «Pickup».
+const nombreTipo = (code: string) => VEHICLE_TYPE_LABEL[code] ?? code.charAt(0) + code.slice(1).toLowerCase().replace(/_/g, ' ');
+
+type EstadoTipo = { estado: 'buscando' } | { estado: 'listo'; resultado: VehiculoDetectado; aplicado: boolean; modeloAplicado: boolean };
 
 type DuplicateError = { existingRegistrationId?: string; entryTime?: string; message: string };
 
@@ -60,7 +66,8 @@ export function EntryByPlateDialog({
   triggerRef?: (el: HTMLElement | null) => void;
   triggerStyle?: React.CSSProperties;
   // `parecidasRevisadas`: el escaneo ya ofreció las patentes parecidas y el operador dijo que es otro.
-  scanRequest?: { plate: string; sequence: number; parecidasRevisadas?: boolean } | null;
+  // `vehiculo`: la detección del tipo y el modelo que el escáner ya empezó con la foto.
+  scanRequest?: { plate: string; sequence: number; parecidasRevisadas?: boolean; vehiculo?: DeteccionVehiculo } | null;
   onOpenChange?: (open: boolean) => void;
 }) {
   const { playaId, cobroHabilitado } = useTenant();
@@ -90,6 +97,11 @@ export function EntryByPlateDialog({
   // Los datos del cliente son opcionales: quedan plegados salvo que el operador los abra o ya
   // traigan algo (un frecuente con datos), así el formulario entra en la pantalla sin desplazar.
   const [datosAbiertos, setDatosAbiertos] = useState(false);
+  const [tipoDetectado, setTipoDetectado] = useState<EstadoTipo | null>(null);
+  // Cada escaneo invalida la respuesta pendiente del anterior.
+  const pedidoTipo = useRef(0);
+  const frecuenteRef = useRef<FrequentCustomer | null>(null);
+  useEffect(() => { frecuenteRef.current = selectedFrequent; }, [selectedFrequent]);
 
   const form = useForm<EntryByPlateSchemaType>({
     resolver: zodResolver(entryByPlateSchema),
@@ -114,9 +126,41 @@ export function EntryByPlateDialog({
     setFrequentCustomers([]);
   };
 
+  // Con la foto del escaneo, Gemini sugiere el tipo y el modelo (la patente ya la leyó el motor de
+  // patentes). Llega la foto (escaneo desde este diálogo) o la detección que el escáner de abajo ya
+  // empezó. El tipo se elige solo si el operador no lo tocó ni lo trajo un frecuente mientras
+  // tanto, y el modelo solo si estaba vacío; si no se puede detectar, queda todo como estaba.
+  const detectarTipo = (fuente?: File | DeteccionVehiculo) => {
+    const pedido = ++pedidoTipo.current;
+    if (!fuente) {
+      setTipoDetectado(null);
+      return;
+    }
+    const tipoAlPedir = form.getValues('vehicleType');
+    setTipoDetectado({ estado: 'buscando' });
+    (fuente instanceof File ? detectarVehiculo(fuente) : fuente)
+      .then((resultado) => {
+        if (pedido !== pedidoTipo.current) return;
+        if (!resultado || (!resultado.vehicleType && !resultado.modelo)) {
+          setTipoDetectado(null);
+          return;
+        }
+        const intacto = !frecuenteRef.current && !form.getFieldState('vehicleType').isDirty && form.getValues('vehicleType') === tipoAlPedir;
+        const aplicado = !!resultado.vehicleType && intacto;
+        if (aplicado) form.setValue('vehicleType', resultado.vehicleType!, { shouldValidate: true });
+        // El modelo solo completa el campo vacío: lo escrito por el operador no se pisa.
+        const modeloAplicado = !!resultado.modelo && !form.getValues('modeloVehiculo')?.trim();
+        if (modeloAplicado) form.setValue('modeloVehiculo', resultado.modelo!, { shouldValidate: true });
+        setTipoDetectado({ estado: 'listo', resultado, aplicado, modeloAplicado });
+      });
+  };
+  const detectarTipoRef = useRef(detectarTipo);
+  useEffect(() => { detectarTipoRef.current = detectarTipo; });
+
   useEffect(() => {
     if (!scanRequest) return;
     form.reset({ licensePlate: scanRequest.plate, vehicleType: 'AUTO', casilleroNumber: '', lastNameCustomer: '', phoneCustomer: '', documentoCustomer: '', modeloVehiculo: '' });
+    detectarTipoRef.current(scanRequest.vehiculo);
     setDuplicateError(null);
     setOverrideReason('');
     setParecidas(null);
@@ -191,6 +235,8 @@ export function EntryByPlateDialog({
     setFrequentCustomers([]);
     setFrequentError('');
     setDatosAbiertos(false);
+    pedidoTipo.current++;
+    setTipoDetectado(null);
   };
 
   const submitTicket = async () => {
@@ -518,7 +564,7 @@ export function EntryByPlateDialog({
                             </button>
                           )}
                         </div>
-                        <PlateCameraScanButton variant="square" disabled={isPending} onRecognized={changeQuery} />
+                        <PlateCameraScanButton variant="square" disabled={isPending} onRecognized={(plate, foto) => { changeQuery(plate); detectarTipo(foto); }} />
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -586,9 +632,24 @@ export function EntryByPlateDialog({
                   <FormItem className="space-y-2">
                     <FormLabel className={etiqueta}>Tipo de vehículo</FormLabel>
                     <FormControl>
-                      <VehicleTypeButtons value={field.value} onChange={field.onChange} disabled={isPending} onValidityChange={setVehicleValid} onSelectedNameChange={setVehicleName} />
+                      <VehicleTypeButtons value={field.value} onChange={field.onChange} disabled={isPending} onValidityChange={setVehicleValid} onSelectedNameChange={setVehicleName} detectando={tipoDetectado?.estado === 'buscando'} />
                     </FormControl>
                     <FormMessage />
+                    {tipoDetectado?.estado === 'listo' && (
+                      <div role="status" className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                        <Sparkles className="mt-0.5 size-3.5 shrink-0 text-gm-yellow" aria-hidden />
+                        <span className="min-w-0">
+                          {tipoDetectado.aplicado
+                            ? <><span className="font-semibold text-foreground">Tipo detectado: {vehicleName ?? nombreTipo(tipoDetectado.resultado.vehicleType!)}</span> · revisalo antes de confirmar.</>
+                            : tipoDetectado.resultado.vehicleType
+                              ? <>La foto parece {nombreTipo(tipoDetectado.resultado.vehicleType)}; quedó el tipo que elegiste.</>
+                              : 'No se pudo detectar el tipo con la foto: elegilo a mano.'}
+                          {tipoDetectado.modeloAplicado && (
+                            <span className="block"><span className="font-semibold text-foreground">Modelo: {tipoDetectado.resultado.modelo}</span> · lo podés corregir abajo.</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </FormItem>
                 )} />
 
