@@ -10,7 +10,8 @@ import type { PlateStatus } from '@/types/plate-status.type';
 jest.mock('next/navigation', () => ({ usePathname: () => '/tickets' }));
 jest.mock('@/actions/tickets/get-plate-status.action', () => ({ getPlateStatusAction: jest.fn() }));
 jest.mock('next-auth/react', () => ({ useSession: () => ({ data: { token: 'test' } }) }));
-jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ playaId: 'playa' }) }));
+const tenant = { playaId: 'playa', cobroHabilitado: true };
+jest.mock('@/components/tenant-provider', () => ({ useTenant: () => tenant }));
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
 jest.mock('@/actions/tickets/get-frequent-customers.action', () => ({ getFrequentCustomersAction: jest.fn() }));
 jest.mock('@/actions/tickets/vehicle-types.action', () => ({ getVehicleTypesAction: jest.fn() }));
@@ -21,6 +22,7 @@ jest.mock('./plate-camera-scan-button', () => ({ PlateCameraScanButton: ({ onRec
 const customer = { licensePlateOriginal: 'AB123CD', licensePlateNormalized: 'AB123CD', lastNameCustomer: 'Pérez', phoneCustomer: '5491112345678', vehicleType: 'MOTO', visits: 4 } as FrequentCustomer;
 beforeEach(() => {
   jest.clearAllMocks();
+  tenant.cobroHabilitado = true;
   jest.mocked(getFrequentCustomersAction).mockResolvedValue([]);
   jest.mocked(getVehicleTypesAction).mockResolvedValue([
     { code: 'AUTO', name: 'Auto', enabled: true }, { code: 'MOTO', name: 'Moto', enabled: true },
@@ -44,6 +46,9 @@ test('un solo campo busca frecuentes y permite editar los datos y el vehículo a
   expect(input).toHaveValue('AB123CD');
   expect(screen.getByLabelText('Apellido')).toHaveValue('Pérez');
   expect(screen.getByLabelText('WhatsApp')).toHaveValue('5491112345678');
+  // Con cobro también se puede cargar el modelo; el DNI es solo de la playa gratuita.
+  expect(screen.getByLabelText('Modelo del vehículo')).toBeInTheDocument();
+  expect(screen.queryByLabelText('DNI')).not.toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Moto' })).toHaveAttribute('aria-checked', 'true');
   expect(screen.queryByRole('radio', { name: 'Bus' })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('radio', { name: 'Utilitario' }));
@@ -53,6 +58,28 @@ test('un solo campo busca frecuentes y permite editar los datos y el vehículo a
   expect(confirmar).toHaveTextContent('AB123CD · Utilitario');
   fireEvent.click(confirmar);
   await waitFor(() => expect(createRegistrationByPlateAction).toHaveBeenCalledWith(expect.objectContaining({ licensePlate: 'AB123CD', vehicleType: 'VAN', lastNameCustomer: 'García' })));
+});
+
+test('en la playa gratuita los datos opcionales son apellido, DNI y modelo, sin WhatsApp', async () => {
+  tenant.cobroHabilitado = false;
+  const input = await open();
+  fireEvent.click(screen.getByRole('button', { name: /Agregar apellido, DNI o modelo/ }));
+  expect(screen.queryByLabelText('WhatsApp')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('radio', { name: 'Moto' }));
+  fireEvent.change(input, { target: { value: 'AB123CD' } });
+  fireEvent.change(screen.getByLabelText('Apellido'), { target: { value: 'Gómez' } });
+  fireEvent.change(screen.getByLabelText('DNI'), { target: { value: '30.123.456' } });
+  // Al escribir aparecen sugerencias; elegir una completa el nombre exacto y cierra la lista.
+  const modelo = screen.getByLabelText('Modelo del vehículo');
+  fireEvent.focus(modelo);
+  fireEvent.change(modelo, { target: { value: 'wave' } });
+  fireEvent.click(screen.getByRole('option', { name: /Honda Wave 110/ }));
+  expect(modelo).toHaveValue('Honda Wave 110');
+  expect(screen.queryByRole('listbox', { name: 'Modelos sugeridos' })).not.toBeInTheDocument();
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Registrar entrada/ }));
+  await waitFor(() => expect(createRegistrationByPlateAction).toHaveBeenCalledWith(expect.objectContaining({
+    lastNameCustomer: 'Gómez', documentoCustomer: '30123456', modeloVehiculo: 'Honda Wave 110', vehicleType: 'MOTO',
+  })));
 });
 
 test('el escaneo identifica automáticamente al frecuente sin crear la entrada', async () => {

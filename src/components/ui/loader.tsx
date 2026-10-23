@@ -7,7 +7,7 @@ interface LoaderProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const Loader: React.FC<LoaderProps> = ({ className, size = 'md', ...props }) => (
-  <div className={cn('flex items-center justify-center', className)} {...props}>
+  <div className={cn('flex w-full items-center justify-center', className)} {...props}>
     <InfinityLoader label="Cargando…" size={size} />
   </div>
 );

@@ -30,6 +30,8 @@ export type TicketRegistration = {
     firstNameCustomer?: string | null;
     lastNameCustomer?: string | null;
     phoneCustomer?: string | null;
+    documentoCustomer?: string | null;
+    modeloVehiculo?: string | null;
     vehiclePlateCustomer?: string | null;
     priceBracketLabel?: string | null;
     priceBracketFallbackUsed?: boolean;

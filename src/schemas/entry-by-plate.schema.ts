@@ -7,6 +7,9 @@ export const entryByPlateSchema = z.object({
   casilleroNumber: z.string().optional(),
   lastNameCustomer: z.string().optional(),
   phoneCustomer: z.string().trim().transform(value => value.replace(/[\s()+-]/g, '')).refine(value => !value || /^[1-9]\d{7,14}$/.test(value), 'Ingresá el teléfono con código de país, entre 8 y 15 dígitos.').optional(),
+  // DNI (solo la playa gratuita) y modelo (las dos modalidades), opcionales. El DNI viaja solo con números.
+  documentoCustomer: z.string().trim().transform(value => value.replace(/[\s.-]/g, '')).refine(value => !value || /^\d{6,9}$/.test(value), 'Ingresá el DNI con 6 a 9 números.').optional(),
+  modeloVehiculo: z.string().trim().max(60, 'El modelo puede tener hasta 60 caracteres.').optional(),
   noPlate: z.boolean().optional(),
   duplicateOverride: z.boolean().optional(),
   duplicateOverrideReason: z.string().optional(),

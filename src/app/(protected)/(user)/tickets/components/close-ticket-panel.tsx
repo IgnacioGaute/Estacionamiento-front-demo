@@ -50,6 +50,7 @@ import { EliminarEstadia } from './eliminar-estadia';
 import { PlateCameraScanButton } from './plate-camera-scan-button';
 import { estadiasLargas, useConfirmadas } from './estadias-largas';
 import { SeFueAntes } from './se-fue-antes';
+import type { EntradaParecida } from './salida-sin-entrada-dialog';
 
 // Efectivo y transferencia los declara el cajero; QR y alias los verifica el sistema contra
 // MercadoPago. Los cuatro se eligen igual (tocar y confirmar abajo) para que el botón principal
@@ -281,7 +282,7 @@ export function CloseTicketPanel({
   // que usa el panel (el inicio, con su diálogo de anticipos).
   onAdvance?: (registration: TicketRegistration) => void;
   // La patente buscada no está adentro: el auto se va sin entrada registrada y se cobra igual.
-  onSalidaSinEntrada?: (plate: string) => void;
+  onSalidaSinEntrada?: (plate: string, parecida?: EntradaParecida | null) => void;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
   initialRegistrationId?: string | null;
@@ -814,16 +815,31 @@ export function CloseTicketPanel({
                 </ul>
               </>
             )}
+            {/* Una patente parecida es un aviso, no un resultado más: o se escribió mal lo buscado,
+                o la entrada se cargó mal. Si es el mismo auto se toca para cobrarlo; si la patente
+                está bien escrita, se cobra sin entrada (y el administrador puede borrar la mal cargada). */}
             {parecidas.length > 0 && (
-              <>
-                <div className="space-y-0.5">
-                  <p className={etiqueta}>{parecidas.length === 1 ? 'Patente parecida' : `Patentes parecidas · ${parecidas.length}`}</p>
-                  <p className="text-[12.5px] text-muted-foreground">No coinciden exacto, pero puede ser el mismo auto con un carácter mal leído.</p>
+              <div role="alert" className="space-y-3 rounded-2xl border-[1.5px] border-[#F0A43A]/50 bg-[#F0A43A]/[0.08] p-3.5">
+                <div className="flex items-start gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#F0A43A]/20 text-[#F0A43A]"><AlertTriangle className="size-[18px]" aria-hidden /></span>
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-[14px] font-semibold text-[#F5C26B]">{parecidas.length === 1 ? 'Hay una patente parecida' : `Hay ${parecidas.length} patentes parecidas`}</p>
+                    <p className="text-[12.5px] leading-snug text-[#D9D1C3]">
+                      Revisá si escribiste bien <span className="gm-mono font-semibold">{query.toUpperCase().replace(/[^A-Z0-9]/g, '')}</span> o si al entrar se cargó mal. Si es el mismo auto, tocalo para cobrarlo.
+                    </p>
+                  </div>
                 </div>
-                <ul className="shrink-0 overflow-hidden rounded-2xl border border-dashed border-gm-line-strong bg-gm-surface-2">
+                <ul className="shrink-0 overflow-hidden rounded-xl border border-[#F0A43A]/30 bg-gm-surface-2">
                   {parecidas.map(fila)}
                 </ul>
-              </>
+                {onSalidaSinEntrada && cobroHabilitado && query.replace(/[^A-Za-z0-9]/g, '').length >= 5 && (
+                  <button type="button"
+                    onClick={() => onSalidaSinEntrada(query.toUpperCase().replace(/[^A-Z0-9]/g, ''), parecidas.length === 1 ? { id: parecidas[0].id, patente: parecidas[0].licensePlateOriginal || 'Sin patente' } : null)}
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-gm-line-strong bg-gm-surface-2 px-3 text-[13px] font-semibold transition-colors hover:border-gm-yellow/50 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
+                    Está bien escrita y no entró registrada: cobrar {query.toUpperCase().replace(/[^A-Z0-9]/g, '')}
+                  </button>
+                )}
+              </div>
             )}
             {coinciden.length === 0 && !sinConfirmar.length && (isPending && !parecidas.length ? <DataLoading label="Buscando vehículos…" /> : <>
               {!parecidas.length && (
@@ -831,11 +847,12 @@ export function CloseTicketPanel({
                   {query.trim() ? (barcodeTicketsEnabled ? 'No encontramos ese vehículo. Revisá la patente o el número de ticket.' : 'No encontramos ese vehículo. Revisá la patente o el apellido.') : 'No hay vehículos adentro.'}
                 </p>
               )}
-              {/* Un auto que se va sin entrada registrada: se cobra igual con la hora en que llegó. */}
-              {onSalidaSinEntrada && cobroHabilitado && query.replace(/[^A-Za-z0-9]/g, '').length >= 5 && (
+              {/* Un auto que se va sin entrada registrada: se cobra igual eligiendo la tarifa. Con
+                  patentes parecidas, el botón está dentro del aviso. */}
+              {onSalidaSinEntrada && cobroHabilitado && !parecidas.length && query.replace(/[^A-Za-z0-9]/g, '').length >= 5 && (
                 <button type="button" onClick={() => onSalidaSinEntrada(query.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
                   className="mx-auto inline-flex min-h-11 items-center gap-2 rounded-xl border border-gm-line-strong px-4 text-[13px] font-semibold transition-colors hover:border-gm-yellow/50 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
-                  {parecidas.length ? 'No es ninguno, se va sin entrada' : 'Se está yendo sin entrada'}: cobrar {query.toUpperCase().replace(/[^A-Z0-9]/g, '')}
+                  Se está yendo sin entrada: cobrar {query.toUpperCase().replace(/[^A-Z0-9]/g, '')}
                 </button>
               )}
             </>)}

@@ -5,7 +5,14 @@ import {
   selectPlayaAction,
 } from "@/actions/tenancy/context.action";
 import { signOut } from "next-auth/react";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown, MapPin } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { esGratuita, type Modalidad } from "@/lib/modalidad";
 import { useTenantEvent } from "@/hooks/use-tenant-event";
 const TenantContext = createContext<{
@@ -79,42 +86,56 @@ export function PlayaSelector() {
       setPending(false);
     }
   }
-  return (
-    <div
-      className={`relative flex h-11 min-w-0 max-w-[300px] items-center gap-2 rounded-xl px-2 ${
-        varias ? "transition-colors focus-within:ring-2 focus-within:ring-gm-yellow hover:bg-white/[0.05]" : ""
-      }`}
-    >
-      <div className="min-w-0 leading-tight">
-        <p className="truncate text-[14.5px] font-bold text-foreground sm:text-[15px]">{nombre}</p>
-        {error ? (
-          <p role="alert" className="truncate text-[11.5px] text-destructive">{error}</p>
-        ) : varias ? (
-          <p className="hidden truncate text-[11.5px] text-muted-foreground sm:block">{pending ? "Cambiando…" : "Cambiar de playa"}</p>
-        ) : null}
-      </div>
-      {varias && (
-        <>
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          <select
-            aria-label="Playa en la que estás trabajando"
-            className="absolute inset-0 h-full w-full cursor-pointer appearance-none rounded-xl opacity-0 disabled:cursor-wait"
-            value={playaId}
-            disabled={pending}
-            onChange={(e) => cambiar(e.target.value)}
-          >
-            <option value="" disabled>
-              Elegí una playa
-            </option>
-            {context.playas.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
-        </>
-      )}
+  const textos = (
+    <div className="min-w-0 text-left leading-tight">
+      <p className="truncate text-[14.5px] font-bold text-foreground sm:text-[15px]">{nombre}</p>
+      {error ? (
+        <p role="alert" className="truncate text-[11.5px] text-destructive">{error}</p>
+      ) : varias ? (
+        <p className="hidden truncate text-[11.5px] text-muted-foreground sm:block">{pending ? "Cambiando…" : "Cambiar de playa"}</p>
+      ) : null}
     </div>
+  );
+  if (!varias) return <div className="flex h-11 min-w-0 max-w-[300px] items-center gap-2 rounded-xl px-2">{textos}</div>;
+  // Con varias, el menú desplegable de la app (el de la cuenta): el <select> nativo dibujaba la
+  // lista en blanco y celeste del navegador. Igual se maneja con teclado.
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={pending}>
+        <button
+          type="button"
+          aria-label={`Playa en la que estás trabajando: ${nombre}. Cambiar de playa`}
+          className="flex h-11 min-w-0 max-w-[300px] items-center gap-2 rounded-xl px-2 transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:cursor-wait data-[state=open]:bg-white/[0.07]"
+        >
+          {textos}
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={8}
+        className="w-[min(300px,calc(100vw-24px))] rounded-2xl border border-white/[0.07] bg-[#0B0A08]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl"
+      >
+        <DropdownMenuLabel className="px-2.5 pb-1.5 pt-1 text-[11.5px] font-medium text-muted-foreground">Cambiar de playa</DropdownMenuLabel>
+        {context.playas.map((p) => {
+          const actual = p.id === playaId;
+          return (
+            <DropdownMenuItem
+              key={p.id}
+              onSelect={() => { if (!actual) void cambiar(p.id); }}
+              aria-current={actual ? "true" : undefined}
+              className={`min-h-11 cursor-pointer gap-3 rounded-lg px-2.5 text-[14px] focus:bg-white/[0.08] ${actual ? "font-semibold text-foreground" : "text-[#D9D1C3]"}`}
+            >
+              <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${actual ? "bg-gm-yellow text-gm-ink" : "bg-white/[0.05] text-muted-foreground"}`}>
+                <MapPin className="size-4" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1 truncate">{p.nombre}</span>
+              {actual && <Check className="size-4 shrink-0 text-gm-yellow" aria-hidden />}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 export function NoPlaya({ message }: { message?: string }) {

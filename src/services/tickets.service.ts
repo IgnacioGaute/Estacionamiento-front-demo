@@ -783,7 +783,8 @@ export async function corregirDatosEstadia(id: string, cambios: { licensePlate?:
 
 // «Se fue antes»: las tarifas que pudo haber pagado (las franjas que la estadía ya pasó y, después
 // de la última, cada repetición de la que se repite), con su importe y la hora en que terminaban.
-export type OpcionSalidaAnterior = { etiqueta: string; minutos: number; salidaEn: string; precio: number };
+// `repeticiones`: cuántas veces la franja que se repite («cada») después de la última.
+export type OpcionSalidaAnterior = { etiqueta: string; minutos: number; salidaEn: string; precio: number; repeticiones?: number };
 export type OpcionesSalidaAnterior = { ahora: number; cobrado: number; opciones: OpcionSalidaAnterior[] };
 export async function opcionesSalidaAnterior(id: string): Promise<OpcionesSalidaAnterior & { error?: string } | { error: string }> {
   const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/salida-anterior`, { cache: 'no-store', headers: await getAuthHeaders() });
@@ -801,7 +802,22 @@ export type SalidaAnteriorPayload = {
   closeType: 'PAYMENT' | 'NO_CHARGE';
   metodo?: 'CASH' | 'TRANSFER';
   refundMetodo?: 'CASH' | 'TRANSFER';
+  // Pago combinado (efectivo + transferencia), como en el cobro normal: reemplaza a `metodo`.
+  pagos?: { metodo: 'CASH' | 'TRANSFER'; importe: number }[];
 };
+
+// Las tarifas para cobrar un auto que se va sin entrada: cada franja con su importe y, si hay una
+// que se repite («cada»), el total con 1 a 12 repeticiones después de `base` minutos.
+export type TarifasSinEntrada = {
+  opciones: { etiqueta: string; minutos: number; precio: number }[];
+  repeticion: { etiqueta: string; unidadMinutos: number; base: number; precios: number[] } | null;
+};
+export async function tarifasSinEntrada(vehicleType: string): Promise<TarifasSinEntrada | { error: string }> {
+  const response = await fetch(`${BASE_URL}/tickets/tarifas-sin-entrada?vehicleType=${encodeURIComponent(vehicleType)}`, { cache: 'no-store', headers: await getAuthHeaders() });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) return { error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudieron cargar las tarifas.' };
+  return data as TarifasSinEntrada;
+}
 export async function registrarSalidaAnterior(id: string, payload: SalidaAnteriorPayload): Promise<{ registration?: TicketRegistration; error?: string; code?: string }> {
   const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/salida-anterior`, {
     method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload),

@@ -30,6 +30,7 @@ import { getPlateStatusAction } from '@/actions/tickets/get-plate-status.action'
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 import { startScanner } from '@/services/scanner.service';
 import { looksLikeKnownPlateFormat, sanitizePlateInput } from '@/utils/plate.utils';
+import { ModeloVehiculoInput } from './modelo-vehiculo-input';
 import { FrequentCustomer } from '@/types/frequent-customer.type';
 import { PlateCameraScanButton } from './plate-camera-scan-button';
 
@@ -62,7 +63,10 @@ export function EntryByPlateDialog({
   scanRequest?: { plate: string; sequence: number; parecidasRevisadas?: boolean } | null;
   onOpenChange?: (open: boolean) => void;
 }) {
-  const { playaId } = useTenant();
+  const { playaId, cobroHabilitado } = useTenant();
+  // En la playa gratuita los datos que importan son apellido, DNI y modelo (no hay comprobantes:
+  // el WhatsApp no sirve); con cobro, apellido y WhatsApp. Siempre opcionales.
+  const gratuita = !cobroHabilitado;
   const session = useSession();
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -83,7 +87,7 @@ export function EntryByPlateDialog({
   const [frequentError, setFrequentError] = useState('');
   const [vehicleValid, setVehicleValid] = useState(false);
   const [vehicleName, setVehicleName] = useState<string | null>(null);
-  // Apellido y WhatsApp son opcionales: quedan plegados salvo que el operador los abra o ya
+  // Los datos del cliente son opcionales: quedan plegados salvo que el operador los abra o ya
   // traigan algo (un frecuente con datos), así el formulario entra en la pantalla sin desplazar.
   const [datosAbiertos, setDatosAbiertos] = useState(false);
 
@@ -95,6 +99,8 @@ export function EntryByPlateDialog({
       casilleroNumber: '',
       lastNameCustomer: '',
       phoneCustomer: '',
+      documentoCustomer: '',
+      modeloVehiculo: '',
     },
   });
 
@@ -110,7 +116,7 @@ export function EntryByPlateDialog({
 
   useEffect(() => {
     if (!scanRequest) return;
-    form.reset({ licensePlate: scanRequest.plate, vehicleType: 'AUTO', casilleroNumber: '', lastNameCustomer: '', phoneCustomer: '' });
+    form.reset({ licensePlate: scanRequest.plate, vehicleType: 'AUTO', casilleroNumber: '', lastNameCustomer: '', phoneCustomer: '', documentoCustomer: '', modeloVehiculo: '' });
     setDuplicateError(null);
     setOverrideReason('');
     setParecidas(null);
@@ -268,7 +274,10 @@ export function EntryByPlateDialog({
 
   const lastNameValue = form.watch('lastNameCustomer') ?? '';
   const phoneValue = form.watch('phoneCustomer') ?? '';
-  const mostrarDatos = datosAbiertos || !!lastNameValue || !!phoneValue;
+  const documentoValue = form.watch('documentoCustomer') ?? '';
+  const modeloValue = form.watch('modeloVehiculo') ?? '';
+  const tipoElegido = form.watch('vehicleType');
+  const mostrarDatos = datosAbiertos || !!lastNameValue || !!phoneValue || !!documentoValue || !!modeloValue;
   const cerrar = () => { resetAll(); setOpen(false); };
   // Hasta tres coincidencias: con más, el diálogo tendría que desplazarse. Se afina escribiendo.
   const coincidencias = frequentCustomers.slice(0, 3);
@@ -593,7 +602,7 @@ export function EntryByPlateDialog({
                   >
                     <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-gm-surface-3 text-gm-yellow"><Plus className="size-[18px]" aria-hidden /></span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[14.5px] font-semibold">Agregar apellido o WhatsApp</span>
+                      <span className="block text-[14.5px] font-semibold">{gratuita ? 'Agregar apellido, DNI o modelo' : 'Agregar apellido, WhatsApp o modelo'}</span>
                       <span className="block truncate text-xs text-muted-foreground">Opcional · lo encontrás más rápido la próxima vez</span>
                     </span>
                     <ChevronDown className="size-[18px] shrink-0 text-muted-foreground" aria-hidden />
@@ -613,15 +622,35 @@ export function EntryByPlateDialog({
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="phoneCustomer" render={({ field }) => (
-                      <FormItem className="space-y-1.5">
-                        <FormLabel className="text-[13px] font-semibold">WhatsApp</FormLabel>
-                        <FormControl><input type="tel" autoComplete="tel" placeholder="+54 9 11 1234 5678" disabled={isPending} {...field} className={cn(campo, 'gm-mono')} /></FormControl>
+                    {gratuita ? (
+                      <FormField control={form.control} name="documentoCustomer" render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[13px] font-semibold">DNI</FormLabel>
+                          <FormControl><input inputMode="numeric" autoComplete="off" placeholder="30123456" disabled={isPending} {...field} className={cn(campo, 'gm-mono')} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    ) : (
+                      <FormField control={form.control} name="phoneCustomer" render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[13px] font-semibold">WhatsApp</FormLabel>
+                          <FormControl><input type="tel" autoComplete="tel" placeholder="+54 9 11 1234 5678" disabled={isPending} {...field} className={cn(campo, 'gm-mono')} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    )}
+                    {/* El modelo, en las dos modalidades, con los comunes del tipo elegido como sugerencia: se puede escribir otro. */}
+                    <FormField control={form.control} name="modeloVehiculo" render={({ field }) => (
+                      <FormItem className="space-y-1.5 min-[360px]:col-span-2">
+                        <FormLabel className="text-[13px] font-semibold">Modelo del vehículo</FormLabel>
+                        <FormControl><ModeloVehiculoInput tipoVehiculo={tipoElegido} disabled={isPending} {...field} className={campo} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                   </div>
-                  <p className="text-xs leading-relaxed text-muted-foreground short:hidden">WhatsApp con código de país: con su teléfono lo encontrás desde la primera visita.</p>
+                  <p className="text-xs leading-relaxed text-muted-foreground short:hidden">
+                    {gratuita ? 'Apellido y DNI identifican a quién entró; el modelo ayuda a reconocer el vehículo.' : 'WhatsApp con código de país: con su teléfono lo encontrás desde la primera visita.'}
+                  </p>
                 </div>
               </ActionDialogBody>
 

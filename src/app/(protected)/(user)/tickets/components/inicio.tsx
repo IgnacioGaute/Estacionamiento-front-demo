@@ -5,7 +5,7 @@
 // celular (Entrada · Escanear · Salida). Las decisiones de qué abrir las toma ticket.card.tsx.
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CarFront, ChevronDown, ChevronLeft, ChevronRight, Search, Banknote, Wallet } from 'lucide-react';
 import { formatImporte } from '@/components/pricing-breakdown';
 import { AnimatedScrollList } from '@/components/animated-scroll-list';
@@ -18,7 +18,7 @@ import { TicketRegistration } from '@/types/ticket-registration.type';
 import { Ticket } from '@/types/ticket.type';
 import { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
 import { anticipoDe, isBarcodeOrigin, isOverdue, isTicketActive, latestRegistrationForTicket, minutesSinceEntry } from '@/utils/ticket-registration.utils';
-import { cuandoEntro, formatEstadia, progresoEnTramo, tramoDe, tramoInfo, TRAMOS } from '@/utils/estadia';
+import { cuandoEntro, formatEstadia, progresoEnTramo, tramoDe, tramoInfo, TRAMOS, type Tramo } from '@/utils/estadia';
 import { DayRegistrationsPanel } from './day-registrations-panel';
 import { estaAdentro, estadiasDeDosHoras, estadiasLargas, HORAS_ESTADIA_LARGA, useConfirmadas } from './estadias-largas';
 
@@ -63,7 +63,8 @@ export function InicioHero({
   turno: React.ReactNode;
   onExcedidos: () => void;
   onVencidas: () => void;
-  onZona: () => void;
+  // Con tramo, la lista baja hasta ese grupo; sin tramo («Ver todos»), arranca arriba.
+  onZona: (tramo?: Tramo) => void;
 }) {
   return (
     <section aria-label="La playa ahora" className="relative overflow-hidden rounded-[26px] bg-gm-yellow text-gm-ink shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)]">
@@ -104,7 +105,7 @@ export function InicioHero({
 // Un tramo vacío muestra cocheras libres en vez de un hueco.
 const COCHERAS_A_LA_VISTA = 5;
 
-function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration[]; ahora: number; onZona: () => void }) {
+function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration[]; ahora: number; onZona: (tramo?: Tramo) => void }) {
   // Las cocheras se ocupan una tras otra al abrir el inicio.
   const [listo, setListo] = useState(false);
   useEffect(() => {
@@ -130,7 +131,7 @@ function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration
           Hace cuánto están <span className="font-medium normal-case tracking-normal">· por hora</span>
         </p>
         {porHora.length > 0 && (
-          <button type="button" onClick={onZona} className="-my-2 inline-flex min-h-9 items-center gap-0.5 rounded-full pl-2 text-xs font-semibold text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
+          <button type="button" onClick={() => onZona()} className="-my-2 inline-flex min-h-9 items-center gap-0.5 rounded-full pl-2 text-xs font-semibold text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
             Ver todos<ChevronRight className="size-3.5" aria-hidden />
           </button>
         )}
@@ -140,7 +141,7 @@ function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration
           <button
             key={zona.id}
             type="button"
-            onClick={onZona}
+            onClick={() => onZona(zona.id)}
             aria-label={`${zona.cantidad} ${zona.label.toLowerCase()}${zona.pasados ? `, ${zona.pasados} superaron el tiempo avisado` : ''}. Ver la lista`}
             className="flex min-h-[104px] min-w-0 flex-col rounded-[16px] border bg-gm-surface-2 p-2.5 text-left transition-[background-color,transform] hover:bg-gm-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.97]"
             style={{ borderColor: zona.cantidad ? `${zona.color}59` : 'hsl(var(--gm-line))' }}
@@ -255,6 +256,13 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar, onSeFueAntes }
   const { cobroHabilitado } = useTenant();
   const { confirmada, confirmar } = useConfirmadas();
   const [abierto, setAbierto] = useState(false);
+  // Al desplegar, la pantalla baja hasta mostrar la lista (en el celular quedaba abajo, tapada).
+  const franjaRef = useRef<HTMLElement>(null);
+  const alternar = () => {
+    const abrir = !abierto;
+    setAbierto(abrir);
+    if (abrir) requestAnimationFrame(() => franjaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
   const pendientes = estadiasLargas(registros, ahora).filter(({ r }) => !confirmada(r.id, ahora));
   const deDosHoras = estadiasDeDosHoras(registros, ahora);
   if (!pendientes.length && !deDosHoras.length) return null;
@@ -262,8 +270,8 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar, onSeFueAntes }
   // Solo autos de 2 a 4 h: una línea azul, para tener en cuenta.
   if (!pendientes.length)
     return (
-      <section aria-label="Autos con más de 2 horas" className="overflow-hidden rounded-2xl border border-blue-400/20 bg-blue-400/[0.05]">
-        <button type="button" aria-expanded={abierto} onClick={() => setAbierto((v) => !v)}
+      <section ref={franjaRef} aria-label="Autos con más de 2 horas" className="scroll-mt-24 overflow-hidden rounded-2xl border border-blue-400/20 bg-blue-400/[0.05]">
+        <button type="button" aria-expanded={abierto} onClick={alternar}
           className="flex min-h-11 w-full items-center gap-2.5 px-3.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-300">
           <span aria-hidden className="size-2 shrink-0 rounded-full bg-blue-400" />
           <span className="min-w-0 flex-1 truncate text-[13px] text-[#D9D1C3]">
@@ -281,8 +289,8 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar, onSeFueAntes }
   const varias = pendientes.length > 1;
   const sinRespuesta = pendientes.some((e) => e.minutos >= MINUTOS_SIN_RESPUESTA);
   return (
-    <section aria-label="Autos sin confirmar" className={cn('overflow-hidden rounded-2xl border', sinRespuesta ? 'border-[1.5px] border-violet-400 bg-[#2A2240]' : 'border-violet-400/30 bg-violet-400/[0.06]')}>
-      <button type="button" aria-expanded={abierto} onClick={() => setAbierto((v) => !v)}
+    <section ref={franjaRef} aria-label="Autos sin confirmar" className={cn('scroll-mt-24 overflow-hidden rounded-2xl border', sinRespuesta ? 'border-[1.5px] border-violet-400 bg-[#2A2240]' : 'border-violet-400/30 bg-violet-400/[0.06]')}>
+      <button type="button" aria-expanded={abierto} onClick={alternar}
         className="flex min-h-[52px] w-full items-center gap-2.5 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300">
         <span aria-hidden className="gm-mono grid h-6 min-w-6 shrink-0 place-items-center rounded-full bg-violet-400 px-1.5 text-xs font-bold text-[#1B1230]">{pendientes.length}</span>
         <span className="min-w-0 flex-1">
@@ -538,7 +546,7 @@ export function TodosLosVehiculos({
             })()
           ) : grupos.length ? (
             grupos.map((g) => (
-              <section key={g.id} aria-label={g.titulo} className="flex flex-col gap-2">
+              <section key={g.id} id={`grupo-${g.id}`} aria-label={g.titulo} className="flex scroll-mt-28 flex-col gap-2">
                 <p className={cn('flex items-center gap-2 px-1 text-[13px] font-bold', g.alerta ? 'text-[#F0714A]' : 'text-[#D9D1C3]')}>
                   <span aria-hidden className="size-2 rounded-full" style={{ background: g.color }} />
                   {g.titulo}<span className="gm-mono font-semibold text-[#6F665A]">{g.filas.length}</span>

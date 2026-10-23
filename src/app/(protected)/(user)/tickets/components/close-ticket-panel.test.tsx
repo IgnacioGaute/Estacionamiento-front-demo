@@ -117,11 +117,13 @@ test('buscar escaneando: además de las que coinciden muestra las patentes parec
   expect(screen.getByRole('textbox', { name: 'Buscar vehículo' })).toHaveValue('SO1');
   expect(searchActiveRegistrationsAction).toHaveBeenLastCalledWith('SO1');
   fireEvent.click(screen.getByRole('button', { name: 'Escanear patente' }));
-  expect(await screen.findByText('Patente parecida')).toBeInTheDocument();
+  // La parecida es un aviso: revisá si se escribió bien o si la entrada se cargó mal.
+  expect(await screen.findByText('Hay una patente parecida')).toBeInTheDocument();
   expect(screen.getByRole('textbox', { name: 'Buscar vehículo' })).toHaveValue('SO128AA');
   expect(screen.queryByText(/No encontramos ese vehículo/)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: /No es ninguno, se va sin entrada/ }));
-  expect(onSalidaSinEntrada).toHaveBeenCalledWith('SO128AA');
+  fireEvent.click(screen.getByRole('button', { name: /Está bien escrita y no entró registrada/ }));
+  // Con una sola parecida, viaja para poder borrarla si estaba mal cargada.
+  expect(onSalidaSinEntrada).toHaveBeenCalledWith('SO128AA', { id: 'par', patente: 'SO123AA' });
   fireEvent.click(screen.getByRole('button', { name: /SO123AA|SO 123 AA/ }));
   await waitFor(() => expect(getCloseSummaryAction).toHaveBeenCalledWith('par'));
 });

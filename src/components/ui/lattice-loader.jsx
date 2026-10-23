@@ -111,6 +111,7 @@ export default function LatticeLoader({
       data-status={status}
       data-shape={shape}
       data-glow={glow ? '' : undefined}
+      data-bloque={compact ? undefined : ''}
       style={{
         '--ll-n': n,
         '--ll-cell': `${cellSize}px`,

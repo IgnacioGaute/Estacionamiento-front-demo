@@ -6,7 +6,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import { CalendarDays, Download, Inbox, Search } from 'lucide-react';
+import { CalendarDays, Download, FileText, Inbox, Search } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { AppDatePicker } from '@/components/app-date-picker';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { formatEstadia } from '@/utils/estadia';
 import { planillaVehiculosAction } from '@/actions/tickets/planilla-vehiculos.action';
+import { useTenant } from '@/components/tenant-provider';
+import { generarPdfVehiculos } from '@/utils/generate-vehiculos-pdf';
 import { TariffSelect } from '../tarifas/tariff-select';
 import {
   CabeceraTabla, ChapaVehiculo, ChipFiltro, EtiquetaTipo, Iniciales, LeyendaTramos, Permanencia, PieTabla, SelectorSegmentado,
@@ -45,7 +47,8 @@ export function PlanillaVehiculosBody() {
   const [datos, setDatos] = useState<PlanillaVehiculos | null>(null);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [exportando, setExportando] = useState(false);
+  const [exportando, setExportando] = useState<'excel' | 'pdf' | null>(null);
+  const { context, playaId, cobroHabilitado } = useTenant();
   const pedido = useRef(0);
 
   useEffect(() => {
@@ -66,18 +69,57 @@ export function PlanillaVehiculosBody() {
   const cambiar = (cambios: Partial<FiltrosPlanillaVehiculos>) => { setPagina(0); setFiltros((f) => ({ ...f, ...cambios })); };
   const periodo = (desde: string, hasta: string) => cambiar({ desde, hasta });
 
-  // Exporta todas las filas del filtro (no solo la página), en tandas como las pide la pantalla.
-  const exportar = async () => {
-    setExportando(true);
+  // Todas las filas del filtro (no solo la página), en tandas como las pide la pantalla. Null si
+  // falló o no hay nada que exportar (ya avisó).
+  const todasLasFilas = async () => {
+    const filas: FilaPlanillaVehiculos[] = [];
+    for (let p = 1; p <= 50; p++) {
+      const r = await planillaVehiculosAction({ ...filtros, page: p, limit: 100 });
+      if ('error' in r) { toast.error(r.error); return null; }
+      filas.push(...r.data);
+      if (p >= r.meta.totalPages) break;
+    }
+    if (!filas.length) { toast.error('No hay vehículos para exportar con estos filtros.'); return null; }
+    return filas;
+  };
+
+  // El PDF: un informe para imprimir o mandar, con los filtros en el encabezado.
+  const exportarPdf = async () => {
+    setExportando('pdf');
     try {
-      const filas: FilaPlanillaVehiculos[] = [];
-      for (let p = 1; p <= 50; p++) {
-        const r = await planillaVehiculosAction({ ...filtros, page: p, limit: 100 });
-        if ('error' in r) { toast.error(r.error); return; }
-        filas.push(...r.data);
-        if (p >= r.meta.totalPages) break;
-      }
-      if (!filas.length) { toast.error('No hay vehículos para exportar con estos filtros.'); return; }
+      const filas = await todasLasFilas();
+      if (!filas) return;
+      const playa = context.playas.find((p) => p.id === playaId);
+      const filtrosEnPalabras = [
+        filtros.operador && `Operador: ${filtros.operador}`,
+        filtros.tipo && `Tipo: ${nombreTipo(filtros.tipo)}`,
+        filtros.q && `Búsqueda: «${filtros.q}»`,
+      ].filter((f): f is string => !!f);
+      const bytes = await generarPdfVehiculos(filas, datos?.resumen, {
+        playa: playa?.nombre ?? 'Playa',
+        empresa: context.empresa?.nombre ?? null,
+        desde: filtros.desde,
+        hasta: filtros.hasta,
+        estado: filtros.estado,
+        gratuita: !cobroHabilitado,
+        filtros: filtrosEnPalabras,
+        generado: new Date(),
+      }, nombreTipo);
+      const nombre = filtros.estado === 'PRESENTES' ? `vehiculos-adentro-${hoy}.pdf` : `vehiculos-${filtros.desde}-a-${filtros.hasta}.pdf`;
+      saveAs(new Blob([bytes as BlobPart], { type: 'application/pdf' }), nombre);
+      toast.success('Informe en PDF descargado.');
+    } catch {
+      toast.error('No se pudo armar el PDF. Revisá la conexión e intentá de nuevo.');
+    } finally {
+      setExportando(null);
+    }
+  };
+
+  const exportar = async () => {
+    setExportando('excel');
+    try {
+      const filas = await todasLasFilas();
+      if (!filas) return;
       const hoja = XLSX.utils.json_to_sheet(filas.map((f) => ({
         'Vehículo': f.vehiculo,
         'Tipo': nombreTipo(f.tipo),
@@ -98,7 +140,7 @@ export function PlanillaVehiculosBody() {
     } catch {
       toast.error('No se pudo exportar la planilla. Revisá la conexión e intentá de nuevo.');
     } finally {
-      setExportando(false);
+      setExportando(null);
     }
   };
 
@@ -122,9 +164,15 @@ export function PlanillaVehiculosBody() {
         title="Vehículos"
         description="Entradas, salidas y vehículos adentro, con permanencia y quién registró cada movimiento."
         actions={
-          <Button type="button" variant="outline" onClick={exportar} disabled={exportando || isPending} className="h-11 gap-2 rounded-xl border-gm-line-strong">
-            <Download className="size-4 text-gm-yellow" aria-hidden />{exportando ? 'Exportando…' : 'Exportar Excel'}
-          </Button>
+          // Excel sigue siendo la descarga principal; el PDF, un informe con los mismos filtros.
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={exportar} disabled={!!exportando || isPending} className="h-11 gap-2 rounded-xl bg-gm-yellow font-semibold text-gm-ink hover:bg-gm-yellow/90">
+              <Download className="size-4" aria-hidden />{exportando === 'excel' ? 'Exportando…' : 'Exportar Excel'}
+            </Button>
+            <Button type="button" variant="outline" onClick={exportarPdf} disabled={!!exportando || isPending} className="h-11 gap-2 rounded-xl border-gm-line-strong">
+              <FileText className="size-4 text-gm-yellow" aria-hidden />{exportando === 'pdf' ? 'Armando PDF…' : 'Descargar PDF'}
+            </Button>
+          </div>
         }
       />
 

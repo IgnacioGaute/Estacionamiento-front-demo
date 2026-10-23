@@ -29,7 +29,7 @@ import { ActiveDayTicketDialog } from "./active-day-ticket-dialog";
 import { PriceBracketMapDialog } from "./price-bracket-map-dialog";
 import { AdvancePaymentDialog } from "./advance-payment-dialog";
 import { ScanPlateAction } from './scan-plate-action';
-import { SalidaSinEntradaDialog } from './salida-sin-entrada-dialog';
+import { SalidaSinEntradaDialog, type EntradaParecida } from './salida-sin-entrada-dialog';
 import { EntryByPlateDialog } from "./entry-by-plate-dialog";
 import { CloseTicketPanel } from "./close-ticket-panel";
 import { TurnoBar } from "./turno-bar";
@@ -38,6 +38,7 @@ import { useTicketRealtime } from "@/hooks/use-ticket-realtime";
 import { useResincronizar } from "@/hooks/use-resincronizar";
 import { useForegroundPoll } from '@/hooks/use-foreground-poll';
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { tramoDe } from "@/utils/estadia";
 import { isBarcodeOrigin, isOverdue, mergeServerSnapshot, minutesSinceEntry, upsertRegistration } from "@/utils/ticket-registration.utils";
 import { estadiaLargaActiva as isDayRegistrationActive, estadiaLargaVencida as isDayRegistrationOverdue } from "@/utils/estadia-larga";
 import { AvisoEstadiasLargas, EncabezadoVista, estaAdentro, estadiasLargas, FichasEnElPlayon, HORAS_ESTADIA_LARGA, InicioHero, MostradorDock, normalizar, TodosLosVehiculos, VehiculoFila, type FiltroVehiculos } from "./inicio";
@@ -123,6 +124,8 @@ export default function CardTicket({
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
   // Un auto que se va sin entrada registrada (desde el escaneo o la búsqueda del cobro).
   const [salidaSinEntrada, setSalidaSinEntrada] = useState<string | null>(null);
+  // La entrada de patente parecida desde la que se llegó (se puede borrar si estaba mal cargada).
+  const [parecidaSinEntrada, setParecidaSinEntrada] = useState<EntradaParecida | null>(null);
   const isDialogOpen = entryDialogOpen || plateScanBusy || advanceTarget !== null || closePanelOpen || dayDialogOpen || receiptTarget !== null || salidaSinEntrada !== null;
 
   // El inicio, la lista completa y el historial de comprobantes son tres vistas de la misma
@@ -140,10 +143,22 @@ export default function CardTicket({
   const vistaRef = useRef<Vista>("inicio");
   vistaRef.current = vista;
   const arribaRef = useRef<HTMLDivElement | null>(null);
-  const irA = useCallback((siguiente: Vista, conFiltro?: FiltroVehiculos) => {
+  // `ancla`: el id de un grupo de la lista (el tramo que se tocó en el inicio). Se baja hasta ahí
+  // en vez de arrancar arriba; si el grupo todavía no se dibujó, se reintenta unos cuadros.
+  const irA = useCallback((siguiente: Vista, conFiltro?: FiltroVehiculos, ancla?: string) => {
     setDireccion(siguiente === "inicio" ? "atras" : "adelante");
     setVista(siguiente);
     if (conFiltro) setFiltro(conFiltro);
+    if (ancla) {
+      let intentos = 0;
+      const bajar = () => {
+        const destino = document.getElementById(ancla);
+        if (destino) destino.scrollIntoView({ behavior: "smooth", block: "start" });
+        else if (++intentos < 20) requestAnimationFrame(bajar);
+      };
+      requestAnimationFrame(bajar);
+      return;
+    }
     // Arriba de todo del contenedor que desplaza (el documento o el del layout), sin esconder la
     // barra de la app como haría scrollIntoView.
     requestAnimationFrame(() => {
@@ -468,7 +483,13 @@ export default function CardTicket({
         turno={TURNO_BAR_ENABLED ? <span ref={refVisible('turno')} className="inline-flex"><TurnoBar variant="pill" onCobrarEstadia={abrirCobro} /></span> : null}
         onExcedidos={() => irA('vehiculos', 'excedidos')}
         onVencidas={() => irA('vehiculos', 'dia')}
-        onZona={() => irA('vehiculos', 'hora')}
+        onZona={(tramo) => {
+          // Los que superaron el tiempo avisado se listan aparte: si todo el tramo está ahí, se
+          // baja a ese grupo.
+          if (!tramo) return irA('vehiculos', 'hora');
+          const enTramo = activosPorHora.filter((r) => tramoDe(minutesSinceEntry(r, now) ?? 0) === tramo);
+          irA('vehiculos', 'hora', enTramo.some((r) => !isOverdue(r, now)) ? `grupo-${tramo}` : enTramo.length ? 'grupo-pasados' : undefined);
+        }}
       />
 
       <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={cobroHabilitado ? setSeFueAntes : undefined} />
@@ -526,9 +547,6 @@ export default function CardTicket({
         )}
       </div>
 
-      {/* Prepara el acceso sin conexión (pide datos al servidor): una sola vez, en la pantalla que quedó. */}
-      {esEscritorio === false && <OfflineConsultation revision={registrations} />}
-
       <section aria-labelledby="ultimas-entradas" className="flex flex-col gap-2.5">
         <h2 id="ultimas-entradas" className="px-1 text-lg font-bold">Últimas entradas</h2>
         {ultimasEntradas.length ? (
@@ -546,6 +564,9 @@ export default function CardTicket({
         )}
       </section>
       {lector}
+      {/* Prepara el acceso sin conexión (pide datos al servidor): una sola vez, en la pantalla que
+          quedó. En el celular va al final, como en el resto de las pantallas. */}
+      {esEscritorio === false && <div className="flex justify-center pb-4 pt-2"><OfflineConsultation revision={registrations} /></div>}
     </div>
   );
 
@@ -778,7 +799,7 @@ export default function CardTicket({
           if (!open) setClosePanelTargetId(null);
         }}
         onSuccess={() => router.refresh()}
-        onSalidaSinEntrada={(plate) => { setClosePanelOpen(false); setClosePanelTargetId(null); setSalidaSinEntrada(plate); }}
+        onSalidaSinEntrada={(plate, parecida) => { setClosePanelOpen(false); setClosePanelTargetId(null); setParecidaSinEntrada(parecida ?? null); setSalidaSinEntrada(plate); }}
       />
 
       <SeFueAntes
@@ -790,7 +811,8 @@ export default function CardTicket({
 
       <SalidaSinEntradaDialog
         plate={salidaSinEntrada}
-        onClose={() => setSalidaSinEntrada(null)}
+        parecida={parecidaSinEntrada}
+        onClose={() => { setSalidaSinEntrada(null); setParecidaSinEntrada(null); }}
         onCobrar={(id) => abrirCobro(id)}
         onRegistrada={() => router.refresh()}
       />

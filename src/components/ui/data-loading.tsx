@@ -10,7 +10,7 @@ type DataLoadingProps = {
 
 export function DataLoading({ label = 'Cargando datos…', className }: DataLoadingProps) {
   return (
-    <div className={cn('flex min-w-0 items-center justify-center', className)} aria-busy="true">
+    <div className={cn('flex w-full min-w-0 items-center justify-center', className)} aria-busy="true">
       <InfinityLoader label={label} />
     </div>
   );

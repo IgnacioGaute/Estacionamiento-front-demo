@@ -51,7 +51,7 @@ export function applyOperation(source, op) {
   if (Date.parse(op.occurredAt) > s.expiresAt || Date.parse(op.occurredAt) < Date.parse(s.capturedAt) - 120000) throw new Error('Venció la autorización sin conexión. Sincronizá para renovarla.');
   let v = s.vehicles.find(v => v.id === op.registrationId);
   if (v && (v.departed || vehicleState(v) !== op.expectedState)) throw new Error('La estadía cambió. Volvé a abrirla antes de confirmar.');
-  if (['DELETE', 'CASH_MOVEMENT'].includes(action) && s.role !== 'ADMIN') throw new Error('Esta opción requiere un administrador.');
+  if (['DELETE', 'CASH_MOVEMENT'].includes(action) && !['ADMIN', 'SUPER_ADMIN'].includes(s.role)) throw new Error('Esta opción requiere un administrador.');
   if (['PLATE_ENTRY', 'CARD_ENTRY'].includes(action)) {
     const card = action === 'CARD_ENTRY' ? s.cards.find(c => c.id === d.ticketId) : null;
     const type = card?.vehicleType ?? d.vehicleType;

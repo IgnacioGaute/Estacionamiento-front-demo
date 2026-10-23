@@ -22,6 +22,14 @@
   line-height: 1;
 }
 
+/* Con texto («Cargando vehículos…») va siempre centrado en su lugar; el compacto (el ícono chico
+   dentro de un botón) sigue en línea. */
+.lattice-loader[data-bloque] {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
 .lattice-loader__grid {
   display: grid;
   flex: none;

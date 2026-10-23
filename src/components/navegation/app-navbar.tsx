@@ -88,8 +88,9 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
         </header>
 
         {user?.role !== 'SUPER_ADMIN' && <AvisoCuenta />}
-        {!platform && <OfflinePreparation />}
+        {!platform && <OfflinePreparation lugar="arriba" />}
         {children}
+        {!platform && <OfflinePreparation lugar="abajo" />}
         <AssistantWidget />
       </SidebarInset>
     </>

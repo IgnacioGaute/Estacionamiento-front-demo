@@ -66,6 +66,8 @@ export function OfflineConsultation({ revision }: { revision?: unknown }) {
           throw new Error(response.redirected || response.status === 401 ? 'Tu sesión venció. Volvé a iniciar sesión para preparar este teléfono.' : `No se pudo preparar este teléfono (respuesta ${response.status}).`);
         }
         const snapshot = await response.json();
+        // El backend contesta «Forbidden» en inglés: en pantalla, qué pasó y qué hacer.
+        if (response.status === 403) throw new Error('Este usuario no puede preparar el modo sin conexión en esta playa.');
         if (!response.ok) throw new Error(snapshot.message || 'No se pudo preparar el acceso sin conexión.');
         if (stopped || request.signal.aborted) return;
         if (snapshot.unchanged === true) {
