@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TRAMOS, tramoInfo, formatEstadia } from '@/utils/estadia';
 import { Segmento } from '@/components/ui/segmento';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const tarjetaPlanilla = 'rounded-[20px] border border-gm-line bg-card';
 export const thPlanilla = 'px-3 py-3 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground first:pl-[18px] last:pr-[18px]';
@@ -43,11 +44,13 @@ export function EtiquetaTipo({ children }: { children: ReactNode }) {
 export function SelectorSegmentado<T extends string>({ opciones, valor, onChange, etiqueta, disabled }: {
   opciones: { id: T; label: string; cantidad?: number | null }[]; valor: T; onChange: (id: T) => void; etiqueta: string; disabled?: boolean;
 }) {
-  // Rubber Segment (ui/segmento), con la pastilla en crema como antes. En el celular la fila se
-  // desliza de costado si no entra.
+  // Rubber Segment (ui/segmento), con la pastilla en crema como antes. En el celular va en tamaño
+  // chico y sin los contadores (las tarjetas de resumen de arriba ya los muestran), para que las
+  // opciones entren sin cortarse en el borde; si aun así no entran, se desliza.
+  const movil = useIsMobile();
   return (
-    <Segmento aria-label={etiqueta} size="lg" claro disabled={disabled} value={valor} onChange={(id) => onChange(id as T)}
-      items={opciones.map((o) => ({ value: o.id, label: o.label, badge: o.cantidad != null ? o.cantidad.toLocaleString('es-AR') : undefined }))} />
+    <Segmento aria-label={etiqueta} size={movil ? 'sm' : 'lg'} claro disabled={disabled} value={valor} onChange={(id) => onChange(id as T)}
+      items={opciones.map((o) => ({ value: o.id, label: o.label, badge: !movil && o.cantidad != null ? o.cantidad.toLocaleString('es-AR') : undefined }))} />
   );
 }
 

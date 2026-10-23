@@ -18,8 +18,10 @@ export default async function AccessSelectionPage() {
   }
 
   return (
-    <main className="grid min-h-[100dvh] place-items-center bg-background px-4 py-10">
-      <section className="w-full max-w-md rounded-2xl border border-white/[0.07] bg-[#0E0D0B] p-6 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8" aria-labelledby="access-title">
+    // Flex y min-w-0: en un grid centrado la tarjeta tomaba el ancho del texto más largo y se
+    // salía de la pantalla del celular.
+    <main className="flex min-h-[100dvh] items-center justify-center bg-background px-4 py-10">
+      <section className="w-full min-w-0 max-w-md rounded-2xl border border-white/[0.07] bg-[#0E0D0B] p-6 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8" aria-labelledby="access-title">
         <div className="mb-6 flex items-center gap-3">
           <AppIcon className="size-10" />
           <span className="rounded-full border border-gm-yellow/25 bg-gm-yellow/[0.08] px-2.5 text-[12px] font-medium leading-6 text-gm-yellow">Super admin</span>
