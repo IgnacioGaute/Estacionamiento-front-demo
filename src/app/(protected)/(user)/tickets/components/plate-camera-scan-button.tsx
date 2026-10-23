@@ -9,14 +9,14 @@ import { useTenant } from '@/components/tenant-provider';
 import { sanitizePlateInput } from '@/utils/plate.utils';
 import { prepararFotoPatente } from '@/utils/plate-photo';
 import { recognizePlateAction } from '@/actions/tickets/recognize-plate.action';
-import { PlateLiveScanner } from './plate-live-scanner';
 
 // Aparece en mobile cuando el backend informa un motor disponible: Plate Recognizer con token
 // de la playa, o fast-alpr de la plataforma para las playas sin token. La cámara no necesita saber
-// cuál se usa ni recibir credenciales. Con cámara en vivo (`getUserMedia`) la patente se lee
-// sola apuntando; si no está disponible, se cae a la foto con el <input capture="environment">
-// nativo. El botón no se oculta nunca por falta de `mediaDevices`: esa API solo existe en contextos
-// seguros (HTTPS o localhost), y en LAN por HTTP simple viene `undefined` aunque la foto funcione.
+// cuál se usa ni recibir credenciales. Abre directamente la cámara del celular
+// (<input capture="environment">): con una foto sacada desde donde se ve el vehículo, el motor lee
+// la patente y la entrada sugiere el tipo y el modelo. Antes abría una cámara en vivo del navegador
+// que leía sola apuntando a un recuadro; con celulares comunes la foto nativa enfoca y expone mejor,
+// no depende de HTTPS y es un solo toque.
 export function PlateCameraScanButton({
   disabled,
   onRecognized,
@@ -39,17 +39,13 @@ export function PlateCameraScanButton({
   const isMobile = useIsMobile();
   const { reconocimientoPatentes } = useTenant();
   const [isScanning, setIsScanning] = useState(false);
-  const [enVivo, setEnVivo] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => { onBusyChange?.(isScanning || enVivo); }, [isScanning, enVivo, onBusyChange]);
+  useEffect(() => { onBusyChange?.(isScanning); }, [isScanning, onBusyChange]);
 
   if (!isMobile || !reconocimientoPatentes) return null;
 
-  const abrir = () => {
-    if (typeof navigator.mediaDevices?.getUserMedia === 'function') setEnVivo(true);
-    else inputRef.current?.click();
-  };
+  const abrir = () => inputRef.current?.click();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -145,23 +141,6 @@ export function PlateCameraScanButton({
           </>
         )}
       </button>
-      <PlateLiveScanner
-        open={enVivo}
-        onOpenChange={setEnVivo}
-        onRecognized={async (plate, dudosa, foto) => {
-          setEnVivo(false);
-          setIsScanning(true);
-          try { await onRecognized(sanitizePlateInput(plate), foto); }
-          catch { toast.error('No se pudo consultar la patente. Intentá de nuevo.'); return; }
-          finally { setIsScanning(false); }
-          if (dudosa) toast.warning('La lectura no fue segura: revisá la patente antes de confirmar.');
-          else if (notifyRecognition) toast.success('Patente reconocida — revisala antes de confirmar.');
-        }}
-        onTakePhoto={() => {
-          setEnVivo(false);
-          inputRef.current?.click();
-        }}
-      />
     </>
   );
 }

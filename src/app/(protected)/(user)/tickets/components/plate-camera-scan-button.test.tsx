@@ -10,7 +10,6 @@ jest.mock('@/components/tenant-provider', () => ({ useTenant: jest.fn() }));
 jest.mock('@/actions/tickets/recognize-plate.action', () => ({ recognizePlateAction: jest.fn() }));
 jest.mock('@/utils/plate-photo', () => ({ prepararFotoPatente: jest.fn() }));
 jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
-jest.mock('./plate-live-scanner', () => ({ PlateLiveScanner: () => null }));
 jest.mock('@/components/ui/lattice-loader', () => ({ __esModule: true, default: () => null }));
 beforeEach(() => {
   jest.clearAllMocks();
@@ -20,6 +19,15 @@ beforeEach(() => {
 test('ofrece la cámara cuando el backend habilita el motor sin token de la playa', () => {
   render(<PlateCameraScanButton onRecognized={jest.fn()} />);
   expect(screen.getByRole('button', { name: 'Escanear patente con la cámara' })).toBeEnabled();
+});
+test('abre directamente la cámara del celular, aunque el navegador tenga cámara en vivo', () => {
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: jest.fn() } });
+  const abrirCamara = jest.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => undefined);
+  render(<PlateCameraScanButton onRecognized={jest.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente con la cámara' }));
+  expect(abrirCamara).toHaveBeenCalledTimes(1);
+  expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
+  abrirCamara.mockRestore();
 });
 test.each(['field', 'action'] as const)('sin motor o fuera de celular oculta la cámara %s', (variant) => {
   jest.mocked(useTenant).mockReturnValue({ reconocimientoPatentes: false } as ReturnType<typeof useTenant>);
