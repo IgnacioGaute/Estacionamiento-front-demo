@@ -26,7 +26,8 @@ import type { EstadoPlanilla, FilaPlanillaVehiculos, FiltrosPlanillaVehiculos, P
 dayjs.extend(utc);
 dayjs.extend(timezone);
 const TZ = 'America/Argentina/Buenos_Aires';
-const POR_PAGINA = 50;
+// Páginas cortas: en el celular 50 filas eran una lista interminable.
+const POR_PAGINA = 15;
 const TITULOS: Record<EstadoPlanilla, string> = { TODAS: 'Movimientos', ENTRADAS: 'Entradas', SALIDAS: 'Salidas', PRESENTES: 'Adentro ahora' };
 
 const fechaCorta = (dia: string | null) => (dia ? dayjs(dia).format('DD/MM') : '');

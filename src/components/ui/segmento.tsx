@@ -69,8 +69,12 @@ export function Segmento({
         textColor={SEGMENTO_COLORES.text}
         activeTextColor={SEGMENTO_COLORES.activeText}
         disabled={disabled}
+        // Anchos iguales solo ocupando toda la fila; si no, cada opción a su medida.
+        equalSlots={!!ancho}
         aria-label={ariaLabel}
-        className={cn('font-semibold shadow-[inset_0_0_0_1px_hsl(var(--gm-line))]', ancho && 'w-full')}
+        // Sin `ancho`, al ancho de su contenido (w-max): si la fila no entra, se desliza de costado.
+        // Sin esto el grid se achicaba a la pantalla y las opciones largas se pisaban entre sí.
+        className={cn('font-semibold shadow-[inset_0_0_0_1px_hsl(var(--gm-line))]', ancho ? 'w-full' : 'w-max')}
       />
     </div>
   );

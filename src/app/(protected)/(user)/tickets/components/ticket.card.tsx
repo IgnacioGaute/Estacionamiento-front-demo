@@ -390,6 +390,8 @@ export default function CardTicket({
   const accesoTarifas = "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-border px-3.5 text-[13px] font-semibold text-[#D9D1C3] transition-colors hover:border-gm-yellow/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
   // Accesos secundarios del administrador: texto sin borde para no competir con las acciones del mostrador.
   const atajoSutil = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
+  // Botón de la barra de accesos del celular: ícono arriba, nombre abajo, ancho parejo.
+  const atajoMovil = "flex min-h-[60px] min-w-0 flex-col items-center justify-center gap-1 px-1 text-center text-[12px] font-medium text-[#D9D1C3] transition-colors hover:bg-white/[0.04] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow";
   const atajosAdmin = (alto: string) => isAdmin && (
     <nav aria-label="Accesos de administración" className="flex min-w-0 flex-wrap items-center gap-0.5">
       <Link href="/admin/vehiculos" className={cn(alto, atajoSutil)}>
@@ -422,17 +424,39 @@ export default function CardTicket({
           <div className="flex shrink-0 flex-col items-end">{tour.node}</div>
         </div>
         <h1 className="text-[32px] font-bold leading-[1.05] tracking-tight sm:text-[40px]">{barcodeTicketsEnabled ? "Tickets y patentes" : "Entradas y salidas"}</h1>
-        <div className="flex flex-wrap gap-2">
-          {cobroHabilitado && <span ref={refVisible('precios')} className="inline-flex">
-            <PriceBracketMapDialog brackets={priceBrackets} schedule={schedule} renderTrigger={(abrir) => (
-              <button type="button" onClick={abrir} className={accesoTarifas}><Map className="size-4 text-gm-yellow" aria-hidden />Ver tarifas</button>
-            )} />
-          </span>}
-          {isAdmin && cobroHabilitado && (
-            <Link href="/admin/tarifas" ref={refVisible('admin')} className={accesoTarifas}><Settings className="size-4 text-gm-yellow" aria-hidden />Administrar tarifas</Link>
-          )}
-          {atajosAdmin("h-9")}
-        </div>
+        {/* En el celular, dos bloques alineados: las tarifas en dos columnas iguales y los accesos
+            del administrador en una barra de tres, con el ícono arriba. Sueltos y con wrap
+            quedaban renglones desparejos. */}
+        {cobroHabilitado && (
+          <div className={cn("grid gap-2", isAdmin ? "grid-cols-2" : "grid-cols-1")}>
+            <span ref={refVisible('precios')} className="flex">
+              <PriceBracketMapDialog brackets={priceBrackets} schedule={schedule} renderTrigger={(abrir) => (
+                <button type="button" onClick={abrir} className={cn(accesoTarifas, "h-11 w-full justify-center")}><Map className="size-4 text-gm-yellow" aria-hidden />Ver tarifas</button>
+              )} />
+            </span>
+            {isAdmin && (
+              <Link href="/admin/tarifas" ref={refVisible('admin')} aria-label="Administrar tarifas" className={cn(accesoTarifas, "h-11 w-full justify-center whitespace-nowrap")}><Settings className="size-4 text-gm-yellow" aria-hidden />Editar tarifas</Link>
+            )}
+          </div>
+        )}
+        {isAdmin && (
+          <nav
+            aria-label="Accesos de administración"
+            className={cn("grid divide-x divide-border overflow-hidden rounded-2xl border border-border bg-gm-surface", TURNO_BAR_ENABLED ? "grid-cols-3" : "grid-cols-2")}
+          >
+            <Link href="/admin/vehiculos" className={atajoMovil}>
+              <CarFront className="size-[18px] text-gm-yellow" aria-hidden />Vehículos
+            </Link>
+            {TURNO_BAR_ENABLED && (
+              <Link href="/admin/caja?tab=turnos#historial" aria-label="Historial de turnos" className={atajoMovil}>
+                <History className="size-[18px] text-gm-yellow" aria-hidden />Turnos
+              </Link>
+            )}
+            <Link href="/admin/configuracion" className={atajoMovil}>
+              <SlidersHorizontal className="size-[18px] text-gm-yellow" aria-hidden />Configuración
+            </Link>
+          </nav>
+        )}
       </header>
 
       <InicioHero
