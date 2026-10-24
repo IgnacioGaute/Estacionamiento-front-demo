@@ -11,6 +11,8 @@ export const openTurnoSchema = z.object({
 export type OpenTurnoSchemaType = z.infer<typeof openTurnoSchema>;
 export const closeTurnoSchema = z.object({
   sueldoEsperado: z.number().int().min(0).optional(),
+  // El operador eligió no retirar el sueldo aunque el efectivo alcanzaba.
+  sinSueldo: z.boolean().optional(),
   cerrarCaja: z.boolean().optional(),
   efectivoContado: z.coerce.number().int().min(0, 'Debe ser mayor o igual a 0').optional(),
   efectivoParaSiguiente: z.coerce.number().int().min(0).optional(),

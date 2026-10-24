@@ -100,7 +100,8 @@ export function PlayaSelector() {
   // Con varias, el menú desplegable de la app (el de la cuenta): el <select> nativo dibujaba la
   // lista en blanco y celeste del navegador. Igual se maneja con teclado.
   return (
-    <DropdownMenu>
+    // modal={false}: el bloqueo de scroll de Radix descolocaba el menú con la página desplazada.
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild disabled={pending}>
         <button
           type="button"

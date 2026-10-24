@@ -127,7 +127,8 @@ export function OperationalNavUser({
 
   return (
     <>
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      {/* modal={false}: no bloquea el scroll de la página. Con el bloqueo (y html:has(body[data-scroll-locked]) en globals.css) el menú no abría bien con la página desplazada. */}
+      <DropdownMenu modal={false} open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           {/* En la barra: avatar, nombre y rol (en el celular, solo el avatar). */}
           <button
@@ -356,7 +357,8 @@ function PlatformNavUser({
     'cursor-pointer gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]';
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    // Sin bloquear el scroll de la página: ver el menú de la barra de una playa.
+    <DropdownMenu modal={false} open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         {/* El mismo botón de cuenta que en la barra de una playa. */}
         <button

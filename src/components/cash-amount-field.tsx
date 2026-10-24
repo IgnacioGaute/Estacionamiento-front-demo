@@ -24,6 +24,9 @@ export function CashAmountField({ id, label, value, onChange, disabled, max, pla
   const inputRef = useRef<HTMLInputElement>(null);
   const numero = value !== '' && Number.isInteger(Number(value)) && Number(value) >= 0 ? Number(value) : null;
   const formateado = !focused && numero !== null;
+  // La opción de editar entre las rápidas («Conté menos», «Cambiar importe») queda marcada cuando
+  // el importe es uno propio, que no coincide con ninguna de las otras.
+  const importePropio = numero !== null && !shortcuts.some(shortcut => !('edit' in shortcut) && shortcut.amount === numero);
   return <div className="space-y-2.5">
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
       <Label htmlFor={id} className={cn('min-w-0 flex-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground', labelClassName)}>{label}</Label>
@@ -46,16 +49,16 @@ export function CashAmountField({ id, label, value, onChange, disabled, max, pla
       {!!shortcuts.length && <div role="group" aria-label={'Opciones rápidas: ' + label} className={cn('grid border-t border-gm-line', shortcuts.length === 3 && 'grid-cols-2 sm:grid-cols-3')} style={shortcuts.length === 3 ? undefined : { gridTemplateColumns: `repeat(${shortcuts.length}, minmax(0, 1fr))` }}>
         {shortcuts.map((shortcut, index) => {
           const editar = 'edit' in shortcut;
-          const elegido = !editar && value !== '' && Number(value) === shortcut.amount;
+          const elegido = editar ? importePropio : value !== '' && Number(value) === shortcut.amount;
           const [nombre, importe] = shortcut.label.split(' · ');
-          return <button key={index} type="button" disabled={disabled || shortcut.disabled} aria-pressed={editar ? undefined : elegido} aria-controls={editar ? id : undefined}
+          return <button key={index} type="button" disabled={disabled || shortcut.disabled} aria-pressed={elegido} aria-controls={editar ? id : undefined}
             onClick={() => { if ('edit' in shortcut) { inputRef.current?.focus(); inputRef.current?.select(); } else onChange(String(shortcut.amount)); }}
             className={cn('flex min-h-14 min-w-0 items-center justify-between gap-2 px-4 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow disabled:cursor-not-allowed disabled:opacity-40', elegido ? 'bg-gm-yellow/10 text-gm-yellow' : 'hover:bg-gm-surface-3/70', index > 0 && 'border-l border-gm-line', shortcuts.length === 3 && index === 2 && 'col-span-2 border-l-0 border-t sm:col-span-1 sm:border-l sm:border-t-0')}>
             <span className="min-w-0">
               <span className="block text-[13px] font-semibold leading-tight">{nombre}</span>
               {importe && <span className={cn('mt-0.5 block text-xs tabular-nums', elegido ? 'text-gm-yellow/80' : 'text-muted-foreground')}>{importe}</span>}
             </span>
-            {editar ? <Pencil className="size-4 shrink-0 text-gm-yellow" aria-hidden /> : <span aria-hidden className={cn('grid size-5 shrink-0 place-items-center rounded-full border transition-colors', elegido ? 'border-gm-yellow bg-gm-yellow text-gm-ink' : 'border-gm-line-strong')}>{elegido && <Check className="size-3" strokeWidth={3} />}</span>}
+            {editar ? <span aria-hidden className={cn('grid size-5 shrink-0 place-items-center rounded-full', elegido && 'bg-gm-yellow text-gm-ink')}><Pencil className={cn('shrink-0', elegido ? 'size-3' : 'size-4 text-gm-yellow')} strokeWidth={elegido ? 2.6 : 2} /></span> :<span aria-hidden className={cn('grid size-5 shrink-0 place-items-center rounded-full border transition-colors', elegido ? 'border-gm-yellow bg-gm-yellow text-gm-ink' : 'border-gm-line-strong')}>{elegido && <Check className="size-3" strokeWidth={3} />}</span>}
           </button>;
         })}
       </div>}

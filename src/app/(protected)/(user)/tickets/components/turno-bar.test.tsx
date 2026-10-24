@@ -146,12 +146,17 @@ test('Conté menos permite escribir el efectivo real y conserva Editar importe y
   const input = screen.getByLabelText('¿Cuánto efectivo contaste?');
   await waitFor(() => expect(input).toBeEnabled());
   expect(screen.getByRole('button', { name: 'Editar importe: ¿Cuánto efectivo contaste?' })).toBeInTheDocument();
+  // Conté menos va al medio: Conté todo, Conté menos y No hay efectivo.
+  const opciones = within(screen.getByRole('group', { name: 'Opciones rápidas: ¿Cuánto efectivo contaste?' })).getAllByRole('button');
+  expect(opciones.map(o => o.textContent?.replace(/\$.*/, '').trim())).toEqual(['Conté todo', 'Conté menos', 'No hay efectivo']);
   const menos = screen.getByRole('button', { name: 'Conté menos' });
-  expect(menos).not.toHaveAttribute('aria-pressed');
+  expect(menos).toHaveAttribute('aria-pressed', 'false');
   fireEvent.click(menos);
   expect(input).toHaveFocus();
   expect(input).toHaveValue(900);
   fireEvent.change(input, { target: { value: '800' } });
+  // Un importe propio deja marcada la opción de editar.
+  expect(menos).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByText(/Faltan/)).toHaveTextContent('100');
   const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' });
   expect(confirmar).toBeDisabled();
@@ -264,6 +269,26 @@ test.each([{ counted: 105000, salary: 25000, withdrawn: 65000 }, { counted: 2300
   if (process.env.TURNOS_VISUAL_QA) writeFileSync(`../estacionamiento-back-demo/.tmp/sueldo-${counted}.html`, document.body.innerHTML);
   const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: salary, efectivoParaSiguiente: 15000 })));
+});
+
+test('si el efectivo alcanza, se puede elegir no retirar el sueldo y queda para el retiro', async () => {
+  const active = { ...shift(), efectivoDisponible: 105000, fondoObjetivo: 15000, sueldoPrevisto: 25000 };
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(active) });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
+  await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  fireEvent.click(screen.getByRole('button', { name: /^Conté todo/ }));
+  // «Cambiar importe» va al medio de lo que se deja en caja.
+  const dejar = within(screen.getByRole('group', { name: 'Opciones rápidas: ¿Cuánto dejás en caja para el próximo turno?' })).getAllByRole('button');
+  expect(dejar.map(o => o.textContent?.replace(/\$.*/, '').trim())).toEqual(['Usar sugerido', 'Cambiar importe', 'Dejar todo']);
+  expect(screen.getByRole('button', { name: /Retirar sueldo/ })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(screen.getByRole('button', { name: /No retirarlo/ }));
+  expect(screen.getByText(/No se descuenta el sueldo: ese efectivo sigue en la caja/)).toBeInTheDocument();
+  // Sin sueldo, el retiro de recaudación incluye esos $25.000: 105.000 − 15.000.
+  expect(screen.getByRole('region', { name: 'Cómo queda la caja' })).toHaveTextContent(new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(90000).replace(/\s/g, ' '));
+  const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
+  await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: 0, sinSueldo: true, efectivoParaSiguiente: 15000 })));
 });
 
 test.each([0, 10000, 20000, 80000])('el operador elige dejar %i y el retiro se calcula separado del sueldo', async (paraSiguiente) => {
