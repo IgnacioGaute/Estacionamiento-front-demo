@@ -11,6 +11,7 @@ import {
   CreditCard,
   Info,
   Lock,
+  QrCode,
   RefreshCw,
   ShieldCheck,
   Wallet,
@@ -20,10 +21,13 @@ import {
   activarDebitoAction,
   desactivarDebitoAction,
   pagarConMercadoPagoAction,
+  pagarConQrAction,
   verificarPagosAction,
+  verificarQrAction,
 } from '@/actions/suscripciones/suscripciones.action';
 import { fechaLarga, pesos } from '@/components/plataforma/cuenta';
-import type { ResumenCuenta } from '@/types/suscripcion.type';
+import type { QrDelPlan, ResumenCuenta } from '@/types/suscripcion.type';
+import { QRCodeSVG } from 'qrcode.react';
 import { FormularioTarjeta } from './formulario-tarjeta';
 
 const VERDE = '#4ADE9B';
@@ -56,6 +60,7 @@ export function FormasDePago({
   debe,
   email,
   clavePublica,
+  qr,
 }: {
   cuenta: ResumenCuenta;
   // Lo que se paga ahora: lo pendiente o, si está al día, el mes que viene.
@@ -66,6 +71,8 @@ export function FormasDePago({
   email: string;
   // Con la clave pública, el débito se activa cargando la tarjeta acá (sin cuenta de MercadoPago).
   clavePublica: string | null;
+  // La plataforma tiene su caja de MercadoPago: se puede pagar con QR desde cualquier banco.
+  qr: boolean;
 }) {
   const debitoActivo = cuenta.debito?.estado === 'authorized';
   // El débito cobra siempre lo mismo el día 1: se activa después del primer pago, que es
@@ -73,7 +80,7 @@ export function FormasDePago({
   const sinPrimerPago = !cuenta.pagadoHasta && !debitoActivo;
   // Con el débito activo, algo vencido o sin el primer pago queda una sola opción: pagar una vez.
   const soloPagar = debe || debitoActivo || sinPrimerPago;
-  const [metodo, setMetodo] = useState<'debito' | 'unaVez'>(soloPagar ? 'unaVez' : 'debito');
+  const [metodo, setMetodo] = useState<'debito' | 'unaVez' | 'qr'>(soloPagar ? 'unaVez' : 'debito');
   // Con débito activo y nada vencido no hace falta pagar a mano: se cobra solo.
   const ofrecerPago = importe > 0 && (debe || !debitoActivo);
 
@@ -113,13 +120,25 @@ export function FormasDePago({
 
       {ofrecerPago && (
         <Opcion
-          activa={soloPagar || metodo === 'unaVez'}
+          activa={metodo === 'unaVez' || (soloPagar && metodo !== 'qr')}
           onElegir={() => setMetodo('unaVez')}
           titulo="Pagar una vez con MercadoPago"
           descripcion="Con tarjeta, dinero en tu cuenta o en efectivo en un local."
           Icono={Wallet}
         >
           <PagarUnaVez importe={importe} debe={debe} />
+        </Opcion>
+      )}
+
+      {ofrecerPago && qr && (
+        <Opcion
+          activa={metodo === 'qr'}
+          onElegir={() => setMetodo('qr')}
+          titulo="Pagar con QR"
+          descripcion="Escaneás con la app de tu banco o billetera, desde el celular."
+          Icono={QrCode}
+        >
+          <PagarConQr importe={importe} />
         </Opcion>
       )}
     </section>
@@ -216,6 +235,133 @@ function PagarUnaVez({ importe, debe }: { importe: number; debe: boolean }) {
           </>
         )}
       </button>
+      <MensajeError texto={error} />
+    </div>
+  );
+}
+
+// Cada cuánto se pregunta si ya se pagó mientras está el QR en pantalla.
+const REVISAR_QR_MS = 4000;
+
+/**
+ * Un QR estándar que se paga desde cualquier banco o billetera y cobra en la cuenta de MercadoPago
+ * de la plataforma. Mientras está en pantalla se pregunta si ya se pagó; al pagarse, el servidor
+ * lo asienta y la pantalla se actualiza. Si se cierra antes, la revisión periódica lo asienta igual.
+ */
+function PagarConQr({ importe }: { importe: number }) {
+  const router = useRouter();
+  const [qr, setQr] = useState<QrDelPlan | null>(null);
+  const [generando, setGenerando] = useState(false);
+  const [estado, setEstado] = useState<'esperando' | 'pagado' | 'vencido'>('esperando');
+  const [error, setError] = useState<string | null>(null);
+  const [ahora, setAhora] = useState(() => Date.now());
+
+  const generar = async () => {
+    setGenerando(true);
+    setError(null);
+    const { data, error } = await pagarConQrAction();
+    setGenerando(false);
+    if (!data) {
+      setError(error ?? 'No pudimos generar el QR. Probá de nuevo en un momento.');
+      return;
+    }
+    setEstado('esperando');
+    setQr(data);
+  };
+
+  useEffect(() => {
+    if (!qr || estado !== 'esperando') return;
+    let cancelado = false;
+    const reloj = setInterval(() => setAhora(Date.now()), 1000);
+    const revisar = setInterval(async () => {
+      const { data } = await verificarQrAction(qr.ordenId);
+      if (cancelado || !data) return;
+      if (data.pagada) {
+        setEstado('pagado');
+        toast.success('¡Listo! Recibimos tu pago.');
+        router.refresh();
+      } else if (data.vencida) setEstado('vencido');
+    }, REVISAR_QR_MS);
+    return () => {
+      cancelado = true;
+      clearInterval(reloj);
+      clearInterval(revisar);
+    };
+  }, [qr, estado, router]);
+
+  const restante = qr ? Math.max(0, new Date(qr.vence).getTime() - ahora) : 0;
+  const vencido = estado === 'vencido' || (!!qr && restante === 0);
+  const reloj = `${Math.floor(restante / 60000)}:${String(Math.floor((restante % 60000) / 1000)).padStart(2, '0')}`;
+
+  if (!qr)
+    return (
+      <div className="flex flex-col gap-4 px-[22px] pb-[22px] sm:pl-[60px]">
+        <p className="m-0 text-[14.5px] leading-relaxed text-[#BDB4A6]">
+          Generamos un QR por {pesos(importe)}. Lo escaneás con la app de tu banco, MercadoPago o cualquier billetera, y
+          apenas se acredita tu cuenta queda al día sola.
+        </p>
+        <button type="button" onClick={generar} disabled={generando} className={botonPrincipal}>
+          {generando ? (
+            <>
+              <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />
+              Generando el QR…
+            </>
+          ) : (
+            <>
+              <QrCode aria-hidden className="size-4" />
+              Mostrar QR
+            </>
+          )}
+        </button>
+        <MensajeError texto={error} />
+      </div>
+    );
+
+  if (estado === 'pagado')
+    return (
+      <div role="status" className="mx-[22px] mb-[22px] flex gap-3.5 rounded-[18px] border p-5" style={{ borderColor: `${VERDE}55`, background: `${VERDE}12` }}>
+        <CheckCircle2 aria-hidden className="mt-0.5 size-5 shrink-0" style={{ color: VERDE }} />
+        <div className="min-w-0">
+          <p className="m-0 text-[15.5px] font-semibold text-[#F6F0E6]">¡Listo! Recibimos tu pago</p>
+          <p className="m-0 mt-1 text-[14px] leading-relaxed text-[#BDB4A6]">Tu cuenta ya está al día. Gracias por confiarnos tu playa.</p>
+        </div>
+      </div>
+    );
+
+  return (
+    <div className="flex flex-col items-center gap-4 px-[22px] pb-[22px]">
+      {/* Fondo blanco siempre: un QR sobre fondo oscuro no lo lee ningún celular. */}
+      <div className="flex w-full max-w-[300px] flex-col items-center gap-2 rounded-[22px] bg-[#F7F5EF] px-4 pb-4 pt-3.5 text-[#1A1814]">
+        <p className="m-0 text-[12px] font-bold uppercase tracking-[0.1em] text-[#4A443B]">Escaneá para pagar</p>
+        <p className="m-0 font-mono text-[28px] font-bold leading-none text-[#111]">{pesos(qr.importe)}</p>
+        <div className={vencido ? 'opacity-20 blur-[2px]' : undefined}>
+          <QRCodeSVG value={qr.qrData} size={224} marginSize={2} className="h-auto w-full max-w-[220px]" title="Escaneá con cualquier banco o billetera" />
+        </div>
+        <p className="m-0 text-center text-[13px] text-[#4A443B]">Con la app de cualquier banco o billetera</p>
+      </div>
+      {vencido ? (
+        <div className="flex w-full flex-col gap-3">
+          <p role="alert" className="m-0 text-center text-[14px] leading-relaxed text-[#E3DBCE]">
+            El QR venció sin pagarse. Generá uno nuevo para pagar.
+          </p>
+          <button type="button" onClick={generar} disabled={generando} className={botonSecundario}>
+            {generando ? <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} /> : <RefreshCw aria-hidden className="size-4" />}
+            Generar otro QR
+          </button>
+        </div>
+      ) : (
+        <div role="status" className="flex w-full items-center gap-3.5 rounded-2xl border border-gm-yellow/40 bg-gm-yellow/[0.07] px-4 py-3">
+          <span className="relative grid size-3 shrink-0" aria-hidden>
+            <span className="absolute inset-0 animate-ping rounded-full bg-gm-yellow/70" />
+            <span className="relative size-3 rounded-full bg-gm-yellow" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-[#F6F0E6]">Esperando el pago</span>
+            <span className="block text-[12.5px] text-[#A79E8F]">Se acredita solo. El QR vale por</span>
+          </span>
+          <span className="font-mono text-[15px] font-semibold text-[#A79E8F]">{reloj}</span>
+        </div>
+      )}
       <MensajeError texto={error} />
     </div>
   );

@@ -177,6 +177,8 @@ export type MiPlan = {
   contacto: string | null;
   // La plataforma cobra con MercadoPago (pago con link y débito automático).
   mercadoPago: boolean;
+  // Pagar con un QR desde cualquier banco o billetera (cobra en la cuenta de la plataforma).
+  mercadoPagoQr: boolean;
   // Con la clave pública, el débito se activa cargando la tarjeta en el panel (sin cuenta de
   // MercadoPago); sin ella, se confirma en MercadoPago.
   mercadoPagoClavePublica: string | null;
@@ -194,4 +196,29 @@ export type PagoPlataforma = {
   desde: string;
   hasta: string;
   estado: 'PAGADA' | 'ANULADA';
+};
+
+// El QR para pagar el plan: lo que se muestra mientras se espera el pago.
+export type QrDelPlan = {
+  ordenId: string;
+  qrData: string;
+  importe: number;
+  desde: string;
+  hasta: string;
+  vence: string;
+};
+
+export type EstadoQrDelPlan = { pagada: boolean; vencida: boolean; acreditado: boolean };
+
+// La caja de MercadoPago de la plataforma para ese QR (super admin).
+export type CajaQrPlataforma = { configurado: boolean; caja: { direccion: string | null } | null };
+
+export type DireccionCajaQr = {
+  calle: string;
+  numero: string;
+  ciudad: string;
+  provincia: string;
+  latitud: number;
+  longitud: number;
+  referencia?: string;
 };

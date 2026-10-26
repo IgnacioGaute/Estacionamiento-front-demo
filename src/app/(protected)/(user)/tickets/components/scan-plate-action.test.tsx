@@ -27,7 +27,7 @@ test('la estadía activa abre directamente su salida', async () => {
   jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'AB123CD', hourly: [{ id: 'hourly' }], daily: [] } as unknown as PlateStatus });
   const handlers = callbacks(); render(<ScanPlateAction {...handlers} />);
   fireEvent.click(screen.getByRole('button', { name: 'Escanear patente' }));
-  await waitFor(() => expect(handlers.onHourlyExit).toHaveBeenCalledWith('hourly'));
+  await waitFor(() => expect(handlers.onHourlyExit).toHaveBeenCalledWith('hourly', 'ESCANER'));
   expect(handlers.onEntry).not.toHaveBeenCalled();
 });
 
@@ -59,7 +59,8 @@ test('sin coincidencia exacta, una patente parecida adentro se ofrece antes de a
   await screen.findByRole('dialog');
   expect(handlers.onEntry).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: /AB128CD/ }));
-  expect(handlers.onHourlyExit).toHaveBeenCalledWith('parecida');
+  // Elegir una parecida es corregir la lectura del escáner.
+  expect(handlers.onHourlyExit).toHaveBeenCalledWith('parecida', 'CORREGIDA');
 });
 
 test('si la parecida es otro auto, se registra la entrada de la patente leída', async () => {
@@ -83,7 +84,7 @@ test('varios registros con la misma patente requieren elegir la estadía', async
   await screen.findByRole('dialog');
   expect(handlers.onHourlyExit).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: /09:00/ }));
-  expect(handlers.onHourlyExit).toHaveBeenCalledWith('two');
+  expect(handlers.onHourlyExit).toHaveBeenCalledWith('two', 'ESCANER');
 });
 
 test('una patente que no está adentro pregunta si entra o se va antes de abrir la entrada', async () => {

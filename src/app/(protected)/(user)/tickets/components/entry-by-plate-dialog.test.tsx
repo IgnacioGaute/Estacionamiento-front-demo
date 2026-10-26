@@ -124,6 +124,29 @@ test('la entrada abierta desde el escáner usa la detección que ya empezó', as
   expect(detectVehicleTypeAction).not.toHaveBeenCalled();
 });
 
+test('una patente escrita a mano entra como manual', async () => {
+  const input = await open();
+  fireEvent.change(input, { target: { value: 'AA111BB' } });
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Registrar entrada/ }));
+  await waitFor(() => expect(createRegistrationByPlateAction).toHaveBeenLastCalledWith(expect.objectContaining({ licensePlate: 'AA111BB', origen: 'MANUAL' })));
+});
+
+test('la patente que leyó el escáner, sin cambios, entra como escáner', async () => {
+  const input = await open();
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente con la cámara' }));
+  expect(input).toHaveValue('AB123CD');
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Registrar entrada/ }));
+  await waitFor(() => expect(createRegistrationByPlateAction).toHaveBeenLastCalledWith(expect.objectContaining({ licensePlate: 'AB123CD', origen: 'ESCANER' })));
+});
+
+test('si el operador corrige la patente que leyó el escáner, la entrada queda como corregida', async () => {
+  const input = await open();
+  fireEvent.click(screen.getByRole('button', { name: 'Escanear patente con la cámara' }));
+  fireEvent.change(input, { target: { value: 'AB128CD' } });
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Registrar entrada/ }));
+  await waitFor(() => expect(createRegistrationByPlateAction).toHaveBeenLastCalledWith(expect.objectContaining({ licensePlate: 'AB128CD', origen: 'CORREGIDA' })));
+});
+
 test('el escaneo identifica automáticamente al frecuente sin crear la entrada', async () => {
   jest.mocked(getFrequentCustomersAction).mockResolvedValue([customer]);
   await open();

@@ -2,7 +2,7 @@ import { DiscountRegistrationPayload } from '@/schemas/discount-registration.sch
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import type { ReceiptDeliverySettings } from '@/types/parking-receipt.type';
 import type { PricingOptions, PricingPreviewResult } from '@/types/pricing-options.type';
-import { TicketRegistration } from "@/types/ticket-registration.type";
+import { TicketRegistration, OrigenRegistro } from "@/types/ticket-registration.type";
 import { getCacheTag } from "./cache-tags";
 import { PaginatedResponse } from "@/types/paginated-response.type";
 import { Ticket } from "@/types/ticket.type";
@@ -542,6 +542,15 @@ export async function registrarSalidaGratuita(id: string): Promise<{ registratio
   if (!response.ok) return { code: data?.code, error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudo registrar la salida.' };
   revalidateTag(getCacheTag('tickets', 'all'));
   return { registration: data as TicketRegistration };
+}
+
+// Cómo se inició la salida (escáner, lectura corregida, a mano o tarjeta), para las métricas de la
+// plataforma. Se anota al abrir el cobro; si falla no importa: el cobro sigue igual.
+export async function marcarOrigenSalida(id: string, origen: OrigenRegistro): Promise<boolean> {
+  const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/origen-salida`, {
+    method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify({ origen }),
+  });
+  return response.ok;
 }
 
 // Planilla operativa de vehículos: entradas, salidas y presentes con permanencia y operador.

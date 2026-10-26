@@ -25,6 +25,7 @@ import {
 } from "@/actions/suscripciones/suscripciones.action";
 import { Avatar, EJE, Leyenda, Pastilla, Rotulo, Segmentos, Tarjeta, Variacion } from "@/components/plataforma/mono";
 import { Anillo } from "@/components/plataforma/graficos";
+import { QrPlataforma } from "./qr-plataforma";
 import { colorAvatar, corto, iniciales, numero, plural, variacion } from "@/components/plataforma/formato";
 import {
   COLORES_CUENTA,
@@ -185,6 +186,8 @@ export function PlanesPanel() {
           {error}
         </p>
       )}
+
+      <QrPlataforma />
 
       <div className="grid gap-px overflow-hidden rounded-xl border border-[#26231E] bg-[#26231E] sm:grid-cols-2 xl:grid-cols-4">
         <Kpi

@@ -6,6 +6,7 @@ import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.actio
 import { discountRegistrationAction } from '@/actions/tickets/discount-registration.action';
 import { closeRegistrationAction } from '@/actions/tickets/close-registration.action';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
+import { marcarOrigenSalidaAction } from '@/actions/tickets/origen-salida.action';
 import { pagoParcialEfectivoAction } from '@/actions/tickets/pago-parcial.action';
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import type { CloseSummary } from '@/services/tickets.service';
@@ -21,6 +22,7 @@ jest.mock('@/actions/tickets/corregir-datos.action', () => ({ corregirDatosEstad
 jest.mock('@/actions/tickets/vehicle-types.action', () => ({ getVehicleTypesAction: jest.fn().mockResolvedValue([]) }));
 jest.mock('@/actions/tickets/close-registration.action', () => ({ closeRegistrationAction: jest.fn() }));
 jest.mock('@/actions/tickets/registrar-salida-gratuita.action', () => ({ registrarSalidaGratuitaAction: jest.fn() }));
+jest.mock('@/actions/tickets/origen-salida.action', () => ({ marcarOrigenSalidaAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/mercadopago.action', () => ({ crearCobroMercadoPagoAction: jest.fn() }));
 jest.mock('@/actions/tickets/pago-parcial.action', () => ({ pagoParcialEfectivoAction: jest.fn() }));
 jest.mock('@/actions/tickets/salida-anterior.action', () => ({ registrarSalidaAnteriorAction: jest.fn() }));
@@ -123,9 +125,21 @@ test('buscar escaneando: además de las que coinciden muestra las patentes parec
   expect(screen.queryByText(/No encontramos ese vehículo/)).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /Está bien escrita y no entró registrada/ }));
   // Con una sola parecida, viaja para poder borrarla si estaba mal cargada.
-  expect(onSalidaSinEntrada).toHaveBeenCalledWith('SO128AA', { id: 'par', patente: 'SO123AA' });
+  // `true`: la patente la leyó el escáner (métricas de la plataforma).
+  expect(onSalidaSinEntrada).toHaveBeenCalledWith('SO128AA', { id: 'par', patente: 'SO123AA' }, true);
   fireEvent.click(screen.getByRole('button', { name: /SO123AA|SO 123 AA/ }));
   await waitFor(() => expect(getCloseSummaryAction).toHaveBeenCalledWith('par'));
+  // Cobrar la parecida de lo que leyó el escáner es corregir la lectura.
+  expect(marcarOrigenSalidaAction).toHaveBeenCalledWith('par', 'CORREGIDA');
+});
+
+test('anota cómo se abrió el cobro: el que lo abre lo indica; si no, es a mano', async () => {
+  const { unmount } = render(<CloseTicketPanel open initialRegistrationId="reg" origen="TARJETA" onOpenChange={jest.fn()} />);
+  await waitFor(() => expect(marcarOrigenSalidaAction).toHaveBeenCalledWith('reg', 'TARJETA'));
+  unmount();
+  jest.mocked(marcarOrigenSalidaAction).mockClear();
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
+  await waitFor(() => expect(marcarOrigenSalidaAction).toHaveBeenCalledWith('reg', 'MANUAL'));
 });
 
 test('efectivo y transferencia: se escribe el efectivo, el resto va por transferencia y se mandan las dos partes', async () => {

@@ -10,6 +10,8 @@ export const entryByPlateSchema = z.object({
   // DNI (solo la playa gratuita) y modelo (las dos modalidades), opcionales. El DNI viaja solo con números.
   documentoCustomer: z.string().trim().transform(value => value.replace(/[\s.-]/g, '')).refine(value => !value || /^\d{6,9}$/.test(value), 'Ingresá el DNI con 6 a 9 números.').optional(),
   modeloVehiculo: z.string().trim().max(60, 'El modelo puede tener hasta 60 caracteres.').optional(),
+  // Cómo se cargó la patente: con el escáner, con el escáner corrigiendo la lectura o a mano.
+  origen: z.enum(['ESCANER', 'CORREGIDA', 'MANUAL']).optional(),
   noPlate: z.boolean().optional(),
   duplicateOverride: z.boolean().optional(),
   duplicateOverrideReason: z.string().optional(),

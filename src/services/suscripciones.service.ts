@@ -1,7 +1,11 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
 import {
+  CajaQrPlataforma,
   DetalleSuscripcion,
+  DireccionCajaQr,
+  EstadoQrDelPlan,
+  QrDelPlan,
   MedioPagoSaas,
   MiPlan,
   PagoPlataforma,
@@ -141,6 +145,37 @@ export const activarDebito = (email: string, tarjeta?: string) =>
 
 export const desactivarDebito = () =>
   pedir<{ ok: true }>('/mi-plan/debito', 'No pudimos dar de baja el débito automático.', enviar('DELETE'));
+
+// Un QR para pagar lo que debe desde cualquier banco o billetera, y mientras se muestra, si ya se pagó.
+export const pagarConQr = () =>
+  pedir<QrDelPlan>('/mi-plan/qr', 'No pudimos generar el QR.', enviar('POST'));
+
+export const verificarQr = (ordenId: string) =>
+  pedir<EstadoQrDelPlan>(`/mi-plan/qr/${encodeURIComponent(ordenId)}`, 'No pudimos revisar el pago con QR.');
+
+// ─── QR del plan en la cuenta de la plataforma (super admin) ───────────────
+
+export const getCajaQrPlataforma = () =>
+  pedir<CajaQrPlataforma>('/tenancy/plataforma/qr', 'No se pudo consultar el QR de la plataforma.');
+
+export const getProvinciasQrPlataforma = () =>
+  pedir<{ id: string; nombre: string }[]>('/tenancy/plataforma/qr/provincias', 'No se pudieron cargar las provincias.');
+
+export const getCiudadesQrPlataforma = (provinciaId: string) =>
+  pedir<{ id: string; nombre: string }[]>(
+    `/tenancy/plataforma/qr/provincias/${encodeURIComponent(provinciaId)}/ciudades`,
+    'No se pudieron cargar las ciudades.',
+  );
+
+export type ResultadoCajaQr =
+  | (CajaQrPlataforma & { creada?: true })
+  | { creada: false; motivo: string; sugerencia: { calle: string; numero: string; provincia: string | null; latitud: number; longitud: number } };
+
+export const crearCajaQrPlataformaConUbicacion = (latitud: number, longitud: number) =>
+  pedir<ResultadoCajaQr>('/tenancy/plataforma/qr/con-ubicacion', 'No se pudo crear la caja.', enviar('POST', { latitud, longitud }));
+
+export const crearCajaQrPlataforma = (direccion: DireccionCajaQr) =>
+  pedir<CajaQrPlataforma>('/tenancy/plataforma/qr', 'No se pudo crear la caja.', enviar('POST', direccion));
 
 // Al volver de MercadoPago: pregunta por los pagos de la empresa y asienta los aprobados.
 export const verificarPagos = () =>

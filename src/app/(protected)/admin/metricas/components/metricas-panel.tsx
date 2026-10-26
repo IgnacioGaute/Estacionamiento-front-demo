@@ -66,6 +66,7 @@ import {
   variacion,
 } from "@/components/plataforma/formato";
 import { alertasDePlataforma } from "@/components/plataforma/alertas";
+import { OrigenesCard } from "./origenes-card";
 
 // Colores de medio de pago validados contra el fondo oscuro (lightness, croma y separación para
 // daltonismo). El efectivo va en dorado y no en el amarillo de marca: el amarillo ya significa
@@ -949,6 +950,8 @@ export function MetricasPanel() {
           <Pie izquierda="vs período anterior" derecha={puntos(cambioQr)} />
         </Tarjeta>
       </div>
+
+      <OrigenesCard origenes={detalle?.origenes ?? []} nombreEmpresa={nombreEmpresa} dias={dias} />
 
       <Tarjeta className={preguntas ? "min-h-[340px]" : ""}>
         <Encabezado

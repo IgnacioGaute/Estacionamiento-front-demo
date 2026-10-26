@@ -143,6 +143,15 @@ export type MetricsDetalle = {
   };
   // `dia` es ISODOW: 1 = lunes … 7 = domingo.
   horas: { dia: number; hora: number; entradas: number }[];
+  // Cómo se cargaron las entradas y las salidas del período, por playa (escáner, escáner con la
+  // lectura corregida, a mano, tarjeta física; SIN_DATO: antes de medirlo).
+  origenes: {
+    playaId: string;
+    playa: string;
+    empresaId: string;
+    entradas: Record<'ESCANER' | 'CORREGIDA' | 'MANUAL' | 'TARJETA' | 'SIN_DATO', number>;
+    salidas: Record<'ESCANER' | 'CORREGIDA' | 'MANUAL' | 'TARJETA' | 'SIN_DATO', number>;
+  }[];
   empresas: {
     empresaId: string;
     nombre: string;

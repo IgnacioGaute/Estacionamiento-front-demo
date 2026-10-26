@@ -30,6 +30,8 @@ import { PriceBracketMapDialog } from "./price-bracket-map-dialog";
 import { AdvancePaymentDialog } from "./advance-payment-dialog";
 import { ScanPlateAction } from './scan-plate-action';
 import type { DeteccionVehiculo } from '@/utils/detectar-vehiculo';
+import type { OrigenRegistro } from '@/types/ticket-registration.type';
+import { marcarOrigenSalidaAction } from '@/actions/tickets/origen-salida.action';
 import { SalidaSinEntradaDialog, type EntradaParecida } from './salida-sin-entrada-dialog';
 import { EntryByPlateDialog } from "./entry-by-plate-dialog";
 import { CloseTicketPanel } from "./close-ticket-panel";
@@ -110,12 +112,17 @@ export default function CardTicket({
     vehicleType: string;
     existing: TicketRegistration | null;
   } | null>(null);
-  const [entryScanRequest, setEntryScanRequest] = useState<{ plate: string; sequence: number; parecidasRevisadas?: boolean; vehiculo?: DeteccionVehiculo } | null>(null);
+  const [entryScanRequest, setEntryScanRequest] = useState<{ plate: string; sequence: number; parecidasRevisadas?: boolean; vehiculo?: DeteccionVehiculo; escaneada?: boolean } | null>(null);
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
   const [plateScanBusy, setPlateScanBusy] = useState(false);
   const [scannedDayRegistration, setScannedDayRegistration] = useState<TicketRegistrationForDay | null>(null);
   const [closePanelOpen, setClosePanelOpen] = useState(false);
   const [closePanelTargetId, setClosePanelTargetId] = useState<string | null>(null);
+  // Cómo se abrió el cobro (escáner, patente parecida elegida o a mano): se anota en la estadía para
+  // las métricas de la plataforma.
+  const [origenCobro, setOrigenCobro] = useState<OrigenRegistro>('MANUAL');
+  // Lo mismo para un auto que se va sin entrada: desde el escáner o desde el buscador del cobro.
+  const [origenSinEntrada, setOrigenSinEntrada] = useState<OrigenRegistro>('MANUAL');
   const [openDayRegistrationId, setOpenDayRegistrationId] = useState<string | null>(null);
   // La barra de abajo y la columna de la computadora abren los mismos diálogos: cada toque suma.
   const [entradaSignal, setEntradaSignal] = useState(0);
@@ -294,7 +301,8 @@ export default function CardTicket({
     }
   }, [latestRegistration?.id]);
 
-  const abrirCobro = (id: string | null) => {
+  const abrirCobro = (id: string | null, origen: OrigenRegistro = 'MANUAL') => {
+    setOrigenCobro(origen);
     setClosePanelTargetId(id);
     setClosePanelOpen(true);
   };
@@ -306,6 +314,11 @@ export default function CardTicket({
   const { confirmada, confirmar } = useConfirmadas();
   // El auto al que se le abre «Se fue antes» desde la franja.
   const [seFueAntes, setSeFueAntes] = useState<TicketRegistration | null>(null);
+  // «Se fue antes» desde la franja se elige a mano.
+  const abrirSeFueAntes = (r: TicketRegistration) => {
+    void marcarOrigenSalidaAction(r.id, 'MANUAL');
+    setSeFueAntes(r);
+  };
   const largasAvisadasRef = useRef<Set<string> | null>(null);
   const enElAvisoRef = useRef<string[]>([]);
   useEffect(() => {
@@ -493,7 +506,7 @@ export default function CardTicket({
         }}
       />
 
-      <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={cobroHabilitado ? setSeFueAntes : undefined} />
+      <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={cobroHabilitado ? abrirSeFueAntes : undefined} />
 
       {latestRegistration && (
         <div ref={refVisible('ticket')} className="flex min-h-12 items-center gap-2.5 px-1">
@@ -671,7 +684,7 @@ export default function CardTicket({
             filtro={filtroTablero}
             onFiltro={setFiltroTablero}
           />
-          <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={cobroHabilitado ? setSeFueAntes : undefined} />
+          <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={cobroHabilitado ? abrirSeFueAntes : undefined} />
           <AccionesEscritorio
             onEntrada={abrirEntrada}
             onSalida={() => abrirCobro(null)}
@@ -750,9 +763,9 @@ export default function CardTicket({
             <ScanPlateAction
               variant="dock"
               onBusyChange={setPlateScanBusy}
-              onEntry={(plate, parecidasRevisadas, vehiculo) => setEntryScanRequest((previous) => ({ plate, sequence: (previous?.sequence ?? 0) + 1, parecidasRevisadas, vehiculo }))}
-              onHourlyExit={(id) => abrirCobro(id)}
-              onSalidaSinEntrada={cobroHabilitado ? setSalidaSinEntrada : undefined}
+              onEntry={(plate, parecidasRevisadas, vehiculo) => setEntryScanRequest((previous) => ({ plate, sequence: (previous?.sequence ?? 0) + 1, parecidasRevisadas, vehiculo, escaneada: true }))}
+              onHourlyExit={(id, origen) => abrirCobro(id, origen)}
+              onSalidaSinEntrada={cobroHabilitado ? (plate) => { setOrigenSinEntrada('ESCANER'); setSalidaSinEntrada(plate); } : undefined}
               onDailyExit={(registration) => { setScannedDayRegistration(registration); setOpenDayRegistrationId(registration.id); }}
             />
           ) : null}
@@ -794,13 +807,14 @@ export default function CardTicket({
         barcodeTicketsEnabled={barcodeTicketsEnabled}
         open={closePanelOpen}
         initialRegistrationId={closePanelTargetId}
+        origen={origenCobro}
         onAdvance={cobroHabilitado ? abrirAnticipo : undefined}
         onOpenChange={(open) => {
           setClosePanelOpen(open);
           if (!open) setClosePanelTargetId(null);
         }}
         onSuccess={() => router.refresh()}
-        onSalidaSinEntrada={(plate, parecida) => { setClosePanelOpen(false); setClosePanelTargetId(null); setParecidaSinEntrada(parecida ?? null); setSalidaSinEntrada(plate); }}
+        onSalidaSinEntrada={(plate, parecida, escaneada) => { setClosePanelOpen(false); setClosePanelTargetId(null); setParecidaSinEntrada(parecida ?? null); setOrigenSinEntrada(escaneada ? 'ESCANER' : 'MANUAL'); setSalidaSinEntrada(plate); }}
       />
 
       <SeFueAntes
@@ -814,7 +828,7 @@ export default function CardTicket({
         plate={salidaSinEntrada}
         parecida={parecidaSinEntrada}
         onClose={() => { setSalidaSinEntrada(null); setParecidaSinEntrada(null); }}
-        onCobrar={(id) => abrirCobro(id)}
+        onCobrar={(id) => abrirCobro(id, origenSinEntrada)}
         onRegistrada={() => router.refresh()}
       />
     </VehicleTypeLabelsContext.Provider>

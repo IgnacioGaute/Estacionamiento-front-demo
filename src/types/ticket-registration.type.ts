@@ -32,6 +32,9 @@ export type TicketRegistration = {
     phoneCustomer?: string | null;
     documentoCustomer?: string | null;
     modeloVehiculo?: string | null;
+    // Cómo se cargó la entrada y cómo se inició la salida (métricas de la plataforma).
+    origenEntrada?: OrigenRegistro | null;
+    origenSalida?: OrigenRegistro | null;
     vehiclePlateCustomer?: string | null;
     priceBracketLabel?: string | null;
     priceBracketFallbackUsed?: boolean;
@@ -51,3 +54,6 @@ export type TicketRegistration = {
     // (ej. la planilla de caja) — para mostrar el medio de pago con el que se cobró.
     movimientos?: { metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; medioPagoDetalle?: string; comisionPagoEstimada?: DetalleComisionPago; tipo?: 'ANTICIPO' | 'SALDO' | 'CORTESIA' | 'DESCUENTO' | 'AJUSTE'; monto?: number }[];
 }
+
+// Escáner de patentes, escáner con la lectura corregida, a mano o tarjeta física.
+export type OrigenRegistro = 'ESCANER' | 'CORREGIDA' | 'MANUAL' | 'TARJETA';

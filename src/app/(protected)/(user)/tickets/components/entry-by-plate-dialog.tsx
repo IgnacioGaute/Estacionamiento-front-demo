@@ -67,7 +67,8 @@ export function EntryByPlateDialog({
   triggerStyle?: React.CSSProperties;
   // `parecidasRevisadas`: el escaneo ya ofreció las patentes parecidas y el operador dijo que es otro.
   // `vehiculo`: la detección del tipo y el modelo que el escáner ya empezó con la foto.
-  scanRequest?: { plate: string; sequence: number; parecidasRevisadas?: boolean; vehiculo?: DeteccionVehiculo } | null;
+  // `escaneada`: la patente la leyó el escáner (no se escribió en el buscador): cuenta para las métricas.
+  scanRequest?: { plate: string; sequence: number; parecidasRevisadas?: boolean; vehiculo?: DeteccionVehiculo; escaneada?: boolean } | null;
   onOpenChange?: (open: boolean) => void;
 }) {
   const { playaId, cobroHabilitado } = useTenant();
@@ -98,6 +99,8 @@ export function EntryByPlateDialog({
   // traigan algo (un frecuente con datos), así el formulario entra en la pantalla sin desplazar.
   const [datosAbiertos, setDatosAbiertos] = useState(false);
   const [tipoDetectado, setTipoDetectado] = useState<EstadoTipo | null>(null);
+  // La patente que leyó el escáner: al registrar se compara con la que quedó (si la corrigieron).
+  const [patenteEscaneada, setPatenteEscaneada] = useState<string | null>(null);
   // Cada escaneo invalida la respuesta pendiente del anterior.
   const pedidoTipo = useRef(0);
   const frecuenteRef = useRef<FrequentCustomer | null>(null);
@@ -161,6 +164,7 @@ export function EntryByPlateDialog({
     if (!scanRequest) return;
     form.reset({ licensePlate: scanRequest.plate, vehicleType: 'AUTO', casilleroNumber: '', lastNameCustomer: '', phoneCustomer: '', documentoCustomer: '', modeloVehiculo: '' });
     detectarTipoRef.current(scanRequest.vehiculo);
+    setPatenteEscaneada(scanRequest.escaneada ? sanitizePlateInput(scanRequest.plate) : null);
     setDuplicateError(null);
     setOverrideReason('');
     setParecidas(null);
@@ -237,6 +241,7 @@ export function EntryByPlateDialog({
     setDatosAbiertos(false);
     pedidoTipo.current++;
     setTipoDetectado(null);
+    setPatenteEscaneada(null);
   };
 
   const submitTicket = async () => {
@@ -282,8 +287,11 @@ export function EntryByPlateDialog({
           return;
         }
       }
+      // Para las métricas: con el escáner, con el escáner pero corrigiendo la lectura, o a mano.
+      const origen = !patenteEscaneada ? 'MANUAL' : sanitizePlateInput(values.licensePlate ?? '') === patenteEscaneada ? 'ESCANER' : 'CORREGIDA';
       const data = await createRegistrationByPlateAction({
         ...values,
+        origen,
         noPlate: false,
         duplicateOverride: override,
         duplicateOverrideReason: override ? overrideReason : undefined,
@@ -564,7 +572,7 @@ export function EntryByPlateDialog({
                             </button>
                           )}
                         </div>
-                        <PlateCameraScanButton variant="square" disabled={isPending} onRecognized={(plate, foto) => { changeQuery(plate); detectarTipo(foto); }} />
+                        <PlateCameraScanButton variant="square" disabled={isPending} onRecognized={(plate, foto) => { changeQuery(plate); setPatenteEscaneada(sanitizePlateInput(plate)); detectarTipo(foto); }} />
                       </div>
                       <FormMessage />
                     </FormItem>

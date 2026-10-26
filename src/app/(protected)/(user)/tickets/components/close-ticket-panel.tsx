@@ -23,7 +23,7 @@ import { PaymentMethodChoices, MedioSalida } from './payment-method-choices';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { AlertTriangle, Barcode, ChevronDown, ChevronRight, BadgePercent, CircleX, LogOut, Timer } from 'lucide-react';
-import { TicketRegistration } from '@/types/ticket-registration.type';
+import { OrigenRegistro, TicketRegistration } from '@/types/ticket-registration.type';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
 import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
 import { closeRegistrationAction } from '@/actions/tickets/close-registration.action';
@@ -40,6 +40,7 @@ import {
 import type { CloseSummary, ResumenSalida, SalidaGratuitaSummary } from '@/services/tickets.service';
 import { esSalidaGratuita } from '@/lib/modalidad';
 import { registrarSalidaGratuitaAction } from '@/actions/tickets/registrar-salida-gratuita.action';
+import { marcarOrigenSalidaAction } from '@/actions/tickets/origen-salida.action';
 import { useTenant } from '@/components/tenant-provider';
 import { minutesSinceEntry, isOverdue, isBarcodeOrigin } from '@/utils/ticket-registration.utils';
 import { calcularVuelto, pagosSugeridos } from '@/utils/vuelto';
@@ -278,6 +279,7 @@ export function CloseTicketPanel({
   barcodeTicketsEnabled = true,
   onAdvance,
   onSalidaSinEntrada,
+  origen,
 }: {
   open: boolean;
   barcodeTicketsEnabled?: boolean;
@@ -285,7 +287,10 @@ export function CloseTicketPanel({
   // que usa el panel (el inicio, con su diálogo de anticipos).
   onAdvance?: (registration: TicketRegistration) => void;
   // La patente buscada no está adentro: el auto se va sin entrada registrada y se cobra igual.
-  onSalidaSinEntrada?: (plate: string, parecida?: EntradaParecida | null) => void;
+  // `escaneada`: la patente buscada la leyó el escáner (para las métricas de la plataforma).
+  onSalidaSinEntrada?: (plate: string, parecida?: EntradaParecida | null, escaneada?: boolean) => void;
+  // Cómo se abrió el cobro de `initialRegistrationId` (escáner, parecida elegida, a mano, tarjeta).
+  origen?: OrigenRegistro;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
   initialRegistrationId?: string | null;
@@ -295,6 +300,8 @@ export function CloseTicketPanel({
   const summaryRequest = useRef(0);
   const searchRequest = useRef(0);
   const [query, setQuery] = useState('');
+  // Lo buscado lo escribió el escáner de patentes: la estadía que se elija salió por escáner.
+  const [busquedaEscaneada, setBusquedaEscaneada] = useState(false);
   const [results, setResults] = useState<TicketRegistration[]>([]);
   const { confirmada, confirmar } = useConfirmadas();
   const [summary, setSummary] = useState<CloseSummary | null>(null);
@@ -364,6 +371,7 @@ export function CloseTicketPanel({
     summaryRequest.current++;
     searchRequest.current++;
     setQuery('');
+    setBusquedaEscaneada(false);
     setResults([]);
     setSummary(null);
     setGratuita(null);
@@ -469,6 +477,7 @@ export function CloseTicketPanel({
     void disponibilidadAliasAction().then((r) => setAlias(r.datos ?? null));
     if (initialRegistrationId) {
       setAbriendoDirecto(true);
+      void marcarOrigenSalidaAction(initialRegistrationId, origen ?? 'MANUAL');
       loadSummary(initialRegistrationId);
     } else {
       // Sin ticket puntual preseleccionado, el buscador arranca poblado con todos los
@@ -503,6 +512,13 @@ export function CloseTicketPanel({
       if (request !== summaryRequest.current) return;
       if (previo.datos && ['ESPERANDO', 'REVISION'].includes(previo.datos.estado)) setCobroAlias(previo.datos);
     });
+  };
+
+  // Elegir una estadía para cobrar: se anota cómo se llegó (métricas) y se carga. Desde lo que leyó
+  // el escáner, una parecida es una lectura corregida; buscada a mano, es a mano.
+  const abrirEstadia = (r: TicketRegistration, desdeBusqueda = true) => {
+    void marcarOrigenSalidaAction(r.id, desdeBusqueda && busquedaEscaneada ? (r.parecida ? 'CORREGIDA' : 'ESCANER') : 'MANUAL');
+    loadSummary(r.id);
   };
 
   const handleSearchChange = (value: string) => {
@@ -647,7 +663,7 @@ export function CloseTicketPanel({
       <li key={r.id} className="border-b border-border last:border-0">
         <button
           type="button"
-          onClick={() => loadSummary(r.id)}
+          onClick={() => abrirEstadia(r)}
           className="flex min-h-16 w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow"
         >
           {/* Como en Registrar entrada, se marca lo que coincide con lo buscado (en las parecidas no hay). */}
@@ -762,13 +778,13 @@ export function CloseTicketPanel({
                   className="gm-mono h-[60px] w-full rounded-2xl border-2 border-gm-line-strong bg-gm-surface-2 pl-4 pr-12 text-[24px] font-bold uppercase tracking-[0.1em] text-foreground outline-none transition-colors placeholder:font-sans placeholder:text-[15px] placeholder:font-normal placeholder:normal-case placeholder:tracking-normal placeholder:text-muted-foreground focus:border-gm-yellow focus:shadow-[0_0_0_4px_hsl(var(--gm-yellow)/0.14)] short:h-[52px] short:text-[21px]"
                   placeholder={barcodeTicketsEnabled ? 'Patente, ficha, casillero o apellido' : 'Patente o apellido'}
                   value={query}
-                  onChange={(e) => handleSearchChange(e.target.value.toUpperCase())}
+                  onChange={(e) => { setBusquedaEscaneada(false); handleSearchChange(e.target.value.toUpperCase()); }}
                 />
                 {query && (
                   <button
                     type="button"
                     aria-label="Borrar y buscar otra"
-                    onClick={() => handleSearchChange('')}
+                    onClick={() => { setBusquedaEscaneada(false); handleSearchChange(''); }}
                     className="absolute right-1 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-xl text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <CircleX className="size-[18px]" aria-hidden />
@@ -776,7 +792,7 @@ export function CloseTicketPanel({
                 )}
               </div>
               {/* En el celular, la cámara escribe la patente en el buscador: se ven las que coinciden y las parecidas. */}
-              <PlateCameraScanButton variant="square" onRecognized={(plate) => handleSearchChange(plate.toUpperCase())} />
+              <PlateCameraScanButton variant="square" onRecognized={(plate) => { setBusquedaEscaneada(true); handleSearchChange(plate.toUpperCase()); }} />
             </div>
             {sinConfirmar.length > 0 && (
               <section aria-label="Autos sin confirmar" className="shrink-0 overflow-hidden rounded-2xl border border-violet-400/30 bg-violet-400/[0.06]">
@@ -792,7 +808,7 @@ export function CloseTicketPanel({
                 <ul>
                   {sinConfirmar.map(({ r, minutos }) => (
                     <li key={r.id} className="flex items-center gap-1 border-t border-violet-400/15 pr-2">
-                      <button type="button" onClick={() => loadSummary(r.id)}
+                      <button type="button" onClick={() => abrirEstadia(r, false)}
                         className="flex min-h-16 min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow">
                         <Identidad r={r} />
                         <span className="min-w-0 flex-1">
@@ -837,7 +853,7 @@ export function CloseTicketPanel({
                 </ul>
                 {onSalidaSinEntrada && cobroHabilitado && query.replace(/[^A-Za-z0-9]/g, '').length >= 5 && (
                   <button type="button"
-                    onClick={() => onSalidaSinEntrada(query.toUpperCase().replace(/[^A-Z0-9]/g, ''), parecidas.length === 1 ? { id: parecidas[0].id, patente: parecidas[0].licensePlateOriginal || 'Sin patente' } : null)}
+                    onClick={() => onSalidaSinEntrada(query.toUpperCase().replace(/[^A-Z0-9]/g, ''), parecidas.length === 1 ? { id: parecidas[0].id, patente: parecidas[0].licensePlateOriginal || 'Sin patente' } : null, busquedaEscaneada)}
                     className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-gm-line-strong bg-gm-surface-2 px-3 text-[13px] font-semibold transition-colors hover:border-gm-yellow/50 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
                     Está bien escrita y no entró registrada: cobrar {query.toUpperCase().replace(/[^A-Z0-9]/g, '')}
                   </button>
@@ -853,7 +869,7 @@ export function CloseTicketPanel({
               {/* Un auto que se va sin entrada registrada: se cobra igual eligiendo la tarifa. Con
                   patentes parecidas, el botón está dentro del aviso. */}
               {onSalidaSinEntrada && cobroHabilitado && !parecidas.length && query.replace(/[^A-Za-z0-9]/g, '').length >= 5 && (
-                <button type="button" onClick={() => onSalidaSinEntrada(query.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                <button type="button" onClick={() => onSalidaSinEntrada(query.toUpperCase().replace(/[^A-Z0-9]/g, ''), null, busquedaEscaneada)}
                   className="mx-auto inline-flex min-h-11 items-center gap-2 rounded-xl border border-gm-line-strong px-4 text-[13px] font-semibold transition-colors hover:border-gm-yellow/50 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
                   Se está yendo sin entrada: cobrar {query.toUpperCase().replace(/[^A-Z0-9]/g, '')}
                 </button>

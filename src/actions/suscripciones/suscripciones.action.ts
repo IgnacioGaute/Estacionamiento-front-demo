@@ -13,6 +13,13 @@ import {
   desactivarDebito,
   getMiPlan,
   pagarConMercadoPago,
+  pagarConQr,
+  verificarQr,
+  getCajaQrPlataforma,
+  getProvinciasQrPlataforma,
+  getCiudadesQrPlataforma,
+  crearCajaQrPlataforma,
+  crearCajaQrPlataformaConUbicacion,
   verificarPagos,
   getPagosPlataforma,
   getPeriodos,
@@ -21,8 +28,9 @@ import {
   registrarPago,
   revisarVencimientos,
 } from '@/services/suscripciones.service';
+import type { DireccionCajaQr } from '@/types/suscripcion.type';
 
-const mensaje = (error: unknown, porDefecto: string) =>
+const mensaje =(error: unknown, porDefecto: string) =>
   error instanceof Error ? error.message : porDefecto;
 
 // Todas devuelven { dato } o { error }: la pantalla muestra el motivo en vez de romperse.
@@ -85,6 +93,26 @@ export const getMiPlanAction = async () => intentar(getMiPlan, 'No se pudo carga
 
 export const pagarConMercadoPagoAction = async () =>
   intentar(pagarConMercadoPago, 'No pudimos armar el link de pago.');
+
+export const pagarConQrAction = async () => intentar(pagarConQr, 'No pudimos generar el QR.');
+
+export const verificarQrAction = async (ordenId: string) =>
+  intentar(() => verificarQr(ordenId), 'No pudimos revisar el pago con QR.');
+
+export const getCajaQrPlataformaAction = async () =>
+  intentar(getCajaQrPlataforma, 'No se pudo consultar el QR de la plataforma.');
+
+export const getProvinciasQrPlataformaAction = async () =>
+  intentar(getProvinciasQrPlataforma, 'No se pudieron cargar las provincias.');
+
+export const getCiudadesQrPlataformaAction = async (provinciaId: string) =>
+  intentar(() => getCiudadesQrPlataforma(provinciaId), 'No se pudieron cargar las ciudades.');
+
+export const crearCajaQrPlataformaConUbicacionAction = async (latitud: number, longitud: number) =>
+  intentar(() => crearCajaQrPlataformaConUbicacion(latitud, longitud), 'No se pudo crear la caja.');
+
+export const crearCajaQrPlataformaAction = async (direccion: DireccionCajaQr) =>
+  intentar(() => crearCajaQrPlataforma(direccion), 'No se pudo crear la caja.');
 
 export const activarDebitoAction = async (email: string, tarjeta?: string) =>
   intentar(() => activarDebito(email, tarjeta), 'No pudimos activar el débito automático.');

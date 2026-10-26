@@ -17,7 +17,8 @@ export function ScanPlateAction({ onEntry, onHourlyExit, onDailyExit, onSalidaSi
   // `vehiculo`: la detección del tipo y el modelo con la foto del escaneo, ya en curso; la entrada
   // la usa en vez de volver a pedirla.
   onEntry: (plate: string, parecidasRevisadas?: boolean, vehiculo?: DeteccionVehiculo) => void;
-  onHourlyExit: (id: string) => void;
+  // `origen`: la patente leída coincide (ESCANER) o se eligió una parecida, mal leída (CORREGIDA).
+  onHourlyExit: (id: string, origen: 'ESCANER' | 'CORREGIDA') => void;
   onDailyExit: (registration: TicketRegistrationForDay) => void;
   // Una patente que no está adentro: antes de abrir la entrada se pregunta si entra o se va. Si se
   // va, no tiene entrada registrada y se cobra igual (SalidaSinEntradaDialog).
@@ -67,7 +68,7 @@ export function ScanPlateAction({ onEntry, onHourlyExit, onDailyExit, onSalidaSi
       if (!count && data.similares?.length) setChoices(data);
       else if (!count) sinCoincidencia(data.plate, false);
       else if (count > 1) setChoices(data);
-      else if (data.hourly.length) onHourlyExit(data.hourly[0].id);
+      else if (data.hourly.length) onHourlyExit(data.hourly[0].id, 'ESCANER');
       else onDailyExit(data.daily[0]);
     } catch {
       setError('No se pudo consultar el vehículo. Intentá nuevamente.');
@@ -85,7 +86,7 @@ export function ScanPlateAction({ onEntry, onHourlyExit, onDailyExit, onSalidaSi
           <DialogHeader><DialogTitle>¿Es alguno de estos?</DialogTitle><DialogDescription>{choices?.plate} no está adentro, pero hay {parecidas.length === 1 ? 'una patente parecida' : 'patentes parecidas'}. Puede ser el mismo auto con un carácter mal leído: si se está yendo, cobrá esa estadía.</DialogDescription></DialogHeader>
           <div className="space-y-2">
             {parecidas.map(registration => <button type="button" key={registration.id}
-              onClick={() => { setChoices(null); onHourlyExit(registration.id); }}
+              onClick={() => { setChoices(null); onHourlyExit(registration.id, 'CORREGIDA'); }}
               className="flex min-h-16 w-full items-center gap-3 rounded-xl border border-gm-yellow/40 bg-gm-yellow/[0.06] p-3 text-left hover:border-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
               <CarFront className="size-5 shrink-0 text-gm-yellow" /><span className="min-w-0 flex-1"><span className="gm-mono block text-sm font-bold">{registration.licensePlateOriginal || choices?.plate}</span><span className="block text-xs text-muted-foreground">Entró {registration.entryDay} · {registration.entryTime?.slice(0, 5)} · Cobrar esta</span></span><ChevronRight className="size-4" />
             </button>)}
@@ -97,7 +98,7 @@ export function ScanPlateAction({ onEntry, onHourlyExit, onDailyExit, onSalidaSi
         <DialogHeader><DialogTitle>Elegí la estadía de {choices?.plate}</DialogTitle><DialogDescription>Hay más de un registro activo con esta patente. Seleccioná el que corresponde a la salida.</DialogDescription></DialogHeader>
         <div className="space-y-2">
           {choices?.hourly.map(registration => <button type="button" key={registration.id}
-            onClick={() => { setChoices(null); onHourlyExit(registration.id); }}
+            onClick={() => { setChoices(null); onHourlyExit(registration.id, 'ESCANER'); }}
             className="flex min-h-16 w-full items-center gap-3 rounded-xl border border-border bg-secondary p-3 text-left hover:border-gm-yellow/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
             <CarFront className="size-5 shrink-0 text-gm-yellow" /><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{registration.licensePlateOriginal || registration.vehiclePlateCustomer || choices.plate}</span><span className="block text-xs text-muted-foreground">Por hora · {registration.entryDay} · {registration.entryTime}</span></span><ChevronRight className="size-4" />
           </button>)}
