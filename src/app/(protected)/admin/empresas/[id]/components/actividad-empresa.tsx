@@ -93,6 +93,7 @@ const ACCIONES: Record<
   SUSCRIPCION_PRUEBA_EXTENDIDA: { texto: "Extendió la prueba", categoria: "plataforma", Icono: CreditCard },
   SUSCRIPCION_PRORROGA: { texto: "Dio una prórroga", categoria: "plataforma", Icono: CreditCard },
   SUSCRIPCION_DIAS_EXTRA: { texto: "Dio días extra", categoria: "plataforma", Icono: CreditCard },
+  SUSCRIPCION_DIAS_GRACIA: { texto: "Sumó días de gracia", categoria: "plataforma", Icono: CreditCard },
   SUSCRIPCION_PLAN: { texto: "Asignó un plan", categoria: "plataforma", Icono: CreditCard },
   SUSCRIPCION_EDITADA: { texto: "Editó la cuenta", categoria: "plataforma", Icono: CreditCard },
   SUSCRIPCION_DEBITO: { texto: "Cambió el débito automático", categoria: "plataforma", Icono: CreditCard },

@@ -107,8 +107,12 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
   // Con pago trimestral o anual se habla de períodos, no de meses.
   const meses = cuenta.periodo.meses;
   const mes = meses === 1 ? 'mes' : 'período';
-  // Con débito automático son 10: MercadoPago reintenta la tarjeta varios días.
-  const gracia = cuenta.diasDeGracia ?? DIAS_DE_GRACIA;
+  // Con débito automático son 10: MercadoPago reintenta la tarjeta varios días. Los días de gracia
+  // que le sumó la plataforma alargan ese margen.
+  const gracia = Math.max(
+    cuenta.diasDeGracia ?? DIAS_DE_GRACIA,
+    proximo && ultimoDia ? diasEntreAR(proximo, ultimoDia) : 0,
+  );
   const debito = cuenta.debito?.estado === 'authorized';
   const conPlan = (texto: string) => (plan ? `${texto} · ${plan}` : texto);
   const verFormas = { texto: mercadoPago ? 'Ver formas de pago' : 'Ver cómo pagar', href: '/admin/plan/pagar', principal: false };

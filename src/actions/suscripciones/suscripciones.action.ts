@@ -9,6 +9,7 @@ import {
   editarSuscripcion,
   activarCuenta,
   activarDebito,
+  darDiasDeGracia,
   darDiasExtra,
   desactivarDebito,
   getMiPlan,
@@ -82,6 +83,9 @@ export const activarCuentaAction = async (empresaId: string, alta: string, diasP
 
 export const darDiasExtraAction = async (empresaId: string, hasta: string, motivo: string) =>
   intentar(() => darDiasExtra(empresaId, hasta, motivo), 'No se pudieron dar los días extra.');
+
+export const darDiasDeGraciaAction = async (empresaId: string, dias: number, motivo: string) =>
+  intentar(() => darDiasDeGracia(empresaId, dias, motivo), 'No se pudieron dar los días de gracia.');
 
 export const registrarPagoAction = async (empresaId: string, datos: DatosPago) =>
   intentar(() => registrarPago(empresaId, datos), 'No se pudo registrar el pago.');

@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { activarCuentaAction } from '@/actions/suscripciones/suscripciones.action';
+import { activarCuentaAction, darDiasDeGraciaAction } from '@/actions/suscripciones/suscripciones.action';
 import type { DetalleSuscripcion } from '@/types/suscripcion.type';
 import type { EmpresaConDetalle } from '@/types/tenancy.type';
 import { AccionDialog } from './plan-empresa';
@@ -11,6 +11,7 @@ jest.mock('./adicionales-empresa', () => ({ AdicionalesEmpresa: () => null }));
 jest.mock('@/actions/suscripciones/suscripciones.action', () => ({
   activarCuentaAction: jest.fn(),
   anularPagoAction: jest.fn(),
+  darDiasDeGraciaAction: jest.fn(),
   darDiasExtraAction: jest.fn(),
   editarSuscripcionAction: jest.fn(),
   getPeriodosAction: jest.fn(),
@@ -59,4 +60,30 @@ test('la prueba se puede cortar en un día exacto y se guardan los días que cor
 
   fireEvent.click(screen.getByRole('button', { name: /confirmar|guardar|dar de alta|cambiar/i }));
   await waitFor(() => expect(activarCuentaAction).toHaveBeenCalledWith('empresa', '2026-10-13', 12));
+});
+
+test('los días de gracia se suman al corte y avisan que lo que debe no cambia', async () => {
+  jest.mocked(darDiasDeGraciaAction).mockResolvedValue({ data: detalle });
+  const vencida = {
+    cuenta: {
+      ...detalle.cuenta,
+      estado: 'VENCIDA',
+      proximoVencimiento: '2026-10-15',
+      suspendeEl: '2026-10-21',
+      facturaPendiente: { importe: 40000 },
+    },
+  } as unknown as DetalleSuscripcion;
+  render(<AccionDialog accion={{ tipo: 'diasGracia' }} empresa={empresa} detalle={vencida} cerrar={jest.fn()} hecho={jest.fn()} />);
+
+  // Hoy es 20/10 y tenía acceso hasta hoy: con 5 días más llega al 25.
+  fireEvent.click(screen.getByRole('button', { name: '+5' }));
+  expect(screen.getByText(/No se suspende hasta el/).textContent).toContain('25/10/2026');
+  expect(screen.getByText(/No se suspende hasta el/).textContent).toMatch(/\$\s?40\.000.*el importe no cambia/);
+
+  // Sin motivo no se puede confirmar.
+  const confirmar = screen.getByRole('button', { name: 'Confirmar' });
+  expect(confirmar).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Motivo'), { target: { value: 'Paga el viernes' } });
+  fireEvent.click(confirmar);
+  await waitFor(() => expect(darDiasDeGraciaAction).toHaveBeenCalledWith('empresa', 5, 'Paga el viernes'));
 });

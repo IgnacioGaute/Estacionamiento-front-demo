@@ -15,6 +15,7 @@ import {
   CalendarPlus,
   Check,
   Gift,
+  Hourglass,
   Pencil,
   Receipt,
   RefreshCw,
@@ -47,6 +48,7 @@ import {
   activarCuentaAction,
   anularPagoAction,
   asignarPlanAction,
+  darDiasDeGraciaAction,
   darDiasExtraAction,
   editarSuscripcionAction,
   getPeriodosAction,
@@ -87,6 +89,7 @@ type Accion =
   | { tipo: "alta" }
   | { tipo: "fechaAlta" }
   | { tipo: "diasExtra" }
+  | { tipo: "diasGracia" }
   | { tipo: "pago" }
   | { tipo: "pagadoHasta" }
   | { tipo: "anular"; factura: FacturaSaas }
@@ -253,8 +256,10 @@ function EstadoDeCuenta({
           bajada: `Debe ${pesos(debe)} desde el ${diaAR(cuenta.proximoVencimiento)}. ${
             cuenta.debeSuspenderse
               ? "Pasó la gracia: se suspende en la próxima revisión."
-              : `Sigue operando hasta el ${diaAR(ultimoDia)}; con más de ${cuenta.diasDeGracia ?? DIAS_DE_GRACIA} días de atraso se suspende.`
-          }${conDebito ? " Tiene débito automático: MercadoPago reintenta el cobro de la tarjeta." : ""}${cuenta.prorrogaHasta ? ` Tiene días extra hasta el ${diaAR(cuenta.prorrogaHasta)}.` : ""}`,
+              : cuenta.prorrogaHasta
+                ? `Sigue operando hasta el ${diaAR(ultimoDia)}: tiene días de gracia hasta que pague.`
+                : `Sigue operando hasta el ${diaAR(ultimoDia)}; con más de ${cuenta.diasDeGracia ?? DIAS_DE_GRACIA} días de atraso se suspende.`
+          }${conDebito ? " Tiene débito automático: MercadoPago reintenta el cobro de la tarjeta." : ""}`,
         };
       case "SUSPENDIDA":
         return cuenta.motivoSuspension === "MANUAL"
@@ -264,7 +269,7 @@ function EstadoDeCuenta({
             }
           : {
               titular: "Suspendida por falta de pago",
-              bajada: `Debe ${pesos(debe)} desde el ${diaAR(cuenta.proximoVencimiento)} (${enDias(cuenta.diasDeAtraso)} de atraso). Solo puede cobrar salidas y cerrar el turno. Al registrar el pago o darle días extra se reactiva sola.`,
+              bajada: `Debe ${pesos(debe)} desde el ${diaAR(cuenta.proximoVencimiento)} (${enDias(cuenta.diasDeAtraso)} de atraso). Solo puede cobrar salidas y cerrar el turno. Al registrar el pago o sumarle días de gracia se reactiva sola.`,
             };
       case "BONIFICADA":
         return { titular: "Bonificada", bajada: "No se le factura ni se suspende." };
@@ -326,9 +331,26 @@ function EstadoDeCuenta({
             ) : (
               <>
                 {cuenta.estado !== "BONIFICADA" && (
-                  <button type="button" className={botonSecundario} onClick={() => accion({ tipo: "diasExtra" })}>
+                  <button
+                    type="button"
+                    className={botonSecundario}
+                    onClick={() => accion({ tipo: "diasGracia" })}
+                    title="Más tiempo antes de suspenderla, sin cambiar lo que debe"
+                  >
+                    <Hourglass aria-hidden className="size-4" />
+                    Días de gracia
+                  </button>
+                )}
+                {/* Alargar la prueba corre el primer pago y cambia su importe: la gracia no. */}
+                {cuenta.estado !== "BONIFICADA" && !yaPago && (
+                  <button
+                    type="button"
+                    className={botonSecundario}
+                    onClick={() => accion({ tipo: "diasExtra" })}
+                    title="Más días gratis: corre el primer pago y cambia su importe"
+                  >
                     <CalendarPlus aria-hidden className="size-4" />
-                    Días extra
+                    Más prueba
                   </button>
                 )}
                 {!yaPago && cuenta.estado === "PRUEBA" && (
@@ -401,13 +423,13 @@ function Ciclo({ cuenta, editarAlta }: { cuenta: ResumenCuenta; editarAlta: () =
       tono: cuenta.diasDeAtraso ? "alerta" : undefined,
     });
   if (cuenta.prorrogaHasta)
-    nodos.push({ id: "extra", titulo: "Días extra hasta", fecha: cuenta.prorrogaHasta, detalle: "Sin suspender" });
+    nodos.push({ id: "extra", titulo: "Gracia hasta", fecha: cuenta.prorrogaHasta, detalle: "Sin suspender" });
   if (cuenta.suspendeEl && ["PRUEBA", "AL_DIA", "VENCIDA"].includes(cuenta.estado))
     nodos.push({
       id: "corte",
       titulo: "Se suspende",
       fecha: cuenta.suspendeEl,
-      detalle: `Si no paga · ${cuenta.diasDeGracia ?? DIAS_DE_GRACIA} días de gracia`,
+      detalle: cuenta.prorrogaHasta ? "Si no paga" : `Si no paga · ${cuenta.diasDeGracia ?? DIAS_DE_GRACIA} días de gracia`,
       tono: "peligro",
     });
   nodos.sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -1024,6 +1046,8 @@ function describirMovimiento(h: DetalleSuscripcion["historial"][number]) {
 
 // El mismo tope de días de prueba que acepta el backend al dar el alta (ActivarCuentaDto).
 const MAX_DIAS_PRUEBA = 60;
+// Hasta dónde puede llegar la gracia, contando desde hoy (también lo valida el backend).
+const MAX_DIAS_GRACIA = 90;
 
 export function AccionDialog({
   accion,
@@ -1041,13 +1065,13 @@ export function AccionDialog({
   const { cuenta } = detalle;
   const hoy = hoyAR();
   const yaPago = !!cuenta.pagadoHasta;
-  // Hasta cuándo tiene acceso hoy sin pagar: de ahí parten los días extra.
-  const accesoHasta = yaPago
-    ? cuenta.suspendeEl
-      ? sumarDiasAR(cuenta.suspendeEl, -1)
-      : hoy
-    : (cuenta.pruebaHasta ?? hoy);
-  const baseExtra = accesoHasta > hoy ? accesoHasta : hoy;
+  // Hasta cuándo llega hoy la prueba: de ahí parten los días que se le suman.
+  const finPruebaActual = cuenta.pruebaHasta ?? hoy;
+  const baseExtra = finPruebaActual > hoy ? finPruebaActual : hoy;
+  // Hasta cuándo tiene acceso hoy sin pagar: de ahí parten los días de gracia, como en el backend.
+  const ultimoConAcceso = cuenta.suspendeEl ? sumarDiasAR(cuenta.suspendeEl, -1) : hoy;
+  const baseGracia = ultimoConAcceso > hoy ? ultimoConAcceso : hoy;
+  const maxGracia = MAX_DIAS_GRACIA - diasEntreAR(hoy, baseGracia);
 
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -1063,6 +1087,10 @@ export function AccionDialog({
     accion.tipo === "pagadoHasta" ? (cuenta.pagadoHasta ?? hoy) : sumarDiasAR(baseExtra, 7),
   );
   const [motivo, setMotivo] = useState("");
+  // Días de gracia
+  const [diasGracia, setDiasGracia] = useState("7");
+  const graciaValida = Number(diasGracia) >= 1 && Number(diasGracia) <= maxGracia;
+  const graciaHasta = sumarDiasAR(baseGracia, Number(diasGracia) || 0);
   // Pago: por defecto, lo que debe o un período entero (tres meses con su descuento si es trimestral).
   const [meses, setMeses] = useState(cuenta.facturaPendiente?.meses ?? cuenta.periodo.meses);
   const [importe, setImporte] = useState(String(cuenta.facturaPendiente?.importe ?? cuenta.importePeriodo ?? ""));
@@ -1094,10 +1122,12 @@ export function AccionDialog({
         : "Desde cuándo es cliente. Como todavía no pagó, la prueba se corre con ella.",
     ],
     diasExtra: [
-      "Días extra",
-      yaPago
-        ? "Más tiempo sin pagar antes de suspenderla. El vencimiento no se mueve y los días de atraso se siguen contando."
-        : "Más días de prueba gratis: el primer pago se corre al día siguiente y cubre lo que quede de ese mes.",
+      "Más prueba",
+      "Más días de prueba gratis: el primer pago se corre al día siguiente, cubre lo que quede de ese mes y cambia su importe.",
+    ],
+    diasGracia: [
+      "Días de gracia",
+      "Más tiempo antes de suspenderla, hasta que pague. No cambia el importe ni el vencimiento, y el atraso se sigue contando.",
     ],
     pago: ["Registrar pago", "Una transferencia, efectivo o lo que te pagaron por fuera del sistema."],
     pagadoHasta: [
@@ -1133,7 +1163,11 @@ export function AccionDialog({
           break;
         case "diasExtra":
           r = await darDiasExtraAction(empresa.id, hasta, motivo.trim());
-          aviso = `Días extra hasta el ${diaAR(hasta)}.`;
+          aviso = `Prueba gratis hasta el ${diaAR(hasta)}.`;
+          break;
+        case "diasGracia":
+          r = await darDiasDeGraciaAction(empresa.id, Number(diasGracia), motivo.trim());
+          aviso = `Días de gracia hasta el ${diaAR(graciaHasta)}.`;
           break;
         case "pagadoHasta":
           r = await editarSuscripcionAction(empresa.id, { pagadoHasta: hasta });
@@ -1182,7 +1216,7 @@ export function AccionDialog({
     </button>
   );
   const select = "h-11 w-full rounded-md border border-input bg-background px-3 text-sm";
-  const pideMotivo = accion.tipo === "diasExtra" || accion.tipo === "anular";
+  const pideMotivo = accion.tipo === "diasExtra" || accion.tipo === "diasGracia" || accion.tipo === "anular";
   const motivoMinimo = accion.tipo === "anular" ? 10 : 3;
   const resumen = (contenido: ReactNode, tono: "ok" | "alerta" = "ok") => (
     <p
@@ -1286,7 +1320,7 @@ export function AccionDialog({
 
           {(accion.tipo === "diasExtra" || accion.tipo === "pagadoHasta") && (
             <div className="space-y-2">
-              <Label>{accion.tipo === "diasExtra" ? "Acceso sin pagar hasta el" : "Pagado hasta el"}</Label>
+              <Label>{accion.tipo === "diasExtra" ? "Prueba gratis hasta el" : "Pagado hasta el"}</Label>
               {accion.tipo === "diasExtra" && (
                 <div className="flex flex-wrap gap-1.5">
                   {[3, 5, 7, 15, 30].map((n) => {
@@ -1305,7 +1339,7 @@ export function AccionDialog({
                 </div>
               )}
               <AppDatePicker
-                title={accion.tipo === "diasExtra" ? "Días extra hasta" : "Pagado hasta"}
+                title={accion.tipo === "diasExtra" ? "Prueba gratis hasta" : "Pagado hasta"}
                 value={hasta}
                 min={accion.tipo === "diasExtra" ? hoy : undefined}
                 max={accion.tipo === "diasExtra" ? sumarDiasAR(hoy, 90) : undefined}
@@ -1314,18 +1348,55 @@ export function AccionDialog({
               />
               {accion.tipo === "diasExtra" &&
                 resumen(
-                  yaPago ? (
-                    <>
-                      No se suspende hasta el <b>{diaAR(hasta)}</b>. Sigue debiendo desde el{" "}
-                      {diaAR(cuenta.proximoVencimiento)} y el atraso se sigue contando.
-                    </>
-                  ) : (
-                    <>
-                      La prueba termina el <b>{diaAR(hasta)}</b> y el primer mes se factura el{" "}
-                      <b>{diaAR(sumarDiasAR(hasta, 1))}</b>.
-                    </>
-                  ),
+                  <>
+                    La prueba termina el <b>{diaAR(hasta)}</b> y el primer mes se factura el{" "}
+                    <b>{diaAR(sumarDiasAR(hasta, 1))}</b>.
+                  </>,
                 )}
+            </div>
+          )}
+
+          {accion.tipo === "diasGracia" && (
+            <div className="space-y-2">
+              <Label htmlFor="dias-gracia">Días a sumar</Label>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[3, 5, 7, 15, 30].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={n > maxGracia}
+                    onClick={() => setDiasGracia(String(n))}
+                    className={`h-9 rounded-lg border px-3 text-[12.5px] font-semibold disabled:opacity-40 ${Number(diasGracia) === n ? "border-gm-yellow bg-gm-yellow/15 text-gm-yellow" : "border-border hover:bg-gm-surface-2"}`}
+                  >
+                    +{n}
+                  </button>
+                ))}
+                <Input
+                  id="dias-gracia"
+                  inputMode="numeric"
+                  value={diasGracia}
+                  onChange={(e) => setDiasGracia(e.target.value.replace(/\D/g, ""))}
+                  className="h-9 w-20 font-mono tabular-nums"
+                />
+              </div>
+              {graciaValida
+                ? resumen(
+                    <>
+                      No se suspende hasta el <b>{diaAR(graciaHasta)}</b>.{" "}
+                      {cuenta.facturaPendiente
+                        ? `Sigue debiendo ${pesos(cuenta.facturaPendiente.importe)} desde el ${diaAR(cuenta.proximoVencimiento)}: el importe no cambia y el atraso se sigue contando.`
+                        : `El vencimiento sigue siendo el ${diaAR(cuenta.proximoVencimiento)} y el importe no cambia.`}{" "}
+                      Al pagar, la gracia termina.
+                      {cuenta.motivoSuspension === "MANUAL" && " Está suspendida a mano: esto no la reactiva."}
+                    </>,
+                    cuenta.motivoSuspension === "MANUAL" ? "alerta" : "ok",
+                  )
+                : resumen(
+                    maxGracia > 0
+                      ? `Elegí entre 1 y ${maxGracia} días: la gracia no puede llegar a más de ${MAX_DIAS_GRACIA} días desde hoy.`
+                      : `Ya tiene el máximo: la gracia no puede llegar a más de ${MAX_DIAS_GRACIA} días desde hoy.`,
+                    "alerta",
+                  )}
             </div>
           )}
 
@@ -1483,7 +1554,7 @@ export function AccionDialog({
             </Button>
             <Button
               type="submit"
-              disabled={pending || (pideMotivo && motivo.trim().length < motivoMinimo)}
+              disabled={pending || (pideMotivo && motivo.trim().length < motivoMinimo) || (accion.tipo === "diasGracia" && !graciaValida)}
               variant={accion.tipo === "anular" ? "destructive" : "default"}
             >
               {pending

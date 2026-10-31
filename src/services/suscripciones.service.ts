@@ -107,6 +107,14 @@ export const darDiasExtra = (empresaId: string, hasta: string, motivo: string) =
     enviar('POST', { hasta, motivo }),
   );
 
+// Suma días antes de suspender, sin cambiar el vencimiento ni lo que debe.
+export const darDiasDeGracia = (empresaId: string, dias: number, motivo: string) =>
+  pedir<DetalleSuscripcion>(
+    deEmpresa(empresaId, '/dias-gracia'),
+    'No se pudieron dar los días de gracia.',
+    enviar('POST', { dias, motivo }),
+  );
+
 export type DatosPago = {
   meses: number;
   importe: number;

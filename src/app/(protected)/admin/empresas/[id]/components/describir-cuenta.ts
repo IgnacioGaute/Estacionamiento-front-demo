@@ -29,6 +29,8 @@ export function describirMovimientoCuenta(
         : `dio de alta la cuenta el ${fecha(d.alta)}, sin prueba`;
     case "SUSCRIPCION_DIAS_EXTRA":
       return `dio días extra hasta el ${fecha(d.hasta)} (${d.como === "PRUEBA" ? "alarga la prueba" : "sin suspender"}): «${d.motivo}»`;
+    case "SUSCRIPCION_DIAS_GRACIA":
+      return `sumó ${enDias(Number(d.dias))} de gracia, hasta el ${fecha(d.hasta)}: «${d.motivo}»`;
     case "SUSCRIPCION_PRUEBA":
       return `dio ${d.dias} días de prueba gratis, hasta el ${fecha(d.hasta)}`;
     case "SUSCRIPCION_PRUEBA_EXTENDIDA":
