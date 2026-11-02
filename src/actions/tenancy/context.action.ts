@@ -18,6 +18,9 @@ export type OperationalContext = {
     modalidad?: Modalidad;
     // Motor disponible: token propio de Plate Recognizer o fast-alpr de la plataforma.
     reconocimientoPatentes?: boolean;
+    // Playa nueva que todavía no terminó la configuración inicial: a su administrador se le muestran
+    // los pasos antes de entrar. Ausente (backend anterior) = terminada.
+    configuracionPendiente?: boolean;
   }[];
   // Estado de la cuenta con la plataforma (prueba, vencida, suspendida), para los avisos.
   cuenta?: SituacionCuenta | null;

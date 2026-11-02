@@ -2,6 +2,7 @@ import { AppNavbar } from "@/components/navegation/app-navbar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
 import { NotificationSidebar } from "./components/notifications-sidebar";
+import { llevarAConfiguracionInicial } from "@/lib/configuracion-inicial.server";
 
 
 export default async function UserLayout({
@@ -9,6 +10,7 @@ export default async function UserLayout({
 }: {
   children: React.ReactNode;
 }) {
+  await llevarAConfiguracionInicial();
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar:state")?.value === "true";
 

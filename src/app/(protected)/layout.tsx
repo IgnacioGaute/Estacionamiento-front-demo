@@ -3,11 +3,9 @@ import { getTicketSchedule } from '@/services/tickets.service';
 import { SessionProvider } from "next-auth/react";
 import { cookies } from "next/headers";
 import { redirect } from 'next/navigation';
+import { contextoOperativo } from '@/lib/configuracion-inicial.server';
 import { ACCESS_SELECTION_ROUTE, PLATFORM_SELECTION, selectedAccess } from '@/lib/access-scope';
-import {
-  getOperationalContext,
-  OperationalContext,
-} from "@/actions/tenancy/context.action";
+import type { OperationalContext } from "@/actions/tenancy/context.action";
 import { TenantProvider, NoPlaya } from "@/components/tenant-provider";
 export default async function ProtectedLayout({
   children,
@@ -23,7 +21,7 @@ export default async function ProtectedLayout({
   const platform = superAdmin && selectedAccess(selected, session.user.id) === PLATFORM_SELECTION;
   if (!platform) {
     try {
-      context = await getOperationalContext();
+      context = await contextoOperativo();
     } catch (e) {
       error = e instanceof Error ? e.message : "No se pudo cargar tu empresa.";
     }

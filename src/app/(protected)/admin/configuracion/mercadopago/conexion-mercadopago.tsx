@@ -25,6 +25,7 @@ import { ConfiguracionAlias } from '@/types/verificacion-alias.type';
 import type { ComisionesCaja, ConfiguracionComisiones } from '@/types/box-list.type';
 import { ComisionesCajaForm } from '@/components/comisiones-caja-form';
 import { SetupStepHeading, SetupStepper, Step } from '@/components/setup-stepper/setup-stepper';
+import { EVENTO_PASO_TERMINADO } from '@/types/configuracion-inicial.type';
 
 // Lo que el sistema puede hacer con la cuenta, tal cual lo manda el backend. Conectar la cuenta
 // es aceptarlo; el backend guarda qué versión se aceptó, quién y cuándo.
@@ -75,8 +76,11 @@ export function ConexionMercadoPago({
   verificacionAlias,
   comisiones = null,
   cajasQr = null,
+  enConfiguracionInicial = false,
 }: {
   inicial: EstadoMercadoPago;
+  // Dentro de la configuración inicial de una playa nueva, terminar sigue con el paso siguiente.
+  enConfiguracionInicial?: boolean;
   // null si no se pudo leer: la sección no se muestra.
   verificacionAlias: ConfiguracionAlias | null;
   // null sin cuenta vinculada o si no se pudo leer: el paso ofrece ir a la pantalla de comisiones.
@@ -191,6 +195,7 @@ export function ConexionMercadoPago({
   // En Comisiones el botón final guarda el formulario si hay cambios; si no, termina.
   const terminar = () => {
     if (formComisiones.cambios) (document.getElementById('comisiones-mp') as HTMLFormElement | null)?.requestSubmit();
+    else if (enConfiguracionInicial) window.dispatchEvent(new Event(EVENTO_PASO_TERMINADO));
     else router.push('/admin/configuracion');
   };
 

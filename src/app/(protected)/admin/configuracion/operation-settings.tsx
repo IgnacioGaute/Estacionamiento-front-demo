@@ -12,12 +12,13 @@ import { toast } from '@/lib/toast';
 import { updateTicketScheduleAction } from '@/actions/tickets/update-ticket-schedule.action';
 import { getCashConfigurationAction, saveCajaAction } from '@/actions/turnos/cajas.action';
 import { Caja } from '@/types/turno.type';
+import { EVENTO_PASO_TERMINADO } from '@/types/configuracion-inicial.type';
 
 type ScheduleChange = Parameters<typeof updateTicketScheduleAction>[0];
 
 // Turnos de caja en 4 pasos. Sólo activar es obligatorio: modo, cajas y sueldo se pueden dejar como
 // están. Cada paso guarda lo suyo al continuar, así un cambio no queda esperando al final.
-export function OperationSettings(props: { shiftsEnabled: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldosPorUsuario?: { usuarioId: string; importe: number }[] }) {
+export function OperationSettings(props: { shiftsEnabled: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldosPorUsuario?: { usuarioId: string; importe: number }[]; enConfiguracionInicial?: boolean }) {
   const [salaryEnabled, setSalaryEnabled] = useState(props.sueldoAutomatico ?? false);
   const [salaries, setSalaries] = useState<Record<string, string>>(() => Object.fromEntries((props.sueldosPorUsuario ?? []).map(s => [s.usuarioId, String(s.importe)])));
   const [salaryUsers, setSalaryUsers] = useState<{ id: string; firstName: string; lastName: string; username: string }[]>([]);
@@ -65,7 +66,11 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
     if (step === 2 && multiple !== savedMultiple) { event.preventDefault(); save({ multipleShiftsEnabled: multiple }, () => { setSavedMultiple(multiple); setStep(3); }); }
   };
   const finish = () => {
-    if (!salaryChanged) { router.push('/admin/configuracion'); return; }
+    if (!salaryChanged) {
+      if (props.enConfiguracionInicial) window.dispatchEvent(new Event(EVENTO_PASO_TERMINADO));
+      else router.push('/admin/configuracion');
+      return;
+    }
     if (!salaryValid) return;
     save({ sueldoAutomatico: salaryEnabled, sueldosPorUsuario: selectedSalaries }, () => undefined);
   };

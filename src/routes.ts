@@ -43,3 +43,11 @@ export const publicApiRoutes = [
  * @type {string}
  */
 export const DEFAULT_LOGIN_REDIRECT = '/tickets';
+
+/**
+ * Los pasos que recorre el administrador de una playa nueva antes de entrar. Mientras la playa no los
+ * termine, (protected)/layout lo lleva ahí desde cualquier pantalla, salvo las de esta lista: el
+ * recorrido mismo y la página a la que vuelve MercadoPago después de autorizar la cuenta.
+ */
+export const CONFIGURACION_INICIAL_ROUTE = '/configuracion-inicial';
+export const RUTAS_DURANTE_CONFIGURACION = [CONFIGURACION_INICIAL_ROUTE, '/admin/configuracion/mercadopago'];

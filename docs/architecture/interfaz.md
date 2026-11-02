@@ -12,6 +12,8 @@ src/app/
       components/       # shared across user routes (scanner, receipts, customers, notifications)
     admin/
       empresas/         # SUPER_ADMIN only: empresas, playas, usuarios, asignación de operadores
+    configuracion-inicial/  # pasos de una playa nueva para su ADMIN; reutiliza las pantallas de Configuración.
+                            # (user)/layout y admin/layout llevan ahí con llevarAConfiguracionInicial (lib/configuracion-inicial.server.ts)
       dashboard/ caja/ tickets/ frecuentes/ parking-type/ users/ interests/
       other-payments/ update-amount-customers/
   auth/                 # login, register, reset, new-password, new-verification, error

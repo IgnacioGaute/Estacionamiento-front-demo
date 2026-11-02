@@ -22,6 +22,13 @@ export default async function middleware(req: NextRequest) {
   const isPublicApiRoute = publicApiRoutes.includes(nextUrl.pathname as never);
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname as never);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname as never);
+  // Los layouts del servidor no conocen la ruta: la necesita (protected)/layout para llevar al
+  // administrador de una playa nueva a su configuración inicial sin cortar la vuelta de MercadoPago.
+  const seguir = () => {
+    const headers = new Headers(req.headers);
+    headers.set('x-ruta', nextUrl.pathname);
+    return NextResponse.next({ request: { headers } });
+  };
 
   // 🔓 Permitir rutas públicas o de autenticación
   // La API de contingencia valida la sesión y responde JSON por sí misma. Un redirect
@@ -45,7 +52,7 @@ export default async function middleware(req: NextRequest) {
     if (isAuthRoute || nextUrl.pathname === '/' || (access === PLATFORM_SELECTION && !enPlataforma) || (access !== PLATFORM_SELECTION && enPlataforma)) {
       return NextResponse.redirect(new URL(home, nextUrl));
     }
-    return NextResponse.next();
+    return seguir();
   }
   if (nextUrl.pathname === ACCESS_SELECTION_ROUTE) {
     const callback = nextUrl.searchParams.get('callbackUrl');
@@ -82,7 +89,7 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  return seguir();
 }
 
 export const config = {

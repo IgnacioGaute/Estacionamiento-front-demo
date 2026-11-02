@@ -3,6 +3,7 @@ import { AppNavbar } from "@/components/navegation/app-navbar";
 import { UserNavbarSidebar } from "@/components/navegation/user-navbar-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
+import { llevarAConfiguracionInicial } from "@/lib/configuracion-inicial.server";
 import "./mobile.css";
 
 
@@ -11,6 +12,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  await llevarAConfiguracionInicial();
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar:state")?.value === "true";
 
