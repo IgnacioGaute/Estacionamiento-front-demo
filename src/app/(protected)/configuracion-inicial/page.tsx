@@ -52,7 +52,8 @@ export default async function ConfiguracionInicialPage() {
       estado={estado}
       contenido={{
         vehiculos: <VehicleTypesCard />,
-        tarifas: <TariffsBody initialPlan={tarifa.plan ?? null} loadError={tarifa.error} passPrices={precioPases} />,
+        // TariffsBody lee la URL (useSearchParams): necesita su límite de Suspense.
+        tarifas: <Suspense fallback={<DataLoading label="Cargando tarifas…" />}><TariffsBody initialPlan={tarifa.plan ?? null} loadError={tarifa.error} passPrices={precioPases} /></Suspense>,
         turnos: schedule
           ? <OperationSettings sueldoAutomatico={schedule.sueldoAutomatico} sueldosPorUsuario={schedule.sueldosPorUsuario} shiftsEnabled={schedule.shiftsEnabled ?? false} multipleShiftsEnabled={schedule.multipleShiftsEnabled ?? false} enConfiguracionInicial />
           : aviso('No se pudo cargar la configuración de turnos. Podés omitir este paso y hacerlo después.'),

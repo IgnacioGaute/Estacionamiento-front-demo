@@ -38,14 +38,15 @@ const NOMBRES: Record<PasoConfiguracion, string> = {
 };
 
 const indice = (pantalla: Pantalla) => (pantalla === 'inicio' ? -1 : pantalla === 'fin' ? PASOS_CONFIGURACION.length : PASOS_CONFIGURACION.indexOf(pantalla));
+const siguiente = (paso: PasoConfiguracion): PasoConfiguracion | 'fin' => PASOS_CONFIGURACION[PASOS_CONFIGURACION.indexOf(paso) + 1] ?? 'fin';
 
 // Titular cinético: cada palabra sube desde su máscara, una detrás de otra, y sale hacia arriba.
 function Titular({ texto, grande }: { texto: string; grande?: boolean }) {
   const quieto = useReducedMotion();
   return (
-    <h1 aria-label={texto} className={cn('m-0 font-sans font-extrabold leading-[1.02] tracking-[-0.035em] text-foreground', grande ? 'text-[44px] sm:text-[64px] lg:text-[80px]' : 'text-[36px] sm:text-[48px] lg:text-[58px]')}>
+    <h1 aria-label={texto} className={cn('m-0 font-sans font-extrabold leading-[0.94] tracking-[-0.035em] text-foreground', grande ? 'text-[44px] sm:text-[64px] lg:text-[80px]' : 'text-[36px] sm:text-[48px] lg:text-[58px]')}>
       {texto.split(' ').map((palabra, i) => (
-        <span key={`${palabra}-${i}`} aria-hidden className="-mb-[0.14em] mr-[0.22em] inline-block overflow-hidden pb-[0.14em] align-top last:mr-0">
+        <span key={`${palabra}-${i}`} aria-hidden className="-mb-[0.08em] mr-[0.22em] inline-block overflow-hidden pb-[0.08em] align-top last:mr-0">
           <motion.span
             className="inline-block"
             initial={{ y: quieto ? 0 : '110%' }}
@@ -86,8 +87,7 @@ export function AsistenteConfiguracion({ estado, contenido }: { estado: EstadoCo
   const [pendiente, startTransition] = useTransition();
 
   const actual = indice(pantalla);
-  const siguiente = (paso: PasoConfiguracion): PasoConfiguracion | 'fin' => PASOS_CONFIGURACION[PASOS_CONFIGURACION.indexOf(paso) + 1] ?? 'fin';
-  const ir = (destino: Pantalla) => {
+  const ir =(destino: Pantalla) => {
     setSentido(indice(destino) >= actual ? 1 : -1);
     setError('');
     setPantalla(destino);
@@ -197,8 +197,9 @@ export function AsistenteConfiguracion({ estado, contenido }: { estado: EstadoCo
         {/* Avance: la franja crece paso a paso. */}
         <div className="relative z-10 px-4 sm:px-8">
           <div className="relative h-2.5 overflow-hidden rounded-full bg-white/[0.06]" role="progressbar" aria-label="Avance de la configuración" aria-valuemin={0} aria-valuemax={PASOS_CONFIGURACION.length} aria-valuenow={Math.max(0, Math.min(actual + 1, PASOS_CONFIGURACION.length))}>
+            {/* Se descubre con una máscara: animar el ancho movería el layout en cada cuadro. */}
             {pantalla !== 'inicio' && (
-              <motion.div className="h-full" initial={false} animate={{ width: `${avance}%` }} transition={quieto ? { duration: 0 } : { type: 'spring', stiffness: 120, damping: 24 }}>
+              <motion.div className="h-full w-full" initial={false} animate={{ clipPath: `inset(0% ${100 - avance}% 0% 0% round 999px)` }} transition={quieto ? { duration: 0 } : { type: 'spring', stiffness: 120, damping: 24 }}>
                 <Franja className="h-full w-full" />
               </motion.div>
             )}
@@ -255,9 +256,10 @@ export function AsistenteConfiguracion({ estado, contenido }: { estado: EstadoCo
             )}
           </section>
 
-          {pantalla !== 'inicio' && (
-            <section className="min-w-0">
-              <AnimatePresence mode="wait" initial={false} custom={sentido}>
+          {/* AnimatePresence queda montado siempre: al volver a la bienvenida el paso también sale animado. */}
+          <section className="min-w-0">
+            <AnimatePresence mode="wait" initial={false} custom={sentido}>
+              {pantalla !== 'inicio' && (
                 <motion.div
                   key={pantalla}
                   custom={sentido}
@@ -298,9 +300,9 @@ export function AsistenteConfiguracion({ estado, contenido }: { estado: EstadoCo
                     </ul>
                   )}
                 </motion.div>
-              </AnimatePresence>
-            </section>
-          )}
+              )}
+            </AnimatePresence>
+          </section>
         </div>
 
         {/* Acciones fijas abajo: siempre a mano, también en el celular. */}
@@ -315,7 +317,9 @@ export function AsistenteConfiguracion({ estado, contenido }: { estado: EstadoCo
               {pantalla === 'fin' && faltan.length > 0 ? (
                 <Button type="button" onClick={() => ir(faltan[0])} className="h-12 gap-2 px-6 text-base">Completar {NOMBRES[faltan[0]].toLowerCase()}<ArrowRight className="size-4" aria-hidden /></Button>
               ) : (
-                <Button type={pantalla === 'nombre' || pantalla === 'ubicacion' ? 'submit' : 'button'} form={pantalla === 'nombre' || pantalla === 'ubicacion' ? 'paso-form' : undefined} onClick={pantalla === 'nombre' || pantalla === 'ubicacion' ? undefined : continuar} disabled={pendiente} className="h-12 gap-2 px-6 text-base">
+                // Un botón por pantalla (key): si el mismo elemento pasara a ser el submit del formulario
+                // dentro del clic de «Empezar», el navegador enviaría el nombre sin que lo escriban.
+                <Button key={pantalla} type={pantalla === 'nombre' || pantalla === 'ubicacion' ? 'submit' : 'button'} form={pantalla === 'nombre' || pantalla === 'ubicacion' ? 'paso-form' : undefined} onClick={pantalla === 'nombre' || pantalla === 'ubicacion' ? undefined : (e) => { e.preventDefault(); continuar(); }} disabled={pendiente} className="h-12 gap-2 px-6 text-base">
                   {pantalla === 'inicio' ? 'Empezar' : pantalla === 'fin' ? 'Entrar a trabajar' : pendiente ? 'Guardando…' : 'Continuar'}
                   <ArrowRight className="size-4" aria-hidden />
                 </Button>
