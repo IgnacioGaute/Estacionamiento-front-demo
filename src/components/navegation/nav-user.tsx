@@ -263,8 +263,8 @@ export function OperationalNavUser({
               onAlternar={() => alternarRama('clientes')}
             >
               {SECCIONES_CLIENTES.map((seccion) => (
-                <Link key={seccion.url} href={seccion.url}>
-                  <HojaDeRama activa={pathname === seccion.url}>
+                <Link key={seccion.url} href={seccion.items?.[0]?.url ?? seccion.url}>
+                  <HojaDeRama activa={pathname === seccion.url || pathname.startsWith(seccion.url + '/')}>
                     {seccion.label}
                   </HojaDeRama>
                 </Link>
@@ -280,8 +280,8 @@ export function OperationalNavUser({
               onAlternar={() => alternarRama('admin')}
             >
               {SECCIONES_ADMIN.map((seccion) => (
-                <Link key={seccion.url} href={seccion.url}>
-                  <HojaDeRama activa={pathname === seccion.url}>
+                <Link key={seccion.url} href={seccion.items?.[0]?.url ?? seccion.url}>
+                  <HojaDeRama activa={pathname === seccion.url || pathname.startsWith(seccion.url + '/')}>
                     {seccion.label}
                   </HojaDeRama>
                 </Link>

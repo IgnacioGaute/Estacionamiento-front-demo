@@ -20,7 +20,7 @@ export async function getComisionesCajaAction() {
 export async function guardarComisionesCajaAction(datos: ComisionesCaja) {
   try {
     const guardado = await consultar('PATCH', datos);
-    revalidatePath('/admin/caja');
+    revalidatePath('/admin/caja', 'layout');
     revalidatePath('/admin/configuracion/mercadopago');
     revalidatePath('/admin/configuracion/mercadopago/comisiones');
     return { datos: guardado };

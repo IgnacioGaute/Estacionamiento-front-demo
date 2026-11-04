@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DataLoading } from '@/components/ui/data-loading';
-import { SetupStepHeading, SetupStepper, Step } from '@/components/setup-stepper/setup-stepper';
+import { SetupSections, SetupStepHeading, SetupStepper, Step } from '@/components/setup-stepper/setup-stepper';
 import { toast } from '@/lib/toast';
 import { updateTicketScheduleAction } from '@/actions/tickets/update-ticket-schedule.action';
 import { getCashConfigurationAction, saveCajaAction } from '@/actions/turnos/cajas.action';
@@ -17,7 +17,8 @@ import { EVENTO_PASO_TERMINADO } from '@/types/configuracion-inicial.type';
 type ScheduleChange = Parameters<typeof updateTicketScheduleAction>[0];
 
 // Turnos de caja en 4 pasos. Sólo activar es obligatorio: modo, cajas y sueldo se pueden dejar como
-// están. Cada paso guarda lo suyo al continuar, así un cambio no queda esperando al final.
+// están. Cada paso guarda lo suyo al continuar, así un cambio no queda esperando al final. Con los
+// turnos ya activos al abrir no hay recorrido: las cuatro partes a la vista, cada una con su guardar.
 export function OperationSettings(props: { shiftsEnabled: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldosPorUsuario?: { usuarioId: string; importe: number }[]; enConfiguracionInicial?: boolean }) {
   const [salaryEnabled, setSalaryEnabled] = useState(props.sueldoAutomatico ?? false);
   const [salaries, setSalaries] = useState<Record<string, string>>(() => Object.fromEntries((props.sueldosPorUsuario ?? []).map(s => [s.usuarioId, String(s.importe)])));
@@ -29,6 +30,11 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
   const [multiple, setMultiple] = useState(props.multipleShiftsEnabled ?? false);
   const [savedMultiple, setSavedMultiple] = useState(props.multipleShiftsEnabled ?? false);
   const [step, setStep] = useState(1);
+  const [editando] = useState(props.shiftsEnabled);
+  // Pasos ya recorridos. Si los turnos estaban activos al abrir, modo, cajas y sueldo ya tienen un
+  // valor elegido y cuentan como listos; si se activan ahora, cada uno queda listo recién al pasarlo.
+  const [vistos, setVistos] = useState<number[]>(() => props.shiftsEnabled ? [1, 2, 3, 4] : []);
+  useEffect(() => { setVistos(previos => previos.includes(step) ? previos : [...previos, step]); }, [step]);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   useEffect(() => {
@@ -74,35 +80,18 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
     if (!salaryValid) return;
     save({ sueldoAutomatico: salaryEnabled, sueldosPorUsuario: selectedSalaries }, () => undefined);
   };
-  return <SetupStepper
-    titles={['Activar', 'Modo', 'Cajas', 'Sueldo']}
-    step={step}
-    onStepChange={target => { if (savedShifts || target === 1) setStep(target); }}
-    onComplete={finish}
-    completeLabel={pending ? 'Guardando…' : salaryChanged ? 'Guardar' : 'Listo'}
-    nextLabel={step === 1 && turningOff ? 'Desactivar turnos' : pending ? 'Guardando…' : 'Continuar'}
-    disabled={pending}
-    nextDisabled={(step === 1 && !shifts && !savedShifts) || (step === 4 && !salaryValid)}
-    locked={number => !savedShifts && number > 1}
-    // Con los turnos activos, modo, cajas y sueldo ya tienen un valor elegido (aunque sea «simple» o
-    // «sin retiro»): no quedan pendientes. Sólo activar puede faltar.
-    done={() => savedShifts}
-    stateLabel={(number, status) => status === 'active' ? undefined
-      : number === 1 ? (savedShifts ? 'Activos' : 'Apagados')
-        : !savedShifts ? 'Requiere turnos'
-          : number === 2 ? (savedMultiple ? 'Múltiples' : 'Simple')
-            : number === 3 ? (savedMultiple ? 'Varias cajas' : 'Caja principal')
-              : props.sueldoAutomatico && props.sueldosPorUsuario?.length ? 'Por usuario' : 'Sin retiro'}
-    nextButtonProps={{ onClick: next }}
-  >
-    <Step>
+  const sections = editando && savedShifts;
+  const guardarAca = (texto: string, onClick: () => void, deshabilitado = false) => <div className="flex justify-end"><Button type="button" onClick={onClick} disabled={pending || deshabilitado}>{pending ? 'Guardando…' : texto}</Button></div>;
+  const steps = [
+    <Step key="activar">
       <section className="space-y-4">
         <SetupStepHeading number={1} total={4} title="Activar turnos de caja">Cada operador abre su turno para identificar sus cobros. El efectivo pertenece a la caja donde trabaja.</SetupStepHeading>
         <div className="flex items-start gap-3 rounded-2xl border border-gm-line bg-gm-surface-2 p-4"><Wallet className="mt-0.5 size-5 shrink-0 text-gm-yellow" /><div className="min-w-0 flex-1"><label htmlFor="shifts-enabled" className="font-semibold">Activar turnos de caja</label><p className="mt-1 text-sm text-muted-foreground">Apagado, podés cobrar sin turno. El historial se conserva.</p></div><Switch id="shifts-enabled" checked={shifts} onCheckedChange={setShifts} disabled={pending} /></div>
-        <p className="text-xs text-muted-foreground">{turningOff ? 'Para desactivarlos, primero cerrá todos los turnos abiertos.' : savedShifts ? 'Los turnos están activos. Seguí para revisar el modo, las cajas y el sueldo.' : shifts ? 'Continuá para activarlos y elegir cómo trabajan.' : 'Activalos para configurar el modo, las cajas y el sueldo.'}</p>
+        <p className="text-xs text-muted-foreground">{turningOff ? 'Para desactivarlos, primero cerrá todos los turnos abiertos.' : savedShifts ? (sections ? 'Los turnos están activos.' : 'Los turnos están activos. Seguí para revisar el modo, las cajas y el sueldo.') : shifts ? 'Continuá para activarlos y elegir cómo trabajan.' : 'Activalos para configurar el modo, las cajas y el sueldo.'}</p>
+        {sections && turningOff && guardarAca('Desactivar turnos', () => save({ shiftsEnabled: false, multipleShiftsEnabled: false }, () => { setSavedShifts(false); setMultiple(false); setSavedMultiple(false); setStep(1); }, 'Turnos de caja desactivados'))}
       </section>
-    </Step>
-    <Step>
+    </Step>,
+    <Step key="modo">
       <section className="space-y-4">
         <SetupStepHeading number={2} total={4} title="¿Cómo trabajan con la caja?" optional>Elegí el modo según cómo manejan el dinero.</SetupStepHeading>
         <div className="rounded-2xl border border-gm-line bg-gm-surface-2 p-4">
@@ -111,15 +100,16 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
         </div>
         <div className="grid gap-3 rounded-2xl border border-gm-yellow/25 bg-gm-yellow/5 p-4 text-sm md:grid-cols-3"><Example title="Una caja, relevos" text="Dejá turnos múltiples apagado. Cuando uno cierra, el siguiente recibe el último saldo de esa caja." /><Example title="Varias entradas, distintos cajones" text="Activá turnos múltiples y agregá una caja por cada cajón. Cada caja tiene su fondo y arqueo." /><Example title="Dos personas, un mismo cajón" text="Activá turnos múltiples y usen la misma caja. Cada uno tiene su turno; el último cuenta el efectivo de todos." /></div>
         <p className="text-xs text-muted-foreground">Para cambiar de modo, primero cerrá todos los turnos abiertos.</p>
+        {sections && multiple !== savedMultiple && guardarAca('Guardar modo', () => save({ multipleShiftsEnabled: multiple }, () => setSavedMultiple(multiple)))}
       </section>
-    </Step>
-    <Step>
+    </Step>,
+    <Step key="cajas">
       <section className="space-y-4">
         <SetupStepHeading number={3} total={4} title="Cajas físicas" optional>Una caja por cada cajón de efectivo. Si dos puertas o dos personas comparten el mismo cajón, usan la misma caja.</SetupStepHeading>
         {savedShifts && <CajasSettings multiple={savedMultiple} />}
       </section>
-    </Step>
-    <Step>
+    </Step>,
+    <Step key="sueldo">
       <section className="space-y-4">
         <SetupStepHeading number={4} total={4} title="Sueldo por usuario" optional>Elegí quién retira sueldo y cuánto cobra por jornada. Los demás quedan sin retiro.</SetupStepHeading>
         <div className="space-y-3 rounded-2xl border border-gm-line bg-gm-surface-2 p-4">
@@ -134,9 +124,38 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
           })}{salaryUsers.length === 0 && <p className="text-sm text-muted-foreground">No hay usuarios habilitados para esta playa.</p>}</div>}
         </div>
         <p className="text-xs text-muted-foreground">Se aplica al finalizar la jornada, una sola vez. A las 00:00 continúa en la nueva planilla sin retirar sueldo. Si no alcanza para preservar el fondo de la caja, no se descuenta y queda una alerta. Los cambios de sueldo rigen para nuevas jornadas.</p>
+        {sections && salaryChanged && guardarAca('Guardar sueldo', () => save({ sueldoAutomatico: salaryEnabled, sueldosPorUsuario: selectedSalaries }, () => undefined), !salaryValid)}
       </section>
-    </Step>
-  </SetupStepper>;
+    </Step>,
+  ];
+  if (sections) return <SetupSections
+    titles={['Activar', 'Modo', 'Cajas', 'Sueldo']}
+    states={['Activos', savedMultiple ? 'Múltiples' : 'Simple', savedMultiple ? 'Varias cajas' : 'Caja principal', props.sueldoAutomatico && props.sueldosPorUsuario?.length ? 'Por usuario' : 'Sin retiro']}
+    footer={props.enConfiguracionInicial && <div className="flex justify-end"><Button type="button" disabled={pending || salaryChanged} onClick={() => window.dispatchEvent(new Event(EVENTO_PASO_TERMINADO))}>Listo</Button></div>}
+  >{steps}</SetupSections>;
+  return <SetupStepper
+    titles={['Activar', 'Modo', 'Cajas', 'Sueldo']}
+    step={step}
+    onStepChange={target => { if (savedShifts || target === 1) setStep(target); }}
+    onComplete={finish}
+    completeLabel={pending ? 'Guardando…' : salaryChanged ? 'Guardar' : 'Listo'}
+    nextLabel={step === 1 && turningOff ? 'Desactivar turnos' : pending ? 'Guardando…' : 'Continuar'}
+    disabled={pending}
+    nextDisabled={(step === 1 && !shifts && !savedShifts) || (step === 4 && !salaryValid)}
+    locked={number => !savedShifts && number > 1}
+    // Con los turnos activos, un paso recorrido ya tiene un valor elegido (aunque sea «simple» o
+    // «sin retiro»): no queda pendiente. Los que todavía no se vieron, sí.
+    done={number => savedShifts && (number === 1 || vistos.includes(number))}
+    stateLabel={(number, status) => status === 'active' ? undefined
+      : number === 1 ? (savedShifts ? 'Activos' : 'Apagados')
+        : !savedShifts ? 'Requiere turnos'
+          : status === 'upcoming' ? undefined
+          : number === 2 ? (savedMultiple ? 'Múltiples' : 'Simple')
+            : number === 3 ? (savedMultiple ? 'Varias cajas' : 'Caja principal')
+              : props.sueldoAutomatico && props.sueldosPorUsuario?.length ? 'Por usuario' : 'Sin retiro'}
+    nextButtonProps={{ onClick: next }}
+  >
+{steps}</SetupStepper>;
 }
 
 // Tickets por código de barras: una opción aparte de los turnos, con su propio guardado.

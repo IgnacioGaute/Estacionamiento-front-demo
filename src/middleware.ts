@@ -34,6 +34,10 @@ export default async function middleware(req: NextRequest) {
   // La API de contingencia valida la sesión y responde JSON por sí misma. Un redirect
   // del middleware a login devolvía HTML y ocultaba el motivo real del fallo.
   if (isApiAuthRoute || isPublicApiRoute || nextUrl.pathname.startsWith('/api/offline/')) return NextResponse.next();
+  // Configuración no tiene portada: va directo a su primera opción antes de dibujar nada (redirigir
+  // desde la página dejaba el encabezado solo, en negro, mientras tanto). En una playa gratuita, Turnos
+  // lleva a Tipos de vehículo.
+  if (nextUrl.pathname === '/admin/configuracion') return NextResponse.redirect(new URL('/admin/configuracion/turnos', nextUrl));
 
   if (nextUrl.pathname === '/' && !isLoggedIn) return NextResponse.redirect(new URL('/auth/login', nextUrl));
 

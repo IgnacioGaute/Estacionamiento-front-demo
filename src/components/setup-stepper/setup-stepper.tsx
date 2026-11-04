@@ -1,6 +1,6 @@
 'use client';
 
-import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from 'react';
+import { Children, createContext, isValidElement, useContext, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { Check } from 'lucide-react';
 import Stepper from '@/components/ui/stepper/Stepper';
 import { cn } from '@/lib/utils';
@@ -84,10 +84,27 @@ export function SetupStepper({ titles, step, onStepChange, onComplete, completeL
   >{children}</Stepper>;
 }
 
+// Lo que ya está configurado se edita sin recorrido: los mismos pasos, uno debajo del otro, cada
+// uno en su tarjeta. Los pasos guiados quedan para la primera vez.
+const EnSecciones = createContext(false);
+export const useEnSecciones = () => useContext(EnSecciones);
+
+// states: lo que el asistente mostraba como estado de cada paso («Simple», «1 de 2 playas»).
+export function SetupSections({ titles, states, footer, className, children }: { titles: string[]; states?: (string | undefined)[]; footer?: ReactNode; className?: string; children: ReactNode }) {
+  const pasos = Children.toArray(children).filter(isValidElement<{ children?: ReactNode }>);
+  return <EnSecciones.Provider value>
+    <div className={cn('space-y-4', className)}>
+      {pasos.map((paso, i) => <section key={titles[i] ?? i} aria-label={titles[i]} className="rounded-[22px] border border-gm-line bg-gm-surface p-4 shadow-[0_24px_50px_-24px_rgb(0_0_0/0.9)] sm:p-6">{states?.[i] && <span className="float-right ml-3 rounded-full border border-gm-line-strong px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{states[i]}</span>}{paso.props.children}</section>)}
+      {footer}
+    </div>
+  </EnSecciones.Provider>;
+}
+
 export function SetupStepHeading({ number, total, title, optional, children }: { number: number; total: number; title: string; optional?: boolean; children?: ReactNode }) {
+  const enSecciones = useEnSecciones();
   return <div>
-    <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-gm-yellow">Paso {number} de {total}{optional && <span className="rounded-full border border-gm-line-strong px-2 py-px text-[10px] tracking-[0.08em] text-muted-foreground">Opcional</span>}</p>
-    <h3 className="mt-1.5 text-lg font-semibold">{title}</h3>
+    {!enSecciones && <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-gm-yellow">Paso {number} de {total}{optional && <span className="rounded-full border border-gm-line-strong px-2 py-px text-[10px] tracking-[0.08em] text-muted-foreground">Opcional</span>}</p>}
+    <h3 className={cn('text-lg font-semibold', !enSecciones && 'mt-1.5')}>{title}</h3>
     {children && <p className="mt-1 text-sm text-muted-foreground">{children}</p>}
   </div>;
 }

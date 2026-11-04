@@ -14,6 +14,7 @@ import { getTariffPlanAction, saveTariffPlanAction } from '@/actions/tickets/tar
 import type { TariffDraft, TariffPlan } from '@/types/tariff-plan.type';
 import type { ticketPrice } from '@/types/ticket-price';
 import { changeMethod, tariffMethod, validateTariffDraft } from '@/utils/tariff-plan.utils';
+import { EVENTO_PASO_LISTO, type DetallePasoListo } from '@/types/configuracion-inicial.type';
 import { TariffPasses } from './tariff-passes';
 import { TariffEditor } from './tariff-editor';
 import { TariffConfirmDialog } from './tariff-confirm-dialog';
@@ -21,18 +22,30 @@ import { TariffSummary } from './tariff-summary';
 import { TariffSimulator } from './tariff-simulator';
 
 const copyDraft = (plan: TariffPlan): TariffDraft => structuredClone({ schedule: plan.schedule, brackets: plan.brackets });
-export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPlan: TariffPlan | null; loadError?: string; passPrices: ticketPrice[] }) {
+const withPrices = (plan: TariffPlan | null) => !!plan && (plan.schedule.pricingOptions.charging.enabled ? plan.schedule.pricingOptions.charging.rates.length : plan.brackets.length) > 0;
+// Sin precios guardados se arranca por los pasos de creación: lo mismo que «Configurar mis tarifas».
+const newDraft = (plan: TariffPlan) => {
+  const saved = copyDraft(plan);
+  return !saved.brackets.length && !saved.schedule.pricingOptions.charging.rates.length ? changeMethod(saved, 'CUSTOM') : saved;
+};
+// En la configuración inicial de una playa nueva: sin encabezado ni pestañas (los pases son otro
+// paso), directo a crear si no hay precios, y la prueba como opción plegada.
+export function TariffsBody({ initialPlan, loadError, passPrices, enConfiguracionInicial = false }: { initialPlan: TariffPlan | null; loadError?: string; passPrices: ticketPrice[]; enConfiguracionInicial?: boolean }) {
   const params = useSearchParams();
   const router = useRouter();
   const [tab, setTab] = useState(params.get('tab') === 'pases' ? 'pases' : 'tiempo');
   const [current, setCurrent] = useState(initialPlan);
-  const [draft, setDraft] = useState<TariffDraft | null>(null);
+  const [draft, setDraft] = useState<TariffDraft | null>(() => enConfiguracionInicial && initialPlan && !withPrices(initialPlan) ? newDraft(initialPlan) : null);
   const [baseRevision, setBaseRevision] = useState(initialPlan?.revision ?? '');
-  const [baseDraft, setBaseDraft] = useState('');
+  const [baseDraft, setBaseDraft] = useState(() => draft ? JSON.stringify(draft) : '');
   const [error, setError] = useState(loadError ?? '');
   const [conflict, setConflict] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [step, setStep] = useState(1);
+  // Crear es con pasos; editar lo ya aplicado, todo a la vista. Cambiar la forma de cobro vuelve a los
+  // pasos desde Precios, porque hay que cargar los precios de nuevo.
+  const [view, setView] = useState<'steps' | 'sections'>('steps');
+  const [methodChanged, setMethodChanged] = useState(false);
   // Pasar también a la tarifa nueva los vehículos que están adentro: se decide en cada aplicación.
   const [aplicarActivos, setAplicarActivos] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -43,7 +56,7 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
   const errors = draft ? [...(retiredMethod ? ['Elegí Lista de precios o Por hora o fracción para continuar.'] : []), ...validateTariffDraft(draft, vehicles)] : [];
   const activeStays = current?.activeStays ?? 0;
   const canApply =!pending && !loading && !vehicleError && dirty && errors.length === 0 && !conflict;
-  const hasPrices = current &&(current.schedule.pricingOptions.charging.enabled ? current.schedule.pricingOptions.charging.rates.length : current.brackets.length) > 0;
+  const hasPrices = withPrices(current);
 
   useEffect(() => {
     if (initialPlan && previousInitial.current !== initialPlan.revision) {
@@ -72,10 +85,10 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
   }, [dirty]);
   const edit = () => {
     if (!current) return;
-    const saved = copyDraft(current);
-    const next = !saved.brackets.length && !saved.schedule.pricingOptions.charging.rates.length ? changeMethod(saved, 'CUSTOM') : saved;
+    const next = newDraft(current);
     setDraft(next); setBaseDraft(JSON.stringify(next)); setBaseRevision(current.revision); setConflict(false); setError(''); setStep(1); setAplicarActivos(false);
-    window.scrollTo({ top: 0 });
+    setView(hasPrices ? 'sections' : 'steps'); setMethodChanged(false);
+    if (!enConfiguracionInicial) window.scrollTo({ top: 0 });
   };
   const discard = () => {
     if (dirty) { setConfirmDiscard(true); return; }
@@ -108,21 +121,26 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
         const actualizadas = result.plan.estadiasActualizadas ?? 0;
         setCurrent(result.plan); setBaseRevision(result.plan.revision); setDraft(null); setConflict(false); setAplicarActivos(false);
         toast.success(actualizadas ? `Tarifas aplicadas a los próximos ingresos y a ${actualizadas === 1 ? 'el vehículo que está adentro' : `los ${actualizadas} vehículos que están adentro`}.` : 'Tarifas aplicadas a los próximos ingresos.'); router.refresh();
+        if (enConfiguracionInicial) window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (enConfiguracionInicial) window.dispatchEvent(new CustomEvent<DetallePasoListo>(EVENTO_PASO_LISTO, { detail: { paso: 'tarifas', listo: withPrices(result.plan) } }));
       }
     });
   };
   // Editar es una vista aparte: mientras hay borrador sólo se ven los pasos, sin el resumen, las
   // pestañas ni el simulador abiertos alrededor.
   if (draft && current) return <>
-    <section aria-labelledby="tariff-draft-heading" className="mx-auto w-full max-w-3xl space-y-5">
-      <div className="flex items-center justify-between gap-3">
+    <section aria-labelledby="tariff-draft-heading" className={enConfiguracionInicial ? 'w-full max-w-4xl space-y-5' : 'mx-auto w-full max-w-3xl space-y-5'}>
+      {/* Una playa nueva sin precios no tiene a dónde volver: se queda en los pasos hasta aplicar. */}
+      {(!enConfiguracionInicial || hasPrices) && <div className="flex items-center justify-between gap-3">
         <button type="button" onClick={discard} disabled={pending} aria-label="Volver a tarifas" className="inline-flex min-h-11 items-center gap-2 rounded-xl pr-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50"><ArrowLeft className="size-4" aria-hidden="true" />Tarifas</button>
         <Button type="button" variant="ghost" disabled={pending} onClick={discard}><X className="mr-1 size-4" aria-hidden="true" />{dirty ? 'Descartar cambios' : 'Cancelar'}</Button>
-      </div>
+      </div>}
       <div>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-gm-yellow/35 bg-gm-yellow/10 px-2.5 py-0.5 text-[11px] font-bold text-gm-yellow"><span aria-hidden className="size-1.5 rounded-full bg-gm-yellow" />Borrador · todavía no se cobra</span>
-        <h1 id="tariff-draft-heading" className="gm-display mt-3 text-[30px] leading-none sm:text-[36px]">Editar tarifas</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Completá los 3 pasos. Los cambios se aplican juntos al final.</p>
+        {enConfiguracionInicial
+          ? <h2 id="tariff-draft-heading" className="mt-3 text-xl font-semibold">{hasPrices ? 'Editar tarifas' : 'Creá tus tarifas'}</h2>
+          : <h1 id="tariff-draft-heading" className="gm-display mt-3 text-[30px] leading-none sm:text-[36px]">Editar tarifas</h1>}
+        <p className="mt-2 text-sm text-muted-foreground">{view === 'sections' ? 'Cambiá lo que necesites. Los cambios se aplican juntos al final.' : methodChanged ? 'Cambiaste la forma de cobro: cargá los precios nuevos y aplicalos al final.' : 'Completá los 3 pasos. Los cambios se aplican juntos al final.'}</p>
       </div>
       {vehicleError && <p role="alert" className="text-sm text-destructive">{vehicleError}</p>}
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
@@ -132,6 +150,7 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
         <p className="text-xs text-muted-foreground">Luego podrás aplicar tu borrador completo. Si otra persona vuelve a modificar las tarifas, te avisaremos nuevamente.</p></div>}
       {loading ? <DataLoading label="Cargando tipos de vehículo…" /> : <fieldset disabled={pending || !!vehicleError} className="min-w-0">
         <TariffEditor draft={draft} onChange={next => { setDraft(next); setError(''); }} vehicles={vehicles} step={step} onStepChange={setStep} canApply={canApply} applying={pending} onApply={save} disabled={pending || !!vehicleError}
+          view={view} onMethodChange={() => { setView('steps'); setMethodChanged(true); setStep(2); }} stickyApply={!enConfiguracionInicial}
           notice={<>
             {activeStays > 0 && <label className={'flex cursor-pointer items-start gap-3 rounded-2xl border p-4 text-sm transition-colors ' + (aplicarActivos ? 'border-gm-yellow/50 bg-gm-yellow/[0.06]' : 'border-gm-line bg-gm-surface-2')}>
               <Checkbox checked={aplicarActivos} onCheckedChange={value => setAplicarActivos(value === true)} className="mt-0.5" aria-describedby="aplicar-activos-ayuda" />
@@ -152,6 +171,18 @@ export function TariffsBody({ initialPlan, loadError, passPrices }: { initialPla
     </section>
     <TariffConfirmDialog open={confirmDiscard} onOpenChange={setConfirmDiscard} title="¿Descartar los cambios?" description="Se perderán los cambios de este borrador. Tus tarifas vigentes se conservan." confirmLabel="Descartar borrador" onConfirm={() => { setDraft(null); setError(''); setConflict(false); }} />
   </>;
+  if (enConfiguracionInicial) return <section aria-label="Tarifas vigentes" className="space-y-5">
+    {!current ? <div className="space-y-3 rounded-2xl border p-5"><h2 className="font-semibold">No se pudieron cargar las tarifas</h2><p className="text-sm text-destructive" role="alert">{error || 'Intentá nuevamente.'}</p><Button variant="outline" disabled={pending} onClick={reload}>Volver a intentar</Button></div> : <>
+      <TariffSummary plan={current} vehicles={vehicles} />
+      {vehicleError && <p role="alert" className="text-sm text-destructive">{vehicleError}</p>}
+      <Button onClick={edit} disabled={pending} variant={hasPrices ? 'outline' : 'default'}><Pencil className="mr-2 size-4" aria-hidden="true" />{hasPrices ? 'Editar tarifas' : 'Configurar mis tarifas'}</Button>
+      {hasPrices && !loading && <details className="group rounded-2xl border border-gm-line">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl px-4 py-3.5 text-sm font-semibold transition-colors hover:bg-gm-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow [&::-webkit-details-marker]:hidden"><span className="flex items-center gap-2"><FlaskConical className="size-4 text-gm-yellow" aria-hidden="true" />Probá cuánto cobrarías <span className="font-normal text-muted-foreground">· opcional</span></span><ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" /></summary>
+        <div className="border-t border-gm-line p-3 sm:p-4"><TariffSimulator draft={null} revision={current.revision} invalid={!!vehicleError} vehicles={vehicles} /></div>
+      </details>}
+      {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
+    </>}
+  </section>;
   return <>
     <PageHeader breadcrumb={['Estacionamiento', 'Administración', 'Tarifas']} title="Tarifas" description="Definí tus precios, probá cuánto cobrarías y aplicá los cambios juntos." />
     <Tabs value={tab} onValueChange={setTab}>

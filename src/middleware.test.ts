@@ -43,6 +43,11 @@ test('el selector de superadministrador requiere sesión y rol', async () => {
   expect(await visit('/seleccionar-acceso', 'USER')).toBe('/tickets');
 });
 
+test('Configuración abre directo en su primera opción, sin pasar por una portada vacía', async () => {
+  expect(await visit('/admin/configuracion', 'ADMIN')).toBe('/admin/configuracion/turnos');
+  expect(await visit('/admin/configuracion/vehiculos', 'ADMIN')).toBe('next');
+});
+
 test('administración de plataforma no admite operadores ni administradores de empresa', async () => {
   for (const role of ['USER', 'ADMIN']) expect(await visit('/admin/empresas', role)).toBe('/403');
   expect(await visit('/admin/empresas')).toBe('/auth/login');

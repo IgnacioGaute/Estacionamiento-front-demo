@@ -30,7 +30,7 @@ export function AdminNavbarSidebar({
   const role = session?.user?.role?.toUpperCase() ?? 'USER';
   const isSuperAdmin = role === 'SUPER_ADMIN';
   const isAdmin = role === 'ADMIN' || isSuperAdmin;
-  const { cobroHabilitado, playaId } = useTenant();
+  const { cobroHabilitado, playaId, shiftsEnabled } = useTenant();
 
   // En una playa se muestran sus secciones; la consola conserva su navegación de plataforma.
   if (isSuperAdmin && !playaId) return <SuperAdminSidebar {...props} />;
@@ -46,7 +46,7 @@ export function AdminNavbarSidebar({
     '/admin/plan': <ReceiptText />,
   };
   const navItems = isAdmin
-    ? seccionesAdmin(cobroHabilitado, isSuperAdmin).map((s) => ({ title: s.label, url: s.url, icon: iconos[s.url] }))
+    ? seccionesAdmin(cobroHabilitado, isSuperAdmin, shiftsEnabled).map((s) => ({ title: s.label, url: s.url, icon: iconos[s.url], items: s.items?.map((i) => ({ title: i.label, url: i.url })) }))
     : [];
 
   return (

@@ -427,7 +427,7 @@ export default function CardTicket({
         <CarFront className="size-3.5" aria-hidden />Vehículos
       </Link>
       {TURNO_BAR_ENABLED && (
-        <Link href="/admin/caja?tab=turnos#historial" className={cn(alto, atajoSutil)}>
+        <Link href="/admin/caja/turnos#historial" className={cn(alto, atajoSutil)}>
           <History className="size-3.5" aria-hidden />Historial de turnos
         </Link>
       )}
@@ -477,7 +477,7 @@ export default function CardTicket({
               <CarFront className="size-[18px] text-gm-yellow" aria-hidden />Vehículos
             </Link>
             {TURNO_BAR_ENABLED && (
-              <Link href="/admin/caja?tab=turnos#historial" aria-label="Historial de turnos" className={atajoMovil}>
+              <Link href="/admin/caja/turnos#historial" aria-label="Historial de turnos" className={atajoMovil}>
                 <History className="size-[18px] text-gm-yellow" aria-hidden />Turnos
               </Link>
             )}

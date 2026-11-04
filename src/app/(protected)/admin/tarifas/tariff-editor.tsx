@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Check, Clock3, List, Moon, Sun } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { SetupStepHeading, SetupStepper, Step } from '@/components/setup-stepper/setup-stepper';
+import { SetupSections, SetupStepHeading, SetupStepper, Step } from '@/components/setup-stepper/setup-stepper';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { TariffDraft, TariffMethod } from '@/types/tariff-plan.type';
 import { changeCrossing, changeMethod, crossingMode, durationLabel, hasNightPrices, tariffMethod, useDayPricesAllDay } from '@/utils/tariff-plan.utils';
@@ -20,7 +21,7 @@ const num = (value: number | undefined) => Number.isFinite(value) ? value : '';
 const parse = (raw: string) => raw === '' ? NaN : Number(raw);
 const hours = Array.from({ length: 24 }, (_, hour) => ({ value: String(hour), label: String(hour).padStart(2, '0') + ':00' }));
 
-export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, canApply, applying, onApply, disabled, notice }: {
+export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, canApply, applying, onApply, disabled, notice, view = 'steps', onMethodChange, stickyApply = true }: {
   draft: TariffDraft;
   onChange: (draft: TariffDraft) => void;
   vehicles: Vehicle[];
@@ -32,6 +33,12 @@ export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, ca
   disabled?: boolean;
   // Lo que impide aplicar (datos faltantes, conflicto): se muestra en el último paso, junto al botón.
   notice?: ReactNode;
+  // 'sections': editar lo que ya está aplicado, todo a la vista y un solo «Aplicar cambios». Cambiar la
+  // forma de cobro rehace los precios: avisa con onMethodChange para volver a los pasos.
+  view?: 'steps' | 'sections';
+  onMethodChange?: () => void;
+  // La barra de aplicar queda pegada abajo, salvo donde ya hay otra (la configuración inicial).
+  stickyApply?: boolean;
 }) {
   const method = tariffMethod(draft);
   const options = draft.schedule.pricingOptions;
@@ -50,9 +57,11 @@ export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, ca
   const schedules = night || crossingMode(draft) === 'SPLIT';
   const titles = ['Cobro', 'Precios', schedules ? 'Horarios' : 'Tolerancia'];
   const last = step === titles.length;
+  const sections = view === 'sections';
   const selectMethod = (next: TariffMethod) => {
     const changed = changeMethod(draft, next);
     setNight(hasNightPrices(changed)); onChange(changed);
+    if (sections && next !== method) onMethodChange?.();
   };
   const updateSchedule = (patch: Partial<TariffDraft['schedule']>) => onChange({ ...draft, schedule: { ...draft.schedule, ...patch } });
   const updateCharging = (patch: Partial<typeof options.charging>) => updateSchedule({ pricingOptions: { ...options, charging: { ...options.charging, ...patch } } });
@@ -75,23 +84,8 @@ export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, ca
     onStepChange(target); toTop();
   };
 
-  return <>
-    <div ref={top} className="scroll-mt-4" />
-    <SetupStepper
-      className="tariff-stepper"
-      titles={titles}
-      step={step}
-      onStepChange={goTo}
-      onComplete={onApply}
-      completeLabel={applying ? 'Aplicando…' : 'Aplicar tarifas'}
-      disabled={disabled}
-      nextDisabled={(!supported && step === 1) || (last && !canApply)}
-      locked={number => !supported && number > 1}
-      stateLabel={(number, status) => status === 'active' && number === 2 && twoParts ? `En curso · ${part === 'durations' ? 1 : 2}/2` : undefined}
-      backButtonProps={{ onClick: event => { if (step === 2 && twoParts && part === 'endings') { event.preventDefault(); showPart('durations'); } } }}
-      nextButtonProps={{ onClick: event => { if (step === 2 && twoParts && part === 'durations') { event.preventDefault(); showPart('endings'); } } }}
-    >
-      <Step>
+  const steps = [
+      <Step key="cobro">
         <section className="space-y-4">
           <StepHeading number={1} title="¿Cómo cobrás en esta playa?">Elegí cómo se calcula el precio de una estadía.</StepHeading>
           <div role="radiogroup" aria-label="Modalidad de cobro" className="grid gap-3 lg:grid-cols-2">
@@ -106,13 +100,13 @@ export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, ca
           </div>
           {!supported && <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm">Esta tarifa usa una modalidad anterior. Elegí una de las dos opciones para editarla. La tarifa vigente se conserva hasta que apliques los cambios.</p>}
         </section>
-      </Step>
+      </Step>,
 
-      <Step>
+      <Step key="precios">
         <section className="space-y-5">
-          <div className="flex flex-wrap items-end justify-between gap-3"><StepHeading number={2} title={twoParts && part === 'endings' ? 'Si se queda más tiempo' : 'Cargá tus precios'} /><Link href="/admin/configuracion/operacion#vehiculos" className="text-sm font-medium text-gm-yellow underline-offset-4 hover:underline">Agregar o administrar vehículos</Link></div>
+          <div className="flex flex-wrap items-end justify-between gap-3"><StepHeading number={2} title={twoParts && part === 'endings' ? 'Si se queda más tiempo' : 'Cargá tus precios'} /><Link href="/admin/configuracion/vehiculos" className="text-sm font-medium text-gm-yellow underline-offset-4 hover:underline">Agregar o administrar vehículos</Link></div>
           <div className="flex items-center justify-between gap-4 rounded-2xl border border-gm-line bg-gm-surface-2 p-4">
-            <div className="flex items-start gap-3"><Moon className={cn('mt-0.5 size-4 shrink-0', night ? 'text-gm-yellow' : 'text-muted-foreground')} aria-hidden="true" /><div><label htmlFor="tariff-night" className="cursor-pointer text-sm font-medium">Cobro distinto de noche</label><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{night ? 'Cargá precios de día y de noche. Los horarios se eligen en el paso 3.' : 'Tus precios se aplican durante todo el día.'}</p></div></div>
+            <div className="flex items-start gap-3"><Moon className={cn('mt-0.5 size-4 shrink-0', night ? 'text-gm-yellow' : 'text-muted-foreground')} aria-hidden="true" /><div><label htmlFor="tariff-night" className="cursor-pointer text-sm font-medium">Cobro distinto de noche</label><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{night ? `Cargá precios de día y de noche. Los horarios se eligen ${sections ? 'más abajo' : 'en el paso 3'}.` : 'Tus precios se aplican durante todo el día.'}</p></div></div>
             <Switch id="tariff-night" checked={night} onCheckedChange={toggleNight} />
           </div>
           {method !== 'CUSTOM' ? <div className="space-y-5">
@@ -130,7 +124,12 @@ export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, ca
                 </div>
               </div>;
             })}</div>
-          </div> : <>
+          </div> : sections ? <>
+            {/* Editando se ven las dos partes juntas, sin ir y venir entre ellas. */}
+            <TariffPriceList draft={draft} onChange={onChange} vehicles={editableVehicles} night={night} onEnableNight={() => setNight(true)} section="durations" />
+            <h4 className="pt-2 font-semibold">Si se queda más tiempo</h4>
+            <TariffPriceList draft={draft} onChange={onChange} vehicles={editableVehicles} night={night} onEnableNight={() => setNight(true)} section="endings" />
+          </> : <>
             <div role="group" aria-label="Partes del paso 2" className="grid grid-cols-2 gap-1 rounded-2xl border border-gm-line bg-background p-1">
               {([['durations', 'Duraciones', 'Precio por tiempo'], ['endings', 'Más tiempo', 'Cobro posterior']] as const).map(([value, label, hint], index) => <button key={value} type="button" aria-pressed={part === value} onClick={() => showPart(value)} className={cn('flex min-w-0 items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow', part === value ? 'bg-gm-surface-3 shadow-[inset_0_0_0_1px_hsl(var(--gm-line-strong))]' : 'hover:bg-gm-surface-2')}>
                 <span className={cn('grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold', part === value ? 'text-gm-yellow shadow-[inset_0_0_0_2px_hsl(var(--gm-yellow))]' : index === 0 ? 'bg-gm-yellow text-gm-ink' : 'text-muted-foreground shadow-[inset_0_0_0_1px_hsl(var(--gm-line-strong))]')}>{part !== value && index === 0 ? <Check className="size-3" strokeWidth={3} aria-hidden /> : '2' + 'ab'[index]}</span>
@@ -143,9 +142,9 @@ export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, ca
           </>}
           {!editableVehicles.length && <p className="text-sm text-muted-foreground">Agregá al menos un tipo de vehículo para cargar sus precios.</p>}
         </section>
-      </Step>
+      </Step>,
 
-      <Step>
+      <Step key="horarios">
         <section className="space-y-5">
           {schedules ? <>
             <StepHeading number={3} title="Horarios y tolerancia">Cobrás distinto de noche: elegí cuándo empieza cada horario.</StepHeading>
@@ -162,15 +161,38 @@ export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, ca
             <StepHeading number={3} title="Tolerancia">Minutos que puede pasarse antes de cobrar la siguiente duración.</StepHeading>
             <div className="flex items-start gap-3 rounded-2xl border border-gm-line bg-gm-surface-2 p-4">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gm-line text-[#D9D1C3]"><Sun className="size-4" aria-hidden /></span>
-              <div className="min-w-0 text-sm"><p className="font-semibold">Un precio para todo el día</p><p className="mt-0.5 text-muted-foreground">No hay horarios que configurar. Para cobrar distinto de noche, activalo en Precios.</p><button type="button" onClick={() => onStepChange(2)} className="mt-2 text-[13px] font-semibold text-gm-yellow underline-offset-4 hover:underline">Ir a Precios</button></div>
+              <div className="min-w-0 text-sm"><p className="font-semibold">Un precio para todo el día</p><p className="mt-0.5 text-muted-foreground">No hay horarios que configurar. Para cobrar distinto de noche, activalo en Precios.</p>{!sections && <button type="button" onClick={() => onStepChange(2)} className="mt-2 text-[13px] font-semibold text-gm-yellow underline-offset-4 hover:underline">Ir a Precios</button>}</div>
             </div>
           </>}
           <label className="block max-w-xl space-y-2 text-sm"><span className="block font-medium">Tolerancia entre duraciones</span><div className="relative max-w-[200px]"><Input aria-label="Tolerancia en minutos" className="h-11 rounded-xl pr-16" type="number" min={0} max={5256000} step={1} value={num(draft.schedule.graceMinutes)} onChange={event => updateSchedule({ graceMinutes: parse(event.target.value) })} /><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">minutos</span></div>
             <span className="block text-xs text-muted-foreground">{method === 'STARTED' ? 'No hace gratis el primer período. Permite pasarse estos minutos antes de cobrar el siguiente; como máximo se aplica un minuto menos que el período.' : 'Permite pasarse unos minutos de una duración antes de avanzar al siguiente precio. Probá las duraciones límite en el simulador.'}</span></label>
           {notice}
         </section>
-      </Step>
-    </SetupStepper>
+      </Step>,
+  ];
+
+  return <>
+    <div ref={top} className="scroll-mt-4" />
+    {sections ? <SetupSections
+      titles={titles}
+      footer={<div className={cn('flex flex-wrap items-center justify-end gap-3 rounded-[22px] border border-gm-line bg-gm-surface/95 p-4 backdrop-blur', stickyApply && 'sticky bottom-4 z-20 shadow-[0_-12px_40px_-12px_rgb(0_0_0/0.8)]')}>
+        <p className="mr-auto text-sm text-muted-foreground">Los cambios se aplican juntos.</p>
+        <Button type="button" onClick={onApply} disabled={disabled || !canApply} className="h-11 px-6">{applying ? 'Aplicando…' : 'Aplicar cambios'}</Button>
+      </div>}
+    >{steps}</SetupSections> : <SetupStepper
+      className="tariff-stepper"
+      titles={titles}
+      step={step}
+      onStepChange={goTo}
+      onComplete={onApply}
+      completeLabel={applying ? 'Aplicando…' : 'Aplicar tarifas'}
+      disabled={disabled}
+      nextDisabled={(!supported && step === 1) || (last && !canApply)}
+      locked={number => !supported && number > 1}
+      stateLabel={(number, status) => status === 'active' && number === 2 && twoParts ? `En curso · ${part === 'durations' ? 1 : 2}/2` : undefined}
+      backButtonProps={{ onClick: event => { if (step === 2 && twoParts && part === 'endings') { event.preventDefault(); showPart('durations'); } } }}
+      nextButtonProps={{ onClick: event => { if (step === 2 && twoParts && part === 'durations') { event.preventDefault(); showPart('endings'); } } }}
+    >{steps}</SetupStepper>}
     <TariffConfirmDialog open={confirmNight} onOpenChange={setConfirmNight} title="¿Usar el mismo precio todo el día?" description="Los precios de día también se usarán durante la noche." cancelLabel="Mantener precios de noche" confirmLabel="Usar precios de día" onConfirm={() => { onChange(useDayPricesAllDay(draft)); setNight(false); }}>
       <div className="space-y-2 rounded-xl border bg-muted/30 p-4 text-sm leading-relaxed"><p>Los precios exclusivos de noche se quitarán del borrador.</p><p className="text-muted-foreground">Tus tarifas vigentes no cambian hasta que apliques el borrador.</p></div>
     </TariffConfirmDialog>

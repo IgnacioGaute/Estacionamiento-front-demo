@@ -1,7 +1,7 @@
 'use client';
 import LatticeLoader from '@/components/ui/lattice-loader';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,7 +42,8 @@ import {
 import { registerAction } from '@/actions/auth/register.action';
 import { SelectorRol } from './selector-rol';
 
-export function CreateUserDialog() {
+// trigger: otro botón para abrirlo (la configuración inicial usa uno propio).
+export function CreateUserDialog({ trigger }: { trigger?: ReactNode } = {}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -85,9 +86,11 @@ export function CreateUserDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" data-tour="users-create">
-          Nuevo usuario
-        </Button>
+        {trigger ?? (
+          <Button size="sm" data-tour="users-create">
+            Nuevo usuario
+          </Button>
+        )}
       </DialogTrigger>
 
       <DialogContent className="max-w-lg">

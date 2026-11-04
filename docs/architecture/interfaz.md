@@ -14,7 +14,10 @@ src/app/
       empresas/         # SUPER_ADMIN only: empresas, playas, usuarios, asignación de operadores
     configuracion-inicial/  # pasos de una playa nueva para su ADMIN; reutiliza las pantallas de Configuración.
                             # (user)/layout y admin/layout llevan ahí con llevarAConfiguracionInicial (lib/configuracion-inicial.server.ts)
-      dashboard/ caja/ tickets/ frecuentes/ parking-type/ users/ interests/
+      caja/                 # (secciones)/: turnos/ y movimientos/ (Ingresos y gastos). page.tsx sólo redirige y
+                            # queda fuera del grupo: redirigir con el layout ya enviado rompe el router en desarrollo
+      configuracion/        # turnos/ vehiculos/ (tipos) comprobantes/ mercadopago/; sin portada (abre la primera)
+      dashboard/ tickets/ frecuentes/ parking-type/ users/ interests/
       other-payments/ update-amount-customers/
   auth/                 # login, register, reset, new-password, new-verification, error
   api/assistant/chat/   # SSE proxy to the backend assistant
@@ -30,6 +33,11 @@ explícitas en middleware/routes. Los comprobantes públicos se sirven en otro r
   `src/components/data-table-shell.tsx`.
 - Dialogs: `create-*`, `update-*`, `delete-*`, `soft-delete-*`, `restored-*`.
 - Multi-step forms use `src/components/customer-stepper-shell.tsx`, a generic `react-hook-form` wizard shell.
+- Sections with several pages (Configuración, Caja) list their options as `items` in `seccionesAdmin`
+  (`src/components/navegation/secciones-admin.ts`): the sidebar unfolds them under the section, one route per option.
+  Each page titles itself with `EncabezadoSeccion`. Reserve tabs for views of the same thing on one page (Tarifas).
+- Setup flows (`SetupStepper`) are for configuring something the first time; once it exists, the same steps render as
+  `SetupSections` (all visible, each with its own save). Tarifas goes back to steps only when the charging method changes.
 - Onboarding tours: a page defines `TOUR_STEPS` (selector, title, desc) targeting `data-tour="..."` elements and
   renders `<PageTour steps={TOUR_STEPS} />` in its header actions — see `admin/dashboard/page.tsx`.
 - Charts use `recharts` through `src/components/ui/chart.tsx`; toasts use `sonner` (`src/lib/toast.ts`).

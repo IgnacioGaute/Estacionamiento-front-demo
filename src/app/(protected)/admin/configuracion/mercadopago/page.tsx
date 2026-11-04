@@ -5,11 +5,11 @@ export const fetchCache = 'force-no-store';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { CONFIGURACION_INICIAL_ROUTE } from '@/routes';
 import { getConfiguracionInicial } from '@/services/configuracion-inicial.service';
 import { currentUser } from '@/lib/auth';
-import { PageHeader } from '@/components/page-header';
+import { EncabezadoSeccion } from '@/components/encabezado-seccion';
 import { getCajasQrAction, getEstadoMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import { configuracionAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
 import { getComisionesCajaAction } from '@/actions/box-lists/comisiones.action';
@@ -35,7 +35,7 @@ export default async function MercadoPagoPage() {
   const enConfiguracionInicial = !!configuracionInicial && !configuracionInicial.configuracion.terminadaEn;
 
   return (
-    <div className="container mx-auto max-w-4xl space-y-6 px-4 py-6">
+    <>
       {enConfiguracionInicial && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gm-yellow/40 bg-gm-yellow/[0.07] p-4">
           <p className="text-sm"><span className="font-semibold">Estás configurando tu playa.</span> Cuando termines con MercadoPago, seguí con los pasos que faltan.</p>
@@ -44,17 +44,8 @@ export default async function MercadoPagoPage() {
           </Link>
         </div>
       )}
-      <Link
-        href="/admin/configuracion"
-        className="inline-flex h-9 items-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold transition-colors hover:bg-secondary/40"
-      >
-        <ArrowLeft className="size-4" />
-        Configuración
-      </Link>
-
-      <PageHeader
-        title="Cobro con MercadoPago"
-        breadcrumb={['Administración', 'Configuración', 'MercadoPago']}
+      <EncabezadoSeccion
+        title="Mercado Pago"
         description="La cuenta donde entra el dinero de los cobros con QR. Es una por empresa: vale para todas sus playas."
       />
 
@@ -73,6 +64,6 @@ export default async function MercadoPagoPage() {
           <ConexionMercadoPago inicial={estado} verificacionAlias={verificacion.datos ?? null} comisiones={comisiones.datos?.conectada ? comisiones.datos : null} cajasQr={qr.cajas ?? null} />
         </Suspense>
       )}
-    </div>
+    </>
   );
 }

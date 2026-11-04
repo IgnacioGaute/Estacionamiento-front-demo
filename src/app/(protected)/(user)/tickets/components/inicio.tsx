@@ -584,7 +584,7 @@ export function FichasEnElPlayon({ catalogo, registros, ahora, recienEscaneada, 
       <div className="mb-1 flex items-center justify-between">
         <h3 className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Fichas en el playón</h3>
         <div className="flex items-center gap-2">
-          {isAdmin && <Link href="/admin/configuracion/operacion#tarjetas" className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow" aria-label="Crear tarjeta física">+ Crear</Link>}
+          {isAdmin && <Link href="/admin/configuracion" className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow" aria-label="Crear tarjeta física">+ Crear</Link>}
           <span className="gm-mono text-[11px] text-muted-foreground">{activas.length}/{catalogo.length}</span>
         </div>
       </div>

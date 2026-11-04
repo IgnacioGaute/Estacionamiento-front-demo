@@ -13,12 +13,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   useSidebar,
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
+import { motion, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/components/tenant-provider';
@@ -111,15 +109,22 @@ export const CAJITA =
 // Plegada, cada botón de 44 px queda centrado en la tira (si no, se pega a la izquierda).
 export const CENTRADO = 'gap-1 group-data-[collapsible=icon]:items-center';
 
-function Icono({ icon }: { icon: NavItem['icon'] }) {
+function Icono({ icon, resaltado }: { icon: NavItem['icon']; resaltado?: boolean }) {
   if (!icon) return null;
-  return <span className={CAJITA}>{React.isValidElement(icon) ? icon : typeof icon === 'function' ? (icon as () => React.JSX.Element)() : null}</span>;
+  return <span className={cn(CAJITA, resaltado && 'bg-gm-yellow/[0.14] text-gm-yellow')}>{React.isValidElement(icon) ? icon : typeof icon === 'function' ? (icon as () => React.JSX.Element)() : null}</span>;
 }
 
 export function NavMain({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile, state } = useSidebar();
+  const quieto = useReducedMotion();
   const [mounted, setMounted] = React.useState(false);
+  // Grupos abiertos o cerrados a mano. Sin tocar, un grupo está abierto si estás en una de sus páginas.
+  const [abiertos, setAbiertos] = React.useState<Record<string, boolean>>({});
+  // Una página propia o una interna (Mercado Pago → Comisiones), sin confundir /admin/configuracion
+  // con /admin/configuracion-inicial.
+  const coincide = (url: string) => mounted && (pathname === url || pathname.startsWith(url + '/'));
+  const plegada = state === 'collapsed' && !isMobile;
 
   React.useEffect(() => {
     setMounted(true);
@@ -129,15 +134,17 @@ export function NavMain({ items }: { items: NavItem[] }) {
     <SidebarGroup>
       <SidebarMenu className={CENTRADO}>
         {items.map((item) => {
-          const isActive = mounted && pathname === item.url;
-          const hasActiveChild =
-            mounted && item.items?.some((subItem) => pathname === subItem.url);
+          const hasActiveChild = !!item.items?.some((subItem) => coincide(subItem.url));
+          const isActive = item.items?.length ? hasActiveChild : coincide(item.url);
 
-          if (!item.items?.length) {
+          // Plegada sólo se ven los íconos: el de un grupo lleva a la sección, que abre su primera opción.
+          // Plegada, el ícono de un grupo va directo a su primera opción.
+          const destino = item.items?.[0]?.url ?? item.url;
+          if (!item.items?.length || plegada) {
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild tooltip={item.title} isActive={isActive} className={ITEM}>
-                  <Link href={item.url} onClick={() => { if (isMobile) setOpenMobile(false); }} className="flex w-full items-center gap-3">
+                  <Link href={destino} onClick={() => { if (isMobile) setOpenMobile(false); }} className="flex w-full items-center gap-3">
                     <Icono icon={item.icon} />
                     <span className="truncate">{item.title}</span>
                   </Link>
@@ -150,37 +157,54 @@ export function NavMain({ items }: { items: NavItem[] }) {
             <Collapsible
               key={item.title}
               asChild
-              defaultOpen={hasActiveChild}
+              open={abiertos[item.title] ?? hasActiveChild}
+              onOpenChange={(abierto) => setAbiertos((previos) => ({ ...previos, [item.title]: abierto }))}
               className="group/collapsible"
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={item.title} className={cn(ITEM, 'gap-3')}>
-                    <Icono icon={item.icon} />
+                  <SidebarMenuButton tooltip={item.title} className={cn(ITEM, 'gap-3', hasActiveChild && 'text-foreground')}>
+                    <Icono icon={item.icon} resaltado={hasActiveChild} />
                     <span className="truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
                     <ChevronRight className="ml-auto size-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-150 group-data-[state=open]/collapsible:rotate-90 group-data-[collapsible=icon]:hidden" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="animate-accordion-down group-data-[collapsible=icon]:hidden">
-                  <SidebarMenuSub>
-                    {item.items?.map((subItem) => (
-                      <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton
-                          asChild
-                          isActive={mounted && pathname === subItem.url}
-                          className={cn(
-                            'group flex w-full items-center rounded-lg py-2 pl-9 pr-3 text-[12.5px] font-medium transition-colors',
-                            'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
-                            'data-[active=true]:bg-gm-yellow data-[active=true]:text-gm-ink',
-                          )}
-                        >
-                          <Link href={subItem.url} onClick={() => { if (isMobile) setOpenMobile(false); }}>
-                            <span className="truncate">{subItem.title}</span>
+                {/* Las opciones cuelgan del ícono de la sección con ramas curvas; la actual lleva la
+                    rama y el punto en amarillo, y su fondo se desliza de una opción a otra. */}
+                <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down group-data-[collapsible=icon]:hidden">
+                  <ul className="relative ml-[21px] pb-1.5 pl-[18px] pt-1">
+                    {item.items?.map((subItem, indice, opciones) => {
+                      const activo = coincide(subItem.url);
+                      const ultimo = indice === opciones.length - 1;
+                      // El tronco queda amarillo desde la sección hasta la opción actual: el camino.
+                      const enCamino = indice < opciones.findIndex((o) => coincide(o.url));
+                      return (
+                        <li key={subItem.title} className="relative">
+                          {!ultimo && <span aria-hidden className={cn('absolute -left-[18px] bottom-0 top-0 w-px transition-colors duration-300', enCamino ? 'bg-gm-yellow/80' : 'bg-white/[0.1]')} />}
+                          <span aria-hidden className={cn('absolute -left-[18px] -top-1 h-[23px] w-[13px] rounded-bl-[10px] border-b border-l transition-colors duration-300', activo ? 'border-gm-yellow/80' : 'border-white/[0.1]')} />
+                          <Link
+                            href={subItem.url}
+                            aria-current={activo ? 'page' : undefined}
+                            onClick={() => { if (isMobile) setOpenMobile(false); }}
+                            className={cn(
+                              'group/sub relative flex h-[38px] items-center gap-2.5 rounded-[10px] px-3 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
+                              activo ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground',
+                            )}
+                          >
+                            {activo && (
+                              <motion.span
+                                layoutId={`opcion-${item.url}`}
+                                transition={quieto ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }}
+                                className="absolute inset-0 rounded-[10px] bg-gradient-to-r from-gm-yellow/[0.16] via-gm-yellow/[0.06] to-transparent ring-1 ring-inset ring-gm-yellow/20"
+                              />
+                            )}
+                            <span aria-hidden className={cn('relative size-1.5 shrink-0 rounded-full transition-all duration-300', activo ? 'scale-125 bg-gm-yellow shadow-[0_0_10px_hsl(var(--gm-yellow)/0.7)]' : 'bg-white/20 group-hover/sub:bg-white/50')} />
+                            <span className="relative truncate transition-transform duration-200 group-hover/sub:translate-x-0.5">{subItem.title}</span>
                           </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </CollapsibleContent>
               </SidebarMenuItem>
             </Collapsible>

@@ -16,8 +16,9 @@ import { VehicleTypesCard } from '../admin/tickets/components/vehicle-types-card
 import { TariffsBody } from '../admin/tarifas/tariffs-body';
 import { OperationSettings } from '../admin/configuracion/operation-settings';
 import { ConexionMercadoPago } from '../admin/configuracion/mercadopago/conexion-mercadopago';
-import { CreateUserDialog } from '../admin/users/components/create-user-dialog';
 import { AsistenteConfiguracion } from './asistente';
+import { EquipoConfiguracion } from './equipo';
+import { PasesConfiguracion } from './pases';
 
 const aviso = (texto: string) => <p role="alert" className="rounded-2xl border border-destructive p-5 text-sm">{texto}</p>;
 
@@ -30,7 +31,7 @@ export default async function ConfiguracionInicialPage() {
   try {
     estado = await getConfiguracionInicial();
   } catch (error) {
-    return <main className="grid min-h-[100dvh] place-items-center bg-[#100f0d] p-6">{aviso(error instanceof Error ? error.message : 'No se pudo cargar la configuración de la playa.')}</main>;
+    return <main className="grid min-h-[100dvh] place-items-center bg-[#0e0d0b] p-6">{aviso(error instanceof Error ? error.message : 'No se pudo cargar la configuración de la playa.')}</main>;
   }
   if (estado.configuracion.terminadaEn) redirect('/tickets');
 
@@ -46,14 +47,24 @@ export default async function ConfiguracionInicialPage() {
   ]);
   const precioPases = (pases?.data || []).filter((precio) => ['DIA', 'SEMANA', 'MES'].includes(precio.ticketTimeType ?? ''));
   const equipo = (usuarios?.data ?? []).filter((u) => u.role !== 'SUPER_ADMIN');
+  const plan = tarifa.plan;
+  const conPrecios = !!plan && (plan.schedule.pricingOptions.charging.enabled ? plan.schedule.pricingOptions.charging.rates.length : plan.brackets.length) > 0;
 
   return (
     <AsistenteConfiguracion
       estado={estado}
+      listos={{
+        tarifas: conPrecios,
+        pases: precioPases.length > 0,
+        mercadopago: !!mercadoPago.estado?.conectada,
+        // Alguien más además del administrador que la está configurando.
+        usuarios: equipo.length > 1,
+      }}
       contenido={{
-        vehiculos: <VehicleTypesCard />,
+        vehiculos: <VehicleTypesCard enConfiguracionInicial />,
         // TariffsBody lee la URL (useSearchParams): necesita su límite de Suspense.
-        tarifas: <Suspense fallback={<DataLoading label="Cargando tarifas…" />}><TariffsBody initialPlan={tarifa.plan ?? null} loadError={tarifa.error} passPrices={precioPases} /></Suspense>,
+        tarifas: <Suspense fallback={<DataLoading label="Cargando tarifas…" />}><TariffsBody initialPlan={plan ?? null} loadError={tarifa.error} passPrices={precioPases} enConfiguracionInicial /></Suspense>,
+        pases: <PasesConfiguracion precios={precioPases} />,
         turnos: schedule
           ? <OperationSettings sueldoAutomatico={schedule.sueldoAutomatico} sueldosPorUsuario={schedule.sueldosPorUsuario} shiftsEnabled={schedule.shiftsEnabled ?? false} multipleShiftsEnabled={schedule.multipleShiftsEnabled ?? false} enConfiguracionInicial />
           : aviso('No se pudo cargar la configuración de turnos. Podés omitir este paso y hacerlo después.'),
@@ -66,21 +77,10 @@ export default async function ConfiguracionInicialPage() {
             </Suspense>
           ),
         usuarios: (
-          <div className="space-y-4 rounded-2xl border border-gm-line bg-gm-surface p-5 sm:p-7">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">Cuentas de la empresa</h2>
-              <CreateUserDialog />
-            </div>
-            <ul className="divide-y divide-gm-line">
-              {equipo.map((u) => (
-                <li key={u.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                  <span className="min-w-0 truncate"><span className="font-semibold">{u.firstName} {u.lastName}</span> <span className="text-muted-foreground">· {u.username}</span></span>
-                  <span className="shrink-0 rounded-full border border-gm-line-strong px-2.5 py-0.5 text-xs text-muted-foreground">{u.role === 'ADMIN' ? 'Administrador' : 'Operador'}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="text-sm text-muted-foreground">Los operadores registran entradas y cobran; el administrador además configura. Las cuentas nuevas quedan en esta playa.</p>
-          </div>
+          <EquipoConfiguracion
+            yoId={user.id}
+            miembros={equipo.map((u) => ({ id: u.id, nombre: `${u.firstName} ${u.lastName}`.trim() || u.username, usuario: u.username, administrador: u.role === 'ADMIN' }))}
+          />
         ),
       }}
     />

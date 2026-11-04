@@ -14,7 +14,7 @@ export async function saveVehicleTypeAction(code: string | null, values: { code?
     const response = await fetch(`${base}/tickets/vehicle-types${code ? '/' + encodeURIComponent(code) : ''}`, { method: code ? 'PATCH' : 'POST', headers: await getAuthHeaders(), body: JSON.stringify(values) });
     const data = await response.json();
     if (!response.ok) return { error: Array.isArray(data.message) ? data.message.join('. ') : data.message || 'No se pudo guardar.' };
-    revalidatePath('/admin/configuracion/operacion');
+    revalidatePath('/admin/configuracion/vehiculos');
     revalidatePath('/admin/tarifas');
     revalidatePath('/tickets');
     return { success: true };

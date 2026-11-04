@@ -24,7 +24,7 @@ import { CajasQrConfig } from './cajas-qr';
 import { ConfiguracionAlias } from '@/types/verificacion-alias.type';
 import type { ComisionesCaja, ConfiguracionComisiones } from '@/types/box-list.type';
 import { ComisionesCajaForm } from '@/components/comisiones-caja-form';
-import { SetupStepHeading, SetupStepper, Step } from '@/components/setup-stepper/setup-stepper';
+import { SetupSections, SetupStepHeading, SetupStepper, Step } from '@/components/setup-stepper/setup-stepper';
 import { EVENTO_PASO_TERMINADO } from '@/types/configuracion-inicial.type';
 
 // Lo que el sistema puede hacer con la cuenta, tal cual lo manda el backend. Conectar la cuenta
@@ -90,6 +90,9 @@ export function ConexionMercadoPago({
 }) {
   const [estado, setEstado] = useState(inicial);
   const [paso, setPaso] = useState(1);
+  // Con la cuenta ya vinculada al abrir no hay recorrido: cuenta, QR, alias y comisiones a la vista,
+  // cada uno con su guardar. Los pasos quedan para conectarla por primera vez.
+  const [editando] = useState(inicial.conectada && inicial.estado === 'ACTIVA');
   // Lo ya configurado de cada sección: el asistente muestra el estado real de cada paso, no
   // «pendiente» por no haberlo recorrido.
   const [qr, setQr] = useState(cajasQr);
@@ -199,21 +202,9 @@ export function ConexionMercadoPago({
     else router.push('/admin/configuracion');
   };
 
-  return (
-    <SetupStepper
-      titles={['Cuenta', 'QR', 'Alias', 'Comisiones']}
-      step={paso}
-      onStepChange={irA}
-      onComplete={terminar}
-      completeLabel={formComisiones.cambios ? (formComisiones.guardando ? 'Guardando…' : 'Guardar y terminar') : 'Listo'}
-      nextDisabled={!activa || (paso === 4 && formComisiones.cambios && (!formComisiones.valido || formComisiones.guardando))}
-      locked={(numero) => !activa && numero > 1}
-      // Con la cuenta vinculada, QR, alias y comisiones ya quedan decididos aunque estén apagados o en
-      // 0%: el estado lo dice, pero no aparecen como pendientes. Sólo la cuenta puede faltar.
-      done={() => activa}
-      stateLabel={(numero, status) => (status === 'active' ? undefined : estadoPaso(numero))}
-    >
-      <Step>
+  const sections = editando && activa;
+  const steps = [
+      <Step key="cuenta">
         <section className="space-y-4">
           <SetupStepHeading number={1} total={4} title="Vinculá la cuenta de Mercado Pago">
             Es la cuenta donde entra el dinero de los cobros con QR. Una por empresa: vale para todas sus playas.
@@ -340,9 +331,9 @@ export function ConexionMercadoPago({
             </p>
           )}
         </section>
-      </Step>
+      </Step>,
 
-      <Step>
+      <Step key="qr">
         <section className="space-y-4">
           <SetupStepHeading number={2} total={4} title="QR para cualquier banco o billetera" optional>
             Sin esto, el QR se paga sólo con la app de Mercado Pago. Podés activarlo ahora o más adelante.
@@ -350,9 +341,9 @@ export function ConexionMercadoPago({
           {/* El QR para cualquier banco: con la cuenta activa (crea sucursal y caja por playa). */}
           {activa && <CajasQrConfig inicial={qr} alCambiar={setQr} />}
         </section>
-      </Step>
+      </Step>,
 
-      <Step>
+      <Step key="alias">
         <section className="space-y-4">
           <SetupStepHeading number={3} total={4} title="Transferencias al alias" optional>
             Comprueba solo las transferencias que entran a tu alias y registra la salida.
@@ -364,8 +355,8 @@ export function ConexionMercadoPago({
           ) : !condicionesAlDia ? (
             <div className="space-y-3 rounded-2xl border border-gm-yellow/30 bg-gm-yellow/[0.05] p-4 text-sm">
               <p className="font-semibold">Falta aceptar las condiciones de uso</p>
-              <p className="text-muted-foreground">Para comprobar las transferencias que entran a la cuenta, aceptá las condiciones en el paso 1.</p>
-              <Button type="button" variant="outline" size="sm" onClick={() => setPaso(1)}>Ir a la cuenta</Button>
+              <p className="text-muted-foreground">Para comprobar las transferencias que entran a la cuenta, aceptá las condiciones {sections ? 'en Cuenta, más arriba' : 'en el paso 1'}.</p>
+              {!sections && <Button type="button" variant="outline" size="sm" onClick={() => setPaso(1)}>Ir a la cuenta</Button>}
             </div>
           ) : (
             <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">
@@ -373,15 +364,22 @@ export function ConexionMercadoPago({
             </p>
           )}
         </section>
-      </Step>
+      </Step>,
 
-      <Step>
+      <Step key="comisiones">
         <section className="space-y-4">
           <SetupStepHeading number={4} total={4} title="Comisiones de Mercado Pago" optional>
             Porcentajes por medio de pago para calcular el neto de caja. Arrancan en 0%.
           </SetupStepHeading>
           {comisiones ? (
-            <ComisionesCajaForm id="comisiones-mp" inicial={comisiones.tasas} referencia={comisiones.referencia} onEstado={estadoComisiones} />
+            <>
+              <ComisionesCajaForm id="comisiones-mp" inicial={comisiones.tasas} referencia={comisiones.referencia} onEstado={estadoComisiones} />
+              {sections && formComisiones.cambios && (
+                <div className="flex justify-end">
+                  <Button type="submit" form="comisiones-mp" disabled={!formComisiones.valido || formComisiones.guardando}>{formComisiones.guardando ? 'Guardando…' : 'Guardar comisiones'}</Button>
+                </div>
+              )}
+            </>
           ) : (
             <Link href="/admin/configuracion/mercadopago/comisiones" className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-3 transition-colors hover:bg-secondary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <div><p className="text-sm font-medium">Comisiones de Mercado Pago</p><p className="mt-1 text-xs text-muted-foreground">Porcentajes por medio de pago para el neto de caja.</p></div>
@@ -389,7 +387,31 @@ export function ConexionMercadoPago({
             </Link>
           )}
         </section>
-      </Step>
-    </SetupStepper>
+      </Step>,
+  ];
+
+  if (sections) return (
+    <SetupSections
+      titles={['Cuenta', 'QR', 'Alias', 'Comisiones']}
+      states={[1, 2, 3, 4].map(estadoPaso)}
+      footer={enConfiguracionInicial && <div className="flex justify-end"><Button type="button" disabled={formComisiones.cambios} onClick={() => window.dispatchEvent(new Event(EVENTO_PASO_TERMINADO))}>Listo</Button></div>}
+    >{steps}</SetupSections>
+  );
+
+  return (
+    <SetupStepper
+      titles={['Cuenta', 'QR', 'Alias', 'Comisiones']}
+      step={paso}
+      onStepChange={irA}
+      onComplete={terminar}
+      completeLabel={formComisiones.cambios ? (formComisiones.guardando ? 'Guardando…' : 'Guardar y terminar') : 'Listo'}
+      nextDisabled={!activa || (paso === 4 && formComisiones.cambios && (!formComisiones.valido || formComisiones.guardando))}
+      locked={(numero) => !activa && numero > 1}
+      // Con la cuenta vinculada, QR, alias y comisiones ya quedan decididos aunque estén apagados o en
+      // 0%: el estado lo dice, pero no aparecen como pendientes. Sólo la cuenta puede faltar.
+      done={() => activa}
+      stateLabel={(numero, status) => (status === 'active' ? undefined : estadoPaso(numero))}
+    >
+{steps}</SetupStepper>
   );
 }
