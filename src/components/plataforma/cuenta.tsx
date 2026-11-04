@@ -15,6 +15,10 @@ import type {
 export const DIAS_DE_GRACIA = 5;
 export const DESCUENTO_PLAYA_ADICIONAL = 0.3;
 
+// «Pagar con QR» el plan, a la cuenta de la plataforma. Apagado por ahora: no se ofrece en
+// «Pagar tu plan» ni se muestra la caja en Planes y cobros. El backend lo sigue soportando.
+export const PAGO_QR_DEL_PLAN = false;
+
 export const COLORES_CUENTA: Record<EstadoCuenta, string> = {
   PRUEBA: "#F5C219",
   AL_DIA: "#34D399",

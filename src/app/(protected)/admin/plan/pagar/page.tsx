@@ -8,6 +8,7 @@ import { currentUser } from '@/lib/auth';
 import { getMiPlanAction } from '@/actions/suscripciones/suscripciones.action';
 import {
   EstadoCuentaPill,
+  PAGO_QR_DEL_PLAN,
   fechaLarga,
   hoyAR,
   pesos,
@@ -265,7 +266,7 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
             debe={debe}
             email={email}
             clavePublica={plan.mercadoPagoClavePublica}
-            qr={plan.mercadoPagoQr}
+            qr={PAGO_QR_DEL_PLAN && plan.mercadoPagoQr}
           />
         ) : (
           <section className="flex min-w-0 flex-[3_1_480px] flex-col gap-3.5 rounded-[24px] border border-[#2E2A23] bg-[#1B1915] p-[26px]">

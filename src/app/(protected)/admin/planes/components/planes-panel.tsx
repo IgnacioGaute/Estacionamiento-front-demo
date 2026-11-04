@@ -33,6 +33,7 @@ import {
   EstadoCuentaPill,
   GrupoPlan,
   MEDIOS_PAGO,
+  PAGO_QR_DEL_PLAN,
   agruparPlanes,
   diaAR,
   diasEntreAR,
@@ -187,7 +188,7 @@ export function PlanesPanel() {
         </p>
       )}
 
-      <QrPlataforma />
+      {PAGO_QR_DEL_PLAN && <QrPlataforma />}
 
       <div className="grid gap-px overflow-hidden rounded-xl border border-[#26231E] bg-[#26231E] sm:grid-cols-2 xl:grid-cols-4">
         <Kpi
