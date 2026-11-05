@@ -196,6 +196,14 @@ function ResumenEstadia({
             Total {formatImporte(summary.previewBracket.price)} · ya pagó por adelantado {formatImporte(summary.totalCollectedSoFar)}
           </p>
         )}
+        {summary.descuento && (
+          <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-gm-yellow">
+            <BadgePercent className="size-3.5 shrink-0" aria-hidden />
+            <span className="min-w-0 truncate">
+              Con descuento de {formatImporte(summary.descuento.monto)}{summary.descuento.motivo ? ` · ${summary.descuento.motivo}` : ''}
+            </span>
+          </p>
+        )}
         {summary.previewBracket.usedFallback && (
           <p className="mt-2 flex items-start gap-1.5 text-xs text-gm-orange">
             <AlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden />
@@ -317,8 +325,8 @@ export function CloseTicketPanel({
   const [showDiscount, setShowDiscount] = useState(false);
   const [discountReason, setDiscountReason] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
-  // PREV: cobrar la tarifa anterior (pagó tarde y la estadía pasó de escalón).
-  const [discountMode, setDiscountMode] = useState<'AMOUNT' | 'ALL' | 'PREV'>('AMOUNT');
+  // PREV: cobrar la tarifa anterior (pagó tarde y la estadía pasó de escalón). NONE: quitar el que tiene.
+  const [discountMode, setDiscountMode] = useState<'AMOUNT' | 'ALL' | 'PREV' | 'NONE'>('AMOUNT');
   // El detalle se despliega junto al resumen sin ocultar los medios de pago.
   const [verCalculo, setVerCalculo] = useState(false);
   // Solo para calcular el vuelto en pantalla: no se manda al backend.
@@ -538,7 +546,8 @@ export function CloseTicketPanel({
   const aplicarDescuento = () => {
     if (!summary || !discountValid) return;
     startTransition(async () => {
-      const result = await discountRegistrationAction(summary.registration.id, { monto: discount,
+      // El descuento de la estadía, no uno más: reemplaza al que tenía.
+      const result = await discountRegistrationAction(summary.registration.id, { monto: discount, total: true,
         motivo: discountReason, expectedPrice: summary.previewBracket.price, expectedCollected: summary.totalCollectedSoFar });
       if (result.error || !result.summary) {
         toast.error(result.error ?? 'No se pudo aplicar el descuento.');
@@ -548,7 +557,7 @@ export function CloseTicketPanel({
       }
       setSummary(result.summary);
       resetCobro();
-      toast.success('Descuento aplicado. Confirmá el cobro o la salida.');
+      toast.success(discount === 0 ? 'Descuento quitado.' : descuentoActual ? 'Descuento actualizado. Confirmá el cobro o la salida.' : 'Descuento aplicado. Confirmá el cobro o la salida.');
     });
   };
 
@@ -617,14 +626,32 @@ export function CloseTicketPanel({
   const saldo = summary?.saldoACobrar ?? 0;
   const tarifaAnterior = summary?.tarifaAnterior ?? null;
   const motivoTarifaAnterior = tarifaAnterior ? `Se cobra la tarifa anterior (${tarifaAnterior.etiqueta}): demoró en pagar` : '';
-  const elegirDescuento = (modo: 'AMOUNT' | 'ALL' | 'PREV') => {
+  const elegirDescuento = (modo: 'AMOUNT' | 'ALL' | 'PREV' | 'NONE') => {
     setDiscountMode(modo);
     // El motivo sugerido acompaña a la tarifa anterior; si el cajero escribió otro, se respeta.
     if (modo === 'PREV' && !discountReason.trim()) setDiscountReason(motivoTarifaAnterior);
     if (modo !== 'PREV' && discountReason === motivoTarifaAnterior) setDiscountReason('');
   };
-  const discount = discountMode === 'ALL' ? saldo : discountMode === 'PREV' ? tarifaAnterior?.descuento ?? 0 : Number(discountAmount);
-  const discountValid = Number.isInteger(discount) && discount > 0 && discount <= saldo && !!discountReason.trim();
+  // Todo se expresa como el descuento total de la estadía: el que se elige reemplaza al que tiene.
+  const descuentoActual = summary?.descuento?.monto ?? 0;
+  const maxDescuento = descuentoActual + saldo;
+  const discount = discountMode === 'ALL' ? maxDescuento
+    : discountMode === 'PREV' ? descuentoActual + (tarifaAnterior?.descuento ?? 0)
+    : discountMode === 'NONE' ? 0
+    : Number(discountAmount);
+  const quedanTrasDescuento = saldo - (discount - descuentoActual);
+  const discountValid = Number.isInteger(discount) && discount >= 0 && discount <= maxDescuento && discount !== descuentoActual
+    && (discountMode !== 'AMOUNT' || discountAmount !== '') && !!discountReason.trim();
+  const abrirDescuento = () => {
+    setShowDiscount(true);
+    setPaymentMethod(null);
+    // Con un descuento ya hecho se abre ese, para corregirlo; si no, la tarifa anterior si la hay.
+    if (descuentoActual) {
+      setDiscountAmount(String(descuentoActual));
+      setDiscountReason(summary?.descuento?.motivo ?? '');
+      setDiscountMode('AMOUNT');
+    } else elegirDescuento(tarifaAnterior ? 'PREV' : 'AMOUNT');
+  };
   const mostrarMedios = !!summary && saldo > 0 && !enEspera && !pagoConSalida;
   const sugeridos = pagosSugeridos(saldo);
   const recibido = pagaCon === 'OTRO' ? (otroImporte ? Number(otroImporte) : null) : pagaCon;
@@ -696,8 +723,8 @@ export function CloseTicketPanel({
     if (!summary || pagoConSalida || enEspera) return null;
     if (saldo > 0 && showDiscount)
       return (
-        <ActionDialogPrimaryButton disabled={isPending || !discountValid} onClick={aplicarDescuento} detail={discountValid ? `${formatImporte(discount)} de descuento · quedan ${formatImporte(saldo - discount)}` : 'Indicá importe y motivo'}>
-          {isPending ? 'Aplicando…' : 'Aplicar descuento'}
+        <ActionDialogPrimaryButton disabled={isPending || !discountValid} onClick={aplicarDescuento} detail={discountValid ? `${discount ? `${formatImporte(discount)} de descuento` : 'Sin descuento'} · quedan ${formatImporte(quedanTrasDescuento)}` : 'Indicá importe y motivo'}>
+          {isPending ? 'Aplicando…' : !descuentoActual ? 'Aplicar descuento' : discount === 0 ? 'Quitar descuento' : 'Cambiar descuento'}
         </ActionDialogPrimaryButton>
       );
     if (saldo > 0) {
@@ -929,23 +956,40 @@ export function CloseTicketPanel({
 
                     {mostrarMedios && showDiscount ? (
                       <div className="space-y-3 rounded-2xl border border-border bg-gm-surface-2/50 p-3.5">
-                        <p className="flex items-center gap-2 text-sm font-semibold"><BadgePercent className="size-[18px] text-gm-yellow" aria-hidden />Descuento</p>
-                        <div className={cn('grid gap-2', tarifaAnterior ? 'grid-cols-3' : 'grid-cols-2')}>
-                          {([...(tarifaAnterior ? [{ id: 'PREV', label: 'Tarifa anterior' }] : []), { id: 'AMOUNT', label: 'Un importe' }, { id: 'ALL', label: 'Todo el saldo' }] as { id: 'AMOUNT' | 'ALL' | 'PREV'; label: string }[]).map(option =>
-                            <button key={option.id} type="button" disabled={isPending} aria-pressed={discountMode === option.id} onClick={() => elegirDescuento(option.id)} className="min-h-11 rounded-xl border border-border px-2 text-sm font-semibold leading-tight aria-pressed:border-gm-yellow/50 aria-pressed:bg-gm-yellow/10 aria-pressed:text-gm-yellow">{option.label}</button>)}
-                        </div>
+                        <p className="flex items-center gap-2 text-sm font-semibold"><BadgePercent className="size-[18px] text-gm-yellow" aria-hidden />{descuentoActual ? 'Cambiar el descuento' : 'Descuento'}</p>
+                        {descuentoActual > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Ya tiene <strong className="text-foreground">{formatImporte(descuentoActual)}</strong> de descuento{summary?.descuento?.motivo ? ` · ${summary.descuento.motivo}` : ''}. El que elijas lo reemplaza: no se suma.
+                          </p>
+                        )}
+                        {(() => {
+                          const opciones = [
+                            ...(tarifaAnterior ? [{ id: 'PREV', label: 'Tarifa anterior' }] : []),
+                            { id: 'AMOUNT', label: 'Un importe' },
+                            { id: 'ALL', label: 'Todo el saldo' },
+                            ...(descuentoActual ? [{ id: 'NONE', label: 'Quitar' }] : []),
+                          ] as { id: 'AMOUNT' | 'ALL' | 'PREV' | 'NONE'; label: string }[];
+                          return (
+                            <div className={cn('grid gap-2', opciones.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : opciones.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
+                              {opciones.map(option =>
+                                <button key={option.id} type="button" disabled={isPending} aria-pressed={discountMode === option.id} onClick={() => elegirDescuento(option.id)} className="min-h-11 rounded-xl border border-border px-2 text-sm font-semibold leading-tight aria-pressed:border-gm-yellow/50 aria-pressed:bg-gm-yellow/10 aria-pressed:text-gm-yellow">{option.label}</button>)}
+                            </div>
+                          );
+                        })()}
                         {discountMode === 'PREV' && tarifaAnterior ? (
                           <div className="flex items-center justify-between gap-3 rounded-xl border border-gm-line-strong bg-card px-3.5 py-3">
                             <div className="min-w-0">
                               <p className="text-[13px] font-semibold">Se cobra {tarifaAnterior.etiqueta}</p>
-                              <p className="text-xs text-muted-foreground">Descuento de {formatImporte(tarifaAnterior.descuento)} sobre {formatImporte(summary!.previewBracket.price)}</p>
+                              <p className="text-xs text-muted-foreground">Descuento de {formatImporte(descuentoActual + tarifaAnterior.descuento)} sobre {formatImporte(summary!.previewBracket.price + descuentoActual)}</p>
                             </div>
                             <strong className="gm-mono shrink-0 text-lg">{formatImporte(tarifaAnterior.precio)}</strong>
                           </div>
-                        ) : discountMode === 'AMOUNT' ? <CashAmountField compact id="discount-amount" label="Importe del descuento" value={discountAmount} onChange={setDiscountAmount} disabled={isPending} max={saldo} /> : <p className="text-sm text-muted-foreground">Se descuentan {formatImporte(saldo)} de saldo pendiente.</p>}
+                        ) : discountMode === 'AMOUNT' ? <CashAmountField compact id="discount-amount" label={descuentoActual ? 'Descuento total' : 'Importe del descuento'} value={discountAmount} onChange={setDiscountAmount} disabled={isPending} max={maxDescuento} />
+                          : discountMode === 'NONE' ? <p className="text-sm text-muted-foreground">Se quita el descuento: vuelve a cobrarse {formatImporte(maxDescuento)}.</p>
+                          : <p className="text-sm text-muted-foreground">Se descuenta todo lo que falta cobrar ({formatImporte(saldo)}).</p>}
                         <label htmlFor="discount-reason" className="block text-xs font-semibold">Motivo del descuento</label>
                         <input id="discount-reason" value={discountReason} onChange={e => setDiscountReason(e.target.value)} disabled={isPending} maxLength={255} placeholder="Ej.: beneficio para cliente frecuente" className="h-12 w-full rounded-xl border border-gm-line-strong bg-gm-surface-2 px-3 text-base outline-none focus:border-gm-yellow" />
-                        {discount > 0 && discount <= saldo && <p className="text-sm font-semibold">Quedan por cobrar: {formatImporte(saldo - discount)}</p>}
+                        {discountValid && <p className="text-sm font-semibold">Quedan por cobrar: {formatImporte(quedanTrasDescuento)}</p>}
                         <p className="text-xs text-muted-foreground">Después confirmás el cobro o la salida.</p>
                         <ActionDialogSecondaryButton tone="ghost" className="sm:w-full" disabled={isPending} onClick={() => { setShowDiscount(false); setDiscountReason(''); setDiscountAmount(''); }}>Volver a cobrar</ActionDialogSecondaryButton>
                       </div>
@@ -969,11 +1013,11 @@ export function CloseTicketPanel({
                             <button
                               type="button"
                               disabled={isPending}
-                              onClick={() => { setShowDiscount(true); setPaymentMethod(null); elegirDescuento(tarifaAnterior ? 'PREV' : 'AMOUNT'); }}
+                              onClick={abrirDescuento}
                               className="-my-2 -mr-1 inline-flex min-h-11 items-center gap-1.5 px-1 text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
                             >
                               <BadgePercent className="size-4" aria-hidden />
-                              Descuento
+                              {descuentoActual ? 'Cambiar descuento' : 'Descuento'}
                             </button>
                           </div>
                           <PaymentMethodChoices compact hibrido value={paymentMethod} onChange={setPaymentMethod} disabled={isPending} aliasDisponible={!!alias?.disponible} />

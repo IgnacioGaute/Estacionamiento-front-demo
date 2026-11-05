@@ -6,7 +6,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { CarFront, ChevronDown, ChevronLeft, ChevronRight, Search, Banknote, Wallet } from 'lucide-react';
+import { BadgePercent, CarFront, ChevronDown, ChevronLeft, ChevronRight, Search, Banknote, Wallet } from 'lucide-react';
 import { formatImporte } from '@/components/pricing-breakdown';
 import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { PlateChip } from '@/components/plate-chip';
@@ -356,6 +356,17 @@ export function AvisoAnticipo({ r, ahora }: { r: TicketRegistration; ahora: numb
   );
 }
 
+// La estadía ya tiene un descuento: se ve antes de abrirla, y al cobrarla se corrige ese mismo.
+export function AvisoDescuento({ r }: { r: TicketRegistration }) {
+  if (!r.descuento || r.departureTime) return null;
+  return (
+    <span className="flex w-full min-w-0 items-center gap-1.5 rounded-lg bg-gm-yellow/12 px-2 py-1 text-[11.5px] font-semibold text-gm-yellow">
+      <BadgePercent className="size-3.5 shrink-0" aria-hidden />
+      <span className="min-w-0 truncate"><strong className="font-bold">Descuento {formatImporte(r.descuento)}</strong></span>
+    </span>
+  );
+}
+
 export function VehiculoFila({ r, ahora, onSelect, resaltar }: {
   r: TicketRegistration;
   ahora: number;
@@ -394,7 +405,7 @@ export function VehiculoFila({ r, ahora, onSelect, resaltar }: {
           {pasado && <span className="sr-only">, superó el tiempo avisado</span>}
         </span>
         <span className="block truncate text-[12.5px] text-muted-foreground">{detalle}</span>
-        <span className="mt-1 block empty:hidden"><AvisoAnticipo r={r} ahora={ahora} /></span>
+        <span className="mt-1 flex flex-col gap-1 empty:hidden"><AvisoAnticipo r={r} ahora={ahora} /><AvisoDescuento r={r} /></span>
       </span>
       <ChevronRight className="size-[18px] shrink-0 text-[#6F665A]" aria-hidden />
       <LineaTramo minutos={minutos} pasado={pasado} />

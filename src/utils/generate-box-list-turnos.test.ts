@@ -39,8 +39,12 @@ test('planilla imprime los resúmenes y las alertas sin recortar textos largos',
     expect(texts.some(t => t.includes('Corte de las 00:00'))).toBe(true);
     expect(texts.some(t => t.includes('No se retiró el sueldo'))).toBe(true);
     expect(texts.some(t => t.includes('Descuento: $ 300'))).toBe(true);
+    // El descuento va en la nota del cobro, sin renglón propio, y su total al pie.
+    expect(texts.some(t => t.startsWith('Descuento - '))).toBe(false);
+    expect(texts).toContain('Descuentos del día');
     expect(texts.some(t => t.includes('Registró Luis Pérez'))).toBe(true);
-    expect(texts.some(t => t.includes('XY456ZZ'))).toBe(true);
+    // Las salidas del día (con o sin cobro) ya no se listan al final.
+    expect(texts.some(t => t.includes('Salidas del día') || t.includes('XY456ZZ'))).toBe(false);
     for (const [text, options] of draw.mock.calls) {
       if (options?.size === 8.5 && options.x === 50 && options.font) {
         expect(options.font.widthOfTextAtSize(text, 8.5)).toBeLessThanOrEqual(480);

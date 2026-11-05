@@ -23,7 +23,7 @@ import type { TicketRegistrationForDay } from '@/types/ticket-registration-for-d
 import { cuandoEntro, formatEstadia, minutosDeEstadia, tramoDe, tramoInfo, TRAMOS } from '@/utils/estadia';
 import { UNIDAD_ESTADIA_LARGA, vencimientoEstadiaLarga } from '@/utils/estadia-larga';
 import { anticipoDe, formatElapsed, isBarcodeOrigin, isOverdue, minutesSinceEntry } from '@/utils/ticket-registration.utils';
-import { AvisoAnticipo, estaAdentro, LineaTramo, NARANJA_AVISO, normalizar } from './inicio';
+import { AvisoAnticipo, AvisoDescuento, estaAdentro, LineaTramo, NARANJA_AVISO, normalizar } from './inicio';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -346,6 +346,7 @@ function TarjetaTablero({ r, minutos, pasado, ahora, onSelect }: { r: TicketRegi
       </span>
       <span className="truncate text-xs text-muted-foreground">{detalle}</span>
       <AvisoAnticipo r={r} ahora={ahora} />
+      <AvisoDescuento r={r} />
       {pasado && !conAnticipo && (
         <span className="flex min-w-0 items-center gap-1.5 text-xs font-bold text-[#F0714A]">
           <Clock3 className="size-3.5 shrink-0" aria-hidden />

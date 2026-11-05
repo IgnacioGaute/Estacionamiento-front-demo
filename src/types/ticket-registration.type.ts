@@ -27,6 +27,8 @@ export type TicketRegistration = {
     boxList: BoxList;
     updatedAt: Date;
     advancePaidAmount?: number | null;
+    // El descuento de la estadía (solo en la lista de estadías): para mostrarla con descuento.
+    descuento?: number;
     firstNameCustomer?: string | null;
     lastNameCustomer?: string | null;
     phoneCustomer?: string | null;

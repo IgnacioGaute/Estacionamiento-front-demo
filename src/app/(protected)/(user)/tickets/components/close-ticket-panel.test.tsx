@@ -73,7 +73,7 @@ test('descuento parcial: exige un importe válido y cobra el resto con el medio 
   fireEvent.change(amount, { target: { value: '300' } });
   if (process.env.TURNOS_VISUAL_QA) writeFileSync('../estacionamiento-back-demo/.tmp/salida-descuento.html', document.body.innerHTML);
   fireEvent.click(screen.getByRole('button', { name: /Aplicar descuento/ }));
-  await waitFor(() => expect(discountRegistrationAction).toHaveBeenCalledWith('reg', { monto: 300, motivo: 'Cliente frecuente', expectedPrice: 1000, expectedCollected: 0 }));
+  await waitFor(() => expect(discountRegistrationAction).toHaveBeenCalledWith('reg', { monto: 300, total: true, motivo: 'Cliente frecuente', expectedPrice: 1000, expectedCollected: 0 }));
   const cash = await screen.findByRole('button', { name: /^Efectivo Contalo/ });
   await waitFor(() => expect(cash).toBeEnabled());
   fireEvent.click(cash);
@@ -184,6 +184,28 @@ test('efectivo y QR: primero se cobra el efectivo sin la salida y después el QR
   expect(closeRegistrationAction).not.toHaveBeenCalled();
 });
 
+test('con un descuento hecho, la estadía lo muestra y el nuevo lo reemplaza en vez de sumarse', async () => {
+  jest.mocked(getCloseSummaryAction).mockResolvedValue({ ...summary(700), descuento: { monto: 300, motivo: 'Cliente frecuente' } });
+  jest.mocked(discountRegistrationAction).mockResolvedValue({ summary: { ...summary(800), descuento: { monto: 200, motivo: 'Lo corrigió el encargado' } } });
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
+  expect(await screen.findByText(/Con descuento de \$\s?300 · Cliente frecuente/)).toBeInTheDocument();
+  const button = await screen.findByRole('button', { name: 'Cambiar descuento' });
+  await waitFor(() => expect(button).toBeEnabled());
+  fireEvent.click(button);
+  // Se abre el que tiene, para corregirlo.
+  const total = await screen.findByLabelText('Descuento total');
+  expect(total).toHaveValue(300);
+  expect(screen.getByLabelText('Motivo del descuento')).toHaveValue('Cliente frecuente');
+  expect(screen.getByText(/lo reemplaza: no se suma/)).toBeInTheDocument();
+  // Sin cambiar nada no hay qué guardar.
+  expect(screen.getByRole('button', { name: /Cambiar descuento/ })).toBeDisabled();
+  fireEvent.change(total, { target: { value: '200' } });
+  fireEvent.change(screen.getByLabelText('Motivo del descuento'), { target: { value: 'Lo corrigió el encargado' } });
+  expect(screen.getByText(/Quedan por cobrar: \$\s?800/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /Cambiar descuento/ }));
+  await waitFor(() => expect(discountRegistrationAction).toHaveBeenCalledWith('reg', { monto: 200, total: true, motivo: 'Lo corrigió el encargado', expectedPrice: 700, expectedCollected: 0 }));
+});
+
 test('tarifa anterior: si pagó tarde, el descuento deja el precio del escalón anterior con un toque', async () => {
   jest.mocked(getCloseSummaryAction).mockResolvedValue({ ...summary(7000), tarifaAnterior: { precio: 3500, etiqueta: 'Hasta 1 hora', hastaMinutos: 70, descuento: 3500 } });
   jest.mocked(discountRegistrationAction).mockResolvedValue({ summary: summary(3500) });
@@ -195,5 +217,5 @@ test('tarifa anterior: si pagó tarde, el descuento deja el precio del escalón 
   expect(screen.getByText('Se cobra Hasta 1 hora')).toBeInTheDocument();
   expect(screen.getByLabelText('Motivo del descuento')).toHaveValue('Se cobra la tarifa anterior (Hasta 1 hora): demoró en pagar');
   fireEvent.click(screen.getByRole('button', { name: /Aplicar descuento/ }));
-  await waitFor(() => expect(discountRegistrationAction).toHaveBeenCalledWith('reg', { monto: 3500, motivo: 'Se cobra la tarifa anterior (Hasta 1 hora): demoró en pagar', expectedPrice: 7000, expectedCollected: 0 }));
+  await waitFor(() => expect(discountRegistrationAction).toHaveBeenCalledWith('reg', { monto: 3500, total: true, motivo: 'Se cobra la tarifa anterior (Hasta 1 hora): demoró en pagar', expectedPrice: 7000, expectedCollected: 0 }));
 });

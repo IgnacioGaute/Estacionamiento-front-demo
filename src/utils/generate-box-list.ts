@@ -1098,6 +1098,17 @@ export default async function generateBoxList(boxList: BoxList, userName: string
     drawSubtotalsSummary()
     drawTotalsESNRow(totalsFromSubtotals.entradas, totalsFromSubtotals.salidas, netoFromSubtotals)
 
+    // Lo que se dejó de cobrar: aparte de los totales, porque no es plata que entró ni que salió.
+    const descuentosDelDia = (boxList.ticketMovements ?? []).reduce((sum, m) => sum + (m.tipo === 'DESCUENTO' || m.tipo === 'CORTESIA' ? m.monto : 0), 0)
+    if (descuentosDelDia > 0) {
+      ensureSpace(30, false)
+      page.drawText('Descuentos del día', { x: marginLeft, y: yPosition, size: 8.5, font: fontBold, color: mutedText2 })
+      drawRightText(`$ ${formatNumber(descuentosDelDia)}`, resumenNetoRightX, yPosition, fontBold, 9)
+      yPosition -= 14
+      page.drawText('No suman a las entradas ni a las salidas: es lo que no se cobró.', { x: marginLeft, y: yPosition, size: 8, font, color: mutedColor })
+      yPosition -= 24
+    }
+
     if (boxList.resumenCaja) {
       const resumen = boxList.resumenCaja
       const medios = resumen.medios.filter(m => m.porcentaje !== 0 && (m.comision !== 0 || (m.pendiente ?? 0) > 0))
@@ -1130,18 +1141,8 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       }
     }
 
-    // Las salidas también pueden no tener cobro; conservan su propio responsable.
-    if (boxList.salidasDelDia?.length) {
-      yPosition -= 14;
-      drawSectionHeaderRow('Salidas del día');
-      for (const salida of boxList.salidasDelDia) {
-        const hora = new Date(salida.hora).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' });
-        const notes = noteLines([`${hora} - ${salida.identificacion}`, salida.operador ? `Registró ${salida.operador}` : null]);
-        ensureSpace(18 + notes.length * 12, false);
-        drawNotes(notes, yPosition + 12);
-        yPosition -= notes.length * 12 + 8;
-      }
-    }
+    // Las salidas del día no van en la planilla: es de plata, y quién registró cada cobro ya figura
+    // en su renglón. El backend las sigue mandando (`salidasDelDia`) por si se las quiere mostrar.
 
     // El mismo resumen del historial queda al pie de la planilla del operador.
     const summaryMoney = (n: number | null | undefined) => n == null ? 'Sin registro' : `$ ${n.toLocaleString('es-AR')}`
