@@ -44,6 +44,13 @@ test('al activarlos recién, cada paso queda listo cuando se lo pasa, no antes',
   expect(screen.getByRole('button', { name: 'Paso 3: Cajas · Pendiente' })).toBeInTheDocument();
 });
 
+test('un refresco con los mismos datos no apaga lo que se está activando', () => {
+  const { rerender } = render(<OperationSettings shiftsEnabled={false} sueldosPorUsuario={[]} />);
+  fireEvent.click(screen.getByRole('switch', { name: 'Activar turnos de caja' }));
+  rerender(<OperationSettings shiftsEnabled={false} sueldosPorUsuario={[]} />);
+  expect(screen.getByRole('switch', { name: 'Activar turnos de caja' })).toBeChecked();
+});
+
 test('si falla el guardado no avanza de paso', async () => {
   jest.mocked(updateTicketScheduleAction).mockResolvedValue({ error: { message: 'Prueba', code: 'TEST' } });
   render(<OperationSettings shiftsEnabled={false} />);

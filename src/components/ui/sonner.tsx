@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { Toaster as Sonner } from 'sonner';
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
@@ -62,15 +63,20 @@ const ICONOS = {
   ),
 };
 
+// En la configuración inicial el pie fijo tiene los botones del recorrido: los avisos van por encima
+// para no tapar «Continuar» mientras se ven.
+const PIE_ASISTENTE = 96;
+
 const Toaster = ({ ...props }: ToasterProps) => {
+  const enAsistente = usePathname()?.startsWith('/configuracion-inicial') ?? false;
   return (
     <Sonner
       theme="dark"
       className="toaster group"
       position="bottom-right"
-      offset={32}
+      offset={enAsistente ? { top: 32, right: 32, left: 32, bottom: 32 + PIE_ASISTENTE } : 32}
       // El margen de abajo suma la zona segura del iPhone para no quedar bajo la barra.
-      mobileOffset={{ top: 16, right: 16, left: 16, bottom: 'calc(16px + env(safe-area-inset-bottom))' }}
+      mobileOffset={{ top: 16, right: 16, left: 16, bottom: `calc(${16 + (enAsistente ? PIE_ASISTENTE + 40 : 0)}px + env(safe-area-inset-bottom))` }}
       // Se descarta arrastrando hacia abajo, que es el gesto natural con el pulgar.
       swipeDirections={['bottom']}
       expand

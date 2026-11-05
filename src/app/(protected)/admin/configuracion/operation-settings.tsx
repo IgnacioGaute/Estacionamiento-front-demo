@@ -37,12 +37,15 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
   useEffect(() => { setVistos(previos => previos.includes(step) ? previos : [...previos, step]); }, [step]);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  // Lo guardado vuelve a mandar solo cuando cambia de verdad: un refresco de la página trae la misma lista
+  // de sueldos como otro arreglo, y eso no puede borrar lo que se está tocando (por ejemplo, activar turnos).
+  const sueldosGuardados = JSON.stringify(props.sueldosPorUsuario ?? []);
   useEffect(() => {
     setShifts(props.shiftsEnabled); setSavedShifts(props.shiftsEnabled);
     setMultiple(props.multipleShiftsEnabled ?? false); setSavedMultiple(props.multipleShiftsEnabled ?? false);
     setSalaryEnabled(props.sueldoAutomatico ?? false);
-    setSalaries(Object.fromEntries((props.sueldosPorUsuario ?? []).map(s => [s.usuarioId, String(s.importe)])));
-  }, [props.shiftsEnabled, props.multipleShiftsEnabled, props.sueldoAutomatico, props.sueldosPorUsuario]);
+    setSalaries(Object.fromEntries((JSON.parse(sueldosGuardados) as { usuarioId: string; importe: number }[]).map(s => [s.usuarioId, String(s.importe)])));
+  }, [props.shiftsEnabled, props.multipleShiftsEnabled, props.sueldoAutomatico, sueldosGuardados]);
   const loadSalaryUsers = async () => {
     setSalaryLoading(true);
     const result = await getCashConfigurationAction();
