@@ -54,17 +54,22 @@ import { estadiasLargas, useConfirmadas } from './estadias-largas';
 import { SeFueAntes } from './se-fue-antes';
 import type { EntradaParecida } from './salida-sin-entrada-dialog';
 import { useTurnoPropio } from './use-turno-propio';
+import { useCurrentRole } from '@/hooks/auth/use-current-role';
 import { TurnoBar } from './turno-bar';
 
-// Con turnos activos el efectivo exige turno propio (lo controla el backend). Se avisa antes de
-// elegir el medio, con la forma de abrirlo ahí mismo; transferencia y QR no dependen del turno.
-function AvisoSinTurno() {
+// Con turnos activos, el operador no registra salidas ni cobros sin su turno abierto, con ningún
+// medio (lo decide el backend: TURNO_REQUERIDO). Administración puede: para ella es solo un aviso.
+function AvisoSinTurno({ administrador }: { administrador: boolean }) {
   return (
     <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-2xl border border-gm-aviso/40 bg-gm-aviso/10 p-3">
       <Wallet className="size-4 shrink-0 self-start text-gm-aviso max-sm:mt-0.5" aria-hidden />
       <div className="min-w-0 flex-1 basis-48">
         <p className="text-[13px] font-bold text-gm-aviso">No tenés un turno abierto</p>
-        <p className="mt-0.5 text-[12.5px] leading-snug text-[#D9D1C3]">Para cobrar en efectivo, abrilo primero. Con transferencia o QR podés cobrar igual.</p>
+        <p className="mt-0.5 text-[12.5px] leading-snug text-[#D9D1C3]">
+          {administrador
+            ? 'Como administrador podés registrar la salida sin turno con transferencia, QR o sin cobro. Para cobrar en efectivo, abrí tu turno: el efectivo entra a la caja de un turno.'
+            : 'Abrí tu turno para registrar salidas y cobros.'}
+        </p>
       </div>
       <TurnoBar variant="primary" />
     </div>
@@ -342,7 +347,11 @@ export function CloseTicketPanel({
   const [gratuita, setGratuita] = useState<SalidaGratuitaSummary | null>(null);
   const { cobroHabilitado, shiftsEnabled } = useTenant();
   // Solo se consulta con el panel abierto y turnos activos; false = sabemos que no hay turno propio.
+  // Mientras carga o si falla no se bloquea nada: el backend igual lo controla.
   const sinTurno = useTurnoPropio(open && shiftsEnabled) === false;
+  const rol = useCurrentRole();
+  const esAdmin = rol === 'ADMIN' || rol === 'SUPER_ADMIN';
+  const bloqueadoSinTurno = sinTurno && !esAdmin;
   // En el celular el foco automático abría el teclado y tapaba la lista de «Sin confirmar» que el
   // operador venía a tocar (o el botón de escanear). En la computadora se sigue escribiendo directo.
   const [enfocarBusqueda] = useState(() => typeof window === 'undefined' || !window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -751,6 +760,13 @@ export function CloseTicketPanel({
 
   const botonPrincipal = (() => {
     if (!summary || pagoConSalida || enEspera) return null;
+    // Operador sin turno: ninguna salida ni cobro (el aviso de arriba tiene «Abrir mi turno»).
+    if (bloqueadoSinTurno)
+      return (
+        <ActionDialogPrimaryButton disabled detail="Abrí tu turno primero">
+          {saldo > 0 ? 'Cobrar y registrar salida' : 'Registrar salida'}
+        </ActionDialogPrimaryButton>
+      );
     if (saldo > 0 && showDiscount)
       return (
         <ActionDialogPrimaryButton disabled={isPending || !discountValid} onClick={aplicarDescuento} detail={discountValid ? `${discount ? `${formatImporte(discount)} de descuento` : 'Sin descuento'} · quedan ${formatImporte(quedanTrasDescuento)}` : 'Indicá importe y motivo'}>
@@ -949,7 +965,7 @@ export function CloseTicketPanel({
                     onOpenChange(false);
                     onSuccess?.();
                   } : undefined}
-                  onSeFueAntes={enEspera || pagoConSalida ? undefined : () => setSeFueAntesAbierto(true)}
+                  onSeFueAntes={enEspera || pagoConSalida || bloqueadoSinTurno ? undefined : () => setSeFueAntesAbierto(true)}
                 />
                 {verCalculo && <Calculo summary={summary} />}
               </div>
@@ -984,7 +1000,10 @@ export function CloseTicketPanel({
                       />
                     )}
 
-                    {mostrarMedios && showDiscount ? (
+                    {/* Arriba de todo el cobro: también cuando no queda saldo y la salida es sin cobro. */}
+                    {sinTurno && !enEspera && !pagoConSalida && <AvisoSinTurno administrador={esAdmin} />}
+
+                    {mostrarMedios && showDiscount && !bloqueadoSinTurno ? (
                       <div className="space-y-3 rounded-2xl border border-border bg-gm-surface-2/50 p-3.5">
                         <p className="flex items-center gap-2 text-sm font-semibold"><BadgePercent className="size-[18px] text-gm-yellow" aria-hidden />{descuentoActual ? 'Cambiar el descuento' : 'Descuento'}</p>
                         {descuentoActual > 0 && (
@@ -1023,9 +1042,8 @@ export function CloseTicketPanel({
                         <p className="text-xs text-muted-foreground">Después confirmás el cobro o la salida.</p>
                         <ActionDialogSecondaryButton tone="ghost" className="sm:w-full" disabled={isPending} onClick={() => { setShowDiscount(false); setDiscountReason(''); setDiscountAmount(''); }}>Volver a cobrar</ActionDialogSecondaryButton>
                       </div>
-                    ) : mostrarMedios ? (
+                    ) : mostrarMedios && !bloqueadoSinTurno ? (
                       <>
-                        {sinTurno && <AvisoSinTurno />}
                         <fieldset className="min-w-0 space-y-2">
                           <legend className="sr-only">Medio de pago</legend>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

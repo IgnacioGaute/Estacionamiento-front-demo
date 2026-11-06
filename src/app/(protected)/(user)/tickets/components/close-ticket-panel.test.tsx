@@ -17,6 +17,8 @@ const mockTenant = { cobroHabilitado: true, shiftsEnabled: false };
 jest.mock('@/components/tenant-provider', () => ({ useTenant: () => mockTenant }));
 jest.mock('@/actions/turnos/cash-context.action', () => ({ getCashContextAction: jest.fn() }));
 jest.mock('./turno-bar', () => ({ TurnoBar: () => <button type="button">Abrir mi turno</button> }));
+const mockRol = { actual: 'USER' as string | undefined };
+jest.mock('@/hooks/auth/use-current-role', () => ({ useCurrentRole: () => mockRol.actual }));
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn() }));
 jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn() }));
@@ -41,6 +43,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   localStorage.clear();
   mockTenant.shiftsEnabled = false;
+  mockRol.actual = 'USER';
   jest.mocked(getCloseSummaryAction).mockResolvedValue(summary());
   jest.mocked(closeRegistrationAction).mockResolvedValue({ success: 'OK', registrationId: 'reg' });
 });
@@ -52,17 +55,36 @@ async function openDiscount() {
   expect(screen.queryByText(/Cortesía/)).not.toBeInTheDocument();
   fireEvent.change(await screen.findByLabelText('Motivo del descuento'), { target: { value: 'Cliente frecuente' } });
 }
-test('con turnos activos y sin turno propio avisa antes de elegir el medio, y deja de avisar al abrirlo', async () => {
+test('operador sin turno con turnos activos: no ve medios ni puede registrar la salida hasta abrirlo', async () => {
   mockTenant.shiftsEnabled = true;
   jest.mocked(getCashContextAction).mockResolvedValue({ context: { active: null, pending: null, efectivoDisponible: 0, openTurnos: [] } });
   render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
   expect(await screen.findByText('No tenés un turno abierto')).toBeInTheDocument();
-  expect(screen.getByText(/Con transferencia o QR podés cobrar igual/)).toBeInTheDocument();
+  expect(screen.getByText('Abrí tu turno para registrar salidas y cobros.')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Abrir mi turno' })).toBeInTheDocument();
-  // TurnoBar avisa con este evento al abrir el turno; el aviso se va.
+  // Ningún medio de pago, descuento ni «Se fue antes»; el botón principal queda deshabilitado.
+  expect(screen.queryByRole('button', { name: /^Efectivo Contalo/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Descuento' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Se fue antes/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Cobrar y registrar salida/ })).toBeDisabled();
+  expect(closeRegistrationAction).not.toHaveBeenCalled();
+  // TurnoBar avisa con este evento al abrir el turno: vuelven los medios.
   jest.mocked(getCashContextAction).mockResolvedValue({ context: { active: { id: 't' } as never, pending: null, efectivoDisponible: 0, openTurnos: [] } });
   window.dispatchEvent(new Event('parking-shift-changed'));
   await waitFor(() => expect(screen.queryByText('No tenés un turno abierto')).not.toBeInTheDocument());
+  expect(await screen.findByRole('button', { name: /^Efectivo Contalo/ })).toBeInTheDocument();
+});
+test.each(['ADMIN', 'SUPER_ADMIN'])('%s sin turno ve el aviso pero puede registrar la salida', async (rol) => {
+  mockTenant.shiftsEnabled = true;
+  mockRol.actual = rol;
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: { active: null, pending: null, efectivoDisponible: 0, openTurnos: [] } });
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
+  expect(await screen.findByText(/Como administrador podés registrar la salida sin turno/)).toBeInTheDocument();
+  const transferencia = await screen.findByRole('button', { name: /^Transferencia/ });
+  await waitFor(() => expect(transferencia).toBeEnabled());
+  fireEvent.click(transferencia);
+  fireEvent.click(screen.getByRole('button', { name: /Cobrar y registrar salida/ }));
+  await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({ closeType: 'PAYMENT', metodo: 'TRANSFER' })));
 });
 test('sin turnos activos no consulta la caja ni avisa', async () => {
   render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);

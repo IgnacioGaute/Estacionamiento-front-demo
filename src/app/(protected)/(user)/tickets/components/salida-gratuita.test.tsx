@@ -12,6 +12,7 @@ jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ cobroHabi
 // El panel avisa si no hay turno propio: la consulta de caja importa la sesión del servidor.
 jest.mock('@/actions/turnos/cash-context.action', () => ({ getCashContextAction: jest.fn() }));
 jest.mock('./turno-bar', () => ({ TurnoBar: () => null }));
+jest.mock('@/hooks/auth/use-current-role', () => ({ useCurrentRole: () => 'USER' }));
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn().mockResolvedValue([]) }));
 jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn() }));

@@ -60,9 +60,12 @@ El conteo es ciego: «¿Cuánto efectivo contaste?» empieza vacío, la única o
 efectivo» y el esperado («Esperado por el sistema») y la diferencia aparecen recién con el importe
 cargado. Antes el primer atajo era «Conté todo · $esperado» y el camino corto era no contar. En Mi
 turno el operador tampoco ve el esperado; administración sí (supervisa y registra retiros).
-Con turnos activos el backend rechaza el efectivo sin turno propio: Cobrar salida lo avisa arriba
-de los medios (`useTurnoPropio`, mismo evento `parking-shift-changed` que TurnoBar) con «Abrir mi
-turno» ahí mismo. No bloquea: si la consulta falla o la playa nunca tuvo turnos decide el backend.
+Con turnos activos el operador no registra salidas ni cobros sin su turno abierto, con ningún medio
+(backend: `exigirTurnoParaSalida`, error `TURNO_REQUERIDO`). Cobrar salida lo sabe con
+`useTurnoPropio` (mismo evento `parking-shift-changed` que TurnoBar): al operador le oculta medios,
+descuento, anticipo y «Se fue antes», deshabilita el botón principal y ofrece «Abrir mi turno».
+ADMIN y SUPER_ADMIN ven el aviso pero pueden seguir (en efectivo igual necesitan turno). Mientras la
+consulta carga o si falla no se bloquea: decide el backend.
 Cash is not revenue: BoxList.totalPrice es efectivo físico neto, no ingresos ni fondos de traspaso.
 
 Las tarjetas de vehículos por hora y estadías largas muestran el tipo con ícono y nombre. `CardTicket` comparte el catálogo de tipos mediante `VehicleTypeLabelsContext`; las etiquetas incluyen tipos desactivados y usan el código como respaldo si el catálogo no está disponible. El color de estadía y los avisos conservan su significado.
