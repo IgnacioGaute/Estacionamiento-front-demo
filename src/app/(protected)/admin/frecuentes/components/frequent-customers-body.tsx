@@ -17,7 +17,7 @@ import { PlateHistoryDialog } from './plate-history-dialog';
 import { TariffSelect } from '../../tarifas/tariff-select';
 import { AppDatePicker } from '@/components/app-date-picker';
 import {
-  CabeceraTabla, ChapaVehiculo, ChipFiltro, EtiquetaTipo, Permanencia, PieTabla, TarjetaResumen, tarjetaPlanilla, tdPlanilla, thPlanilla,
+  CabeceraTabla, ChapaVehiculo, ChipFiltro, EtiquetaTipo, Permanencia, PieTabla, tarjetaPlanilla, tdPlanilla, thPlanilla,
 } from '@/components/planilla/planilla-ui';
 
 const TOUR_STEPS: PageTourStep[] = [
@@ -117,10 +117,12 @@ export function FrequentCustomersBody({ initialCustomers, initialTotal }: { init
     <PageHeader breadcrumb={['Estacionamiento', 'Administración', 'Frecuentes']} title="Clientes frecuentes"
       description="Quiénes vuelven, sus contactos y su historial de visitas." actions={<PageTour steps={TOUR_STEPS} />} />
 
-    <section aria-label="Resumen" className="grid grid-cols-2 gap-3 lg:grid-cols-3 [&>*:first-child]:col-span-2 lg:[&>*:first-child]:col-span-1">
-      <TarjetaResumen destacada etiqueta="Clientes" valor={total.toLocaleString('es-AR')} detalle="con los filtros aplicados" />
-      <TarjetaResumen etiqueta="En esta página" valor={customers.length} detalle={total ? `resultados ${page * POR_PAGINA + 1} a ${page * POR_PAGINA + customers.length}` : 'sin resultados'} />
-      <TarjetaResumen etiqueta="Con teléfono" valor={contactCount} detalle="de los clientes de esta página" />
+    {/* Una línea: «En esta página» y «Con teléfono (de esta página)» eran la paginación vestida de
+        indicador. */}
+    <section aria-label="Resumen" className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-muted-foreground">
+      <span className="font-semibold text-foreground">{total.toLocaleString('es-AR')} {total === 1 ? 'cliente' : 'clientes'}</span>
+      <span>con los filtros aplicados</span>
+      {customers.length > 0 && <><span aria-hidden>·</span><span>{contactCount} de {customers.length} en esta página con teléfono</span></>}
     </section>
 
     <form data-tour="frecuentes-filtros" onSubmit={event => { event.preventDefault(); load(draft); }} className={cn(tarjetaPlanilla, 'flex flex-col gap-3 p-3.5')}>

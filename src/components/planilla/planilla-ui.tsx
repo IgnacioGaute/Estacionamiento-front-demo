@@ -11,27 +11,31 @@ import { cn } from '@/lib/utils';
 import { TRAMOS, tramoInfo, formatEstadia } from '@/utils/estadia';
 import { Segmento } from '@/components/ui/segmento';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PlateChip } from '@/components/plate-chip';
 
 export const tarjetaPlanilla = 'rounded-[20px] border border-gm-line bg-card';
 export const thPlanilla = 'px-3 py-3 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground first:pl-[18px] last:pr-[18px]';
 export const tdPlanilla = 'px-3 py-3 align-middle first:pl-[18px] last:pr-[18px]';
 
+// La destacada ya no va rellena de amarillo: ese relleno es de las acciones principales y la
+// tarjeta competía con el botón de la pantalla. El número amarillo y el borde la distinguen.
 export function TarjetaResumen({ etiqueta, valor, detalle, destacada = false }: { etiqueta: string; valor: ReactNode; detalle?: string; destacada?: boolean }) {
   return (
-    <div className={cn('flex flex-col gap-1.5 rounded-[18px] px-[18px] py-4', destacada ? 'bg-gm-yellow text-gm-ink' : 'border border-gm-line bg-card')}>
-      <span className={cn('text-xs font-bold uppercase tracking-[0.12em]', destacada ? 'text-gm-ink/75' : 'text-muted-foreground')}>{etiqueta}</span>
-      <span className="gm-display text-[40px] font-semibold leading-none tabular-nums sm:text-[44px]">{valor}</span>
-      {detalle && <span className={cn('text-[12.5px]', destacada ? 'font-semibold text-gm-ink/75' : 'text-muted-foreground')}>{detalle}</span>}
+    <div className={cn('flex flex-col gap-1.5 rounded-[18px] border px-[18px] py-4', destacada ? 'border-gm-yellow/40 bg-gm-yellow/[0.06]' : 'border-gm-line bg-card')}>
+      <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{etiqueta}</span>
+      <span className={cn('gm-display text-[40px] font-semibold leading-none tabular-nums sm:text-[44px]', destacada && 'text-gm-yellow')}>{valor}</span>
+      {detalle && <span className="text-[12.5px] text-muted-foreground">{detalle}</span>}
     </div>
   );
 }
 
-// Patente como chapa clara; una tarjeta física o un registro sin patente, con su distintivo oscuro.
+// Patente: la misma chapa Mercosur de Entradas y salidas (antes acá era una chapa crema distinta).
+// Una tarjeta física o un registro sin patente, con su distintivo oscuro.
 export function ChapaVehiculo({ texto, tarjeta = false, className }: { texto: string; tarjeta?: boolean; className?: string }) {
+  // Solo si parece una patente (tiene números): un registro sin patente trae el apellido.
+  if (!tarjeta && /\d/.test(texto)) return <PlateChip plate={texto} size="xs" className={className} />;
   return (
-    <span className={cn('gm-mono inline-flex h-[30px] shrink-0 items-center whitespace-nowrap px-2.5 font-bold',
-      tarjeta ? 'rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 text-[13.5px] tracking-[0.04em] text-foreground'
-        : 'rounded-[6px] border-2 border-gm-ink bg-foreground text-[14px] uppercase tracking-[0.08em] text-gm-ink', className)}>
+    <span className={cn('gm-mono inline-flex h-[30px] shrink-0 items-center whitespace-nowrap rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 px-2.5 text-[13.5px] font-bold tracking-[0.04em] text-foreground', className)}>
       {texto}
     </span>
   );

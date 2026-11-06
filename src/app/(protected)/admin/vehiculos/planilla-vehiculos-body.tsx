@@ -228,7 +228,13 @@ export function PlanillaVehiculosBody() {
         {isPending && !datos ? <div className="p-6"><DataLoading label="Cargando la planilla…" /></div> : !filas.length ? (
           <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
             <Inbox className="size-8 text-muted-foreground" aria-hidden />
-            <p className="text-sm text-muted-foreground">No hay movimientos con estos filtros.</p>
+            {/* Con autos adentro, «No hay movimientos» sola contradecía la tarjeta de arriba. */}
+            <p className="text-sm text-muted-foreground">{presentes ? 'No hay vehículos adentro ahora.' : `No hubo ${filtros.estado === 'ENTRADAS' ? 'entradas' : filtros.estado === 'SALIDAS' ? 'salidas' : 'movimientos'} ${esHoy ? 'hoy' : 'en ese período'} con estos filtros.`}</p>
+            {!presentes && (resumen?.presentes ?? 0) > 0 && (
+              <Button type="button" variant="outline" className="mt-1 h-11 rounded-xl border-gm-line-strong" onClick={() => cambiar({ estado: 'PRESENTES' })}>
+                Ver {resumen!.presentes === 1 ? 'el que está' : `los ${resumen!.presentes} que están`} adentro
+              </Button>
+            )}
           </div>
         ) : (
           <div className={cn('transition-opacity', isPending && 'opacity-50')}>
