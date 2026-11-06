@@ -96,8 +96,8 @@ export default async function DashboardPage({
     return (
       <div className="gm-noise container mx-auto px-4 py-4 sm:p-6">
         <PageHeader
-          breadcrumb={['Estacionamiento', 'Administración', 'Dashboard']}
-          title="Dashboard"
+          breadcrumb={['Estacionamiento', 'Administración', 'Panel']}
+          title="Panel"
           description="Playa en modalidad gratuita: entradas y salidas de vehículos, sin importes."
           className="mb-6"
           actions={<PageTour steps={TOUR_STEPS.filter((s) => s.key === 'hourly-activity')} />}
@@ -135,8 +135,8 @@ export default async function DashboardPage({
   return (
     <div className="gm-noise container mx-auto px-4 py-4 sm:p-6">
       <PageHeader
-        breadcrumb={['Estacionamiento', 'Administración', 'Dashboard']}
-        title="Dashboard"
+        breadcrumb={['Estacionamiento', 'Administración', 'Panel']}
+        title="Panel"
         className="mb-6"
         actions={<PageTour steps={TOUR_STEPS} />}
       />

@@ -1,16 +1,14 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { FileText, RefreshCw, Wallet } from 'lucide-react';
+import { RefreshCw, Wallet } from 'lucide-react';
 import { DataLoading } from '@/components/ui/data-loading';
 import { getCashContextAction } from '@/actions/turnos/cash-context.action';
 import { CashContext } from '@/types/turno.type';
 import { Button } from '@/components/ui/button';
-import { BoxListDialog } from '@/components/box-list-dialog';
 import { Cifra, Etiqueta, Iniciales, money, Pill } from '@/components/turno-ui';
 import { TurnoBar, CashMovementForm } from '@/app/(protected)/(user)/tickets/components/turno-bar';
 import { TurnosHistorialPanel } from './turnos-historial-panel';
 export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean }) {
-  const [open, setOpen] = useState(false);
   const [revision, setRevision] = useState(0);
   const [context, setContext] = useState<CashContext | null>(null);
   const [error, setError] = useState('');
@@ -41,7 +39,7 @@ export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div><h2 className="text-xl font-bold tracking-tight">Cajas y turnos abiertos</h2><p className="mt-1 text-sm text-muted-foreground">Podés cerrar el turno de cualquier usuario con un motivo. El último operador cuenta y cierra su caja.</p></div>
         <div className="flex flex-wrap gap-2">
-          <Button data-tour="caja-planilla" variant="outline" size="sm" className="rounded-xl" onClick={() => setOpen(true)}><FileText className="size-4" />Planilla diaria de caja</Button>
+          {/* «Planilla diaria» ya está en el encabezado de Caja: el segundo botón abría lo mismo. */}
           <Button variant="outline" size="sm" className="rounded-xl" onClick={update} disabled={loading}><RefreshCw className={'size-4 ' + (loading ? 'animate-spin' : '')} aria-hidden />Actualizar</Button>
         </div>
       </div>
@@ -89,7 +87,6 @@ export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean
           </article>;
         })}</div>
       </>}
-      <BoxListDialog open={open} setOpen={setOpen} />
     </section>
 
     <div id="historial" className="scroll-mt-6"><TurnosHistorialPanel revision={revision} /></div>

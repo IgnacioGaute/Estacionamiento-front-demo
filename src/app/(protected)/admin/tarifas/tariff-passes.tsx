@@ -28,7 +28,7 @@ export function TariffPasses({ prices, vehicles, enConfiguracionInicial = false 
     {!enConfiguracionInicial && <div><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pases</span><h2 className="mt-1 text-xl font-semibold">Precios por día, semana o mes</h2><p className="mt-2 text-sm text-muted-foreground">Elegí el vehículo para consultar o editar sus pases. El precio por unidad se multiplica por la cantidad contratada.</p></div>}
     {codes.length ? <>
       <div className="space-y-2 rounded-xl border bg-background/40 p-3 sm:p-4"><p className="text-xs font-medium text-muted-foreground">Tipo de vehículo</p><VehicleTariffTabs vehicles={tabs} value={vehicle} onChange={setSelected} panelId={panelId} label="Tipo de vehículo de los pases" /></div>
-      <div id={panelId} role="tabpanel" aria-labelledby={panelId + '-tab-' + vehicle} tabIndex={0} className="space-y-4 outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50">
+      <div id={panelId} role="region" aria-label={'Pases de ' + name} tabIndex={0} className="space-y-4 outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-gradient-to-r from-white/[0.07] to-transparent p-4">
           <div className="flex items-center gap-3"><CalendarDays className="size-5 shrink-0 text-neutral-300" aria-hidden="true" /><div><h3 className="font-semibold">Pases de {name}</h3><p className="mt-1 text-xs text-muted-foreground">Día · Semana · Mes</p></div></div>
           {canCreate && <CreateTicketPriceDialog key={vehicle} defaultVehicleType={vehicle} />}

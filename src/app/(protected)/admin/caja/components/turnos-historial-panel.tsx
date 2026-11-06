@@ -22,6 +22,13 @@ const PAGE_SIZE = 10;
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const date = (s: string) => dayjs(s).tz(TZ).format('DD/MM/YY · HH:mm');
 const hora = (s: string) => dayjs(s).tz(TZ).format('HH:mm');
+// Si el turno cruza de día se muestran las fechas: un corte diario se leía «00:00 – 00:00», como si
+// hubiera durado cero.
+const rango = (desde: string, hasta?: string | null) => {
+  if (!hasta) return hora(desde) + ' – s/f';
+  const mismoDia = dayjs(desde).tz(TZ).format('YYYY-MM-DD') === dayjs(hasta).tz(TZ).format('YYYY-MM-DD');
+  return mismoDia ? `${hora(desde)} – ${hora(hasta)}` : `${dayjs(desde).tz(TZ).format('DD/MM HH:mm')} → ${dayjs(hasta).tz(TZ).format('DD/MM HH:mm')}`;
+};
 const operator = (user: Turno['usuarioCierre']) => user ? `${user.firstName} ${user.lastName}`.trim() : 'Operador no disponible';
 type Period = 'today' | 'week' | 'month' | 'all';
 const periods: { value: Period; label: string }[] = [
@@ -119,9 +126,9 @@ function ShiftCard({ turno }: { turno: Turno }) {
           <Pill tono={tono}>{status}</Pill>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          {turno.caja?.nombre ?? 'Caja del esquema anterior'} · <span className="gm-mono">{hora(turno.fechaApertura)} – {turno.fechaCierre ? hora(turno.fechaCierre) : 's/f'}</span>
+          {turno.caja?.nombre ?? 'Caja del esquema anterior'} · <span className="gm-mono">{rango(turno.fechaApertura, turno.fechaCierre)}</span>
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">{individual ? (turno.cierreAutomatico ? 'La jornada continúa en la siguiente planilla.' : 'La caja sigue abierta con otros operadores.') : <>Contó <span className="font-semibold text-foreground tabular-nums">{turno.efectivoContado == null ? 'sin registro' : money(turno.efectivoContado)}</span> · Dejó <span className="font-semibold text-foreground tabular-nums">{turno.efectivoParaSiguiente == null ? 'sin registro' : money(turno.efectivoParaSiguiente)}</span></>}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{individual ? (turno.cierreAutomatico ? <>La jornada continúa en la siguiente planilla.{turno.resumen && <> · Cobró <span className="font-semibold text-foreground tabular-nums">{money(turno.resumen.efectivoCobrado)}</span> en efectivo</>}</> : 'La caja sigue abierta con otros operadores.') : <>Contó <span className="font-semibold text-foreground tabular-nums">{turno.efectivoContado == null ? 'sin registro' : money(turno.efectivoContado)}</span> · Dejó <span className="font-semibold text-foreground tabular-nums">{turno.efectivoParaSiguiente == null ? 'sin registro' : money(turno.efectivoParaSiguiente)}</span></>}</p>
       </div>
       <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
     </summary>

@@ -7,7 +7,7 @@ export const MONO_STAGE =
 export const MONO_LABEL = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
 
 export const MONO_BADGE =
-  'inline-flex items-center rounded-full border border-gm-yellow/30 bg-gm-yellow/15 px-1.5 py-0.5 text-[10px] font-mono text-gm-yellow';
+  'inline-flex items-center rounded-full border border-gm-yellow/30 bg-gm-yellow/15 px-1.5 py-0.5 text-[11px] font-mono text-gm-yellow';
 
 export const MONO_STAT = 'gm-tnum mt-0.5 text-xl font-bold tracking-tight text-gm-yellow';
 

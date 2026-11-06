@@ -70,7 +70,7 @@ export function CreateOtherPaymentDialog({ open: controlledOpen, onOpenChange }:
     <Dialog open={open} onOpenChange={setOpen}>
       {controlledOpen === undefined && <DialogTrigger asChild>
         <Button size="sm" data-tour="varios-create" onClick={() => setOpen(true)}>
-          Crear
+          Nuevo movimiento
         </Button>
       </DialogTrigger>}
 
@@ -157,7 +157,7 @@ export function CreateOtherPaymentDialog({ open: controlledOpen, onOpenChange }:
               )}
             />
             <Button className="w-full" type="submit" disabled={isPending}>
-              Crear
+              Registrar movimiento
             </Button>
           </form>
         </Form>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from 'react';
 import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
-import { CalendarDays, Car, CheckCheck, Inbox, MessageSquare, RotateCcw, Search, Users, Wallet, type LucideIcon } from 'lucide-react';
+import { CalendarDays, Car, CheckCheck, Inbox, MessageSquare, RotateCcw, Search, SlidersHorizontal, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DataLoading } from '@/components/ui/data-loading';
 import { AppDatePicker } from '@/components/app-date-picker';
@@ -14,7 +14,7 @@ import { readAllNotesAction, readNoteAction } from '@/actions/notes/note-read.ac
 import type { EstadoAviso, FiltrosAvisos, ListaAvisos, Note, OrigenAviso } from '@/types/note.type';
 import { TariffSelect } from '@/app/(protected)/admin/tarifas/tariff-select';
 import {
-  CabeceraTabla, ChipFiltro, PieTabla, SelectorSegmentado, TarjetaResumen, tarjetaPlanilla,
+  CabeceraTabla, ChipFiltro, PieTabla, SelectorSegmentado, tarjetaPlanilla,
 } from '@/components/planilla/planilla-ui';
 import { UpdateNoteDialog } from './update-note-dialog';
 import { DeleteNoteDialog } from './delete-note-dialog';
@@ -43,6 +43,7 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
   const { cobroHabilitado } = useTenant();
   const yo = session?.user?.id;
   const [filtros, setFiltros] = useState(SIN_FILTROS);
+  const [masFiltros, setMasFiltros] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [buscado, setBuscado] = useState('');
   const [pagina, setPagina] = useState(0);
@@ -147,12 +148,22 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
   const autor = (n: Note) => n.user?.id && n.user.id === yo ? 'Vos'
     : [n.user?.firstName, n.user?.lastName].filter(Boolean).join(' ') || (n.sourceKey ? 'Autor no registrado' : 'Equipo');
 
+  // Período, origen y autor van en «Más filtros» en el celular: eran 12 controles antes del primer
+  // aviso. En la computadora se ven siempre. Se ocultan con CSS (no se desmontan) y se abren solos
+  // si alguno está aplicado.
+  const filtrosExtra = Boolean(filtros.desde || filtros.hasta || filtros.origen !== 'TODOS' || filtros.autor);
+  const extrasVisibles = masFiltros || filtrosExtra;
+
   return (
     <div className="flex flex-col gap-5">
-      <section aria-label="Resumen" className="grid grid-cols-2 gap-3 lg:grid-cols-3 [&>*:first-child]:col-span-2 lg:[&>*:first-child]:col-span-1">
-        <TarjetaResumen destacada etiqueta="Sin leer" valor={datos ? Math.max(0, sinLeer) : '—'} detalle={sinLeer > 0 ? 'pendientes para vos' : 'estás al día'} />
-        <TarjetaResumen etiqueta="Hoy" valor={datos?.resumen.hoy ?? '—'} detalle="avisos publicados hoy" />
-        <TarjetaResumen etiqueta="En la cartelera" valor={datos?.resumen.total ?? '—'} detalle="avisos de esta playa" />
+      {/* Una línea en vez de tres tarjetas: la amarilla gigante para «0 sin leer» pedía atención
+          sin motivo. El amarillo queda solo cuando hay algo pendiente. */}
+      <section aria-label="Resumen" className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        {datos ? <>
+          <span className={cn('font-semibold', sinLeer > 0 ? 'text-gm-yellow' : 'text-foreground')}>{sinLeer > 0 ? `${sinLeer} sin leer` : 'Estás al día'}</span>
+          <span aria-hidden>·</span><span>{datos.resumen.hoy} {datos.resumen.hoy === 1 ? 'publicado' : 'publicados'} hoy</span>
+          <span aria-hidden>·</span><span>{datos.resumen.total} en la cartelera</span>
+        </> : <span>Cargando resumen…</span>}
       </section>
 
       <section data-tour="avisos-filtro" aria-label="Filtros" className={cn(tarjetaPlanilla, 'flex flex-col gap-3 p-3.5')}>
@@ -167,7 +178,12 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
               { id: 'LEIDOS', label: 'Leídos', cantidad: conteos?.leidos },
             ]}
           />
-          <div role="group" aria-label="Período" className="flex flex-wrap items-center gap-1.5">
+          <button type="button" onClick={() => setMasFiltros((v) => !v)} aria-expanded={extrasVisibles} aria-controls="avisos-periodo avisos-filtros-extra"
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-gm-line-strong px-4 text-[13px] font-semibold transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow lg:hidden">
+            <SlidersHorizontal className="size-4 text-gm-yellow" aria-hidden />Más filtros
+            {filtrosExtra && <><span aria-hidden className="size-2 rounded-full bg-gm-yellow" /><span className="sr-only"> (hay filtros aplicados)</span></>}
+          </button>
+          <div id="avisos-periodo" role="group" aria-label="Período" className={cn('flex-wrap items-center gap-1.5', extrasVisibles ? 'flex' : 'hidden lg:flex')}>
             <ChipFiltro activo={periodoActivo(null)} onClick={() => periodo(null)}>Todo</ChipFiltro>
             <ChipFiltro activo={periodoActivo(1)} onClick={() => periodo(1)}>Hoy</ChipFiltro>
             <ChipFiltro activo={periodoActivo(7)} onClick={() => periodo(7)}>7 días</ChipFiltro>
@@ -176,7 +192,7 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
             <AppDatePicker title="Hasta" value={filtros.hasta} min={filtros.desde || undefined} clearable onChange={(hasta) => cambiar({ hasta: hasta ?? '' })} trigger={botonFecha(filtros.hasta, 'Hasta', 'Elegir fecha hasta')} />
           </div>
         </div>
-        <div className="grid gap-2.5 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div id="avisos-filtros-extra" className={cn('gap-2.5 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]', extrasVisibles ? 'grid' : 'grid max-lg:[&>*:not(:first-child)]:hidden')}>
           <label className="relative block">
             <span className="sr-only">Buscar en los avisos</span>
             <Search className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground" aria-hidden />

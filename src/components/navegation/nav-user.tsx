@@ -109,7 +109,8 @@ export function OperationalNavUser({
     {
       label: 'Operación',
       children: [
-        { value: '/tickets', label: 'Tickets', icon: <TicketIcon /> },
+        // El mismo nombre que el título de la pantalla: «Tickets» no aparecía en ningún otro lado.
+        { value: '/tickets', label: 'Entradas y salidas', icon: <TicketIcon /> },
         ...(inquilinosEnabled ? [{ value: '/renters', label: 'Inquilinos', icon: <Users /> }] : []),
         ...(gastosOperador ? [{ label: 'Gastos e ingresos', icon: <Banknote />, accion: abrirGastos }] : []),
         ...(!hasNewNoteAlert ? [{ value: '/notes', label: 'Avisos', icon: <Bell /> }] : []),

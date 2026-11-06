@@ -6,6 +6,7 @@ import { Clock3, Moon, Sun } from 'lucide-react';
 import { formatPrice } from '@/components/pricing-breakdown';
 import type { TariffBracket, TariffPlan } from '@/types/tariff-plan.type';
 import { crossingMode, durationLabel, hasNightPrices, tariffMethod } from '@/utils/tariff-plan.utils';
+import { resolveRecurringUnitPrice } from '@/utils/ticket-price-bracket.utils';
 import { TariffDayNightToggle, VehicleTariffTabs } from './tariff-summary-controls';
 
 export const methodNames = {
@@ -43,6 +44,10 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
   for (const row of plan.brackets.filter(row => row.vehicleType === vehicle && row.ticketDayType === null)) scoped.set(row.uptoMinutes, row);
   for (const row of plan.brackets.filter(row => row.vehicleType === vehicle && row.ticketDayType === day)) scoped.set(row.uptoMinutes, row);
   const rows = [...scoped.values()].sort((a,b) => (a.uptoMinutes ?? Infinity) - (b.uptoMinutes ?? Infinity));
+  // El adicional DERIVED sale de la lista, con el mismo criterio que «Ver tarifas» y el backend.
+  // Antes se mostraba el respaldo como precio («cada 1 min $1.000») mientras el operador veía «+ $50».
+  const finitas = rows.filter(row => row.uptoMinutes !== null).map(row => ({ ...row, id: row.id ?? '' }));
+  const derivado = (row: TariffBracket) => row.recurringUnitMinutes && row.recurringPriceMode !== 'FIXED' ? resolveRecurringUnitPrice(row.recurringUnitMinutes, finitas, row.id) : null;
   const rate = options.charging.rates.find(row => row.vehicleType === vehicle);
   const dayHours = hour(plan.schedule.dayStartHour) + ' a ' + hour(plan.schedule.dayEndHour);
   const nightHours = hour(plan.schedule.dayEndHour) + ' a ' + hour(plan.schedule.dayStartHour);
@@ -57,7 +62,9 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
         <div className="min-w-0 space-y-2"><p className="text-xs font-medium text-muted-foreground">Tipo de vehículo</p><VehicleTariffTabs vehicles={tabs} value={vehicle} onChange={setSelected} panelId={panelId} /></div>
         <TariffDayNightToggle value={day} onChange={setDay} panelId={panelId} description={day === 'DAY' ? dayHours : nightHours} />
       </div>
-      <div id={panelId} role="tabpanel" aria-labelledby={panelId + '-tab-' + vehicle} tabIndex={0} className={'overflow-hidden rounded-2xl border outline-none transition-colors duration-500 motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background ' + border + (isNight ? ' bg-indigo-950/20 focus-visible:ring-indigo-400' : ' bg-amber-950/10 focus-visible:ring-amber-400')}>
+      {/* Región con nombre propio: los vehículos se eligen con un Segmento, no con pestañas, y el
+          aria-labelledby apuntaba a un id de pestaña que ya no existe. */}
+      <div id={panelId} role="region" aria-label={`Tarifas de ${isNight ? 'noche' : 'día'}: ${names.get(vehicle) ?? vehicle}`} tabIndex={0} className={'overflow-hidden rounded-2xl border outline-none transition-colors duration-500 motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background ' + border + (isNight ? ' bg-indigo-950/20 focus-visible:ring-indigo-400' : ' bg-amber-950/10 focus-visible:ring-amber-400')}>
         <motion.div key={vehicle + day} initial={reduceMotion ? false : { opacity: 0.55, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : 0.28, ease: 'easeOut' }}>
         <div className={'relative overflow-hidden border-b px-4 py-5 sm:px-5 ' + border + (isNight ? ' bg-gradient-to-r from-indigo-500/20 to-indigo-500/[0.03]' : ' bg-gradient-to-r from-amber-500/20 to-amber-500/[0.03]')}>
           <PeriodIcon aria-hidden="true" className={'pointer-events-none absolute -right-3 -top-4 size-32 rotate-12 opacity-[0.08] ' + accent} />
@@ -77,15 +84,15 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
         </div> : <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">Este vehículo todavía no tiene precios configurados.</p> : rows.length ? <>
           <table className="w-full border-separate border-spacing-y-2 text-sm"><caption className="sr-only">Precios vigentes de {names.get(vehicle) ?? vehicle} — {day === 'DAY' ? 'día' : 'noche'}</caption>
             <thead><tr className="text-left text-muted-foreground"><th scope="col" className="px-3 pb-1 text-xs font-medium uppercase tracking-wide">Duración / regla</th><th scope="col" className="px-3 pb-1 text-right text-xs font-medium uppercase tracking-wide">Importe</th></tr></thead>
-            <tbody>{rows.map((row,index) => <tr key={row.id ?? index} className={'group transition-colors motion-reduce:transition-none ' + (row.uptoMinutes === null ? (isNight ? 'bg-indigo-400/10' : 'bg-amber-400/10') : 'bg-background/40 hover:bg-white/[0.04]')}>
-              <th scope="row" className={'rounded-l-xl border-y border-l-[3px] px-3 py-4 text-left font-medium ' + (isNight ? 'border-y-indigo-400/10 border-l-indigo-400/60' : 'border-y-amber-400/10 border-l-amber-400/60')}>
-                {row.uptoMinutes === null && <span className={'mb-1.5 block text-[10px] font-bold uppercase tracking-wider ' + accent}>Si se queda más tiempo</span>}
+            <tbody>{rows.map((row,index) => { const lista = derivado(row); return <tr key={row.id ?? index} className={'group transition-colors motion-reduce:transition-none ' + (row.uptoMinutes === null ? (isNight ? 'bg-indigo-400/10' : 'bg-amber-400/10') : 'bg-background/40 hover:bg-white/[0.04]')}>
+              <th scope="row" className={'rounded-l-xl border-y border-l px-3 py-4 text-left font-medium ' + (isNight ? 'border-indigo-400/10' : 'border-amber-400/10')}>
+                {row.uptoMinutes === null && <span className={'mb-1.5 block text-[11px] font-bold uppercase tracking-wider ' + accent}>Si se queda más tiempo</span>}
                 {row.uptoMinutes !== null ? 'Hasta ' + durationLabel(row.uptoMinutes) : row.recurringUnitMinutes ? 'Después: cada ' + durationLabel(row.recurringUnitMinutes) + ' adicional' : 'Después: precio total fijo'}
                 {row.ticketDayType === null && <span className="mt-1 block text-xs font-normal text-muted-foreground">Precio general para este horario</span>}
-                {row.recurringUnitMinutes && row.recurringPriceMode !== 'FIXED' ? <span className={'mt-1 block text-xs font-normal ' + accent}>Adicional calculado con la lista; se muestra el importe de respaldo.</span> : null}
+                {row.recurringUnitMinutes && row.recurringPriceMode !== 'FIXED' ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{lista ? 'Sale de la lista de precios. Si no hubiera una duración de referencia, se cobraría el respaldo de ' + formatPrice(row.price) + '.' : 'No hay una duración de referencia en la lista: se cobra el precio de respaldo.'}</span> : null}
               </th>
-              <td className={'whitespace-nowrap rounded-r-xl border-y border-r px-2 py-4 text-right text-sm font-bold tabular-nums sm:px-3 sm:text-base ' + accent + (isNight ? ' border-indigo-400/10' : ' border-amber-400/10')}>{row.recurringUnitMinutes && row.recurringPriceMode === 'FIXED' ? '+ ' : ''}{formatPrice(row.price)}</td>
-            </tr>)}</tbody>
+              <td className={'whitespace-nowrap rounded-r-xl border-y border-r px-2 py-4 text-right text-sm font-bold tabular-nums sm:px-3 sm:text-base ' + accent + (isNight ? ' border-indigo-400/10' : ' border-amber-400/10')}>{row.recurringUnitMinutes ? '+ ' : ''}{formatPrice(lista?.price ?? row.price)}</td>
+            </tr>; })}</tbody>
           </table>
           <p className="text-xs text-muted-foreground">El cálculo puede combinar duraciones menores. Comprobá el resultado en el simulador.</p>
         </> : <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">No hay precios para este vehículo en el horario de {day === 'DAY' ? 'día' : 'noche'}.</p>}

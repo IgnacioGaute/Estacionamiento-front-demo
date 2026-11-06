@@ -50,7 +50,8 @@ export function TicketPriceBracketMap({ brackets, schedule, embedded = false }: 
       </div>
       <TariffDayNightToggle value={period} onChange={setPeriod} panelId={id} description={period === 'DAY' ? hour(schedule.dayStartHour) + ' a ' + hour(schedule.dayEndHour) : hour(schedule.dayEndHour) + ' a ' + hour(schedule.dayStartHour)} />
     </div>
-    <div id={id} role="tabpanel" aria-labelledby={codes.length ? id + '-tab-' + vehicle : undefined} className={styles.map} data-night={period === 'NIGHT'}>
+    {/* Región con nombre propio: el vehículo se elige con un Segmento (no hay pestañas a las que apuntar). */}
+    <div id={id} role="region" aria-label={`Recorrido de tarifas: ${name(vehicle)}, ${period === 'DAY' ? 'día' : 'noche'}`} className={styles.map} data-night={period === 'NIGHT'}>
       <div className={styles.mapHeading}>
         <span className={styles.vehicleIcon}><Car aria-hidden="true" size={22} /></span>
         <div><h4>{name(vehicle)} · {period === 'DAY' ? 'Tarifa de día' : 'Tarifa de noche'}</h4><p>{charging?.enabled ? 'Así se cuenta el tiempo' : 'Cada parada muestra una duración y su precio de referencia'}</p></div>

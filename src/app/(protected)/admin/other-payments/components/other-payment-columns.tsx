@@ -15,8 +15,24 @@ import { UpdateExpenseDailog } from './update-other-payment-dialog';
 import { DeleteExpenseDialog } from './delete-other-payment-dialog';
 import { OtherPayment } from '@/types/other-payment.type';
 import { formatImporte } from '@/components/pricing-breakdown';
+import { cn } from '@/lib/utils';
+
+// dateNow es la fecha de negocio (YYYY-MM-DD) del movimiento: sin ella la tabla no decía de qué día era.
+const fecha = (valor: unknown) => {
+  const [y, m, d] = String(valor ?? '').slice(0, 10).split('-');
+  return y && m && d ? `${d}/${m}/${y}` : '—';
+};
 
 export const expenseColumns: ColumnDef<OtherPayment>[] = [
+  {
+    accessorKey: 'dateNow',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Fecha" />
+    ),
+    cell: ({ row }) => (
+      <div className="whitespace-nowrap text-sm tabular-nums">{fecha(row.getValue('dateNow'))}</div>
+    ),
+  },
   {
     accessorKey: 'description',
     header: ({ column }) => (
@@ -31,10 +47,12 @@ export const expenseColumns: ColumnDef<OtherPayment>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Monto" />
     ),
-    // Mismo formato de pesos que el resto del sistema: antes se veía «10000» sin $ ni miles.
-    cell: ({ row }) => (
-      <div className="min-w-[100px] text-sm tabular-nums">{formatImporte(Number(row.getValue('price')))}</div>
-    ),
+    // Mismo formato de pesos que el resto del sistema (antes «10000»), con signo: un gasto resta
+    // de la caja y un ingreso suma. El signo no depende solo del color.
+    cell: ({ row }) => {
+      const egreso = row.original.type === 'EGRESOS';
+      return <div className={cn('min-w-[100px] whitespace-nowrap text-sm font-semibold tabular-nums', egreso ? 'text-foreground' : 'text-emerald-400')}>{egreso ? '− ' : '+ '}{formatImporte(Number(row.getValue('price')))}</div>;
+    },
   },
 
   {

@@ -195,7 +195,7 @@ function CajasSettings({ multiple }: { multiple: boolean }) {
       {multiple ? <form className="flex flex-wrap items-end gap-3 border-t border-border pt-4" onSubmit={event => { event.preventDefault(); startTransition(async () => { const result = await saveCajaAction({ nombre: name }); if (result.error) { toast.error(result.error); return; } setName(''); await load(); toast.success('Caja agregada'); }); }}>
         <div className="min-w-0 w-full flex-none space-y-1.5 sm:w-auto sm:flex-1"><Label htmlFor="new-caja">Agregar otra caja</Label><Input id="new-caja" placeholder="Ej.: Entrada lateral" maxLength={80} value={name} onChange={e => setName(e.target.value)} disabled={pending} required /></div><Button disabled={pending || !name.trim()}><Plus className="size-4" /> Agregar caja</Button>
       </form> : <p className="text-xs text-muted-foreground">Se selecciona la caja principal automáticamente. Activá turnos múltiples para usar más cajas.</p>}
-      <div className="border-l-2 border-gm-yellow pl-3 text-sm"><p className="font-semibold">Después de guardar</p><p className="mt-1 text-muted-foreground">En Tickets → Abrir mi turno, el primero cuenta el fondo. Quien se suma a una caja abierta no vuelve a cargar ese dinero. El último que sale cuenta y cierra la caja.</p></div>
+      <div className="rounded-xl border border-gm-yellow/25 bg-gm-yellow/[0.04] p-3 text-sm"><p className="font-semibold">Después de guardar</p><p className="mt-1 text-muted-foreground">En Entradas y salidas, con «Abrí tu turno para cobrar», el primero cuenta el fondo. Quien se suma a una caja abierta no vuelve a cargar ese dinero. El último que sale cuenta y cierra la caja.</p></div>
     </>}
   </section>;
 }
