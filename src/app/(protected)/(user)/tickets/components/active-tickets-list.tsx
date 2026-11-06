@@ -74,7 +74,7 @@ export function ActiveTicketsList({
             {rows.length}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 gm-mono text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-1.5 gm-mono text-[11px] text-muted-foreground">
           <span
             className="h-1.5 w-1.5 rounded-full bg-[hsl(120_35%_55%)]"
             style={{ animation: "gm-blink 1.4s steps(2, jump-none) infinite" }}
@@ -135,11 +135,11 @@ export function ActiveTicketsList({
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2">
                     <span className="gm-mono gm-tnum truncate text-[14px] font-bold text-foreground">{label}</span>
-                    <Badge variant={overdue ? "red" : "green"} className="shrink-0 text-[9px] py-[1px] px-1.5">
+                    <Badge variant={overdue ? "red" : "green"} className="shrink-0 text-[11px] py-[1px] px-1.5">
                       {overdue ? "Vencido" : "En horario"}
                     </Badge>
                   </span>
-                  <span className="flex items-center gap-1.5 mt-0.5 text-[10.5px] text-muted-foreground">
+                  <span className="flex items-center gap-1.5 mt-0.5 text-[11px] text-muted-foreground">
                     <Timer className="size-2.5 shrink-0" />
                     <span className="gm-mono gm-tnum">{elapsed !== null ? `hace ${formatElapsed(elapsed)}` : "—"}</span>
                     {row.kind === "PLATE" && registration.casilleroNumber && (
@@ -157,7 +157,7 @@ export function ActiveTicketsList({
                   </span>
                   <span className="mt-1.5 flex"><VehicleTypeBadge code={vehicleType} modelo={registration.modeloVehiculo} /></span>
                   {registration.expectedBracketLabel && !overdue && (
-                    <span className="block mt-0.5 text-[10px] text-muted-foreground truncate">
+                    <span className="block mt-0.5 text-[11px] text-muted-foreground truncate">
                       Avisó: <span className="text-foreground">{registration.expectedBracketLabel}</span>
                     </span>
                   )}

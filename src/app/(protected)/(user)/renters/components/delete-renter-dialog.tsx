@@ -23,7 +23,7 @@ export function DeleteRenterDialog({ customer }: { customer: Customer }) {
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start text-[#F08775] hover:bg-destructive/15 hover:text-[#F08775]"
+          className="w-full justify-start text-gm-peligro hover:bg-destructive/15 hover:text-gm-peligro"
         >
           <Trash className="w-4 h-4" />
           Eliminar inquilino

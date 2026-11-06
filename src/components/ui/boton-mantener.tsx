@@ -41,7 +41,7 @@ export function BotonMantener({
       holdTime={holdTime}
       backgroundColor="#2A1915"
       fillColor="#C8432A"
-      textColor="#F08775"
+      textColor="hsl(var(--gm-peligro))"
       fillTextColor="#FFFFFF"
       radius={size === 'sm' ? 10 : 12}
       // Lo resuelve quien lo usa (cierra el diálogo, saca la fila); si falla, vuelve solo.

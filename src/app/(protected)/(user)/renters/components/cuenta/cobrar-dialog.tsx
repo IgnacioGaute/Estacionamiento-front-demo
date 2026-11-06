@@ -281,7 +281,7 @@ export function CobrarDialog({
             ) : (
               <>
                 Saldo de la cuenta: <strong className={colorSaldo(saldo)}>{textoSaldo(saldo)}</strong>
-                {vencido > 0 && <span className="text-[#FF7A4D]"> · {plata(vencido)} vencido</span>}
+                {vencido > 0 && <span className="text-gm-aviso"> · {plata(vencido)} vencido</span>}
               </>
             )} />
         <ActionDialogBody>
@@ -328,7 +328,7 @@ export function CobrarDialog({
                         <input type="checkbox" checked={marcado} onChange={() => alternar(r.id)} className="size-[18px] shrink-0 accent-[#F5C219]" />
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm font-semibold">{r.concepto}</span>
-                          <span className={`block text-xs ${r.vencido ? 'font-semibold text-[#FF7A4D]' : 'text-muted-foreground'}`}>
+                          <span className={`block text-xs ${r.vencido ? 'font-semibold text-gm-aviso' : 'text-muted-foreground'}`}>
                             {r.vencido ? `Venció el ${fechaAR(r.vencimiento)}` : `Vence el ${fechaAR(r.vencimiento)}`}
                           </span>
                         </span>
@@ -426,7 +426,7 @@ export function CobrarDialog({
                       {plata(transferencia)}
                     </span>
                   </div>
-                  {errorReparto && efectivoTexto && <p className="text-xs text-[#FF7A4D] sm:col-span-2">{errorReparto}</p>}
+                  {errorReparto && efectivoTexto && <p className="text-xs text-gm-aviso sm:col-span-2">{errorReparto}</p>}
                 </div>
               )}
               {modo === 'QR' && (

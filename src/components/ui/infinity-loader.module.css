@@ -33,7 +33,7 @@
 .label { color: hsl(var(--muted-foreground)); font-size: 0.8125rem; line-height: 1.5; }
 
 .loader[data-status='done'] .trail { animation: none; stroke: #86efac; filter: none; }
-.loader[data-status='error'] .trail { animation: none; stroke: #f08775; filter: none; }
+.loader[data-status='error'] .trail { animation: none; stroke: hsl(var(--gm-peligro)); filter: none; }
 
 @keyframes infinity-path {
   from { stroke-dashoffset: 100; }

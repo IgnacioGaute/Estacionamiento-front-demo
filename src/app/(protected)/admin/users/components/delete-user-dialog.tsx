@@ -48,7 +48,7 @@ export function DeleteUserDialog({ user }: { user: User }) {
           size="icon"
           aria-label={`Eliminar a ${user.firstName} ${user.lastName}`}
           title="Eliminar usuario"
-          className="size-9 shrink-0 border-gm-line-strong text-[#F08775] hover:border-destructive/50 hover:bg-destructive/15 hover:text-[#F08775]"
+          className="size-9 shrink-0 border-gm-line-strong text-gm-peligro hover:border-destructive/50 hover:bg-destructive/15 hover:text-gm-peligro"
         >
           <Trash className="size-4" />
         </Button>
@@ -57,7 +57,7 @@ export function DeleteUserDialog({ user }: { user: User }) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-md border border-destructive/40 bg-destructive/15 text-[#F08775]">
+            <span className="grid size-9 place-items-center rounded-md border border-destructive/40 bg-destructive/15 text-gm-peligro">
               <AlertTriangle className="size-4" />
             </span>
             <div>

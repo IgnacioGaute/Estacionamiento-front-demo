@@ -40,7 +40,7 @@ function comoRecibo(p: Pago, cuenta: CuentaMostrador): ResultadoPago {
 
 function EstadoDeuda({ d }: { d: DeudaCuenta }) {
   const [texto, clase] = d.vencido
-    ? [d.situacion === 'PARCIAL' ? 'Vencido · pago parcial' : 'Vencido', 'bg-[#FF5C4D]/[0.16] text-[#FF7A4D]']
+    ? [d.situacion === 'PARCIAL' ? 'Vencido · pago parcial' : 'Vencido', 'bg-gm-aviso/[0.16] text-gm-aviso']
     : d.situacion === 'PARCIAL'
       ? ['Pago parcial', 'bg-gm-yellow/[0.14] text-gm-yellow']
       : ['Pendiente', 'bg-[#221F1A] text-[#E9E1D4]'];
@@ -142,7 +142,7 @@ export function CuentaMostradorDialog({
                   {textoSaldo(cuenta.saldo)}
                 </span>
                 {cuenta.vencido > 0 && (
-                  <span className="block text-xs font-semibold text-[#FF7A4D]">{plata(cuenta.vencido)} vencido</span>
+                  <span className="block text-xs font-semibold text-gm-aviso">{plata(cuenta.vencido)} vencido</span>
                 )}
               </span>
             </div>
@@ -168,7 +168,7 @@ export function CuentaMostradorDialog({
                           <span className="text-sm font-semibold">{d.concepto}</span>
                           <EstadoDeuda d={d} />
                         </span>
-                        <span className={`block text-xs ${d.vencido ? 'font-semibold text-[#FF7A4D]' : 'text-muted-foreground'}`}>
+                        <span className={`block text-xs ${d.vencido ? 'font-semibold text-gm-aviso' : 'text-muted-foreground'}`}>
                           {d.vencido ? `Venció el ${fechaAR(d.vencimiento)}` : `Vence el ${fechaAR(d.vencimiento)}`}
                         </span>
                       </span>

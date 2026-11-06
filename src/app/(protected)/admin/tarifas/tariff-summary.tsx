@@ -54,8 +54,10 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
   const nightHours = hour(plan.schedule.dayEndHour) + ' a ' + hour(plan.schedule.dayStartHour);
 
   return <section aria-labelledby="current-tariff-heading" data-tariff-summary data-period={day} className="space-y-5 rounded-2xl border bg-card p-4 sm:p-6">
-    <div><span className="text-xs font-semibold uppercase tracking-wide text-amber-500">Tarifas vigentes</span>
-      <h2 id="current-tariff-heading" className="mt-1 text-xl font-semibold">{hasPrices ? methodNames[method] : 'Todavía no configuraste tus precios'}</h2>
+    {/* El título dice qué es la sección y la forma de cobro va debajo: antes «TARIFAS VIGENTES» era
+        un rótulo en mayúsculas encima de un título que sólo nombraba el método. */}
+    <div><h2 id="current-tariff-heading" className="text-xl font-semibold">{hasPrices ? 'Tarifas vigentes' : 'Todavía no configuraste tus precios'}</h2>
+      {hasPrices && <p className="mt-1 text-sm font-semibold text-amber-500">{methodNames[method]}</p>}
       <p className="mt-1 text-sm text-muted-foreground">{hasPrices ? 'Las estadías con tarifa fijada al ingresar conservan sus precios. Los registros antiguos sin tarifa fijada usan los precios actuales.' : 'Cargá los importes de tu playa y probá un ejemplo antes de empezar a registrar ingresos.'}</p>
     </div>
     {hasPrices && <>
@@ -72,7 +74,7 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
           <div className="relative flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <span className={'flex size-11 shrink-0 items-center justify-center rounded-xl border ' + border + (isNight ? ' bg-indigo-400/10' : ' bg-amber-400/10')}><PeriodIcon className={'size-6 ' + accent} aria-hidden="true" /></span>
-              <div className="min-w-0"><p className={'text-xs font-bold uppercase tracking-wider ' + accent}>Tarifas de {isNight ? 'noche' : 'día'}</p><h3 className="mt-1 break-words text-xl font-semibold">{names.get(vehicle) ?? vehicle}</h3></div>
+              <div className="min-w-0"><h3 className="break-words text-xl font-semibold">{names.get(vehicle) ?? vehicle}</h3><p className={'mt-0.5 text-sm font-semibold ' + accent}>Tarifas de {isNight ? 'noche' : 'día'}</p></div>
             </div>
             <span className={'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ' + border + ' ' + accent}><Clock3 className="size-3.5" aria-hidden="true" />{isNight ? nightHours : dayHours}</span>
           </div>

@@ -228,7 +228,7 @@ export function EditorSaldoInicial({
       {valor.tipo !== 'AL_DIA' && totalSaldoInicial(valor) > 0 && (
         <div className="flex justify-between rounded-xl border border-border bg-background px-4 py-2.5 text-sm">
           <span className="text-muted-foreground">{valor.tipo === 'A_FAVOR' ? 'Arranca con saldo a favor' : 'Arranca con saldo pendiente'}</span>
-          <strong className={valor.tipo === 'A_FAVOR' ? 'text-emerald-400' : 'text-[#FF7A4D]'}>{plata(totalSaldoInicial(valor))}</strong>
+          <strong className={valor.tipo === 'A_FAVOR' ? 'text-emerald-400' : 'text-gm-aviso'}>{plata(totalSaldoInicial(valor))}</strong>
         </div>
       )}
     </div>

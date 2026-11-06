@@ -70,7 +70,7 @@ export function EntregaRecibo({
   if (error)
     return (
       <div className="space-y-2 rounded-2xl border border-border p-4">
-        <p role="alert" className="text-sm text-[#FF7A4D]">
+        <p role="alert" className="text-sm text-gm-aviso">
           {error}
         </p>
         <div className="flex flex-wrap gap-2">

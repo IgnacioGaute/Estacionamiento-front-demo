@@ -5,12 +5,16 @@ import { redirect } from 'next/navigation';
 import { currentUser } from '@/lib/auth';
 import { PageHeader } from '@/components/page-header';
 import { modalidadActual } from '@/lib/modalidad.server';
+import { seccionesAdmin } from '@/components/navegation/secciones-admin';
+import { Subpaginas } from '@/components/navegation/subpaginas';
 
-// Configuración: cada opción es una página y la barra lateral las despliega debajo de la sección.
+// Configuración: cada opción es una página. La barra lateral las despliega debajo de la sección y,
+// para la barra plegada o el celular, también van en una fila bajo el título.
 export default async function ConfiguracionLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser();
   if (!['ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '')) redirect('/tickets');
   const gratuita = (await modalidadActual()) === 'GRATUITO';
+  const paginas = seccionesAdmin(!gratuita, user?.role === 'SUPER_ADMIN').find((s) => s.url === '/admin/configuracion')?.items;
   return (
     <div className="container mx-auto max-w-4xl space-y-6 px-4 py-6">
       <PageHeader
@@ -18,6 +22,7 @@ export default async function ConfiguracionLayout({ children }: { children: Reac
         breadcrumb={['Administración', 'Configuración']}
         description={gratuita ? 'Las opciones de trabajo de esta playa.' : <>Las opciones de trabajo de esta playa. Los importes y la forma de cobrar están en <Link href="/admin/tarifas" className="font-semibold text-gm-yellow underline underline-offset-4">Tarifas</Link>.</>}
       />
+      <Subpaginas items={paginas} seccion="Configuración" />
       {children}
     </div>
   );

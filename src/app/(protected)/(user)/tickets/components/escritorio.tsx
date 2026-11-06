@@ -62,7 +62,7 @@ function Identidad({ r, size = 'sm', resaltar }: { r: TicketRegistration; size?:
   }
   if (r.noPlate || !r.licensePlateOriginal) {
     return (
-      <span className={cn('inline-flex shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 font-bold uppercase tracking-[0.1em] text-muted-foreground', chico ? 'h-[26px] min-w-[78px] px-1.5 text-[9.5px]' : 'h-[33px] min-w-[96px] px-2 text-[10.5px]')}>
+      <span className={cn('inline-flex shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 font-bold uppercase tracking-[0.1em] text-muted-foreground', chico ? 'h-[26px] min-w-[78px] px-1.5 text-[11px]' : 'h-[33px] min-w-[96px] px-2 text-[11px]')}>
         Sin patente
       </span>
     );
@@ -374,9 +374,9 @@ function TarjetaEstadiaLarga({ r, vence, vencida, ahora, onSelect }: { r: Ticket
         {r.vehiclePlateCustomer ? (
           <PlateChip plate={r.vehiclePlateCustomer} size="sm" />
         ) : (
-          <span className="inline-flex h-[33px] min-w-[96px] items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sin patente</span>
+          <span className="inline-flex h-[33px] min-w-[96px] items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sin patente</span>
         )}
-        <span className="rounded-md bg-gm-yellow/15 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-gm-yellow">{UNIDAD_ESTADIA_LARGA[r.ticketTimeType] ?? r.ticketTimeType}</span>
+        <span className="rounded-md bg-gm-yellow/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-gm-yellow">{UNIDAD_ESTADIA_LARGA[r.ticketTimeType] ?? r.ticketTimeType}</span>
       </span>
       <VehicleTypeBadge code={r.vehicleType} />
       {r.lastNameCustomer && <span className="truncate text-xs text-muted-foreground">{r.lastNameCustomer}</span>}
@@ -669,7 +669,7 @@ export function BuscadorRapido({ inputRef, activos, diaActivos, esDiaVencido, re
                     const fecha = op.vence ? fechaCorta(op.vence, ahora) : null;
                     return fila(op, (
                       <>
-                        {op.r.vehiclePlateCustomer ? <PlateChip plate={op.r.vehiclePlateCustomer} size="sm" highlight={texto} /> : <span className="inline-flex h-[33px] min-w-[96px] items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sin patente</span>}
+                        {op.r.vehiclePlateCustomer ? <PlateChip plate={op.r.vehiclePlateCustomer} size="sm" highlight={texto} /> : <span className="inline-flex h-[33px] min-w-[96px] items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sin patente</span>}
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-bold">Estadía · {UNIDAD_ESTADIA_LARGA[op.r.ticketTimeType] ?? op.r.ticketTimeType}</span>
                           <span className={cn('block truncate text-xs', op.vencida || !op.r.paid ? 'font-semibold text-gm-aviso' : 'text-muted-foreground')}>

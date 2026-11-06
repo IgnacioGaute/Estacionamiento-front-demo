@@ -51,11 +51,11 @@ const TONE_STYLES: Record<
 > = {
   danger: {
     tile: 'border-destructive/40 bg-destructive/15',
-    tileText: 'text-[#F08775]',
+    tileText: 'text-gm-peligro',
   },
   warning: {
     tile: 'border-gm-orange/40 bg-gm-orange/15',
-    tileText: 'text-[#FF8458]',
+    tileText: 'text-gm-aviso',
   },
   info: {
     tile: 'border-gm-yellow/40 bg-gm-yellow/15',

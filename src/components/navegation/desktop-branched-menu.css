@@ -245,12 +245,12 @@
   .desktop-user-action--danger {
     border-color: hsl(var(--destructive) / 0.14);
     background: hsl(var(--destructive) / 0.045);
-    color: #F08775;
+    color: hsl(var(--gm-peligro));
   }
 
   .desktop-user-action--danger > svg {
     background: hsl(var(--destructive) / 0.10);
-    color: #F08775;
+    color: hsl(var(--gm-peligro));
   }
 
   .desktop-user-action--danger:hover,

@@ -62,7 +62,7 @@ export const ticketPriceColumns: ColumnDef<ticketPrice>[] = [
             align="end"
             className="w-48 border border-border bg-gm-surface p-1 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.7)]"
           >
-            <DropdownMenuLabel className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+            <DropdownMenuLabel className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
               Acciones
             </DropdownMenuLabel>
             <UpdateTicketPriceDialog ticketPrice={item} />

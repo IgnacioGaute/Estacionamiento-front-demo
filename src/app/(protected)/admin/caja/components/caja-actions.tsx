@@ -27,8 +27,8 @@ export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean
       <div className="flex min-w-0 items-start gap-4">
         <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gm-yellow text-gm-ink shadow-[0_10px_24px_-10px_hsl(var(--gm-yellow)/0.6)]"><Wallet className="size-6" /></span>
         <div className="min-w-0">
-          <Etiqueta className="text-gm-yellow">Mi turno</Etiqueta>
-          <p className="mt-1 text-lg font-bold leading-snug">{context?.active ? 'Tenés un turno en curso' : 'Abrí tu turno para trabajar en una caja'}</p>
+          {/* El estado del turno es el título; antes llevaba encima el rótulo «MI TURNO». */}
+          <h2 className="text-lg font-bold leading-snug">{context?.active ? 'Tenés un turno en curso' : 'Abrí tu turno para trabajar en una caja'}</h2>
           <p className="mt-1 text-sm text-muted-foreground">Las operaciones se guardan por usuario. El último operador cuenta y cierra la caja.</p>
         </div>
       </div>
@@ -68,7 +68,7 @@ export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean
                 <div className="flex min-w-0 items-center gap-3">
                   <Iniciales nombre={t.nombre} />
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2"><h4 className="break-words text-sm font-semibold">{t.nombre}</h4>{t.requiereArqueo && <Pill tono="marca" className="h-5 px-2 text-[10.5px]">Cierra la caja</Pill>}</div>
+                    <div className="flex flex-wrap items-center gap-2"><h4 className="break-words text-sm font-semibold">{t.nombre}</h4>{t.requiereArqueo && <Pill tono="marca" className="h-5 px-2 text-[11px]">Cierra la caja</Pill>}</div>
                     <p className="mt-0.5 text-xs text-muted-foreground">Saldo de sus operaciones: <span className="tabular-nums">{money(t.efectivoOperado ?? 0)}</span></p>
                     <p className="sr-only">{t.requiereArqueo ? 'Último operador: cuenta y cierra la caja' : 'Puede cerrar sólo su turno'}</p>
                   </div>

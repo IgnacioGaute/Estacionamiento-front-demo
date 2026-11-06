@@ -25,7 +25,7 @@ export function TariffPasses({ prices, vehicles, enConfiguracionInicial = false 
   const canCreate = vehicles.some(v => v.code === vehicle && v.enabled);
   const visiblePrices = prices.filter(price => (price.vehicleType ?? unassigned) === vehicle).sort((a,b) => (durationOrder[a.ticketTimeType ?? ''] ?? 99) - (durationOrder[b.ticketTimeType ?? ''] ?? 99));
   return <section data-tariff-passes className="space-y-5 rounded-2xl border bg-card p-4 sm:p-6">
-    {!enConfiguracionInicial && <div><span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pases</span><h2 className="mt-1 text-xl font-semibold">Precios por día, semana o mes</h2><p className="mt-2 text-sm text-muted-foreground">Elegí el vehículo para consultar o editar sus pases. El precio por unidad se multiplica por la cantidad contratada.</p></div>}
+    {!enConfiguracionInicial && <div><h2 className="text-xl font-semibold">Pases por día, semana o mes</h2><p className="mt-2 text-sm text-muted-foreground">Elegí el vehículo para consultar o editar sus pases. El precio por unidad se multiplica por la cantidad contratada.</p></div>}
     {codes.length ? <>
       <div className="space-y-2 rounded-xl border bg-background/40 p-3 sm:p-4"><p className="text-xs font-medium text-muted-foreground">Tipo de vehículo</p><VehicleTariffTabs vehicles={tabs} value={vehicle} onChange={setSelected} panelId={panelId} label="Tipo de vehículo de los pases" /></div>
       <div id={panelId} role="region" aria-label={'Pases de ' + name} tabIndex={0} className="space-y-4 outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50">

@@ -15,7 +15,7 @@ import { cuentaConAlerta, diaAR, pesos } from "@/components/plataforma/cuenta";
 import type { SituacionCuenta } from "@/types/suscripcion.type";
 
 const AMARILLO = "#F5C219";
-const NARANJA = "#FF7A4D";
+const NARANJA = "hsl(var(--gm-aviso))";
 const ROJO = "#E5484D";
 
 const enDias = (n: number) => (n === 1 ? "1 día" : `${n} días`);

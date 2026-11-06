@@ -202,7 +202,7 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
       <div className="flex flex-row-reverse flex-wrap items-start gap-6">
         <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-5 rounded-[24px] border border-[#2E2A23] bg-[#1B1915] p-[26px] lg:max-w-[400px]">
           <div className="flex items-center justify-between gap-3">
-            <span className="font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#8F8676]">Resumen</span>
+            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#8F8676]">Resumen</span>
             <EstadoCuentaPill cuenta={cuenta} />
           </div>
           <div className="flex flex-col gap-1">

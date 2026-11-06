@@ -34,7 +34,7 @@ export function DayRegistrationsPanel({
 
   return (
     <div>
-      <p className="mb-2.5 text-[10px] text-muted-foreground">
+      <p className="mb-2.5 text-[11px] text-muted-foreground">
         Abonos por estadía larga planificada.
       </p>
 
@@ -103,14 +103,14 @@ export function DayRegistrationsPanel({
                         {r.vehiclePlateCustomer || "Sin patente"}
                       </span>
                       {isLate && (
-                        <Badge variant="red" className="shrink-0 px-1.5 py-0 text-[9px]">
+                        <Badge variant="red" className="shrink-0 px-1.5 py-0 text-[11px]">
                           Vencido
                         </Badge>
                       )}
                     </span>
                     <VehicleTypeBadge code={r.vehicleType} />
                   </span>
-                  <span className="max-w-[45%] truncate text-[10.5px] text-muted-foreground">
+                  <span className="max-w-[45%] truncate text-[11px] text-muted-foreground">
                     {r.lastNameCustomer || "—"}
                   </span>
                 </button>

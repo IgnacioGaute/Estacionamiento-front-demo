@@ -18,7 +18,7 @@ export function DeleteTicketPriceDialog({ ticketPrice }: { ticketPrice: ticketPr
   return (
     <ConfirmActionDialog
       trigger={
-        <Button variant="ghost" className="w-full justify-start gap-2 text-[#F08775] hover:bg-destructive/15 hover:text-[#F08775]" size="sm">
+        <Button variant="ghost" className="w-full justify-start gap-2 text-gm-peligro hover:bg-destructive/15 hover:text-gm-peligro" size="sm">
           <Trash2 className="size-3.5" />
           Eliminar
         </Button>

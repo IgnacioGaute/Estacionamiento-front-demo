@@ -56,7 +56,7 @@ export function ReceiptsGaugeChart({ data, month }: { data: ReceiptsSummaryRespo
 
         <div className="pointer-events-none absolute bottom-4 flex flex-col items-center">
           <span className="gm-tnum text-xl font-extrabold text-foreground">{pct.toFixed(1)}%</span>
-          <span className="text-[10px] font-mono text-muted-foreground">
+          <span className="text-[11px] font-mono text-muted-foreground">
             {totalCount === 0 ? 'Sin recibos' : `${pending} ${pending === 1 ? 'pendiente' : 'pendientes'}`}
           </span>
         </div>

@@ -76,7 +76,7 @@ function EstadoCargo({ r }: { r: CargoCuenta }) {
     r.situacion === 'SALDADO'
       ? ['Saldado', 'bg-emerald-400/[0.12] text-emerald-400']
       : r.vencido
-        ? [r.situacion === 'PARCIAL' ? 'Vencido · pago parcial' : 'Vencido', 'bg-[#FF5C4D]/[0.16] text-[#FF7A4D]']
+        ? [r.situacion === 'PARCIAL' ? 'Vencido · pago parcial' : 'Vencido', 'bg-gm-aviso/[0.16] text-gm-aviso']
         : r.situacion === 'PARCIAL'
           ? ['Pago parcial', 'bg-gm-yellow/[0.14] text-gm-yellow']
           : ['Pendiente', 'bg-[#221F1A] text-[#E9E1D4]'];
@@ -203,8 +203,8 @@ export function CuentaCorriente({
       </Link>
 
       {c.baja && (
-        <div role="status" className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#FF7A4D]/40 bg-[#FF7A4D]/[0.06] px-4 py-3 text-sm">
-          <Archive className="size-4 text-[#FF7A4D]" />
+        <div role="status" className="flex flex-wrap items-center gap-3 rounded-2xl border border-gm-aviso/40 bg-gm-aviso/[0.06] px-4 py-3 text-sm">
+          <Archive className="size-4 text-gm-aviso" />
           <span>
             Dado de baja el <strong>{diaDeInstanteAR(c.baja)}</strong>: no se le cargan más abonos.
             {estado.saldo > 0 ? ' Todavía tiene saldo pendiente y se le puede cobrar.' : ''}
@@ -230,7 +230,7 @@ export function CuentaCorriente({
                   {nombreFormal}
                 </h1>
                 {c.baja && (
-                  <span className="rounded-full bg-[#FF7A4D]/[0.14] px-2.5 py-1 text-xs font-bold text-[#FF7A4D]">De baja</span>
+                  <span className="rounded-full bg-gm-aviso/[0.14] px-2.5 py-1 text-xs font-bold text-gm-aviso">De baja</span>
                 )}
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-muted-foreground">
@@ -261,7 +261,7 @@ export function CuentaCorriente({
               <div className={`font-display text-[36px] font-semibold leading-tight tabular-nums ${colorSaldo(estado.saldo)}`}>
                 {estado.saldo === 0 ? 'Al día' : plata(Math.abs(estado.saldo))}
               </div>
-              {estado.vencido > 0 && <div className="text-sm font-semibold text-[#FF7A4D]">{plata(estado.vencido)} vencido</div>}
+              {estado.vencido > 0 && <div className="text-sm font-semibold text-gm-aviso">{plata(estado.vencido)} vencido</div>}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -403,7 +403,7 @@ export function CuentaCorriente({
             <div role="table" aria-label="Estado de cuenta" className="min-w-[860px]">
               <div
                 role="row"
-                className="grid h-11 grid-cols-[100px_minmax(0,1fr)_120px_130px_130px_60px] items-center bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+                className="grid h-11 grid-cols-[100px_minmax(0,1fr)_120px_130px_130px_60px] items-center bg-[#15120E] px-5 font-mono text-[11px] tracking-[0.1em]"
                 style={{ color: EJE }}
               >
                 <span role="columnheader">FECHA</span>
@@ -435,7 +435,7 @@ export function CuentaCorriente({
                         <Pastilla tono={m.tipo === 'PAGO' ? 'verde' : m.tipo === 'ANULACION' || m.tipo === 'DEVOLUCION' ? 'naranja' : 'amarillo'}>
                           {TIPOS[m.tipo]}
                         </Pastilla>
-                        {m.anulado && <span className="text-[11px] font-bold text-[#FF7A4D]">ANULADO</span>}
+                        {m.anulado && <span className="text-[11px] font-bold text-gm-aviso">ANULADO</span>}
                       </span>
                       <span className="mt-0.5 block truncate text-xs" style={{ color: EJE }}>
                         {[m.metodo ? nombreMetodo(m.metodo) : null, m.motivo, m.usuario ? `por ${m.usuario}` : null, m.migrado ? 'traído del sistema anterior' : null]
@@ -447,7 +447,7 @@ export function CuentaCorriente({
                     <span role="cell" className="text-right tabular-nums text-emerald-400">{m.haber ? plata(m.haber) : ''}</span>
                     <span role="cell" className={`text-right font-semibold tabular-nums ${colorSaldo(saldo)}`}>
                       {plata(Math.abs(saldo))}
-                      <span className="ml-1 text-[10px] font-normal" style={{ color: EJE }}>
+                      <span className="ml-1 text-[11px] font-normal" style={{ color: EJE }}>
                         {saldo > 0 ? 'P' : saldo < 0 ? 'F' : ''}
                       </span>
                     </span>
@@ -511,7 +511,7 @@ export function CuentaCorriente({
                       {r.situacion === 'SALDADO' ? (
                         `vencía el ${fechaAR(r.vencimiento)}`
                       ) : r.vencido ? (
-                        <strong className="text-[#FF7A4D]">venció el {fechaAR(r.vencimiento)}</strong>
+                        <strong className="text-gm-aviso">venció el {fechaAR(r.vencimiento)}</strong>
                       ) : (
                         `vence el ${fechaAR(r.vencimiento)}`
                       )}
@@ -523,7 +523,7 @@ export function CuentaCorriente({
                   // Sin nada aplicado, importe y pendiente son lo mismo: una sola línea.
                   <div className="flex items-baseline justify-between text-sm">
                     <span className="text-muted-foreground">Pendiente</span>
-                    <span className={`font-display text-xl font-semibold tabular-nums ${r.vencido ? 'text-[#FF7A4D]' : ''}`}>{plata(r.saldo)}</span>
+                    <span className={`font-display text-xl font-semibold tabular-nums ${r.vencido ? 'text-gm-aviso' : ''}`}>{plata(r.saldo)}</span>
                   </div>
                 ) : (
                 <div>
@@ -556,7 +556,7 @@ export function CuentaCorriente({
                       </>
                     )}
                     <dt className="font-semibold">Pendiente</dt>
-                    <dd className={`text-right font-semibold tabular-nums ${r.saldo ? 'text-[#FF7A4D]' : 'text-emerald-400'}`}>
+                    <dd className={`text-right font-semibold tabular-nums ${r.saldo ? 'text-gm-aviso' : 'text-emerald-400'}`}>
                       {plata(r.saldo)}
                     </dd>
                   </dl>
@@ -624,7 +624,7 @@ export function CuentaCorriente({
                     <span className={`font-semibold ${p.anulado ? 'line-through' : ''}`}>
                       {p.numero ? `Pago N° ${p.numero}` : 'Pago anterior al sistema'}
                     </span>
-                    {p.anulado && <span className="text-[11px] font-bold text-[#FF7A4D]">ANULADO</span>}
+                    {p.anulado && <span className="text-[11px] font-bold text-gm-aviso">ANULADO</span>}
                   </div>
                   <div className="mt-0.5 text-xs" style={{ color: EJE }}>
                     {fechaAR(p.fecha)} · {p.medios.map((m) => `${nombreMetodo(m.metodo)} ${plata(m.importe)}`).join(' + ')}

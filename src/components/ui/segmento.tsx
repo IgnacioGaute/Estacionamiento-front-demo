@@ -22,7 +22,7 @@ export const SEGMENTO_COLORES = {
 // El número va dos veces (abajo y dentro de la pastilla): toma el color del texto de cada capa.
 function Badge({ children }: { children: ReactNode }) {
   return (
-    <span className="gm-mono rounded-full bg-[color-mix(in_srgb,currentColor_16%,transparent)] px-1.5 py-px text-[10.5px] font-bold">
+    <span className="gm-mono rounded-full bg-[color-mix(in_srgb,currentColor_16%,transparent)] px-1.5 py-px text-[11px] font-bold">
       {children}
     </span>
   );

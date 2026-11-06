@@ -237,7 +237,7 @@ function Comprobante({ nombre, direccion, quieto }: { nombre: string; direccion:
           </div>
         </div>
         <div className="my-4 border-t border-dashed border-[#cfc6b8]" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8a8174]">Comprobante de entrada</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#8a8174]">Comprobante de entrada</p>
         <dl className="mt-2 space-y-1.5 text-sm">
           <div className="flex justify-between"><dt className="text-[#6b6358]">Patente</dt><dd className="font-mono font-bold">AB 123 CD</dd></div>
           <div className="flex justify-between"><dt className="text-[#6b6358]">Vehículo</dt><dd className="font-semibold">Auto</dd></div>

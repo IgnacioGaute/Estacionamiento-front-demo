@@ -26,7 +26,7 @@ export function DeleteNoteDialog({ note }: { note: Note }) {
           size="icon"
           aria-label="Eliminar aviso"
           title="Eliminar aviso"
-          className="size-9 text-muted-foreground hover:bg-destructive/15 hover:text-[#F08775]"
+          className="size-9 text-muted-foreground hover:bg-destructive/15 hover:text-gm-peligro"
         >
           <Trash className="size-4" />
         </Button>

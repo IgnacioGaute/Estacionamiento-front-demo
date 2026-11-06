@@ -75,11 +75,14 @@
        - atencion (#F0A43A): pendiente sin urgencia (requiere atención, faltan datos).
        - ok (#3DD68C): confirmado o al día.
        - texto-tenue (#857B6D): lo más apagado que llega a 4,5:1 sobre el fondo.
-       El peligro (borrar, error) sigue siendo --destructive. Los hex sueltos se migran de a poco. */
+       - peligro (#F08775): el texto de borrar o de un error. Los fondos y bordes de peligro siguen
+         siendo --destructive, que como texto chico sobre el fondo oscuro no llega a 4,5:1.
+       Las pantallas de plataforma del super admin tienen su propia paleta y no usan estos. */
     --gm-aviso:         14 85% 62%;
     --gm-atencion:      35 86% 58%;
     --gm-ok:            151 65% 54%;
     --gm-texto-tenue:   35 10% 48%;
+    --gm-peligro:       9 80% 70%;
   }
 
   .dark {
@@ -238,7 +241,7 @@
   color: #9AD588;
 }
 [data-sonner-toast][data-type="error"] [data-icon] svg {
-  color: #F08775;
+  color: hsl(var(--gm-peligro));
 }
 
 /* Punto «en vivo» de las pantallas de plataforma: late mientras la cifra se está moviendo. */

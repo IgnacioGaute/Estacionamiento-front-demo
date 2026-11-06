@@ -49,7 +49,7 @@ export function textoSaldo(saldo: number) {
   return saldo > 0 ? `Pendiente ${plata(saldo)}` : saldo < 0 ? `A favor ${plata(-saldo)}` : 'Al día';
 }
 
-export const colorSaldo = (saldo: number) => (saldo > 0 ? 'text-[#FF7A4D]' : saldo < 0 ? 'text-emerald-400' : '');
+export const colorSaldo = (saldo: number) => (saldo > 0 ? 'text-gm-aviso' : saldo < 0 ? 'text-emerald-400' : '');
 
 const MAXIMO = 1_000_000_000;
 

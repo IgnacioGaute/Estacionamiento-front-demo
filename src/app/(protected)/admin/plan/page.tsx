@@ -67,7 +67,7 @@ const LAVANDA = '#A9AFFF';
 const GRIS = '#A79E8F';
 
 const tarjeta = 'rounded-[24px] border border-[#2E2A23] bg-[#1B1915]';
-const rotulo = 'font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#8F8676]';
+const rotulo = 'font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#8F8676]';
 
 // Lo que incluye cualquier plan, con las palabras de la landing.
 const INCLUIDO = [
@@ -313,11 +313,8 @@ function Contenido({ plan }: { plan: MiPlan }) {
 
   return (
     <>
+      {/* Sin el rótulo «MI PLAN» encima: repetía el título. */}
       <header className="flex flex-col gap-3">
-        <div className="flex items-center gap-2.5">
-          <span aria-hidden className="h-px w-6 bg-gm-yellow" />
-          <span className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-gm-yellow">Mi plan</span>
-        </div>
         <h1 className="m-0 font-display text-[36px] font-semibold uppercase leading-none tracking-[0.01em] text-[#F6F0E6] sm:text-[50px]">
           Tu plan
         </h1>

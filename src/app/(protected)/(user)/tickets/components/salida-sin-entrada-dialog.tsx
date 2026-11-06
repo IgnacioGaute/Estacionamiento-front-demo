@@ -179,7 +179,7 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
           {/* Antes de registrar un auto nuevo hay que revisar las parecidas que figuran adentro: por
               cada una, si sigue en la playa o no. No se cobran desde acá. */}
           {candidatas === null ? <DataLoading label="Buscando patentes parecidas…" /> : hayParecidas && (
-            <section aria-labelledby="sin-entrada-parecidas" className="space-y-2.5 rounded-2xl border-[1.5px] border-[#F0A43A]/50 bg-[#F0A43A]/[0.08] p-3.5">
+            <section aria-labelledby="sin-entrada-parecidas" className="space-y-2.5 rounded-2xl border-[1.5px] border-gm-atencion/50 bg-gm-atencion/[0.08] p-3.5">
               <p id="sin-entrada-parecidas" className="text-[14px] font-semibold text-[#F5C26B]">
                 {parecidas.length === 1 ? 'Hay una patente parecida en la playa' : `Hay ${parecidas.length} patentes parecidas en la playa`}
               </p>

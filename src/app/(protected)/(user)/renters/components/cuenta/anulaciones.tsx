@@ -84,7 +84,7 @@ export function AnulacionesDialog({ open, onOpenChange }: { open: boolean; onOpe
           <div className="grid grid-cols-3 gap-2">
             {[
               { label: 'Anulaciones', valor: String(t.cantidad), color: '' },
-              { label: 'Deuda anulada', valor: plata(t.deudaAnulada), color: t.deudaAnulada ? 'text-[#FF7A4D]' : '' },
+              { label: 'Deuda anulada', valor: plata(t.deudaAnulada), color: t.deudaAnulada ? 'text-gm-aviso' : '' },
               { label: 'Pagos anulados', valor: plata(t.pagosAnulados), color: t.pagosAnulados ? 'text-gm-yellow' : '' },
             ].map((k) => (
               <div key={k.label} className="rounded-xl border border-border bg-background px-3 py-2.5">
@@ -131,7 +131,7 @@ export function AnulacionesDialog({ open, onOpenChange }: { open: boolean; onOpe
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className={`font-display text-lg font-semibold tabular-nums ${a.efecto < 0 ? 'text-[#FF7A4D]' : 'text-gm-yellow'}`}>
+                  <div className={`font-display text-lg font-semibold tabular-nums ${a.efecto < 0 ? 'text-gm-aviso' : 'text-gm-yellow'}`}>
                     {plata(Math.abs(a.efecto))}
                   </div>
                   <div className="text-[11px]" style={{ color: EJE }}>

@@ -1,5 +1,6 @@
 'use client';
 import { DataLoading } from '@/components/ui/data-loading';
+import { PageHeader } from '@/components/page-header';
 
 // La sección de inquilinos: a quién buscar, cuánto tiene pendiente (y si ya venció) y cobrarle
 // desde la lista. El detalle de cada uno está en su cuenta. El operador ve solo la lista y cobra:
@@ -38,7 +39,7 @@ function PastillaSaldo({ i }: { i: InquilinoResumen }) {
       <span
         className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold tabular-nums ${
           i.saldo > 0
-            ? 'bg-[#FF7A4D]/[0.14] text-[#FF7A4D]'
+            ? 'bg-gm-aviso/[0.14] text-gm-aviso'
             : i.saldo < 0
               ? 'bg-emerald-400/[0.12] text-emerald-400'
               : 'bg-[#221F1A] text-muted-foreground'
@@ -47,7 +48,7 @@ function PastillaSaldo({ i }: { i: InquilinoResumen }) {
         {i.saldo > 0 ? `Pendiente ${plata(i.saldo)}` : i.saldo < 0 ? `A favor ${plata(-i.saldo)}` : 'Al día'}
       </span>
       {i.vencido > 0 && (
-        <span className="text-[11px] font-semibold text-[#FF7A4D]">
+        <span className="text-[11px] font-semibold text-gm-aviso">
           {i.vencido < i.saldo ? `${plata(i.vencido)} vencido` : 'Vencido'} desde {fechaAR(i.vencidoDesde)}
         </span>
       )}
@@ -152,12 +153,13 @@ export function InquilinosPanel() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="font-mono text-[11px] tracking-[0.14em] text-gm-yellow">OPERACIÓN · CUENTAS CORRIENTES</div>
-          <h1 className="mt-2 font-display text-[34px] font-semibold leading-none sm:text-[40px]">Inquilinos</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+      {/* El mismo encabezado que el resto de las pantallas (PageHeader): tenía un rótulo mono en
+          amarillo arriba del título y otra tipografía. */}
+      <PageHeader
+        breadcrumb={['Estacionamiento', 'Operación', 'Inquilinos']}
+        title="Inquilinos"
+        description="Cuentas corrientes de los inquilinos: cargos, pagos y saldos."
+        actions={<div className="flex flex-wrap items-center gap-2.5">
           {cargando && resumen && <DataLoading label="Actualizando cuentas…" className="w-auto" />}
           {esAdmin && (
             <>
@@ -171,7 +173,7 @@ export function InquilinosPanel() {
                 {!!k?.anulacionesMes && (
                   <span
                     aria-label={`${k.anulacionesMes} este mes`}
-                    className="rounded-full bg-[#FF7A4D]/[0.16] px-1.5 text-[11px] font-bold tabular-nums text-[#FF7A4D]"
+                    className="rounded-full bg-gm-aviso/[0.16] px-1.5 text-[11px] font-bold tabular-nums text-gm-aviso"
                   >
                     {k.anulacionesMes}
                   </span>
@@ -188,8 +190,8 @@ export function InquilinosPanel() {
               <CreateRenterDialog onCreado={() => void cargar()} />
             </>
           )}
-        </div>
-      </div>
+        </div>}
+      />
 
       {error && error.code !== 'MODULO_INQUILINOS_APAGADO' && (
         <div role="alert" className="flex items-center gap-3 rounded-2xl border border-destructive/60 p-4 text-sm">
@@ -206,9 +208,9 @@ export function InquilinosPanel() {
           <div className="flex items-center justify-between">
             <Rotulo>Saldo pendiente</Rotulo>
             {/* La alerta solo cuando hay algo que cobrar: con $0 asustaba sin motivo. */}
-            {k?.saldoPendiente ? <AlertTriangle aria-hidden className="size-4 text-[#FF7A4D]" /> : null}
+            {k?.saldoPendiente ? <AlertTriangle aria-hidden className="size-4 text-gm-aviso" /> : null}
           </div>
-          <span className={`font-display text-[26px] font-semibold leading-none sm:text-[34px] ${k?.saldoPendiente ? 'text-[#FF7A4D]' : ''}`}>
+          <span className={`font-display text-[26px] font-semibold leading-none sm:text-[34px] ${k?.saldoPendiente ? 'text-gm-aviso' : ''}`}>
             {k ? corto(k.saldoPendiente) : '—'}
           </span>
           <span className="text-xs text-muted-foreground sm:text-[12.5px]">
@@ -239,7 +241,7 @@ export function InquilinosPanel() {
                 <span className="block text-xs text-muted-foreground">
                   {k.abonoMes.pendiente ? (
                     <>
-                      Falta <strong className="text-[#FF7A4D]">{corto(k.abonoMes.pendiente)}</strong> de {corto(k.abonoMes.cargado)} cargados
+                      Falta <strong className="text-gm-aviso">{corto(k.abonoMes.pendiente)}</strong> de {corto(k.abonoMes.cargado)} cargados
                     </>
                   ) : (
                     `Los ${corto(k.abonoMes.cargado)} cargados están saldados`
@@ -344,7 +346,7 @@ export function InquilinosPanel() {
           <div role="table" aria-label="Inquilinos" className="min-w-[860px]">
             <div
               role="row"
-              className="grid h-11 grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center bg-[#15120E] px-5 font-mono text-[10.5px] tracking-[0.1em]"
+              className="grid h-11 grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center bg-[#15120E] px-5 font-mono text-[11px] tracking-[0.1em]"
               style={{ color: EJE }}
             >
               <span role="columnheader">INQUILINO</span>

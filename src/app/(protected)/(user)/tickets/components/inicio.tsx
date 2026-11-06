@@ -169,7 +169,7 @@ function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration
                     }}
                   />
                 ))}
-              {zona.resto > 0 && <span className="gm-mono ml-0.5 text-[10.5px] font-bold text-muted-foreground">+{zona.resto}</span>}
+              {zona.resto > 0 && <span className="gm-mono ml-0.5 text-[11px] font-bold text-muted-foreground">+{zona.resto}</span>}
             </span>
           </button>
         ))}
@@ -395,7 +395,7 @@ export function VehiculoFila({ r, ahora, onSelect, resaltar }: {
         {ficha ? (
           <span className="gm-mono inline-flex h-[33px] min-w-[96px] shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 px-2 text-[13.5px] font-bold">Ficha {ficha}</span>
         ) : r.noPlate ? (
-          <span className="inline-flex h-[33px] min-w-[96px] shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sin patente</span>
+          <span className="inline-flex h-[33px] min-w-[96px] shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sin patente</span>
         ) : (
           <PlateChip plate={r.licensePlateOriginal || '—'} size="sm" highlight={resaltar} />
         )}

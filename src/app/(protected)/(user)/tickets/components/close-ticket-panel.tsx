@@ -100,7 +100,7 @@ function Identidad({ r, size = 'sm', highlight }: { r: TicketRegistration; size?
     );
   if (r.noPlate)
     return (
-      <span className={cn('inline-flex shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground', alto)}>
+      <span className={cn('inline-flex shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground', alto)}>
         Sin patente
       </span>
     );
@@ -911,9 +911,9 @@ export function CloseTicketPanel({
                 o la entrada se cargó mal. Si es el mismo auto se toca para cobrarlo; si la patente
                 está bien escrita, se cobra sin entrada (y el administrador puede borrar la mal cargada). */}
             {parecidas.length > 0 && (
-              <div role="alert" className="space-y-3 rounded-2xl border-[1.5px] border-[#F0A43A]/50 bg-[#F0A43A]/[0.08] p-3.5">
+              <div role="alert" className="space-y-3 rounded-2xl border-[1.5px] border-gm-atencion/50 bg-gm-atencion/[0.08] p-3.5">
                 <div className="flex items-start gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#F0A43A]/20 text-[#F0A43A]"><AlertTriangle className="size-[18px]" aria-hidden /></span>
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gm-atencion/20 text-gm-atencion"><AlertTriangle className="size-[18px]" aria-hidden /></span>
                   <div className="min-w-0 space-y-0.5">
                     <p className="text-[14px] font-semibold text-[#F5C26B]">{parecidas.length === 1 ? 'Hay una patente parecida' : `Hay ${parecidas.length} patentes parecidas`}</p>
                     <p className="text-[12.5px] leading-snug text-[#D9D1C3]">
@@ -921,7 +921,7 @@ export function CloseTicketPanel({
                     </p>
                   </div>
                 </div>
-                <ul className="shrink-0 overflow-hidden rounded-xl border border-[#F0A43A]/30 bg-gm-surface-2">
+                <ul className="shrink-0 overflow-hidden rounded-xl border border-gm-atencion/30 bg-gm-surface-2">
                   {parecidas.map(fila)}
                 </ul>
                 {onSalidaSinEntrada && cobroHabilitado && query.replace(/[^A-Za-z0-9]/g, '').length >= 5 && (

@@ -183,11 +183,11 @@ export function OperationalNavUser({
               <span className="text-[12.5px] font-medium text-foreground truncate leading-tight">
                 {userNav.name.trim() || 'Usuario'}
               </span>
-              <span className="text-[10.5px] text-muted-foreground truncate leading-tight">
+              <span className="text-[11px] text-muted-foreground truncate leading-tight">
                 {userNav.email}
               </span>
             </div>
-            <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-gm-yellow">
+            <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gm-yellow">
               {userNav.role === 'SUPER_ADMIN' ? 'Super' : esAdmin ? 'Admin' : 'Op.'}
             </span>
           </div>
@@ -325,7 +325,7 @@ export function OperationalNavUser({
           </DropdownMenuItem>}
           <DropdownMenuItem
             onClick={() => signOut()}
-            className="desktop-user-action desktop-user-action--danger min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-[#F08775] transition-colors duration-150 hover:bg-destructive/15 focus:bg-destructive/15 lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]"
+            className="desktop-user-action desktop-user-action--danger min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-gm-peligro transition-colors duration-150 hover:bg-destructive/15 focus:bg-destructive/15 lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]"
           >
             <LogOut className="size-3.5" />
             Cerrar sesión
@@ -399,9 +399,9 @@ function PlatformNavUser({
           </Avatar>
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-[12.5px] font-medium leading-tight text-foreground">{nombre}</span>
-            <span className="truncate text-[10.5px] leading-tight text-muted-foreground">{userNav.email}</span>
+            <span className="truncate text-[11px] leading-tight text-muted-foreground">{userNav.email}</span>
           </div>
-          <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-gm-yellow">Super</span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gm-yellow">Super</span>
         </div>
 
         <DropdownMenuItem asChild className={item}>
@@ -433,7 +433,7 @@ function PlatformNavUser({
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => signOut()}
-          className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-[#F08775] transition-colors duration-150 hover:bg-destructive/15 focus:bg-destructive/15"
+          className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-gm-peligro transition-colors duration-150 hover:bg-destructive/15 focus:bg-destructive/15"
         >
           <LogOut className="size-3.5" />
           Cerrar sesión

@@ -7,6 +7,8 @@ import { modalidadActual } from '@/lib/modalidad.server';
 import { ModalidadGratuitaAviso } from '@/components/solo-con-cobro';
 import { getTicketSchedule } from '@/services/tickets.service';
 import { PlanillaButton } from '../components/planilla-button';
+import { seccionesAdmin } from '@/components/navegation/secciones-admin';
+import { Subpaginas } from '@/components/navegation/subpaginas';
 
 // Caja: Turnos e Ingresos y gastos, cada una en su página (la barra lateral las despliega debajo de
 // Caja). La planilla diaria es un diálogo y queda arriba, a mano desde las dos. /admin/caja (que sólo
@@ -18,6 +20,8 @@ export default async function CajaLayout({ children }: { children: React.ReactNo
   // conserva en la base y vuelve a verse si la playa vuelve a cobrar.
   if ((await modalidadActual()) === 'GRATUITO') return <ModalidadGratuitaAviso seccion="Caja" />;
   const shiftsEnabled = (await getTicketSchedule())?.shiftsEnabled === true;
+  // Las mismas páginas que la barra lateral, también bajo el título (barra plegada o celular).
+  const paginas = seccionesAdmin(true, false, shiftsEnabled).find((s) => s.url === '/admin/caja')?.items;
   return (
     <div className="container mx-auto max-w-7xl space-y-6 px-4 py-6 sm:p-8">
       <PageHeader
@@ -26,6 +30,7 @@ export default async function CajaLayout({ children }: { children: React.ReactNo
         description={shiftsEnabled ? 'Consultá la planilla diaria, registrá ingresos y gastos y revisá los turnos.' : 'Consultá la planilla diaria y registrá ingresos y gastos.'}
         actions={<PlanillaButton />}
       />
+      <Subpaginas items={paginas} seccion="Caja" />
       {children}
     </div>
   );

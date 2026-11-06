@@ -39,7 +39,7 @@ export function ConfirmDeleteDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-md border border-destructive/40 bg-destructive/15 text-[#F08775]">
+            <span className="grid size-9 place-items-center rounded-md border border-destructive/40 bg-destructive/15 text-gm-peligro">
               <AlertTriangle className="size-4" />
             </span>
             <div>

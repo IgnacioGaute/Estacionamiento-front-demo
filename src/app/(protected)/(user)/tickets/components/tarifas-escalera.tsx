@@ -153,7 +153,7 @@ export function TarifasEscalera({ brackets, schedule }: { brackets: TicketPriceB
           <div className="relative hidden h-[262px] pl-14 sm:block">
             {guias.map((valor, k) => (
               <div key={k} aria-hidden className={cn('absolute inset-x-0 border-t', k ? 'border-dashed border-gm-line' : 'border-gm-line-strong')} style={{ bottom: 30 + Math.round((valor / tope) * ALTO_BARRA) }}>
-                <span className="gm-mono absolute -top-2 left-0 w-12 text-right text-[10.5px] text-[#8A8173]">{formatImporte(valor)}</span>
+                <span className="gm-mono absolute -top-2 left-0 w-12 text-right text-[11px] text-[#8A8173]">{formatImporte(valor)}</span>
               </div>
             ))}
             <ol aria-label="Precio por tiempo de estadía" className="relative grid h-full items-end gap-2.5" style={{ gridTemplateColumns: `repeat(${escalones.length}, minmax(0, 1fr))` }}>
@@ -215,7 +215,7 @@ export function TarifasEscalera({ brackets, schedule }: { brackets: TicketPriceB
               </div>
               <input id={`${id}-duracion`} type="range" min={15} max={maximo} step={5} value={duracion} onChange={(ev) => setMinutos(Number(ev.target.value))}
                 className={cn('h-8 w-full cursor-pointer', t.rango)} />
-              <div aria-hidden className="gm-mono flex justify-between text-[10.5px] text-[#8A8173]">
+              <div aria-hidden className="gm-mono flex justify-between text-[11px] text-[#8A8173]">
                 <span>15 min</span><span>{tiempoCorto(Math.round(maximo / 2 / 15) * 15)}</span><span>{tiempoCorto(maximo)}</span>
               </div>
             </div>

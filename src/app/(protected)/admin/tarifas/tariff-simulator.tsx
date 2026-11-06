@@ -59,9 +59,10 @@ export function TariffSimulator({ draft, revision, invalid, vehicles }: {
     </>}
   </div>;
   return <section aria-labelledby="tariff-simulator-heading" className="space-y-4 rounded-2xl border border-amber-500/30 bg-amber-500/[0.03] p-4 sm:p-6">
-    <div><span className="inline-flex items-center gap-2 text-xs font-semibold uppercase text-amber-500"><FlaskConical className="size-4" aria-hidden="true" /> Prueba sin cobros</span>
-      <h2 id="tariff-simulator-heading" className="mt-1 text-xl font-semibold">{draft ? 'Compará los precios actuales con tu borrador' : 'Probá cuánto cobrarías'}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{draft ? 'Usamos el mismo vehículo y permanencia con todas las reglas, precios y horarios que estás editando.' : 'El cálculo usa las tarifas vigentes y no registra ingresos ni cobros.'}</p></div>
+    {/* Sin rótulo en mayúsculas encima: el ícono acompaña al título y «no registra cobros» ya lo
+        dice la descripción. */}
+    <div><h2 id="tariff-simulator-heading" className="flex items-center gap-2 text-xl font-semibold"><FlaskConical className="size-5 shrink-0 text-amber-500" aria-hidden="true" />{draft ? 'Compará los precios actuales con tu borrador' : 'Probá cuánto cobrarías'}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{draft ? 'Usamos el mismo vehículo y permanencia con todas las reglas, precios y horarios que estás editando. Es una prueba: no registra cobros.' : 'Es una prueba con las tarifas vigentes: no registra ingresos ni cobros.'}</p></div>
     <form onSubmit={event => { event.preventDefault(); run(); }} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="space-y-2 text-sm"><span>Vehículo</span><TariffSelect name="Vehículo del ejemplo" value={vehicle} onValueChange={value => { setSelected(value); clear(); }} disabled={!active.length} placeholder="Sin vehículos habilitados" options={active.map(v => ({ value: v.code, label: v.name }))} /></label>

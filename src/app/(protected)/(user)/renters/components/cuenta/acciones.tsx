@@ -386,7 +386,7 @@ export function AnularDialog({
             type="button"
             disabled={!motivoOk || !importeOk || enviando}
             onClick={() => void anular()}
-            className="flex h-11 items-center gap-2 rounded-xl border border-[#FF7A4D]/60 px-5 text-sm font-bold text-[#FF7A4D] hover:bg-[#FF7A4D]/10 disabled:opacity-50"
+            className="flex h-11 items-center gap-2 rounded-xl border border-gm-aviso/60 px-5 text-sm font-bold text-gm-aviso hover:bg-gm-aviso/10 disabled:opacity-50"
           >
             {enviando && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
             Anular {movimiento ? plata(movimiento.importe) : ''}
@@ -423,7 +423,7 @@ export function MenuAnular({
         <DropdownMenuItem
           disabled={!anulable.ok}
           onSelect={onAnular}
-          className="text-[#FF7A4D] focus:bg-[#FF7A4D]/10 focus:text-[#FF7A4D]"
+          className="text-gm-aviso focus:bg-gm-aviso/10 focus:text-gm-aviso"
         >
           <Ban /> {etiqueta}
         </DropdownMenuItem>
@@ -574,7 +574,7 @@ export function CargarAbonosDialog({
               )}
               {plan.sinCargar.map((x) => (
                 <li key={x.id} className="flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#FF7A4D]" />
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-gm-aviso" />
                   <span>
                     <strong>{x.nombre}</strong> no se puede cargar: {x.motivo}
                   </span>

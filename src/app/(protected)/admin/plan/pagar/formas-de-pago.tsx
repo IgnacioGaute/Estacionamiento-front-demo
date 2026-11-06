@@ -185,7 +185,7 @@ function Opcion({
           <span className="flex flex-wrap items-center gap-2.5">
             <span className="text-[16.5px] font-semibold text-[#F6F0E6]">{titulo}</span>
             {etiqueta && (
-              <span className="rounded-full bg-[#F5C21924] px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.1em] text-gm-yellow">
+              <span className="rounded-full bg-[#F5C21924] px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-gm-yellow">
                 {etiqueta}
               </span>
             )}

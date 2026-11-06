@@ -23,18 +23,17 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0">
+        {/* Dónde estás, en texto de 12 px y sin mayúsculas espaciadas: eran 10,5 px dentro de un
+            <nav> sin enlaces, que se leía como un menú que no navegaba. */}
         {breadcrumb && breadcrumb.length > 0 && (
-          <nav
-            aria-label="breadcrumb"
-            className="flex flex-wrap items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted-foreground"
-          >
+          <p className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-muted-foreground">
             {breadcrumb.map((b, i) => (
               <span key={i} className="inline-flex items-center gap-1.5">
                 {b}
-                {i < breadcrumb.length - 1 && <span className="opacity-50">/</span>}
+                {i < breadcrumb.length - 1 && <span aria-hidden className="opacity-50">/</span>}
               </span>
             ))}
-          </nav>
+          </p>
         )}
         <h1 className="gm-display mt-1 text-[26px] font-bold leading-tight tracking-[0.01em] text-foreground md:text-[30px]">
           {title}

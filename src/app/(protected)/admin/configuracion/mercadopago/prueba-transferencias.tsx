@@ -112,7 +112,7 @@ function comoEntro(p: PagoDePrueba) {
 
 function Falla({ r }: { r: ConsultaFallida | { error: string } }) {
   return (
-    <p role="alert" className="m-0 rounded-[12px] border border-[#FF7A4D]/30 bg-[#FF7A4D]/10 px-4 py-3 text-[13px] text-[#FFB59C]">
+    <p role="alert" className="m-0 rounded-[12px] border border-gm-aviso/30 bg-gm-aviso/10 px-4 py-3 text-[13px] text-[#FFB59C]">
       {"estado" in r ? `MercadoPago contestó ${r.estado ?? "sin respuesta"}: ` : ""}
       {r.error}
     </p>

@@ -66,7 +66,7 @@ function CobrosInquilinosDelDia({ cobros }: { cobros: CobroInquilinoDia[] }) {
   return (
     <div className="space-y-3 rounded-2xl border border-border bg-secondary/20 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Cobros a inquilinos</div>
+        <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Cobros a inquilinos</div>
         <div className="text-[11px] text-muted-foreground">
           {recibos ? `${recibos} ${recibos === 1 ? 'recibo' : 'recibos'} · ${ars(total)}` : 'Sin cobros en el día'}
         </div>
@@ -240,7 +240,7 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
                           ? t.turno.usuarioApertura ? `${t.turno.usuarioApertura.firstName} ${t.turno.usuarioApertura.lastName}`.trim() || t.turno.nombre : t.turno.nombre
                           : 'Sin turno asignado'}
                       </span>
-                      {t.turno && <Pill tono={t.turno.estado === 'ABIERTO' ? 'ok' : 'error'} className="h-5 px-2 text-[10.5px]">{t.turno.estado === 'ABIERTO' ? 'Abierto' : 'Cerrado'}</Pill>}
+                      {t.turno && <Pill tono={t.turno.estado === 'ABIERTO' ? 'ok' : 'error'} className="h-5 px-2 text-[11px]">{t.turno.estado === 'ABIERTO' ? 'Abierto' : 'Cerrado'}</Pill>}
                     </span>
                     <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
                       {t.turno?.caja?.nombre && `${t.turno.caja.nombre} · `}{hora(t.desde)}{t.turno?.estado === 'ABIERTO' ? ' · En curso' : ` – ${hora(t.hasta)}`}
@@ -265,7 +265,7 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
 
           {loading && <DataLoading label="Cargando planilla…" />}
           {error && (
-            <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-[#F08775]">
+            <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-gm-peligro">
               {error}
             </div>
           )}
