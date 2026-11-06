@@ -73,6 +73,11 @@ explícitas en middleware/routes. Los comprobantes públicos se sirven en otro r
   muestra, el botón de WhatsApp), en las pantallas sin uso (Propietarios, Particulares y sus
   comprobantes viejos), que no se tocan, y en las de plataforma del super admin, con su propia paleta
   (`components/plataforma`).
+- Modo sin conexión (`public/offline.html`, `offline.css`): HTML estático sin Tailwind que sigue las
+  mismas reglas. Copia los tokens de `globals.css` con los mismos nombres y usa las tipografías de la
+  app (copias de `src/fonts` en `public/offline-*.woff2`, guardadas por `sw.js`). Encabezado y
+  tarjetas sobre el fondo, sin marco alrededor; la franja de obra arriba es la marca de la pantalla
+  local. Al tocar un token o una tipografía, actualizar la copia y subir `CACHE` en `sw.js`.
 - Pantallas de acceso (login, recuperar, nueva contraseña, verificación, registro, error): mismo marco
   que `/seleccionar-acceso` (`components/auth/card-wrapper.tsx`), con `AppIcon`, título y ancho fluido.
 - All dates/times use `dayjs` in `America/Argentina/Buenos_Aires`.

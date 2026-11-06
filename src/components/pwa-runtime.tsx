@@ -64,5 +64,7 @@ export function PwaRuntime() {
     return () => { window.clearInterval(periodica); document.removeEventListener('visibilitychange', alVolver); window.removeEventListener('pageshow', alVolver); window.removeEventListener('online', alVolver); window.removeEventListener('online', update); window.removeEventListener('offline', update); window.removeEventListener('beforeinstallprompt', install); window.removeEventListener('appinstalled', installed); };
   }, []);
   if (!offline) return null;
-  return <div role="status" className="px-4 py-2"><a className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-secondary/40 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground" href="/offline.html"><WifiOff className="size-3.5" />Abrir modo sin conexión</a></div>;
+  // Sin red es la salida principal: en el color de aviso y con 44 px para el pulgar. Antes era una
+  // píldora gris de 12 px que se confundía con un detalle.
+  return <div role="status" className="px-4 py-2"><a className="inline-flex min-h-11 items-center gap-2 rounded-full border border-gm-aviso/40 bg-gm-aviso/10 px-4 text-sm font-semibold text-gm-aviso transition-colors hover:bg-gm-aviso/15" href="/offline.html"><WifiOff className="size-4" aria-hidden />Abrir modo sin conexión</a></div>;
 }

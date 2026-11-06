@@ -1,7 +1,9 @@
 /* Cache only this public, versioned offline shell. Never cache authenticated HTML,
    RSC, API responses, receipts, login pages or mutations. */
-const CACHE = 'parking-public-offline-v19';
-const ASSETS = ['/offline.html', '/offline.css', '/offline.js', '/offline-operations.js', '/offline-workspace.js', '/offline-qr.js', '/offline-vault.js', '/icon-192.png', '/icon-512.png', '/offline-stay-pricing.js', '/offline-pricing.js', '/offline-pricing.types.js', '/offline-errors.js', '/offline-dayjs-module.js', '/offline-utc-module.js', '/offline-timezone-module.js', '/offline-dayjs-vendor.js', '/offline-utc-vendor.js', '/offline-timezone-vendor.js'];
+const CACHE = 'parking-public-offline-v20';
+// Las tipografías son copias de src/fonts (las mismas de la app), para que la pantalla local se
+// vea igual que el sistema también sin red.
+const ASSETS = ['/offline.html', '/offline.css', '/offline.js', '/offline-operations.js', '/offline-workspace.js', '/offline-qr.js', '/offline-vault.js', '/icon-192.png', '/icon-512.png', '/offline-stay-pricing.js', '/offline-pricing.js', '/offline-pricing.types.js', '/offline-errors.js', '/offline-dayjs-module.js', '/offline-utc-module.js', '/offline-timezone-module.js', '/offline-dayjs-vendor.js', '/offline-utc-vendor.js', '/offline-timezone-vendor.js', '/offline-archivo.woff2', '/offline-oswald.woff2', '/offline-mono.woff2'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });

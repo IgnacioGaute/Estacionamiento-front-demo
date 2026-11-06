@@ -139,7 +139,9 @@ export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }
     mode.onchange=()=>{$('plate').required=mode.value==='PLATE';$('plate').hidden=mode.value!=='PLATE';};
     $('entry').after(button('Se va sin ingreso registrado',forgottenEntry));
     const panel=el('section',undefined,'offline-extra-panel');panel.id='offline-extra'; $('receipts-section').before(panel);
-    const hint=el('p','La cámara para leer patentes, el asistente, los pagos por QR y la verificación bancaria necesitan internet. El resto de las operaciones de este equipo se guardan como pendientes.','operation-hint');panel.append(hint);
+    // Qué necesita internet vale para toda la pantalla: va bajo el resumen de pendientes, no arriba
+    // del título de las estadías por día, semana o mes.
+    const hint=el('p','La cámara para leer patentes, el asistente, los pagos por QR y la verificación bancaria necesitan internet. El resto de las operaciones de este equipo se guardan como pendientes.','operation-hint offline-note');document.querySelector('.workspace-summary').after(hint);
     const staysTitle=el('h2','Estadías por día, semana o mes');staysTitle.id='offline-stays-title';
     panel.append(staysTitle,button('Registrar estadía',passEntry));panel.lastChild.id='offline-new-pass';
     panel.append(el('div'));panel.lastChild.id='offline-passes';

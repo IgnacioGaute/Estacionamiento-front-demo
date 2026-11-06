@@ -118,7 +118,7 @@ export function OfflineConsultation({ revision }: { revision?: unknown }) {
   // Abrir la copia local no depende de la sesión del servidor. El shell comprueba los datos,
   // su vigencia y los pendientes; la API sigue autorizando cada sincronización.
   return <div className="flex flex-col items-start gap-2">
-    <a href="/offline.html" className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border/70 bg-secondary/30 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-gm-yellow/40 hover:bg-secondary/60 hover:text-foreground"><WifiOff className="size-3.5" />Abrir modo sin conexión</a>
+    <a href="/offline.html" className="inline-flex min-h-9 w-fit items-center max-sm:min-h-11 gap-1.5 rounded-full border border-border/70 bg-secondary/30 px-3.5 text-xs text-muted-foreground transition-colors hover:border-gm-yellow/40 hover:bg-secondary/60 hover:text-foreground"><WifiOff className="size-3.5" />Abrir modo sin conexión</a>
     {!ready && status && <div role="status" className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><span>{status}</span>{loginRequired ? <a href="/auth/login?callbackUrl=%2Ftickets" className="underline">Iniciar sesión</a> : <button type="button" className="underline" onClick={() => setRetry(value => value + 1)}>Reintentar</button>}</div>}
   </div>;
 }

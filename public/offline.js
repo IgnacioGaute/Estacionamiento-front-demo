@@ -128,7 +128,11 @@ function row(title, detail) { const el = document.createElement('div'); el.class
 function render() {
   if (!state) return;
   $('stamp').textContent = 'Datos preparados el ' + new Date(state.capturedAt).toLocaleString('es-AR') + '. Operaciones autorizadas hasta ' + new Date(state.expiresAt).toLocaleString('es-AR') + (state.shift ? '. Turno: ' + state.shift.name + '. Sincronizá los cobros antes de cerrarlo.' : state.shiftsEnabled ? '. Sin turno abierto: los cobros quedarán en la caja diaria sin turno asignado.' : '.');
-  $('pending').textContent = state.pending.length + ' operaciones pendientes de sincronizar';
+  // Empieza siempre con el número (lo leen las pruebas). Con pendientes va en color de atención;
+  // en cero, tranquilo.
+  const pendientes = state.pending.length;
+  $('pending').textContent = pendientes + (pendientes === 1 ? ' operación pendiente de sincronizar' : ' operaciones pendientes de sincronizar');
+  $('pending').dataset.hay = String(pendientes > 0);
   const q = normalize($('search').value);
   const vehicles = state.vehicles.filter(v => !v.departed && (!q || normalize(v.plate).includes(q)));
   $('rows').replaceChildren(...vehicles.map(v => {
@@ -157,7 +161,7 @@ function render() {
       } catch (e) { message(e.message); }
     }; el.append(button);
     if (receiptEnabled() && !isFree(v)) {
-      const receiptButton = document.createElement('button'); receiptButton.type = 'button'; receiptButton.textContent = 'Comprobante de entrada';
+      const receiptButton = document.createElement('button'); receiptButton.type = 'button'; receiptButton.className = 'secondary'; receiptButton.textContent = 'Comprobante de entrada';
       receiptButton.onclick = () => showReceipt((state.receipts || []).find(r => r.kind === 'ENTRY' && r.plate === v.plate && r.entry === v.entry) || { id: v.id, kind: 'ENTRY', plate: v.plate, vehicleType: v.vehicleType, entry: v.entry, occurredAt: v.entry, business: state.business, synced: !state.pending.some(op => op.registrationId === v.id && op.kind === 'ENTRY') });
       el.append(receiptButton);
     }
@@ -286,7 +290,7 @@ returnLinks.forEach(link => link.addEventListener('click', async event => {
     $('status').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 }));
-function connection() { $('connection').textContent = navigator.onLine ? 'Modo local · conexión disponible' : 'Sin conexión · guardado automático'; }
+function connection() { $('connection').textContent = navigator.onLine ? 'Modo local · conexión disponible' : 'Sin conexión · guardado automático'; $('connection').dataset.online = String(navigator.onLine); }
 let syncTimer;
 const stopSyncTimer = () => { clearInterval(syncTimer); syncTimer = undefined; };
 function resumeSync() {
