@@ -292,6 +292,24 @@ test.each([{ counted: 105000, salary: 25000, withdrawn: 65000 }, { counted: 2300
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: salary, efectivoParaSiguiente: 15000 })));
 });
 
+test('al confirmar el arqueo queda un resumen del cierre hasta tocar «Listo»', async () => {
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift()) });
+  jest.mocked(closeTurnoAction).mockResolvedValue({ turno: { alertaSueldo: null } } as never);
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
+  await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  await contar(900);
+  const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
+  // Antes era un aviso de unos segundos; ahora el resumen queda en pantalla.
+  const resumen = await screen.findByRole('region', { name: 'Resumen del cierre' });
+  expect(resumen).toHaveTextContent('Coincide');
+  expect(resumen).toHaveTextContent('Queda para el próximo operador');
+  expect(screen.getByRole('heading', { name: 'Turno y caja cerrados' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Listo' }));
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'Resumen del cierre' })).not.toBeInTheDocument());
+});
+
 test('dejando menos que el fondo aparece el sueldo: se compara con lo que queda en la caja', async () => {
   // Contó 15.000 (= fondo) y el sueldo es 5.000: con el fondo no alcanza; dejando 10.000, sí.
   const active = { ...shift(), efectivoDisponible: 15000, fondoObjetivo: 15000, sueldoPrevisto: 5000 };

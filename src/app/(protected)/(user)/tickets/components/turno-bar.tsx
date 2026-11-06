@@ -56,6 +56,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const [forcedReason, setForcedReason] = useState('');
   // Si el efectivo alcanza, el sueldo se retira salvo que el operador elija dejarlo en la caja.
   const [retirarSueldo, setRetirarSueldo] = useState(true);
+  // El resumen del arqueo recién confirmado (se muestra hasta tocar «Listo»).
+  const [cierreListo, setCierreListo] = useState<{ contado: number; esperado: number; diferencia: number; sueldo: number; retiro: number; deja: number; alerta: string | null } | null>(null);
   // Las entradas del operador que siguen abiertas: hay que confirmarlas para cerrar el turno.
   const [estadias, setEstadias] = useState<EstadiaAbiertaTurno[] | null>(null);
   const [estadiasConfirmadas, setEstadiasConfirmadas] = useState<string[]>([]);
@@ -146,8 +148,15 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
         ...(arqueo ? { efectivoContado: Number(counted), efectivoEsperado: expected, efectivoParaSiguiente: Number(forNext) } : {}),
         observaciones: notes, motivoCierreForzado: forzando ? forcedReason : undefined });
       if (result.error) { toast.error(typeof result.error === 'string' ? result.error : result.error.message); await refresh(); return; }
+      // Con arqueo el cierre termina en un resumen que queda en pantalla: antes era un aviso de 4
+      // segundos, el mismo de «Descuento aplicado», para el momento de más responsabilidad del turno.
+      if (arqueo) {
+        setCierreListo({ contado: Number(counted), esperado: expected, diferencia: closingDifference, sueldo: salary, retiro: withdrawn ?? 0, deja: Number(forNext), alerta: result.turno?.alertaSueldo ?? null });
+        setClosing(false); updated(); await refresh();
+        return;
+      }
       if (result.turno?.alertaSueldo) toast.error(result.turno.alertaSueldo);
-      toast.success(arqueo ? `Turno y caja cerrados. Dejás ${money(Number(forNext))} para el próximo operador.` : 'Turno cerrado. La caja sigue abierta para los demás operadores.');
+      toast.success('Turno cerrado. La caja sigue abierta para los demás operadores.');
       setOpen(false); setClosing(false); updated(); await refresh();
     });
   };
@@ -162,7 +171,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   };
   const closingValid = canClose && estadias !== null && largas.every(e => confirmadas.includes(e.id)) &&(!forzando || forcedReason.trim()) && (!arqueo ||(handoverValid && (closingDifference === 0 || notes.trim())));
   const openingValid = !!caja && !context?.legacyOpen && (caja.session ? context?.multipleShiftsEnabled : amountValid(received) && amountValid(added) && (openingDifference === 0 || openingReason.trim()));
-  const abrir = () => { setClosing(!!turnoId); setReceived(''); setAdded('0'); setOpeningReason(''); setCounted(''); setCashForNext(null); setNotes(''); setForcedReason(''); setRetirarSueldo(true); setOpen(true); startTransition(() => refresh(true)); };
+  const abrir = () => { setCierreListo(null); setClosing(!!turnoId); setReceived(''); setAdded('0'); setOpeningReason(''); setCounted(''); setCashForNext(null); setNotes(''); setForcedReason(''); setRetirarSueldo(true); setOpen(true); startTransition(() => refresh(true)); };
   const enlaceHistorial = esAdmin && <Link href="/admin/caja/turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja/turnos'), 200); }} className="mx-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow"><History className="size-3.5" aria-hidden />Ver turnos e historial</Link>;
   return <>
     {variant === 'pill' ? (
@@ -177,16 +186,36 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     )}
     {/* Como registrar entrada o cobrar salida: en el celular sube desde abajo y el botón que
         confirma queda fijo en el pie, al alcance del pulgar. */}
-    <ActionDialog open={open} onOpenChange={value => { if (!pending) { setOpen(value); if (!value) setClosing(false); } }}>
+    <ActionDialog open={open} onOpenChange={value => { if (!pending) { setOpen(value); if (!value) { setClosing(false); setCierreListo(null); } } }}>
       <ActionDialogContent>
         <ActionDialogHeader
-          title={active ? closing ? arqueo ? 'Cerrar turno y caja' : 'Cerrar sólo el turno' : 'Mi turno' : 'Abrir mi turno'}
-          description={active ? closing ? arqueo ? 'Contá el efectivo de toda la caja' : 'La caja sigue abierta para los demás' : arqueo ? 'Sos el último operador de esta caja' : 'Compartís esta caja con otros operadores' : 'Confirmá lo que recibís antes de empezar'}
-          onBack={active && closing ? () => setClosing(false) : undefined}
+          title={cierreListo ? 'Turno y caja cerrados' : active ? closing ? arqueo ? 'Cerrar turno y caja' : 'Cerrar sólo el turno' : 'Mi turno' : 'Abrir mi turno'}
+          description={cierreListo ? 'Revisá el resumen antes de entregar la caja' : active ? closing ? arqueo ? 'Contá el efectivo de toda la caja' : 'La caja sigue abierta para los demás' : arqueo ? 'Sos el último operador de esta caja' : 'Compartís esta caja con otros operadores' : 'Confirmá lo que recibís antes de empezar'}
+          onBack={!cierreListo && active && closing ? () => setClosing(false) : undefined}
           backLabel="Volver al turno"
           backDisabled={pending}
         />
-        {!context ? <ActionDialogBody className="[&>*]:shrink-0">
+        {cierreListo ? <><ActionDialogBody className="gap-4 [&>*]:shrink-0">
+          <section aria-label="Resumen del cierre" className="overflow-hidden rounded-2xl border border-gm-line">
+            <dl className="space-y-2 px-4 py-3 text-sm">
+              <Linea label="Contaste" value={money(cierreListo.contado)} />
+              <Linea label="Esperaba el sistema" value={money(cierreListo.esperado)} />
+              <Linea label="Diferencia" value={cierreListo.diferencia === 0 ? 'Coincide' : cierreListo.diferencia > 0 ? 'Faltan ' + money(cierreListo.diferencia) : 'Sobran ' + money(-cierreListo.diferencia)} />
+              {cierreListo.sueldo > 0 && <Linea label="Sueldo retirado" value={'− ' + money(cierreListo.sueldo)} />}
+              <Linea label="Retiro de recaudación" value={'− ' + money(cierreListo.retiro)} />
+            </dl>
+            <div className="flex items-center justify-between gap-3 border-t border-gm-line bg-gm-ok/[0.06] px-4 py-3">
+              <span className="text-[13px] font-semibold">Queda para el próximo operador</span>
+              <strong className="tabular-nums text-gm-ok">{money(cierreListo.deja)}</strong>
+            </div>
+          </section>
+          {cierreListo.alerta && <p role="alert" className="rounded-xl border border-gm-atencion/40 bg-gm-atencion/10 p-3 text-sm text-gm-atencion">{cierreListo.alerta}</p>}
+          <p className="text-center text-xs text-muted-foreground">Retirá de la caja {cierreListo.sueldo > 0 ? 'el sueldo y ' : ''}la recaudación. El cierre quedó en el historial de turnos.</p>
+        </ActionDialogBody>
+          <ActionDialogFooter>
+            <ActionDialogPrimaryButton onClick={() => { setCierreListo(null); setOpen(false); }}>Listo</ActionDialogPrimaryButton>
+          </ActionDialogFooter>
+        </> : !context ? <ActionDialogBody className="[&>*]:shrink-0">
           {error ? <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : <DataLoading label="Cargando caja…" />}
           {enlaceHistorial}
         </ActionDialogBody> : active ? closing ? <form onSubmit={e => { e.preventDefault(); submitClose(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-5 [&>*]:shrink-0">

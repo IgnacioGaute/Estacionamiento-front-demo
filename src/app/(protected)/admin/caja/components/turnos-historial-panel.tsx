@@ -22,6 +22,18 @@ const PAGE_SIZE = 10;
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const date = (s: string) => dayjs(s).tz(TZ).format('DD/MM/YY · HH:mm');
 const hora = (s: string) => dayjs(s).tz(TZ).format('HH:mm');
+
+function CorteDiario({ turno }: { turno: Turno }) {
+  return <details className="group rounded-xl border border-dashed border-gm-line">
+    <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-4 py-2.5 text-xs text-muted-foreground transition-colors hover:bg-gm-surface-3/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gm-yellow [&::-webkit-details-marker]:hidden">
+      <span className="font-semibold text-foreground">{operator(turno.usuarioApertura)}</span>
+      <span>Corte de jornada · {turno.caja?.nombre ?? 'Caja del esquema anterior'} · <span className="gm-mono">{rango(turno.fechaApertura, turno.fechaCierre)}</span></span>
+      {turno.resumen && <span>Cobró <span className="font-semibold tabular-nums text-foreground">{money(turno.resumen.efectivoCobrado)}</span> en efectivo</span>}
+      <span className="ml-auto inline-flex items-center gap-1">Sigue en la próxima planilla<ChevronDown className="size-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden /></span>
+    </summary>
+    <div className="border-t border-dashed border-gm-line px-4 py-3 text-sm"><TurnoResumenPanel turno={turno} /></div>
+  </details>;
+}
 // Si el turno cruza de día se muestran las fechas: un corte diario se leía «00:00 – 00:00», como si
 // hubiera durado cero.
 const rango = (desde: string, hasta?: string | null) => {
@@ -111,6 +123,9 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
 }
 
 function ShiftCard({ turno }: { turno: Turno }) {
+  // El corte de las 00:00 no es un cierre: es la misma jornada que sigue en la planilla de otro día.
+  // Como tarjeta completa llenaba el historial y escondía los cierres reales; va como fila compacta.
+  if (turno.cierreAutomatico) return <CorteDiario turno={turno} />;
   const individual = !!turno.cashSessionId && !turno.cierreCaja;
   const difference = turno.diferencia;
   const status = turno.cierreAutomatico ? 'Corte de las 00:00' : individual ? 'Turno finalizado · La caja sigue abierta' : difference == null ? 'Efectivo no contado' : difference === 0 ? 'Caja correcta' : difference > 0 ? `Faltaron ${money(difference)}` : `Sobraron ${money(-difference)}`;
