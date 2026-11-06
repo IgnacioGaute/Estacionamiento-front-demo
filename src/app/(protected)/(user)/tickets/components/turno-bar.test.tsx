@@ -60,6 +60,21 @@ test('exige confirmar el fondo del último cierre antes de abrir la caja', async
   await waitFor(() => expect(openTurnoAction).toHaveBeenCalledWith(expect.objectContaining({ fondoInicial: 40000, sesionAnteriorId: 'cierre-de-luis', cajaId: 'principal' })));
 });
 
+test('en la primera apertura de una caja ofrece el fondo sugerido configurado, sin pedir motivo', async () => {
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: { ...context(), cajas: [{ ...caja, pending: null, fondoObjetivo: 20000, efectivoDisponible: 0 } as CajaContext] } });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Abrir mi turno' }));
+  const input = await screen.findByLabelText('Efectivo que recibís');
+  await waitFor(() => expect(input).toBeEnabled());
+  // Antes mostraba «Efectivo inicial $0» y solo «Sin efectivo recibido».
+  expect(screen.getByRole('region', { name: 'Lo que recibís del turno anterior' })).toHaveTextContent(/Fondo sugerido/);
+  fireEvent.click(screen.getByRole('button', { name: /^Fondo sugerido/ }));
+  expect(input).toHaveValue(20000);
+  expect(screen.queryByLabelText('Motivo de la diferencia al recibir')).not.toBeInTheDocument();
+  const submit = await screen.findByRole('button', { name: 'Abrir caja y mi turno' }); await waitFor(() => expect(submit).toBeEnabled()); fireEvent.click(submit);
+  await waitFor(() => expect(openTurnoAction).toHaveBeenCalledWith(expect.objectContaining({ fondoInicial: 20000 })));
+});
+
 test('permite recibir menos que el esperado cuando se explica la diferencia', async () => {
   render(<TurnoBar />); fireEvent.click(await screen.findByRole('button', { name: 'Abrir mi turno' }));
   const input = await screen.findByLabelText('Efectivo que recibís'); await waitFor(() => expect(input).toBeEnabled());

@@ -48,7 +48,8 @@ antes de modificar aperturas/cierres; los turnos legacy conservan su circuito hi
 Al abrir una caja, el efectivo recibido empieza vacío: el operador debe elegir un importe o
 escribirlo, incluso si recibe cero. Se vuelve a pedir al reabrir el diálogo o cambiar de caja.
 Un importe distinto al cierre anterior exige motivo. Unirse a una caja ya abierta no vuelve a
-declarar el fondo compartido.
+declarar el fondo compartido. En la primera apertura de una caja (sin cierre anterior) se ofrece
+«Fondo sugerido · $X» con el `fondoObjetivo` de la caja y la tarjeta muestra ese fondo, no «$0».
 En el arqueo final, «¿Cuánto dejás en caja para el próximo turno?» es el importe editable. El fondo
 objetivo es una sugerencia: se puede dejar más, menos o cero, hasta el efectivo contado después del
 sueldo. «Usar sugerido» repone la referencia y «Dejar todo» conserva todo el efectivo disponible.
