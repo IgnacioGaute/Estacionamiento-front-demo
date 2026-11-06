@@ -448,7 +448,8 @@ export default function CardTicket({
       <header className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <p className="min-w-0 truncate text-[13.5px] text-muted-foreground">
-            {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-[#6F665A]">· {fechaLarga}</span>
+            {/* #857B6D: sigue más apagado que el saludo pero llega a 4,5:1 sobre el fondo (#6F665A daba 3,4:1). */}
+            {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-[#857B6D]">· {fechaLarga}</span>
           </p>
           <div className="flex shrink-0 flex-col items-end">{tour.node}</div>
         </div>
@@ -464,7 +465,7 @@ export default function CardTicket({
               )} />
             </span>
             {isAdmin && (
-              <Link href="/admin/tarifas" ref={refVisible('admin')} aria-label="Administrar tarifas" className={cn(accesoTarifas, "h-11 w-full justify-center whitespace-nowrap")}><Settings className="size-4 text-gm-yellow" aria-hidden />Editar tarifas</Link>
+              <Link href="/admin/tarifas" ref={refVisible('admin')} className={cn(accesoTarifas, "h-11 w-full justify-center whitespace-nowrap")}><Settings className="size-4 text-gm-yellow" aria-hidden />Editar tarifas</Link>
             )}
           </div>
         )}
@@ -638,7 +639,7 @@ export default function CardTicket({
         <div className="min-w-[20rem] flex-1 basis-0">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
             <p className="min-w-0 max-w-full break-words text-[13.5px] text-muted-foreground">
-              {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-[#6F665A]">· {fechaLarga}</span>
+              {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-[#857B6D]">· {fechaLarga}</span>
             </p>
             {atajosAdmin("h-7 -my-1")}
           </div>

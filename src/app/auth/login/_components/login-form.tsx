@@ -99,7 +99,8 @@ export function LoginForm() {
                 <FormLabel className={etiqueta}>Contraseña</FormLabel>
                 <Link
                   href="/auth/reset"
-                  className="text-[13px] font-semibold text-gm-yellow hover:underline"
+                  // min-h-11 con margen negativo: 44 px de toque sin correr el campo de abajo.
+                  className="-my-3 inline-flex min-h-11 items-center text-[13px] font-semibold text-gm-yellow hover:underline"
                 >
                   ¿La olvidaste?
                 </Link>

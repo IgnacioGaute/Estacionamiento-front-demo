@@ -205,7 +205,8 @@ export function InquilinosPanel() {
         <Tarjeta className="min-h-[124px] justify-between gap-3 pt-4 sm:min-h-[148px]">
           <div className="flex items-center justify-between">
             <Rotulo>Saldo pendiente</Rotulo>
-            <AlertTriangle aria-hidden className="size-4 text-[#FF7A4D]" />
+            {/* La alerta solo cuando hay algo que cobrar: con $0 asustaba sin motivo. */}
+            {k?.saldoPendiente ? <AlertTriangle aria-hidden className="size-4 text-[#FF7A4D]" /> : null}
           </div>
           <span className={`font-display text-[26px] font-semibold leading-none sm:text-[34px] ${k?.saldoPendiente ? 'text-[#FF7A4D]' : ''}`}>
             {k ? corto(k.saldoPendiente) : '—'}

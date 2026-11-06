@@ -5,7 +5,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { OtherPaymentsSummaryResponse } from '@/types/dashboard.type';
 import { ars } from '../format';
 import { MonoTooltip } from './mono-tooltip';
-import { MONO_BADGE, MONO_CARD, MONO_FOOTER, MONO_LABEL, MONO_STAGE, MONO_STAT } from './mono-style';
+import { MONO_CARD, MONO_FOOTER, MONO_LABEL, MONO_STAGE, MONO_STAT } from './mono-style';
 
 export function IncomeExpensesLineChart({ data }: { data: OtherPaymentsSummaryResponse | null }) {
   const [activeSeries, setActiveSeries] = useState<'all' | 'value'>('all');
@@ -19,7 +19,6 @@ export function IncomeExpensesLineChart({ data }: { data: OtherPaymentsSummaryRe
         <div>
           <div className="flex items-center gap-2">
             <span className={MONO_LABEL}>Ingresos vs egresos</span>
-            <span className={MONO_BADGE}>Línea</span>
           </div>
           <div className={MONO_STAT}>{ars(latest?.ingresos ?? 0)}</div>
         </div>
@@ -30,6 +29,7 @@ export function IncomeExpensesLineChart({ data }: { data: OtherPaymentsSummaryRe
               key={s}
               type="button"
               onClick={() => setActiveSeries(s)}
+              aria-pressed={activeSeries === s}
               className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize transition-all ${
                 activeSeries === s
                   ? 'bg-gm-yellow font-semibold text-gm-ink shadow-sm'
@@ -88,8 +88,9 @@ export function IncomeExpensesLineChart({ data }: { data: OtherPaymentsSummaryRe
       </div>
 
       <div className={MONO_FOOTER}>
-        <span className="text-muted-foreground">Puntas redondeadas</span>
-        <span className="font-medium text-foreground">Pico {ars(peak)}</span>
+        {/* Antes decía «Puntas redondeadas»: el nombre del estilo del gráfico, no un dato. */}
+        <span className="text-muted-foreground">Pico de ingresos</span>
+        <span className="font-medium text-foreground">{ars(peak)}</span>
       </div>
     </div>
   );

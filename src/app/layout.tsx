@@ -79,7 +79,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
-      lang="es"
+      lang="es-AR"
       suppressHydrationWarning
       className={cn(archivo.variable, oswald.variable, mono.variable)}
     >

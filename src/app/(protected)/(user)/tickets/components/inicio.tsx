@@ -147,7 +147,8 @@ function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration
             style={{ borderColor: zona.cantidad ? `${zona.color}59` : 'hsl(var(--gm-line))' }}
           >
             <span className="flex w-full items-start justify-between gap-1">
-              <span className="font-display text-[34px] font-bold leading-none tabular-nums" style={{ color: zona.cantidad ? '#F2EDE3' : '#5C554B' }}>
+              {/* El 0 sigue apagado, pero legible: #5C554B daba 2,2:1 y este 3,9:1. */}
+              <span className="font-display text-[34px] font-bold leading-none tabular-nums" style={{ color: zona.cantidad ? '#F2EDE3' : '#857B6D' }}>
                 {zona.cantidad}
               </span>
               <span aria-hidden className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: zona.color }} />
@@ -560,7 +561,7 @@ export function TodosLosVehiculos({
               <section key={g.id} id={`grupo-${g.id}`} aria-label={g.titulo} className="flex scroll-mt-28 flex-col gap-2">
                 <p className={cn('flex items-center gap-2 px-1 text-[13px] font-bold', g.alerta ? 'text-[#F0714A]' : 'text-[#D9D1C3]')}>
                   <span aria-hidden className="size-2 rounded-full" style={{ background: g.color }} />
-                  {g.titulo}<span className="gm-mono font-semibold text-[#6F665A]">{g.filas.length}</span>
+                  {g.titulo}<span className="gm-mono font-semibold text-muted-foreground">{g.filas.length}</span>
                 </p>
                 <AnimatedScrollList label={`${g.titulo}: desplazá para ver más`}>
                   {g.filas.map(({ r }) => <VehiculoFila key={r.id} r={r} ahora={ahora} onSelect={onSelect} />)}

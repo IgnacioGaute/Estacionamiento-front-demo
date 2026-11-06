@@ -14,12 +14,13 @@ import { BadgeCheckIcon, BadgeXIcon, MoreHorizontal } from 'lucide-react';
 import { UpdateExpenseDailog } from './update-other-payment-dialog';
 import { DeleteExpenseDialog } from './delete-other-payment-dialog';
 import { OtherPayment } from '@/types/other-payment.type';
+import { formatImporte } from '@/components/pricing-breakdown';
 
 export const expenseColumns: ColumnDef<OtherPayment>[] = [
   {
     accessorKey: 'description',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Descipcion" />
+      <DataTableColumnHeader column={column} title="Descripción" />
     ),
     cell: ({ row }) => (
       <div className="min-w-[100px] text-sm">{row.getValue('description')}</div>
@@ -30,8 +31,9 @@ export const expenseColumns: ColumnDef<OtherPayment>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Monto" />
     ),
+    // Mismo formato de pesos que el resto del sistema: antes se veía «10000» sin $ ni miles.
     cell: ({ row }) => (
-      <div className="min-w-[100px] text-sm">{row.getValue('price')}</div>
+      <div className="min-w-[100px] text-sm tabular-nums">{formatImporte(Number(row.getValue('price')))}</div>
     ),
   },
 
@@ -66,7 +68,7 @@ export const expenseColumns: ColumnDef<OtherPayment>[] = [
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
+              <span className="sr-only">Abrir acciones</span>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>

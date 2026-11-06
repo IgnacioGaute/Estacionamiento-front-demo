@@ -29,7 +29,8 @@ export function DataTablePagination<TData>({
           value={`${table.getState().pagination.pageSize}`}
           onValueChange={(value) => table.setPageSize(Number(value))}
         >
-          <SelectTrigger className="h-7 w-[58px] rounded-md border-border bg-gm-surface-2 text-[12px] gm-mono">
+          {/* En el celular, 44 px de toque; en la computadora queda compacto. */}
+          <SelectTrigger className="h-11 w-[64px] rounded-md border-border bg-gm-surface-2 text-[12px] gm-mono lg:h-7 lg:w-[58px]">
             {/* El valor va como hijo, no como placeholder. Con <SelectValue> sin hijos, Radix
                 portea el texto del ítem elegido hacia el trigger, y cuando la tabla se desmonta
                 (cambiar de pestaña, navegar) React intenta remover ese nodo de un padre que ya
@@ -64,7 +65,7 @@ export function DataTablePagination<TData>({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7"
+          className="size-11 lg:size-7"
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
         >
@@ -74,7 +75,7 @@ export function DataTablePagination<TData>({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7"
+          className="size-11 lg:size-7"
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         >

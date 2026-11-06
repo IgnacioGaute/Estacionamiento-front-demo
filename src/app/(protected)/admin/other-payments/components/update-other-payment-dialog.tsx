@@ -100,7 +100,7 @@ export function UpdateExpenseDailog({ expense }: { expense: OtherPayment }) {
                       defaultValue={field.value}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un tipo" />
+                        <SelectValue placeholder="Seleccioná un tipo" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="EGRESOS">Egreso</SelectItem>
@@ -125,7 +125,7 @@ export function UpdateExpenseDailog({ expense }: { expense: OtherPayment }) {
                       defaultValue={field.value}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecciona una forma de pago" />
+                        <SelectValue placeholder="Seleccioná una forma de pago" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="CASH">Efectivo</SelectItem>

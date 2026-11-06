@@ -85,7 +85,8 @@ export function PestaniaMovil() {
         onClick={() => setOpenMobile(!openMobile)}
         aria-expanded={openMobile}
         aria-label={openMobile ? 'Cerrar el menú' : 'Abrir el menú'}
-        className={BOTON_PESTANIA}
+        // El dibujo queda en 30 px; el ::before invisible lleva el área de toque a 44 px.
+        className={cn(BOTON_PESTANIA, "relative before:absolute before:-inset-[7px] before:rounded-full before:content-['']")}
       >
         <ChevronsDown className={cn('size-4 transition-transform duration-300', openMobile && 'rotate-180')} strokeWidth={2.4} aria-hidden />
       </button>

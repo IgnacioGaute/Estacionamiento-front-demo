@@ -74,7 +74,7 @@ export function ExpenseTable<TData, TValue>({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <Input
           data-tour="varios-filter"
-          placeholder="Filtrar por descripcion..."
+          placeholder="Filtrar por descripción..."
           value={server.search}
           onChange={(event) =>
             server.searchChange(event.target.value)

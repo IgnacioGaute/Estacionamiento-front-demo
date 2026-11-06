@@ -1,5 +1,5 @@
 import { ReceiptsSummaryResponse } from '@/types/dashboard.type';
-import { MONO_BADGE, MONO_CARD, MONO_FOOTER, MONO_LABEL, MONO_STAGE, MONO_STAT } from './mono-style';
+import { MONO_CARD, MONO_FOOTER, MONO_LABEL, MONO_STAGE, MONO_STAT } from './mono-style';
 
 const PAYMENT_TYPE_LABEL: Record<string, string> = {
   TRANSFER: 'Transferencia',
@@ -14,7 +14,8 @@ const PAYMENT_TYPE_LABEL: Record<string, string> = {
 export function PaymentTypesBulletChart({ data }: { data: ReceiptsSummaryResponse | null }) {
   const rows = (data?.byPaymentType ?? []).filter((r) => r.paymentType);
   const totalCount = rows.reduce((sum, r) => sum + r.count, 0);
-  const target = rows.length > 0 ? Math.round(100 / rows.length) : 0;
+  // Sin marca de «reparto parejo» (100 / n): sugería que los medios deberían repartirse igual,
+  // una meta que nadie fijó.
 
   const items = rows
     .map((r) => ({
@@ -31,7 +32,6 @@ export function PaymentTypesBulletChart({ data }: { data: ReceiptsSummaryRespons
         <div>
           <div className="flex items-center gap-2">
             <span className={MONO_LABEL}>Tipos de pago más usados</span>
-            <span className={MONO_BADGE}>Benchmark</span>
           </div>
           <div className={MONO_STAT}>
             {items.length} <span className="text-xs font-normal text-muted-foreground">medios evaluados</span>
@@ -56,10 +56,6 @@ export function PaymentTypesBulletChart({ data }: { data: ReceiptsSummaryRespons
                   className="h-full rounded-full bg-gm-yellow transition-all"
                   style={{ width: `${item.actual}%` }}
                 />
-                <div
-                  className="absolute bottom-0 top-0 w-1 rounded-full bg-emerald-400 shadow-sm"
-                  style={{ left: `${target}%` }}
-                />
               </div>
             </div>
           ))
@@ -67,8 +63,8 @@ export function PaymentTypesBulletChart({ data }: { data: ReceiptsSummaryRespons
       </div>
 
       <div className={MONO_FOOTER}>
-        <span className="text-muted-foreground">Barras redondeadas</span>
-        <span className="font-medium text-foreground">Marca de reparto parejo</span>
+        <span className="text-muted-foreground">Cobros en el período</span>
+        <span className="font-medium text-foreground">{totalCount}</span>
       </div>
     </div>
   );

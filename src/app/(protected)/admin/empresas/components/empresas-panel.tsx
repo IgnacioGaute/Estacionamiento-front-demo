@@ -609,7 +609,10 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                     <span className="flex min-w-0 flex-col gap-[3px]">
                       <Link
                         href={`/admin/empresas/${e.id}`}
-                        className="truncate font-medium text-foreground hover:text-gm-yellow"
+                        title={e.nombre}
+                        // Dos renglones y no truncate: varias empresas empiezan con «Estacionamiento»
+                        // y cortadas en una línea se veían todas iguales.
+                        className="line-clamp-2 break-words font-medium leading-tight text-foreground hover:text-gm-yellow"
                       >
                         {e.nombre}
                       </Link>
