@@ -45,7 +45,7 @@ import { useTenant } from '@/components/tenant-provider';
 import { minutesSinceEntry, isOverdue, isBarcodeOrigin } from '@/utils/ticket-registration.utils';
 import { calcularVuelto, pagosSugeridos } from '@/utils/vuelto';
 import { cuandoEntro, formatEstadia as formatElapsed } from '@/utils/estadia';
-import { CorregirEntrada } from './corregir-entrada';
+import { CorregirEntrada, MINUTOS_PARA_PREGUNTAR } from './corregir-entrada';
 import { pagoParcialEfectivoAction } from '@/actions/tickets/pago-parcial.action';
 import { EditarDatosEstadia } from './editar-datos-estadia';
 import { EliminarEstadia } from './eliminar-estadia';
@@ -1002,6 +1002,22 @@ export function CloseTicketPanel({
 
                     {/* Arriba de todo el cobro: también cuando no queda saldo y la salida es sin cobro. */}
                     {sinTurno && !enEspera && !pagoConSalida && <AvisoSinTurno administrador={esAdmin} />}
+
+                    {/* Sin saldo la columna quedaba vacía y parecía que no había cargado: se dice por qué. */}
+                    {saldo <= 0 && summary.cambioARetornar <= 0 && !enEspera && !pagoConSalida && (
+                      <div className="rounded-2xl border border-border bg-gm-surface-2/50 p-4">
+                        <p className="text-[14px] font-semibold">No hay nada para cobrar</p>
+                        <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+                          {summary.totalCollectedSoFar > 0
+                            ? 'La estadía ya está paga. Registrá la salida.'
+                            : summary.descuento
+                              ? 'El descuento cubre toda la estadía. Registrá la salida.'
+                              : summary.elapsedMinutes < MINUTOS_PARA_PREGUNTAR
+                                ? 'El auto entró hace instantes. Si entró antes, tocá «¿Entró antes?» y corregí la hora de entrada.'
+                                : 'El importe de esta estadía es $ 0. Registrá la salida.'}
+                        </p>
+                      </div>
+                    )}
 
                     {mostrarMedios && showDiscount && !bloqueadoSinTurno ? (
                       <div className="space-y-3 rounded-2xl border border-border bg-gm-surface-2/50 p-3.5">

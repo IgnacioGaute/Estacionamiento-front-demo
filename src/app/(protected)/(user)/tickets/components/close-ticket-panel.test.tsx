@@ -86,6 +86,12 @@ test.each(['ADMIN', 'SUPER_ADMIN'])('%s sin turno ve el aviso pero puede registr
   fireEvent.click(screen.getByRole('button', { name: /Cobrar y registrar salida/ }));
   await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({ closeType: 'PAYMENT', metodo: 'TRANSFER' })));
 });
+test('sin saldo explica por qué no hay nada para cobrar', async () => {
+  jest.mocked(getCloseSummaryAction).mockResolvedValue({ ...summary(0), elapsedMinutes: 0 });
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
+  expect(await screen.findByText('No hay nada para cobrar')).toBeInTheDocument();
+  expect(screen.getByText(/entró hace instantes/)).toBeInTheDocument();
+});
 test('sin turnos activos no consulta la caja ni avisa', async () => {
   render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
   await screen.findByRole('button', { name: /^Efectivo Contalo/ });
