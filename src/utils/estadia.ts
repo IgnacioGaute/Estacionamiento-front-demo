@@ -37,7 +37,7 @@ export function tramoDe(minutos: number): Tramo {
 // computadora y cada vehículo), así el color solo ya dice hace cuánto entró. El naranja queda
 // reservado para avisar: nunca es un tramo. El último no tiene techo: `hasta` es solo la escala.
 export const TRAMOS: { id: Tramo; label: string; color: string; desde: number; hasta: number }[] = [
-  { id: 'menos1', label: 'Menos de 1 h', color: '#34D399', desde: 0, hasta: 60 },
+  { id: 'menos1', label: 'Menos de 1 h', color: 'hsl(var(--gm-ok))', desde: 0, hasta: 60 },
   { id: 'de1a4', label: 'De 1 a 4 h', color: '#60A5FA', desde: 60, hasta: 4 * 60 },
   { id: 'mas4', label: 'Más de 4 h', color: '#A78BFA', desde: 4 * 60, hasta: 12 * 60 },
 ];

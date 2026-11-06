@@ -21,7 +21,7 @@ export function CardWrapper({
   backButtonHref,
 }: CardWrapperProps) {
   return (
-    <section className="w-full min-w-0 max-w-md rounded-2xl border border-white/[0.07] bg-[#0E0D0B] p-6 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8">
+    <section className="w-full min-w-0 max-w-md rounded-2xl border border-white/[0.07] bg-gm-hondo p-6 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8">
       <Header title={title} label={headerLabel} />
       {children}
       {backButtonHref && backButtonLabel && (

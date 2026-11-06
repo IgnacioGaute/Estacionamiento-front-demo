@@ -32,7 +32,7 @@ export function DatosClienteEstadia({ r }: { r: Pick<TicketRegistration, 'lastNa
         <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', abierto && 'rotate-180')} aria-hidden />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <dl className="mt-1.5 space-y-1.5 rounded-xl border border-border px-3 py-2.5 text-[13.5px]">
+        <dl className="mt-1.5 space-y-1.5 rounded-xl border border-border px-3 py-2.5 text-[14px]">
           {filas.map(([dt, dd]) => (
             <div key={dt} className="flex items-baseline justify-between gap-3">
               <dt className="text-muted-foreground">{dt}</dt>

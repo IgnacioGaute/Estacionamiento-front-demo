@@ -33,7 +33,7 @@ const VIEJOS_PRIMERO = 'VIEJOS_PRIMERO';
 const MOTIVO_MINIMO = 10;
 const boton = 'h-11 rounded-xl border border-border px-4 text-sm font-semibold hover:bg-gm-surface-2';
 const primario =
-  'flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-sm font-bold text-gm-ink hover:bg-[#FFD23A] disabled:opacity-50';
+  'flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-sm font-bold text-gm-ink hover:bg-gm-yellow-deep disabled:opacity-50';
 const campo = 'h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-gm-yellow';
 const rotulo = 'mb-1.5 block text-xs font-semibold text-muted-foreground';
 
@@ -56,7 +56,7 @@ function CampoMotivo({
       <span className="mb-1.5 flex justify-between text-xs font-semibold text-muted-foreground">
         <span>{etiqueta}</span>
         {minimo > 3 && (
-          <span className={largo >= minimo ? 'text-emerald-400' : ''}>
+          <span className={largo >= minimo ? 'text-gm-ok' : ''}>
             {Math.min(largo, minimo)}/{minimo}
           </span>
         )}
@@ -248,7 +248,7 @@ export function DevolucionDialog({
         ) : (
           <div className="space-y-4">
             <p className="text-sm">
-              Saldo a favor disponible: <strong className="text-emerald-400">{plata(aFavor)}</strong>
+              Saldo a favor disponible: <strong className="text-gm-ok">{plata(aFavor)}</strong>
             </p>
             <div className="flex items-start gap-2">
               <Selector
@@ -567,7 +567,7 @@ export function CargarAbonosDialog({
             <ul className="space-y-1.5 text-sm">
               {plan.yaCargados.length > 0 && (
                 <li className="flex items-center gap-2 text-muted-foreground">
-                  <CheckCircle2 className="size-4 text-emerald-400" />
+                  <CheckCircle2 className="size-4 text-gm-ok" />
                   {plan.yaCargados.length} ya {plan.yaCargados.length === 1 ? 'tenía' : 'tenían'} el abono de{' '}
                   {mesLargo(mes)}: se {plan.yaCargados.length === 1 ? 'omite' : 'omiten'}.
                 </li>
@@ -586,7 +586,7 @@ export function CargarAbonosDialog({
                 <button
                   type="button"
                   onClick={() => setVerDetalle((v) => !v)}
-                  className="text-sm font-semibold text-gm-yellow hover:text-[#FFD84D]"
+                  className="text-sm font-semibold text-gm-yellow hover:text-gm-yellow-deep"
                 >
                   {verDetalle ? 'Ocultar el detalle' : 'Ver el detalle por inquilino'}
                 </button>

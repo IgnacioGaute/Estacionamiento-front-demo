@@ -174,7 +174,7 @@ export function DataTableShell<TData, TValue>({
                   >
                     <div className="flex flex-col items-center justify-center gap-1.5 text-muted-foreground">
                       <Inbox className="size-5 opacity-50" />
-                      <span className="text-[12.5px]">{emptyMessage}</span>
+                      <span className="text-[13px]">{emptyMessage}</span>
                     </div>
                   </TableCell>
                 </TableRow>

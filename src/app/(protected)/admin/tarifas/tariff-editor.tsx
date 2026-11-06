@@ -93,12 +93,12 @@ export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, ca
               ['CUSTOM', 'Con una lista de precios', 'Un precio para 30 minutos, otro para 1 hora, y así.', List],
               ['STARTED', 'Por hora o fracción', 'El mismo importe por cada período que empieza.', Clock3],
             ] as const).map(([value, title, description, Icon]) => <label key={value} className={cn('flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors', method === value ? 'border-gm-yellow bg-gm-yellow/[0.07]' : 'border-gm-line bg-gm-surface-2 hover:border-gm-line-strong')}>
-              <span className={cn('grid size-10 shrink-0 place-items-center rounded-xl', method === value ? 'bg-gm-yellow text-gm-ink' : 'bg-gm-line text-[#D9D1C3]')}><Icon className="size-[18px]" aria-hidden /></span>
+              <span className={cn('grid size-10 shrink-0 place-items-center rounded-xl', method === value ? 'bg-gm-yellow text-gm-ink' : 'bg-gm-line text-gm-texto-2')}><Icon className="size-[18px]" aria-hidden /></span>
               <span className="min-w-0 flex-1"><span className="block font-semibold">{title}</span><span className="mt-1 block text-sm text-muted-foreground">{description}</span>{value === 'CUSTOM' && <span className="mt-2 inline-block rounded-full bg-gm-yellow/15 px-2 py-0.5 text-[11px] font-bold text-gm-yellow">Predeterminada</span>}</span>
-              <input type="radio" name="tariff-method" value={value} checked={method === value} onChange={() => selectMethod(value)} className="mt-1 size-[18px] accent-amber-500" />
+              <input type="radio" name="tariff-method" value={value} checked={method === value} onChange={() => selectMethod(value)} className="mt-1 size-[18px] accent-gm-yellow" />
             </label>)}
           </div>
-          {!supported && <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm">Esta tarifa usa una modalidad anterior. Elegí una de las dos opciones para editarla. La tarifa vigente se conserva hasta que apliques los cambios.</p>}
+          {!supported && <p className="rounded-xl border border-gm-atencion/30 bg-gm-atencion/5 p-4 text-sm">Esta tarifa usa una modalidad anterior. Elegí una de las dos opciones para editarla. La tarifa vigente se conserva hasta que apliques los cambios.</p>}
         </section>
       </Step>,
 
@@ -160,7 +160,7 @@ export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, ca
           </> : <>
             <StepHeading number={3} title="Tolerancia">Minutos que puede pasarse antes de cobrar la siguiente duración.</StepHeading>
             <div className="flex items-start gap-3 rounded-2xl border border-gm-line bg-gm-surface-2 p-4">
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gm-line text-[#D9D1C3]"><Sun className="size-4" aria-hidden /></span>
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gm-line text-gm-texto-2"><Sun className="size-4" aria-hidden /></span>
               <div className="min-w-0 text-sm"><p className="font-semibold">Un precio para todo el día</p><p className="mt-0.5 text-muted-foreground">No hay horarios que configurar. Para cobrar distinto de noche, activalo en Precios.</p>{!sections && <button type="button" onClick={() => onStepChange(2)} className="mt-2 text-[13px] font-semibold text-gm-yellow underline-offset-4 hover:underline">Ir a Precios</button>}</div>
             </div>
           </>}

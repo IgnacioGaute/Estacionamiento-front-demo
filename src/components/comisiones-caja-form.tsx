@@ -80,7 +80,7 @@ export function ComisionesCajaForm({ inicial, referencia, id, onEstado }: {
     </div></details>
     {!esValido && <p role="alert" className="text-sm text-destructive">Usá un porcentaje de 0 a 100, con hasta cuatro decimales.</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    {mensaje && <p role="status" className="text-sm text-emerald-500">{mensaje}</p>}
+    {mensaje && <p role="status" className="text-sm text-gm-ok">{mensaje}</p>}
     {!id && <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
       <Button type="submit" variant="outline" size="sm" disabled={!esValido || guardando}>{guardando ? 'Guardando…' : 'Guardar cambios'}</Button>
     </div>}

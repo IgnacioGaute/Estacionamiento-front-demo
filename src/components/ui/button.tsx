@@ -39,14 +39,15 @@ const buttonVariants = cva(
   }
 )
 
-// En el celular, los botones comunes miden 44 px y los chicos 40: con 36 y 32 px «Ayuda»,
-// «Nuevo aviso» o «Generar recibos» quedaban chicos para el pulgar. Desde sm vuelven a su
-// medida compacta. Si el botón trae su propia altura (h-7 dentro de un buscador, una
+// En el celular, los botones comunes y los de ícono miden 44 px y los chicos 40: con 36 y 32 px
+// «Ayuda», «Nuevo aviso» o «Generar recibos» quedaban chicos para el pulgar. Desde sm vuelven a
+// su medida compacta. Si el botón trae su propia altura (h-7 dentro de un buscador, una
 // paginación), se respeta en todas las pantallas: por eso no va en las variantes, donde
 // tailwind-merge descartaría la altura base pero dejaría la del celular.
 const ALTO_CELULAR: Partial<Record<NonNullable<VariantProps<typeof buttonVariants>["size"]>, string>> = {
   default: "max-sm:h-11",
   sm: "max-sm:h-10",
+  icon: "max-sm:size-11",
 }
 const ALTURA_PROPIA = /(^|\s)(h|size)-/
 

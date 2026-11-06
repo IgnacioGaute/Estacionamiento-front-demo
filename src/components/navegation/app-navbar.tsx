@@ -53,7 +53,7 @@ export async function AppNavbar({ children, adminSidebar, userSidebar }: AppNavb
           <div className="relative [filter:drop-shadow(0_14px_18px_rgba(0,0,0,0.55))]">
           <div
             className={cn(
-              'flex h-14 shrink-0 items-center gap-1.5 rounded-2xl border border-white/[0.07] bg-[#0B0A08]/95 px-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:h-[60px] sm:gap-2 sm:rounded-[18px] sm:px-2.5',
+              'flex h-14 shrink-0 items-center gap-1.5 rounded-2xl border border-white/[0.07] bg-gm-hondo/95 px-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:h-[60px] sm:gap-2 sm:rounded-[18px] sm:px-2.5',
               // El hueco: 3 px más grande que la pestaña (radio 18) y centrado donde queda ella, a
               // la altura del centro de la barra y entre los dos bordes.
               encastre && 'md:pl-5 md:[-webkit-mask-image:radial-gradient(circle_21px_at_-10px_31px,transparent_20.5px,#000_21px)] md:[mask-image:radial-gradient(circle_21px_at_-10px_31px,transparent_20.5px,#000_21px)]',

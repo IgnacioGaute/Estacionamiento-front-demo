@@ -93,7 +93,7 @@ export function InstallAppMenuItem() {
           e.preventDefault();
           handleClick();
         }}
-        className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[12.5px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]"
+        className="cursor-pointer gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08]"
       >
         <Download className="size-3.5 text-muted-foreground" />
         {isMobile ? 'Agregar a pantalla de inicio' : 'Instalar aplicación'}

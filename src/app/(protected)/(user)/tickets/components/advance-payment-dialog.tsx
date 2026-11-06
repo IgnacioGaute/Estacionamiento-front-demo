@@ -214,7 +214,7 @@ export function AdvancePaymentDialog({
                         onClick={() => setSelectedMinutes(choice.minutes)}
                         className={cn(
                           'min-h-12 rounded-xl border-[1.5px] px-2 text-[14px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
-                          selectedMinutes === choice.minutes ? 'border-gm-yellow bg-gm-yellow/[0.12] text-foreground' : 'border-gm-line-strong bg-gm-surface-2 text-[#D9D1C3] hover:border-gm-yellow/40',
+                          selectedMinutes === choice.minutes ? 'border-gm-yellow bg-gm-yellow/[0.12] text-foreground' : 'border-gm-line-strong bg-gm-surface-2 text-gm-texto-2 hover:border-gm-yellow/40',
                         )}
                       >
                         {choice.label}

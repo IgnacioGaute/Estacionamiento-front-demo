@@ -304,8 +304,8 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
                   // así que se cobra de otra forma o queda para pagar al retirar.
                   <fieldset className="min-w-0 space-y-2.5">
                     <legend className="sr-only">¿Cómo paga?</legend>
-                    <p className="flex items-center gap-2 text-[13.5px] text-muted-foreground">
-                      <CheckCircle2 className="size-4 shrink-0 text-emerald-400" aria-hidden />
+                    <p className="flex items-center gap-2 text-[14px] text-muted-foreground">
+                      <CheckCircle2 className="size-4 shrink-0 text-gm-ok" aria-hidden />
                       La estadía ya quedó registrada, sin cobrar.
                     </p>
                     <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} />

@@ -167,7 +167,7 @@ export function FrequentCustomersBody({ initialCustomers, initialTotal }: { init
         <>
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[900px] border-collapse text-sm">
-              <thead className="bg-[#15130F]">
+              <thead className="bg-background">
                 <tr>
                   <th scope="col" className={thPlanilla}>Cliente</th>
                   <th scope="col" className={thPlanilla}>Tipo</th>
@@ -185,7 +185,7 @@ export function FrequentCustomersBody({ initialCustomers, initialTotal }: { init
                       <div className="flex items-center gap-3">
                         <ChapaVehiculo texto={c.licensePlateOriginal} />
                         <div className="min-w-0">
-                          <p className="truncate text-[13.5px] font-semibold">{c.lastNameCustomer || 'Sin apellido guardado'}</p>
+                          <p className="truncate text-[14px] font-semibold">{c.lastNameCustomer || 'Sin apellido guardado'}</p>
                           <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Phone className="size-3 shrink-0" aria-hidden />{c.phoneCustomer ? '+' + c.phoneCustomer.replace(/^\+/, '') : 'Sin teléfono'}</p>
                         </div>
                       </div>

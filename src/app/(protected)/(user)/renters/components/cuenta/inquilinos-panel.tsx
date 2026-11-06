@@ -16,7 +16,7 @@ import { useSession } from 'next-auth/react';
 import { AlertTriangle, Ban, CalendarPlus, ChevronRight, Search, Wallet } from 'lucide-react';
 import { getResumenCuentasAction } from '@/actions/cuentas/cuentas.action';
 import { InquilinoResumen, ResumenCuentas, Tramo } from '@/types/cuenta.type';
-import { Avatar, EJE, Leyenda, Rotulo, Segmentos, Selector, Tarjeta } from '@/components/plataforma/mono';
+import { Avatar, Leyenda, Rotulo, Segmentos, Selector, Tarjeta } from '@/components/plataforma/mono';
 import { colorAvatar, corto, iniciales, numero, plata } from '@/components/plataforma/formato';
 import { CreateRenterDialog } from '../create-renter-dialog';
 import { CobrarDialog } from './cobrar-dialog';
@@ -41,8 +41,8 @@ function PastillaSaldo({ i }: { i: InquilinoResumen }) {
           i.saldo > 0
             ? 'bg-gm-aviso/[0.14] text-gm-aviso'
             : i.saldo < 0
-              ? 'bg-emerald-400/[0.12] text-emerald-400'
-              : 'bg-[#221F1A] text-muted-foreground'
+              ? 'bg-gm-ok/[0.12] text-gm-ok'
+              : 'bg-gm-surface-2 text-muted-foreground'
         }`}
       >
         {i.saldo > 0 ? `Pendiente ${plata(i.saldo)}` : i.saldo < 0 ? `A favor ${plata(-i.saldo)}` : 'Al día'}
@@ -213,7 +213,7 @@ export function InquilinosPanel() {
           <span className={`font-display text-[26px] font-semibold leading-none sm:text-[34px] ${k?.saldoPendiente ? 'text-gm-aviso' : ''}`}>
             {k ? corto(k.saldoPendiente) : '—'}
           </span>
-          <span className="text-xs text-muted-foreground sm:text-[12.5px]">
+          <span className="text-xs text-muted-foreground sm:text-[13px]">
             {k ? (k.deudaVencida ? `${corto(k.deudaVencida)} vencido · ${k.conVencido} con deuda vencida` : `${k.conSaldo} con saldo · nada vencido`) : ' '}
           </span>
         </Tarjeta>
@@ -223,7 +223,7 @@ export function InquilinosPanel() {
             <Wallet aria-hidden className="size-4 text-gm-yellow" />
           </div>
           <span className="font-display text-[26px] font-semibold leading-none text-gm-yellow sm:text-[34px]">{k ? corto(k.cobradoMes) : '—'}</span>
-          <span className="text-xs text-muted-foreground sm:text-[12.5px]">Pagos recibidos este mes, de cualquier período</span>
+          <span className="text-xs text-muted-foreground sm:text-[13px]">Pagos recibidos este mes, de cualquier período</span>
         </Tarjeta>
         {/* Una sola lectura: cuánto del abono del mes ya se saldó (número, barra y texto dicen lo mismo). */}
         <Tarjeta className="min-h-[124px] justify-between gap-3 pt-4 sm:min-h-[148px]">
@@ -231,12 +231,12 @@ export function InquilinosPanel() {
           {k?.abonoMes.cargado ? (
             <>
               <span className="flex items-baseline gap-2">
-                <span className="font-display text-[26px] font-semibold leading-none text-emerald-400 sm:text-[34px]">{abonoSaldado}%</span>
+                <span className="font-display text-[26px] font-semibold leading-none text-gm-ok sm:text-[34px]">{abonoSaldado}%</span>
                 <span className="text-xs text-muted-foreground">saldado</span>
               </span>
               <div className="space-y-1.5">
-                <div className="h-2 rounded-full bg-[#221F1A]">
-                  <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${abonoSaldado}%` }} />
+                <div className="h-2 rounded-full bg-gm-surface-2">
+                  <div className="h-2 rounded-full bg-gm-ok" style={{ width: `${abonoSaldado}%` }} />
                 </div>
                 <span className="block text-xs text-muted-foreground">
                   {k.abonoMes.pendiente ? (
@@ -258,8 +258,8 @@ export function InquilinosPanel() {
         </Tarjeta>
         <Tarjeta className="min-h-[124px] justify-between gap-3 pt-4 sm:min-h-[148px]">
           <Rotulo>Saldos a favor</Rotulo>
-          <span className="font-display text-[26px] font-semibold leading-none text-emerald-400 sm:text-[34px]">{k ? corto(k.aFavorTotal) : '—'}</span>
-          <span className="text-xs text-muted-foreground sm:text-[12.5px]">Se descuentan solos de los próximos cargos</span>
+          <span className="font-display text-[26px] font-semibold leading-none text-gm-ok sm:text-[34px]">{k ? corto(k.aFavorTotal) : '—'}</span>
+          <span className="text-xs text-muted-foreground sm:text-[13px]">Se descuentan solos de los próximos cargos</span>
         </Tarjeta>
       </div>
       )}
@@ -268,7 +268,7 @@ export function InquilinosPanel() {
         <Tarjeta className="gap-3 py-4">
           <div className="flex items-center justify-between gap-3">
             <Rotulo>Saldo pendiente por vencimiento</Rotulo>
-            <span className="hidden text-xs sm:inline" style={{ color: EJE }}>
+            <span className="hidden text-xs sm:inline text-muted-foreground">
               Un cargo está pendiente hasta su vencimiento; después, vencido.
             </span>
           </div>
@@ -292,7 +292,7 @@ export function InquilinosPanel() {
               placeholder="Buscar por nombre, patente o cochera"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#8A8073]"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-gm-texto-tenue"
             />
           </label>
           <div className="hidden flex-1 sm:block" />
@@ -346,13 +346,12 @@ export function InquilinosPanel() {
           <div role="table" aria-label="Inquilinos" className="min-w-[860px]">
             <div
               role="row"
-              className="grid h-11 grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center bg-[#15120E] px-5 font-mono text-[11px] tracking-[0.1em]"
-              style={{ color: EJE }}
+              className="grid h-11 grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center bg-background px-5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground"
             >
-              <span role="columnheader">INQUILINO</span>
-              <span role="columnheader">COCHERA</span>
-              <span role="columnheader">ABONO MENSUAL</span>
-              <span role="columnheader">PENDIENTE / A FAVOR</span>
+              <span role="columnheader">Inquilino</span>
+              <span role="columnheader">Cochera</span>
+              <span role="columnheader">Abono mensual</span>
+              <span role="columnheader">Pendiente / a favor</span>
               <span role="columnheader" className="sr-only">
                 Acciones
               </span>
@@ -361,7 +360,7 @@ export function InquilinosPanel() {
               <div
                 key={i.id}
                 role="row"
-                className="grid min-h-[68px] grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center border-t border-[#2B2620] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#1E1A14]"
+                className="grid min-h-[68px] grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center border-t border-gm-line px-5 py-2 text-[14px] transition-colors hover:bg-muted"
               >
                 <span role="cell" className="flex min-w-0 items-center gap-3">
                   <Avatar texto={iniciales(nombreDe(i))} fondo={colorAvatar(i.id)} />
@@ -379,17 +378,17 @@ export function InquilinosPanel() {
                         {nombreDe(i)}
                       </Link>
                     )}
-                    <span className="block truncate text-xs" style={{ color: EJE }}>
+                    <span className="block truncate text-xs text-muted-foreground">
                       {i.baja ? `Dado de baja el ${fechaAR(i.baja)}` : i.telefono || 'Sin teléfono'}
                       {i.patentes.length ? ` · ${i.patentes.join(', ')}` : ''}
                     </span>
                   </span>
                 </span>
-                <span role="cell" className="truncate text-[12.5px] text-[#C9BFB1]">
+                <span role="cell" className="truncate text-[13px] text-gm-texto-2">
                   {i.cocheras.length ? i.cocheras.join(', ') : '—'}
                 </span>
-                <span role="cell" className="tabular-nums text-[#C9BFB1]">
-                  {i.baja ? <span style={{ color: EJE }}>De baja</span> : i.abono ? plata(i.abono) : '—'}
+                <span role="cell" className="tabular-nums text-gm-texto-2">
+                  {i.baja ? <span className="text-muted-foreground">De baja</span> : i.abono ? plata(i.abono) : '—'}
                 </span>
                 <span role="cell">
                   <PastillaSaldo i={i} />
@@ -398,7 +397,7 @@ export function InquilinosPanel() {
                   <button
                     type="button"
                     onClick={() => setCobrando(i)}
-                    className="h-9 rounded-[10px] bg-gm-yellow px-3.5 text-[13px] font-bold text-gm-ink hover:bg-[#FFD23A]"
+                    className="h-9 rounded-[10px] bg-gm-yellow px-3.5 text-[13px] font-bold text-gm-ink hover:bg-gm-yellow-deep"
                   >
                     Cobrar
                   </button>
@@ -426,7 +425,7 @@ export function InquilinosPanel() {
           </div>
         </div>
 
-        <ul aria-label="Inquilinos" className="divide-y divide-[#2B2620] md:hidden">
+        <ul aria-label="Inquilinos" className="divide-y divide-gm-line md:hidden">
           {lista.map((i) => (
             <li key={i.id} className="space-y-3 px-4 py-3.5">
               {/* El saldo va debajo del nombre, no al costado: al lado le quitaba el ancho y cortaba el nombre. */}
@@ -450,7 +449,7 @@ export function InquilinosPanel() {
                         {nombreDe(i)}
                       </Link>
                     )}
-                    <span className="block truncate text-xs" style={{ color: EJE }}>
+                    <span className="block truncate text-xs text-muted-foreground">
                       {[i.cocheras.length ? `Cochera ${i.cocheras.join(', ')}` : null, i.baja ? 'De baja' : i.abono ? `${plata(i.abono)}/mes` : null]
                         .filter(Boolean)
                         .join(' · ')}
@@ -463,7 +462,7 @@ export function InquilinosPanel() {
                 <button
                   type="button"
                   onClick={() => setCobrando(i)}
-                  className="h-10 flex-1 rounded-[10px] bg-gm-yellow text-[13px] font-bold text-gm-ink hover:bg-[#FFD23A]"
+                  className="h-10 flex-1 rounded-[10px] bg-gm-yellow text-[13px] font-bold text-gm-ink hover:bg-gm-yellow-deep"
                 >
                   Cobrar
                 </button>
@@ -494,12 +493,12 @@ export function InquilinosPanel() {
           <DataLoading label="Cargando cuentas…" className="p-4" />
         )}
         {resumen && !lista.length && (
-          <p className="px-5 py-12 text-center text-sm text-muted-foreground md:border-t md:border-[#2B2620]">
+          <p className="px-5 py-12 text-center text-sm text-muted-foreground md:border-t md:border-gm-line">
             {inquilinos.length ? 'Nadie coincide con esa búsqueda o filtro.' : 'Todavía no hay inquilinos. Creá el primero con «Nuevo inquilino».'}
           </p>
         )}
         {resumen && (
-          <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[#2B2620] bg-[#15120E] px-5 py-2.5 text-[12.5px] text-muted-foreground">
+          <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-gm-line bg-background px-5 py-2.5 text-[13px] text-muted-foreground">
             <span>
               {lista.length} de {numero(filtro === 'bajas' ? cuenta.bajas : visibles.length)} inquilinos
             </span>

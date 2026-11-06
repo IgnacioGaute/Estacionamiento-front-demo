@@ -183,7 +183,7 @@ export function EditorSaldoInicial({
               <button
                 type="button"
                 onClick={agregarMes}
-                className="flex items-center gap-1.5 text-sm font-semibold text-gm-yellow hover:text-[#FFD84D]"
+                className="flex items-center gap-1.5 text-sm font-semibold text-gm-yellow hover:text-gm-yellow-deep"
               >
                 <Plus className="size-4" /> Agregar el mes anterior{abono ? ` (${plata(abono)})` : ''}
               </button>
@@ -228,7 +228,7 @@ export function EditorSaldoInicial({
       {valor.tipo !== 'AL_DIA' && totalSaldoInicial(valor) > 0 && (
         <div className="flex justify-between rounded-xl border border-border bg-background px-4 py-2.5 text-sm">
           <span className="text-muted-foreground">{valor.tipo === 'A_FAVOR' ? 'Arranca con saldo a favor' : 'Arranca con saldo pendiente'}</span>
-          <strong className={valor.tipo === 'A_FAVOR' ? 'text-emerald-400' : 'text-gm-aviso'}>{plata(totalSaldoInicial(valor))}</strong>
+          <strong className={valor.tipo === 'A_FAVOR' ? 'text-gm-ok' : 'text-gm-aviso'}>{plata(totalSaldoInicial(valor))}</strong>
         </div>
       )}
     </div>
@@ -293,7 +293,7 @@ export function SaldoInicialDialog({
             disabled={!!error || valor.tipo === 'AL_DIA' || enviando}
             onClick={() => void guardar()}
             title={error ?? undefined}
-            className="flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-sm font-bold text-gm-ink hover:bg-[#FFD23A] disabled:opacity-50"
+            className="flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-sm font-bold text-gm-ink hover:bg-gm-yellow-deep disabled:opacity-50"
           >
             {enviando && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
             Guardar saldo inicial

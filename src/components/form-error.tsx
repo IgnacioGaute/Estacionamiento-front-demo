@@ -14,7 +14,7 @@ export function FormError({ message }: FormErrorProps) {
       <span className="grid size-9 shrink-0 place-items-center rounded-full bg-destructive/15 text-gm-peligro">
         <AlertTriangle className="size-[17px]" strokeWidth={2.4} aria-hidden />
       </span>
-      <span className="min-w-0 flex-1 text-sm font-semibold text-[#F5A497]">{message}</span>
+      <span className="min-w-0 flex-1 text-sm font-semibold text-gm-peligro">{message}</span>
     </div>
   );
 }

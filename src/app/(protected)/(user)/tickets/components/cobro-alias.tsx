@@ -118,10 +118,10 @@ function ListaDeTransferencias({
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline justify-between gap-2">
               <span className="min-w-0 break-words text-base font-bold">{o.nombre || o.documento || 'Pagador sin identificar'}</span>
-              <span className="gm-mono shrink-0 text-[13px] font-semibold text-[#D9D1C3]">{horaCorta(o.fechaOperacion)}</span>
+              <span className="gm-mono shrink-0 text-[13px] font-semibold text-gm-texto-2">{horaCorta(o.fechaOperacion)}</span>
             </span>
             {o.nombre && o.documento && <span className="gm-mono block text-[13px] text-muted-foreground">{o.documento}</span>}
-            <span className="mt-0.5 block break-all text-[11.5px] text-muted-foreground">
+            <span className="mt-0.5 block break-all text-[12px] text-muted-foreground">
               {[o.entidad, `Operación ${o.operacionId}`, o.importe !== cobro.importe ? formatImporte(o.importe) : null].filter(Boolean).join(' · ')}
             </span>
           </span>
@@ -220,15 +220,15 @@ export function CobroAliasPanel({
   // transferencia pero la tarifa subió mientras esperaba: abajo vuelve lo que falta cobrar.
   if (cobro.estado === 'CONFIRMADO')
     return (
-      <div role="status" className="flex items-center gap-3.5 rounded-2xl border-[1.5px] border-emerald-500/50 bg-emerald-500/10 p-4">
-        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-emerald-400/15 text-emerald-400">
+      <div role="status" className="flex items-center gap-3.5 rounded-2xl border-[1.5px] border-gm-ok/50 bg-gm-ok/10 p-4">
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-gm-ok/15 text-gm-ok">
           <Check className="size-6" strokeWidth={2.2} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="gm-display text-lg font-bold tracking-wide text-emerald-400">
+          <p className="gm-display text-lg font-bold tracking-wide text-gm-ok">
             Pago recibido · <span className="gm-mono">{formatImporte(cobro.importe)}</span>
           </p>
-          <p className="text-[13.5px] text-muted-foreground">
+          <p className="text-[14px] text-muted-foreground">
             {quienYCuando(cobro)}. La tarifa subió mientras esperaba.
           </p>
         </div>
@@ -239,14 +239,14 @@ export function CobroAliasPanel({
   if (!abierto)
     return (
       <div role="status" className="flex items-center gap-3 rounded-2xl border border-border bg-gm-surface-2 p-3.5">
-        <p className="min-w-0 flex-1 text-[13.5px] text-muted-foreground">
+        <p className="min-w-0 flex-1 text-[14px] text-muted-foreground">
           {cobro.estado === 'VENCIDO'
             ? 'Pasaron 15 minutos sin que llegue la transferencia. La estadía sigue sin cobrar.'
             : cobro.estado === 'PAGADO_OTRO_MEDIO'
               ? 'La estadía ya se cobró por otro medio.'
               : 'Se canceló la espera de la transferencia.'}
         </p>
-        <button type="button" onClick={onCancelado} className="min-h-11 shrink-0 rounded-xl px-3 text-[13.5px] font-semibold text-gm-yellow">
+        <button type="button" onClick={onCancelado} className="min-h-11 shrink-0 rounded-xl px-3 text-[14px] font-semibold text-gm-yellow">
           Entendido
         </button>
       </div>
@@ -301,7 +301,7 @@ export function CobroAliasPanel({
             <Info className="mt-0.5 size-5 shrink-0 text-gm-yellow" aria-hidden />
             <div className="min-w-0 text-sm">
               <p className="font-semibold">Confirmá cuál es el pago de este {cobro.tipo === 'INQUILINO' ? 'inquilino' : 'auto'}</p>
-              <p className="text-[#D9D1C3]">{cobro.tipo === 'INQUILINO' && cobro.motivoRevision === 'VARIOS_COBROS' ? 'Hay más de un cobro esperando una transferencia de este importe.' : MOTIVOS[cobro.motivoRevision ?? ''] ?? 'Hay más de una posibilidad.'} Preguntale a nombre de quién transfirió.</p>
+              <p className="text-gm-texto-2">{cobro.tipo === 'INQUILINO' && cobro.motivoRevision === 'VARIOS_COBROS' ? 'Hay más de un cobro esperando una transferencia de este importe.' : MOTIVOS[cobro.motivoRevision ?? ''] ?? 'Hay más de una posibilidad.'} Preguntale a nombre de quién transfirió.</p>
             </div>
           </div>
           {cobro.opciones.length === 0 ? (
@@ -332,7 +332,7 @@ export function CobroAliasPanel({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold">Buscando la transferencia</span>
-            <span className="block text-[12.5px] leading-snug text-muted-foreground">
+            <span className="block text-[13px] leading-snug text-muted-foreground">
               Desde las {horaCorta(cobro.buscarDesde)}. Si llega una sola de {formatImporte(cobro.importe)}, {cobro.tipo === 'INQUILINO' ? 'el pago se registra solo.' : cobro.anticipo ? 'el anticipo se registra solo.' : 'la salida se registra sola.'}
             </span>
           </span>
@@ -346,7 +346,7 @@ export function CobroAliasPanel({
         <>
           <div className="flex gap-3 rounded-2xl border border-gm-yellow/35 bg-gm-yellow/[0.06] p-3.5">
             <Info className="mt-0.5 size-5 shrink-0 text-gm-yellow" aria-hidden />
-            <p className="min-w-0 text-sm text-[#D9D1C3]">
+            <p className="min-w-0 text-sm text-gm-texto-2">
               <span className="font-semibold text-foreground">¿Transfirió antes de que abrieras esto?</span> Entró{' '}
               {anteriores.length === 1 ? 'esta transferencia' : 'estas transferencias'} de {formatImporte(cobro.importe)} un rato
               antes. Preguntale a nombre de quién transfirió y elegí la suya.

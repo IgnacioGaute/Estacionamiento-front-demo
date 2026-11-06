@@ -69,7 +69,7 @@ export function DeleteUserDialog({ user }: { user: User }) {
           </div>
         </DialogHeader>
 
-        <div className="text-[13.5px] leading-relaxed text-muted-foreground">
+        <div className="text-[14px] leading-relaxed text-muted-foreground">
           Se eliminará la cuenta de{' '}
           <span className="font-semibold text-foreground">
             {user.firstName} {user.lastName}

@@ -64,8 +64,8 @@ export function LoginForm() {
   // Campos grandes y oscuros sobre la tarjeta negra; en el celular la letra queda en 16 px para que
   // el teléfono no haga zoom al tocarlos.
   const campo =
-    'h-[52px] rounded-[14px] border-white/10 bg-[#16130F] px-3.5 text-base md:h-[50px] md:text-[15px] placeholder:text-[#7D7365] focus-visible:ring-4 focus-visible:ring-gm-yellow/15';
-  const etiqueta = 'text-[13px] font-semibold normal-case tracking-normal text-[#D9D1C3]';
+    'h-[52px] rounded-[14px] border-white/10 bg-background px-3.5 text-base md:h-[50px] md:text-[15px] placeholder:text-gm-texto-tenue focus-visible:ring-4 focus-visible:ring-gm-yellow/15';
+  const etiqueta = 'text-[13px] font-semibold normal-case tracking-normal text-gm-texto-2';
 
   return (
     <Form {...form}>

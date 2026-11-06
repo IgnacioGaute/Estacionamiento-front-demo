@@ -65,7 +65,7 @@ function AvisoSinTurno({ administrador }: { administrador: boolean }) {
       <Wallet className="size-4 shrink-0 self-start text-gm-aviso max-sm:mt-0.5" aria-hidden />
       <div className="min-w-0 flex-1 basis-48">
         <p className="text-[13px] font-bold text-gm-aviso">No tenés un turno abierto</p>
-        <p className="mt-0.5 text-[12.5px] leading-snug text-[#D9D1C3]">
+        <p className="mt-0.5 text-[13px] leading-snug text-gm-texto-2">
           {administrador
             ? 'Como administrador podés registrar la salida sin turno con transferencia, QR o sin cobro. Para cobrar en efectivo, abrí tu turno: el efectivo entra a la caja de un turno.'
             : 'Abrí tu turno para registrar salidas y cobros.'}
@@ -160,9 +160,9 @@ function ResumenEstadia({
       {(compacto || compactoEnBajas) && (
         <div className={cn('flex-wrap items-center gap-3 rounded-2xl border border-border bg-gm-surface-2 py-2.5 pl-2.5 pr-3.5', compacto ? 'flex md:hidden' : 'hidden short:flex md:short:hidden')}>
           <Identidad r={r} />
-          <span className="gm-mono min-w-0 flex-1 truncate text-[13.5px] text-muted-foreground">{formatElapsed(summary.elapsedMinutes)}</span>
+          <span className="gm-mono min-w-0 flex-1 truncate text-[14px] text-muted-foreground">{formatElapsed(summary.elapsedMinutes)}</span>
           <span className="gm-mono text-[19px] font-bold">{formatImporte(importe)}</span>
-          {summary.previewBracket.usedFallback && <p className="flex w-full items-start gap-1.5 text-[12.5px] font-semibold text-gm-aviso"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />Importe de respaldo: el tiempo superó los precios cargados. Consultá antes de cobrar.</p>}
+          {summary.previewBracket.usedFallback && <p className="flex w-full items-start gap-1.5 text-[13px] font-semibold text-gm-aviso"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />Importe de respaldo: el tiempo superó los precios cargados. Consultá antes de cobrar.</p>}
         </div>
       )}
       <div className={cn('rounded-[18px] border border-border bg-gm-surface-2 p-3.5 short:p-3', compacto ? 'hidden md:block' : compactoEnBajas && 'short:hidden md:short:block')}>
@@ -174,7 +174,7 @@ function ResumenEstadia({
           </div>
           <div className="ml-auto min-w-0 text-right">
             <p className="gm-mono text-base font-semibold">{formatElapsed(summary.elapsedMinutes)}</p>
-            <p className="truncate text-[12.5px] text-muted-foreground">{detalle}</p>
+            <p className="truncate text-[13px] text-muted-foreground">{detalle}</p>
           </div>
         </div>
         <DatosClienteEstadia r={r} />
@@ -187,7 +187,7 @@ function ResumenEstadia({
           {onSeFueAntes && (
             <button type="button" onClick={onSeFueAntes} aria-label="Se fue antes: registrar la salida con la tarifa que le correspondía"
               className="group inline-flex h-11 shrink-0 items-center rounded-full focus-visible:outline-none">
-              <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-gm-line-strong px-3 text-[12.5px] font-semibold text-[#D9D1C3] transition-colors group-hover:border-gm-yellow/40 group-hover:text-foreground group-focus-visible:ring-2 group-focus-visible:ring-gm-yellow">
+              <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-gm-line-strong px-3 text-[13px] font-semibold text-gm-texto-2 transition-colors group-hover:border-gm-yellow/40 group-hover:text-foreground group-focus-visible:ring-2 group-focus-visible:ring-gm-yellow">
                 <LogOut className="size-3.5" aria-hidden />Se fue antes
               </span>
             </button>
@@ -214,12 +214,12 @@ function ResumenEstadia({
           )}
         </div>
         {summary.totalCollectedSoFar > 0 && (
-          <p className="mt-2 text-[12.5px] text-muted-foreground">
+          <p className="mt-2 text-[13px] text-muted-foreground">
             Total {formatImporte(summary.previewBracket.price)} · ya pagó por adelantado {formatImporte(summary.totalCollectedSoFar)}
           </p>
         )}
         {summary.descuento && (
-          <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold text-gm-yellow">
+          <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[13px] font-semibold text-gm-yellow">
             <BadgePercent className="size-3.5 shrink-0" aria-hidden />
             <span className="min-w-0 truncate">
               Con descuento de {formatImporte(summary.descuento.monto)}{summary.descuento.motivo ? ` · ${summary.descuento.motivo}` : ''}
@@ -234,7 +234,7 @@ function ResumenEstadia({
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-gm-aviso" aria-hidden />
             <div className="min-w-0">
               <p className="text-[13px] font-bold text-gm-aviso">Este es el importe de respaldo</p>
-              <p className="mt-0.5 text-[12.5px] leading-snug text-[#D9D1C3]">
+              <p className="mt-0.5 text-[13px] leading-snug text-gm-texto-2">
                 El tiempo superó los precios cargados.{summary.previewBracket.breakdown ? ' Mirá el cálculo y, si' : ' Si'} no te cierra, consultá con el encargado antes de cobrar.
               </p>
             </div>
@@ -290,7 +290,7 @@ function SalidaGratuita({
             <EliminarEstadia summary={summary} onEliminada={onEliminada} />
           </div>
           <div className="my-3 h-px bg-border" />
-          <dl className="space-y-1.5 text-[13.5px]">
+          <dl className="space-y-1.5 text-[14px]">
             {filas.map(([dt, dd]) => (
               <div key={dt} className="flex items-baseline justify-between gap-3">
                 <dt className="text-muted-foreground">{dt}</dt>
@@ -736,10 +736,10 @@ export function CloseTicketPanel({
           <Identidad r={r} highlight={r.parecida ? undefined : query.trim()} />
           <span className="min-w-0 flex-1">
             <span className="gm-mono block text-[15px] font-semibold">{elapsed !== null ? formatElapsed(elapsed) : '—'}</span>
-            <span className="block truncate text-[12.5px] text-muted-foreground">{detalle}</span>
+            <span className="block truncate text-[13px] text-muted-foreground">{detalle}</span>
           </span>
           {overdue ? (
-            <span className="shrink-0 rounded-full bg-gm-orange/15 px-2 py-1 text-[11.5px] font-bold text-gm-aviso">Excedido</span>
+            <span className="shrink-0 rounded-full bg-gm-orange/15 px-2 py-1 text-[12px] font-bold text-gm-aviso">Excedido</span>
           ) : (
             <ChevronRight className="size-[18px] shrink-0 text-muted-foreground" aria-hidden />
           )}
@@ -870,10 +870,10 @@ export function CloseTicketPanel({
             {sinConfirmar.length > 0 && (
               <section aria-label="Autos sin confirmar" className="shrink-0 overflow-hidden rounded-2xl border border-violet-400/30 bg-violet-400/[0.06]">
                 <div className="flex min-h-11 items-center justify-between gap-3 pl-3.5 pr-1.5">
-                  <p className="text-[12.5px] font-semibold text-violet-100">Sin confirmar · más de 4 h · {sinConfirmar.length}</p>
+                  <p className="text-[13px] font-semibold text-violet-100">Sin confirmar · más de 4 h · {sinConfirmar.length}</p>
                   {sinConfirmar.length > 1 && (
                     <button type="button" onClick={() => confirmar(sinConfirmar.map(({ r }) => r.id))}
-                      className="min-h-11 shrink-0 rounded-xl px-3 text-[12.5px] font-semibold text-violet-200 transition-colors hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+                      className="min-h-11 shrink-0 rounded-xl px-3 text-[13px] font-semibold text-violet-200 transition-colors hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
                       Siguen todos
                     </button>
                   )}
@@ -886,12 +886,12 @@ export function CloseTicketPanel({
                         <Identidad r={r} />
                         <span className="min-w-0 flex-1">
                           <span className="gm-mono block text-[15px] font-semibold text-violet-200">{formatElapsed(minutos)}</span>
-                          <span className="block truncate text-[12.5px] text-muted-foreground">Entró {cuandoEntro(r)}</span>
+                          <span className="block truncate text-[13px] text-muted-foreground">Entró {cuandoEntro(r)}</span>
                         </span>
-                        <span className="shrink-0 text-[12.5px] font-bold text-gm-yellow">{cobroHabilitado ? 'Cobrar' : 'Salida'}</span>
+                        <span className="shrink-0 text-[13px] font-bold text-gm-yellow">{cobroHabilitado ? 'Cobrar' : 'Salida'}</span>
                       </button>
                       <button type="button" onClick={() => confirmar([r.id])} aria-label={`${r.licensePlateOriginal || r.lastNameCustomer || 'Este vehículo'} sigue en la playa`}
-                        className="min-h-11 shrink-0 rounded-xl border border-gm-line-strong px-3 text-[12.5px] font-semibold text-[#D9D1C3] transition-colors hover:border-violet-300/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+                        className="min-h-11 shrink-0 rounded-xl border border-gm-line-strong px-3 text-[13px] font-semibold text-gm-texto-2 transition-colors hover:border-violet-300/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
                         Sigue
                       </button>
                     </li>
@@ -915,8 +915,8 @@ export function CloseTicketPanel({
                 <div className="flex items-start gap-3">
                   <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gm-atencion/20 text-gm-atencion"><AlertTriangle className="size-[18px]" aria-hidden /></span>
                   <div className="min-w-0 space-y-0.5">
-                    <p className="text-[14px] font-semibold text-[#F5C26B]">{parecidas.length === 1 ? 'Hay una patente parecida' : `Hay ${parecidas.length} patentes parecidas`}</p>
-                    <p className="text-[12.5px] leading-snug text-[#D9D1C3]">
+                    <p className="text-[14px] font-semibold text-gm-atencion">{parecidas.length === 1 ? 'Hay una patente parecida' : `Hay ${parecidas.length} patentes parecidas`}</p>
+                    <p className="text-[13px] leading-snug text-gm-texto-2">
                       Revisá si escribiste bien <span className="gm-mono font-semibold">{query.toUpperCase().replace(/[^A-Z0-9]/g, '')}</span> o si al entrar se cargó mal. Si es el mismo auto, tocalo para cobrarlo.
                     </p>
                   </div>
@@ -1093,7 +1093,7 @@ export function CloseTicketPanel({
                             <CashAmountField compact id="efectivo-hibrido" label="En efectivo" value={efectivoHibrido} onChange={setEfectivoHibrido} disabled={isPending} max={saldo} />
                             <div className="space-y-2 border-t border-dashed border-gm-line-strong pt-2.5">
                               <p className="flex items-center justify-between gap-2">
-                                <span className="text-[13.5px] font-semibold">El resto</span>
+                                <span className="text-[14px] font-semibold">El resto</span>
                                 <span className="gm-mono text-[20px] font-bold leading-none">{formatImporte(restoParte)}</span>
                               </p>
                               <div role="group" aria-label="Cómo paga el resto" className={cn('grid gap-2', restoMedios.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>
@@ -1117,7 +1117,7 @@ export function CloseTicketPanel({
                         ) : paymentMethod === 'CASH' ? (
                           <div className="space-y-2.5 rounded-2xl border border-border bg-gm-surface-2/50 p-3 short:space-y-2">
                             <p className="flex items-baseline justify-between gap-2">
-                              <span className="text-[13.5px] font-semibold">¿Con cuánto paga?</span>
+                              <span className="text-[14px] font-semibold">¿Con cuánto paga?</span>
                               <span className="text-xs text-muted-foreground">Para calcular el vuelto</span>
                             </p>
                             {pagaCon === 'OTRO' ? (
@@ -1132,7 +1132,7 @@ export function CloseTicketPanel({
                                   onChange={(e) => setOtroImporte(e.target.value.replace(/\D/g, '').slice(0, 9))}
                                   className="gm-mono h-11 min-w-0 flex-1 rounded-xl border-[1.5px] border-gm-yellow bg-gm-surface-2 px-3 text-base font-semibold text-foreground outline-none"
                                 />
-                                <button type="button" onClick={() => { setPagaCon(null); setOtroImporte(''); }} className="h-11 shrink-0 rounded-xl px-3 text-[13.5px] font-semibold text-muted-foreground hover:text-foreground">
+                                <button type="button" onClick={() => { setPagaCon(null); setOtroImporte(''); }} className="h-11 shrink-0 rounded-xl px-3 text-[14px] font-semibold text-muted-foreground hover:text-foreground">
                                   Volver
                                 </button>
                               </div>

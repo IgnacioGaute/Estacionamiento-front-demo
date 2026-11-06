@@ -132,7 +132,7 @@ export function FormularioTarjeta({
         <DataLoading label="Cargando formulario seguro…" className="p-5" />
       )}
       {estado === 'error' && (
-        <p role="alert" className="m-0 px-5 py-5 text-[14px] leading-relaxed text-[#FF8A8D]">
+        <p role="alert" className="m-0 px-5 py-5 text-[14px] leading-relaxed text-gm-peligro">
           No pudimos abrir el formulario de tarjeta. Revisá tu conexión y recargá la página.
         </p>
       )}

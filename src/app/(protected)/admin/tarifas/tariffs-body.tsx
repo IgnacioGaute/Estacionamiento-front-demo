@@ -139,13 +139,13 @@ export function TariffsBody({ initialPlan, loadError, passPrices, enConfiguracio
         <span className="inline-flex items-center gap-1.5 rounded-full border border-gm-yellow/35 bg-gm-yellow/10 px-2.5 py-0.5 text-[11px] font-bold text-gm-yellow"><span aria-hidden className="size-1.5 rounded-full bg-gm-yellow" />Borrador · todavía no se cobra</span>
         {enConfiguracionInicial
           ? <h2 id="tariff-draft-heading" className="mt-3 text-xl font-semibold">{hasPrices ? 'Editar tarifas' : 'Creá tus tarifas'}</h2>
-          : <h1 id="tariff-draft-heading" className="gm-display mt-3 text-[30px] leading-none sm:text-[36px]">Editar tarifas</h1>}
+          : <h1 id="tariff-draft-heading" className="gm-display mt-3 text-[26px] font-bold leading-tight text-foreground md:text-[30px]">Editar tarifas</h1>}
         <p className="mt-2 text-sm text-muted-foreground">{view === 'sections' ? 'Cambiá lo que necesites. Los cambios se aplican juntos al final.' : methodChanged ? 'Cambiaste la forma de cobro: cargá los precios nuevos y aplicalos al final.' : 'Completá los 3 pasos. Los cambios se aplican juntos al final.'}</p>
       </div>
       {vehicleError && <p role="alert" className="text-sm text-destructive">{vehicleError}</p>}
       {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
-      {conflict && <div role="alert" className="space-y-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm"><p className="font-semibold">Las tarifas o los vehículos cambiaron mientras editabas.</p><p>Tu borrador se conserva. Revisá la configuración vigente y comparala con tu borrador antes de continuar.</p>
-        <details className="rounded-xl border border-amber-500/30 bg-background/40"><summary className="cursor-pointer px-3 py-2 font-medium">Ver las tarifas vigentes</summary><div className="border-t border-amber-500/30 p-3"><TariffSummary plan={current} vehicles={vehicles} /></div></details>
+      {conflict && <div role="alert" className="space-y-3 rounded-xl border border-gm-atencion/40 bg-gm-atencion/10 p-4 text-sm"><p className="font-semibold">Las tarifas o los vehículos cambiaron mientras editabas.</p><p>Tu borrador se conserva. Revisá la configuración vigente y comparala con tu borrador antes de continuar.</p>
+        <details className="rounded-xl border border-gm-atencion/30 bg-background/40"><summary className="cursor-pointer px-3 py-2 font-medium">Ver las tarifas vigentes</summary><div className="border-t border-gm-atencion/30 p-3"><TariffSummary plan={current} vehicles={vehicles} /></div></details>
         {current.revision !== baseRevision ? <Button type="button" variant="outline" disabled={pending} onClick={() => { setBaseRevision(current.revision); setDraft(previous => previous ? { ...previous, brackets: previous.brackets.map(row => { if (!row.id || current.brackets.some(saved => saved.id === row.id)) return row; const { id: _obsoleteId, ...fields } = row; return fields; }) } : previous); setBaseDraft(JSON.stringify(copyDraft(current))); setConflict(false); setError(''); }}>Revisé la versión vigente: conservar mi borrador</Button> : <Button variant="outline" disabled={pending} onClick={reload}>Cargar la versión vigente</Button>}
         <p className="text-xs text-muted-foreground">Luego podrás aplicar tu borrador completo. Si otra persona vuelve a modificar las tarifas, te avisaremos nuevamente.</p></div>}
       {loading ? <DataLoading label="Cargando tipos de vehículo…" /> : <fieldset disabled={pending || !!vehicleError} className="min-w-0">
@@ -159,8 +159,8 @@ export function TariffsBody({ initialPlan, loadError, passPrices, enConfiguracio
                 <span id="aplicar-activos-ayuda" className="mt-1 block text-xs leading-relaxed text-muted-foreground">Se recalcula toda su estadía con la tarifa nueva, desde que entraron. Lo que ya pagaron se descuenta y, si pagaron de más, se devuelve al cobrar la salida. Sin marcarlo, siguen con la tarifa con la que entraron.</span>
               </span>
             </label>}
-            {errors.length > 0 ? <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm" role="status"><p className="font-medium">Para poder aplicar el borrador:</p><ul className="mt-2 list-disc space-y-1 pl-5">{errors.map(message => <li key={message}>{message}</li>)}</ul></div>
-              : conflict ? <p className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm" role="status">Revisá el aviso de arriba antes de aplicar.</p>
+            {errors.length > 0 ? <div className="rounded-xl border border-gm-atencion/30 bg-gm-atencion/5 p-4 text-sm" role="status"><p className="font-medium">Para poder aplicar el borrador:</p><ul className="mt-2 list-disc space-y-1 pl-5">{errors.map(message => <li key={message}>{message}</li>)}</ul></div>
+              : conflict ? <p className="rounded-xl border border-gm-atencion/30 bg-gm-atencion/5 p-3 text-sm" role="status">Revisá el aviso de arriba antes de aplicar.</p>
               : <p className="text-xs text-muted-foreground">{!dirty ? 'Todavía no hay cambios para aplicar.' : aplicarActivos ? 'Los nuevos ingresos y los vehículos que están adentro usan la tarifa nueva.' : 'Las estadías con tarifa fijada al ingresar conservan sus precios.'}</p>}
           </>} />
       </fieldset>}

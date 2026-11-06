@@ -52,7 +52,7 @@ export function RenterPhase2({
 
   return (
     <>
-      <div className="flex items-start gap-3 rounded-md border border-gm-yellow/30 bg-gm-yellow/10 p-3 text-[12.5px]">
+      <div className="flex items-start gap-3 rounded-md border border-gm-yellow/30 bg-gm-yellow/10 p-3 text-[13px]">
         <Car className="size-4 mt-px text-gm-yellow shrink-0" />
         <div>
           <div className="font-semibold text-foreground">
@@ -160,7 +160,7 @@ export function RenterPhase2({
                 <Card className="border-gm-yellow/30 bg-gm-yellow/5 p-3">
                   <div className="flex items-start gap-3">
                     <Info className="size-4 mt-0.5 text-gm-yellow shrink-0" />
-                    <div className="grid grid-cols-2 gap-3 text-[12.5px] flex-1">
+                    <div className="grid grid-cols-2 gap-3 text-[13px] flex-1">
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
                           Cochera

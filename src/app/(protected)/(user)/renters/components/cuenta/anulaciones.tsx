@@ -104,7 +104,7 @@ export function AnulacionesDialog({ open, onOpenChange }: { open: boolean; onOpe
         )}
 
         {t && datos && datos.lista.length > 0 && (
-          <ul className="divide-y divide-[#2B2620] rounded-2xl border border-border">
+          <ul className="divide-y divide-gm-line rounded-2xl border border-border">
             {datos.lista.map((a) => (
               <li key={a.id} className="flex flex-wrap items-start gap-x-4 gap-y-1.5 px-4 py-3">
                 <div className="min-w-0 flex-1">
@@ -118,7 +118,7 @@ export function AnulacionesDialog({ open, onOpenChange }: { open: boolean; onOpe
                     </Link>
                     <Pastilla tono={a.tipo === 'PAGO' ? 'verde' : 'amarillo'}>{TIPO[a.tipo] ?? a.tipo}</Pastilla>
                   </div>
-                  <div className="mt-0.5 text-[13px] text-[#C9BFB1]">
+                  <div className="mt-0.5 text-[13px] text-gm-texto-2">
                     {a.concepto}
                     <span style={{ color: EJE }}>
                       {' '}

@@ -50,7 +50,7 @@ export function EliminarEstadia({ summary, onEliminada }: { summary: Pick<Resume
         icono={<Trash2 className="size-3.5" aria-hidden />}
         hecho={<span className="inline-flex items-center gap-1.5"><Check className="size-3.5" aria-hidden />Borrada</span>}
         onHold={() => void eliminar()}
-        className="text-[12.5px]"
+        className="text-[13px]"
       >
         Mantené para borrar<span className="sr-only"> la estadía de {quien}</span>
       </BotonMantener>

@@ -74,6 +74,10 @@
        - aviso (#F0714A): algo que el operador tiene que revisar (importe de respaldo, sin turno).
        - atencion (#F0A43A): pendiente sin urgencia (requiere atención, faltan datos).
        - ok (#3DD68C): confirmado o al día.
+       - texto-2 (#D9D1C3): texto secundario claro, entre foreground y muted-foreground. Los
+         textos van en cuatro pasos: foreground, texto-2, muted-foreground y texto-tenue.
+       - hondo (#0B0A08): el negro de la barra lateral, la barra del celular y el login, más
+         oscuro que el fondo.
        - texto-tenue (#857B6D): lo más apagado que llega a 4,5:1 sobre el fondo.
        - peligro (#F08775): el texto de borrar o de un error. Los fondos y bordes de peligro siguen
          siendo --destructive, que como texto chico sobre el fondo oscuro no llega a 4,5:1.
@@ -83,6 +87,8 @@
     --gm-ok:            151 65% 54%;
     --gm-texto-tenue:   35 10% 48%;
     --gm-peligro:       9 80% 70%;
+    --gm-texto-2:       38 22% 81%;
+    --gm-hondo:         40 16% 4%;
   }
 
   .dark {
@@ -238,7 +244,7 @@
   height: 16px;
 }
 [data-sonner-toast][data-type="success"] [data-icon] svg {
-  color: #9AD588;
+  color: hsl(var(--gm-ok));
 }
 [data-sonner-toast][data-type="error"] [data-icon] svg {
   color: hsl(var(--gm-peligro));

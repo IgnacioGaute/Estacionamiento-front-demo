@@ -51,16 +51,16 @@ export function DataTableColumnHeader<TData, TValue>({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[120px]">
-          <DropdownMenuItem onClick={() => column.toggleSorting(false)} className="gap-2 text-[12.5px]">
+          <DropdownMenuItem onClick={() => column.toggleSorting(false)} className="gap-2 text-[13px]">
             <ArrowUpIcon className="size-3.5 text-muted-foreground" />
             Ascendente
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => column.toggleSorting(true)} className="gap-2 text-[12.5px]">
+          <DropdownMenuItem onClick={() => column.toggleSorting(true)} className="gap-2 text-[13px]">
             <ArrowDownIcon className="size-3.5 text-muted-foreground" />
             Descendente
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => column.toggleVisibility(false)} className="gap-2 text-[12.5px]">
+          <DropdownMenuItem onClick={() => column.toggleVisibility(false)} className="gap-2 text-[13px]">
             <EyeOffIcon className="size-3.5 text-muted-foreground" />
             Ocultar
           </DropdownMenuItem>

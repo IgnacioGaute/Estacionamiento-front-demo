@@ -58,7 +58,7 @@ export function EditarDatosEstadia({ summary, onCorregido }: { summary: Pick<Res
     return (
       <button type="button" onClick={abrir} aria-label={tarjeta ? 'Corregir tipo de vehículo' : 'Corregir patente o tipo'}
         className="group inline-flex h-11 shrink-0 items-center rounded-full focus-visible:outline-none">
-        <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-gm-yellow/30 px-3 text-[12.5px] font-semibold text-gm-yellow transition-colors group-hover:bg-gm-yellow/10 group-focus-visible:ring-2 group-focus-visible:ring-gm-yellow">
+        <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-gm-yellow/30 px-3 text-[13px] font-semibold text-gm-yellow transition-colors group-hover:bg-gm-yellow/10 group-focus-visible:ring-2 group-focus-visible:ring-gm-yellow">
           <Pencil className="size-3.5" aria-hidden />Corregir
         </span>
       </button>

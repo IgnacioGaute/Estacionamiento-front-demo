@@ -38,8 +38,8 @@ export function UsersBody({ data, assignments }: { data: User[]; assignments: As
   const etiquetaRol = (u: User) => {
     const { etiqueta } = estiloRol(u.role);
     return (
-      <span className={cn('inline-flex h-[26px] items-center rounded-full px-2.5 text-[12.5px] font-semibold',
-        u.role === 'ADMIN' ? 'bg-gm-yellow/15 text-gm-yellow' : 'bg-gm-surface-3 text-[#D9D1C3]')}>{etiqueta}</span>
+      <span className={cn('inline-flex h-[26px] items-center rounded-full px-2.5 text-[13px] font-semibold',
+        u.role === 'ADMIN' ? 'bg-gm-yellow/15 text-gm-yellow' : 'bg-gm-surface-3 text-gm-texto-2')}>{etiqueta}</span>
     );
   };
   const playa = (u: User) =>
@@ -58,7 +58,7 @@ export function UsersBody({ data, assignments }: { data: User[]; assignments: As
     <div className="flex min-w-0 items-center gap-3">
       <RolAvatar role={u.role} className="size-9 rounded-[10px]" />
       <div className="min-w-0">
-        <p className="truncate text-[13.5px] font-semibold">{u.firstName} {u.lastName}</p>
+        <p className="truncate text-[14px] font-semibold">{u.firstName} {u.lastName}</p>
         <p className="gm-mono truncate text-xs text-muted-foreground">@{u.username}</p>
       </div>
     </div>
@@ -99,7 +99,7 @@ export function UsersBody({ data, assignments }: { data: User[]; assignments: As
           <>
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[820px] border-collapse text-sm">
-                <thead className="bg-[#15130F]">
+                <thead className="bg-background">
                   <tr>
                     <th scope="col" className={thPlanilla}>Usuario</th>
                     <th scope="col" className={thPlanilla}>Email</th>
@@ -112,7 +112,7 @@ export function UsersBody({ data, assignments }: { data: User[]; assignments: As
                   {visibles.map((u) => (
                     <tr key={u.id} className="border-t border-gm-line transition-colors hover:bg-gm-surface-2">
                       <td className={tdPlanilla}>{persona(u)}</td>
-                      <td className={tdPlanilla}><span className="gm-mono text-[12.5px] text-muted-foreground">{u.email}</span></td>
+                      <td className={tdPlanilla}><span className="gm-mono text-[13px] text-muted-foreground">{u.email}</span></td>
                       <td className={tdPlanilla}>{etiquetaRol(u)}</td>
                       <td className={tdPlanilla}>{playa(u)}</td>
                       <td className={cn(tdPlanilla, 'text-right')}>{acciones(u)}</td>

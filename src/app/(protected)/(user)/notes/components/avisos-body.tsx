@@ -231,7 +231,7 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
           <div className={cn('transition-opacity', isPending && 'opacity-50')}>
             {grupos.map((g) => (
               <section key={g.clave} aria-label={g.titulo}>
-                <h3 className={cn('border-t border-gm-line bg-[#15130F] px-[18px] py-2 text-[11px] font-bold uppercase tracking-[0.12em] first-letter:uppercase',
+                <h3 className={cn('border-t border-gm-line bg-background px-[18px] py-2 text-[11px] font-bold uppercase tracking-[0.12em] first-letter:uppercase',
                   g.clave === 'pendientes' ? 'text-gm-yellow' : 'text-muted-foreground')}>{g.titulo}</h3>
                 <ul>
                   {g.avisos.map((n) => {
@@ -247,20 +247,20 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
                           className={cn('relative flex gap-3 border-t border-gm-line px-[18px] py-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow',
                             nuevo ? 'cursor-pointer bg-gm-yellow/[0.05] hover:bg-gm-yellow/[0.09]' : 'hover:bg-gm-surface-2')}>
                           {nuevo && <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-gm-yellow" />}
-                          <span aria-hidden className={cn('grid size-10 shrink-0 place-items-center rounded-[12px]', nuevo ? 'bg-gm-yellow/15 text-gm-yellow' : 'bg-gm-surface-3 text-[#D9D1C3]')}>
+                          <span aria-hidden className={cn('grid size-10 shrink-0 place-items-center rounded-[12px]', nuevo ? 'bg-gm-yellow/15 text-gm-yellow' : 'bg-gm-surface-3 text-gm-texto-2')}>
                             <Icono className="size-[18px]" />
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                               <span className={cn('text-[14px]', nuevo ? 'font-bold' : 'font-semibold')}>{autor(n)}</span>
-                              <span className="inline-flex h-[22px] items-center rounded-full bg-gm-surface-3 px-2 text-[11.5px] font-semibold text-[#D9D1C3]">{n.origin || label}</span>
+                              <span className="inline-flex h-[22px] items-center rounded-full bg-gm-surface-3 px-2 text-[12px] font-semibold text-gm-texto-2">{n.origin || label}</span>
                               {nuevo && <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-gm-yellow">Nuevo<span className="sr-only"> · tocá para marcarlo como leído</span></span>}
                               <time dateTime={new Date(n.createdAt).toISOString()} className="gm-mono ml-auto text-xs text-muted-foreground">
                                 {g.clave === 'pendientes' ? `${fechaCorta(n.date ?? diaAR(new Date(n.createdAt)))} · ` : ''}{horaAR(new Date(n.createdAt))}
                               </time>
                             </div>
                             {n.context && <p className="gm-mono mt-0.5 break-words text-xs text-muted-foreground">{n.context}</p>}
-                            <p className={cn('mt-2 whitespace-pre-wrap break-words text-[14px] leading-relaxed', nuevo ? 'text-foreground' : 'text-[#D9D1C3]')}>{n.description}</p>
+                            <p className={cn('mt-2 whitespace-pre-wrap break-words text-[14px] leading-relaxed', nuevo ? 'text-foreground' : 'text-gm-texto-2')}>{n.description}</p>
                           </div>
                           {/* Editar o borrar no cuenta como leer: los clics y teclas del diálogo no suben a la tarjeta. */}
                           {!n.sourceKey && (

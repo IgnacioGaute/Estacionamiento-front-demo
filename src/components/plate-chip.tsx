@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 // reconoce de un vistazo, igual que en el auto. Con `highlight` marca la parte que coincide con
 // lo que se escribió en el buscador.
 const TAMANIOS = {
-  xs: { caja: 'min-w-[78px] rounded-[5px] border', franja: 'h-1', texto: 'px-1.5 pb-0.5 text-[12.5px]' },
+  xs: { caja: 'min-w-[78px] rounded-[5px] border', franja: 'h-1', texto: 'px-1.5 pb-0.5 text-[13px]' },
   sm: { caja: 'min-w-[96px] rounded-[6px] border-[1.5px]', franja: 'h-1.5', texto: 'px-2 pb-1 pt-0.5 text-[15px]' },
   md: { caja: 'min-w-[124px] rounded-[7px] border-2', franja: 'h-2', texto: 'px-2.5 pb-1 pt-0.5 text-[19px]' },
   lg: { caja: 'min-w-[156px] rounded-[8px] border-2', franja: 'h-[9px]', texto: 'px-3 pb-1.5 pt-0.5 text-[24px]' },

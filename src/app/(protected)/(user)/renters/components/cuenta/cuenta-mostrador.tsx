@@ -43,7 +43,7 @@ function EstadoDeuda({ d }: { d: DeudaCuenta }) {
     ? [d.situacion === 'PARCIAL' ? 'Vencido · pago parcial' : 'Vencido', 'bg-gm-aviso/[0.16] text-gm-aviso']
     : d.situacion === 'PARCIAL'
       ? ['Pago parcial', 'bg-gm-yellow/[0.14] text-gm-yellow']
-      : ['Pendiente', 'bg-[#221F1A] text-[#E9E1D4]'];
+      : ['Pendiente', 'bg-gm-surface-2 text-foreground'];
   return <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${clase}`}>{texto}</span>;
 }
 
@@ -127,7 +127,7 @@ export function CuentaMostradorDialog({
                   {fechaAR(recibo.fecha)} · {recibo.medios.map((m) => nombreMetodo(m.metodo)).join(' + ')}
                 </span>
               </span>
-              <span className="shrink-0 font-display text-xl font-semibold tabular-nums text-emerald-400">{plata(recibo.total)}</span>
+              <span className="shrink-0 font-display text-xl font-semibold tabular-nums text-gm-ok">{plata(recibo.total)}</span>
             </div>
             <EntregaRecibo pagoId={recibo.id} resultado={comoRecibo(recibo, cuenta)} playa={playa} />
           </div>
@@ -183,7 +183,7 @@ export function CuentaMostradorDialog({
                 </ul>
               ) : (
                 <p className="flex items-center gap-2 rounded-xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
-                  <CheckCircle2 className="size-4 text-emerald-400" />
+                  <CheckCircle2 className="size-4 text-gm-ok" />
                   {cuenta.saldo < 0 ? `No debe nada y tiene ${plata(-cuenta.saldo)} a favor.` : 'No debe nada.'}
                 </p>
               ))}
@@ -201,7 +201,7 @@ export function CuentaMostradorDialog({
                           {fechaAR(p.fecha)} · {p.medios.map((m) => nombreMetodo(m.metodo)).join(' + ')}
                         </span>
                       </span>
-                      <span className="shrink-0 text-sm font-semibold tabular-nums text-emerald-400">{plata(p.total)}</span>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums text-gm-ok">{plata(p.total)}</span>
                       {p.numero && (
                         <button
                           type="button"
@@ -234,7 +234,7 @@ export function CuentaMostradorDialog({
             type="button"
             disabled={!cuenta}
             onClick={onCobrar}
-            className="flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-sm font-bold text-gm-ink hover:bg-[#FFD23A] disabled:opacity-50"
+            className="flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-sm font-bold text-gm-ink hover:bg-gm-yellow-deep disabled:opacity-50"
           >
             <Wallet className="size-4" /> Cobrar
           </button>

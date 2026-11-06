@@ -240,7 +240,7 @@ export function PlanillaVehiculosBody() {
           <div className={cn('transition-opacity', isPending && 'opacity-50')}>
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[900px] border-collapse text-sm">
-                <thead className="bg-[#15130F]">
+                <thead className="bg-background">
                   <tr>
                     <th scope="col" className={thPlanilla}>Vehículo</th>
                     <th scope="col" className={thPlanilla}>Tipo</th>
@@ -296,7 +296,7 @@ export function PlanillaVehiculosBody() {
                     <div><span className="block text-[11px] text-muted-foreground">Salida</span><span className="gm-mono text-[15px] font-bold">{f.salidaHora?.slice(0, 5) ?? '—'}</span> <span className="text-xs text-muted-foreground">{fechaCorta(f.salidaDia)}</span></div>
                   </div>
                   <Permanencia minutos={f.permanenciaMinutos} sufijo={f.salidaDia ? undefined : 'y sigue'} />
-                  <p className="text-[12.5px] text-muted-foreground">Entró con {f.operadorEntrada ?? 'operador no registrado'}{f.salidaDia ? ` · salió con ${f.operadorSalida ?? 'operador no registrado'}` : ''}</p>
+                  <p className="text-[13px] text-muted-foreground">Entró con {f.operadorEntrada ?? 'operador no registrado'}{f.salidaDia ? ` · salió con ${f.operadorSalida ?? 'operador no registrado'}` : ''}</p>
                 </li>
               ))}
             </ul>
@@ -310,7 +310,7 @@ export function PlanillaVehiculosBody() {
 
 function EtiquetaAdentro() {
   return (
-    <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-sky-400/[0.12] px-2.5 text-[12.5px] font-bold text-sky-300">
+    <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-sky-400/[0.12] px-2.5 text-[13px] font-bold text-sky-300">
       <span aria-hidden className="size-[7px] rounded-full bg-sky-400" />Adentro
     </span>
   );

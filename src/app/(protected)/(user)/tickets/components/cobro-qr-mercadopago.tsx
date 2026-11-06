@@ -92,10 +92,10 @@ export function CobroQrMercadoPago({
   // pantalla lo reemplaza por la confirmación que se cierra sola (PagoQrRecibido).
   if (cobro.estado === 'ACREDITADO')
     return (
-      <div role="status" className="flex items-center gap-3.5 rounded-2xl border-[1.5px] border-emerald-500/50 bg-emerald-500/10 p-4">
-        <CheckCircle2 className="size-11 shrink-0 text-emerald-400" strokeWidth={1.75} />
+      <div role="status" className="flex items-center gap-3.5 rounded-2xl border-[1.5px] border-gm-ok/50 bg-gm-ok/10 p-4">
+        <CheckCircle2 className="size-11 shrink-0 text-gm-ok" strokeWidth={1.75} />
         <div className="min-w-0">
-          <p className="gm-display text-xl font-bold text-emerald-400">Pagado · <span className="gm-mono">{formatImporte(cobro.monto)}</span></p>
+          <p className="gm-display text-xl font-bold text-gm-ok">Pagado · <span className="gm-mono">{formatImporte(cobro.monto)}</span></p>
           <p className="text-[13px] text-muted-foreground">MercadoPago confirmó que el dinero entró a la cuenta.</p>
         </div>
       </div>
@@ -123,7 +123,7 @@ export function CobroQrMercadoPago({
       </div>
 
       {vencido ? (
-        <p role="alert" className="rounded-2xl border border-gm-orange/40 bg-gm-orange/10 p-3.5 text-[13.5px] leading-relaxed">
+        <p role="alert" className="rounded-2xl border border-gm-orange/40 bg-gm-orange/10 p-3.5 text-[14px] leading-relaxed">
           El código venció. Cancelalo y generá uno nuevo con el importe actualizado. Si el cliente
           igual llega a pagarlo, esa plata se descuenta del total.
         </p>
@@ -135,7 +135,7 @@ export function CobroQrMercadoPago({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold">Esperando el pago</span>
-            <span className="block text-[12.5px] text-muted-foreground">Se acredita solo. El importe vale por</span>
+            <span className="block text-[13px] text-muted-foreground">Se acredita solo. El importe vale por</span>
           </span>
           <span className="gm-mono text-[15px] font-semibold text-muted-foreground">{restante.texto}</span>
         </div>

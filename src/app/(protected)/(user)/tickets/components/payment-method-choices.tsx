@@ -31,7 +31,7 @@ export function PaymentMethodChoices({ value, onChange, aliasDisponible, disable
           {elegido ? <span className="grid size-5 shrink-0 place-items-center rounded-full bg-gm-yellow text-gm-ink" aria-hidden><Check className="size-3.5" strokeWidth={3} /></span> : <Icon className={cn('size-5 shrink-0', verificado ? 'text-gm-yellow' : 'text-muted-foreground')} aria-hidden />}
           <span className={cn('min-w-0 text-[13px] leading-tight sm:text-[15px]', compact ? 'font-semibold' : 'gm-display tracking-[0.03em]')}>{titulo}</span>
         </span>
-        <span className={cn('text-[11.5px] leading-tight text-muted-foreground', compact ? 'sr-only' : value && 'short:hidden')}>{ayuda}</span>
+        <span className={cn('text-[12px] leading-tight text-muted-foreground', compact ? 'sr-only' : value && 'short:hidden')}>{ayuda}</span>
       </button>;
     })}
   </div>;

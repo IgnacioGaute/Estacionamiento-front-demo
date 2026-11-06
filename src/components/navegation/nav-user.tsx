@@ -149,15 +149,15 @@ export function OperationalNavUser({
                 </AvatarFallback>
               </Avatar>
               {hasNewNoteAlert && (
-                <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C93630] px-1 text-[11px] font-bold leading-none text-white ring-[3px] ring-[#0B0A08]">{counter}</span>
+                <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C93630] px-1 text-[11px] font-bold leading-none text-white ring-[3px] ring-gm-hondo">{counter}</span>
               )}
             </span>
 
             <span className="hidden min-w-0 flex-col leading-tight lg:flex">
-              <span className="max-w-[150px] truncate text-[13.5px] font-semibold text-foreground">
+              <span className="max-w-[150px] truncate text-[14px] font-semibold text-foreground">
                 {userNav.name.trim() || 'Usuario'}
               </span>
-              <span className="text-[11.5px] text-muted-foreground">
+              <span className="text-[12px] text-muted-foreground">
                 {userNav.role === 'SUPER_ADMIN' ? 'Super admin' : esAdmin ? 'Administrador' : 'Operador'}
               </span>
             </span>
@@ -169,7 +169,7 @@ export function OperationalNavUser({
           align="end"
           sideOffset={8}
           // El mismo negro de la barra flotante: el menú se lee como parte de ella.
-          className="max-h-[calc(100dvh-110px)] w-[min(304px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-white/[0.07] bg-[#0B0A08]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl lg:w-[260px] lg:max-w-[calc(100vw-24px)] lg:p-2"
+          className="max-h-[calc(100dvh-110px)] w-[min(304px,calc(100vw-24px))] overflow-y-auto rounded-2xl border border-white/[0.07] bg-gm-hondo/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl lg:w-[260px] lg:max-w-[calc(100vw-24px)] lg:p-2"
         >
           {/* User info header */}
           <div className="mb-1 flex items-center gap-2.5 rounded-lg bg-white/[0.04] px-2.5 py-2 lg:mb-0.5 lg:px-2 lg:py-1.5">
@@ -180,7 +180,7 @@ export function OperationalNavUser({
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-1 flex-col min-w-0">
-              <span className="text-[12.5px] font-medium text-foreground truncate leading-tight">
+              <span className="text-[13px] font-medium text-foreground truncate leading-tight">
                 {userNav.name.trim() || 'Usuario'}
               </span>
               <span className="text-[11px] text-muted-foreground truncate leading-tight">
@@ -199,7 +199,7 @@ export function OperationalNavUser({
           )}>
             <Link href="/notes" aria-current={pathname === '/notes' ? 'page' : undefined} aria-label={`Avisos. ${alertLabel}`}>
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-gm-yellow/15 text-gm-yellow"><Bell className="size-4" aria-hidden /></span>
-              <span className="min-w-0 flex-1 text-[13.5px] font-semibold">Avisos</span>
+              <span className="min-w-0 flex-1 text-[14px] font-semibold">Avisos</span>
               <span aria-hidden className="shrink-0 rounded-md bg-gm-yellow px-2 py-1 text-[11px] font-bold leading-none text-gm-ink">{counter} sin leer</span>
             </Link>
           </DropdownMenuItem>}
@@ -299,13 +299,13 @@ export function OperationalNavUser({
               haría que el árbol mienta sobre lo que es. */}
           {cobroHabilitado && <DropdownMenuItem
             onClick={() => setOpenBoxDialog(true)}
-            className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]"
+            className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[13px]"
           >
             <Box className="size-3.5 text-muted-foreground" />
             Planilla de caja
           </DropdownMenuItem>}
 
-          {cobroHabilitado && <DropdownMenuItem asChild className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]">
+          {cobroHabilitado && <DropdownMenuItem asChild className="desktop-user-action min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors duration-150 hover:bg-white/[0.08] focus:bg-white/[0.08] lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[13px]">
             <a href="https://estacionamiento-demo-landing.vercel.app/aprender" target="_blank" rel="noopener noreferrer" aria-label="Centro de aprendizaje (se abre en una pestaña nueva)">
               <ParkingMark size="sm" className="size-3.5 shrink-0" />
               Centro de aprendizaje
@@ -317,7 +317,7 @@ export function OperationalNavUser({
           <DropdownMenuSeparator className="bg-border/40 -mx-1.5 my-1" />
 
           {/* Logout */}
-          {userNav.role === 'SUPER_ADMIN' && <DropdownMenuItem asChild className="min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm lg:min-h-[38px] lg:text-[12.5px]">
+          {userNav.role === 'SUPER_ADMIN' && <DropdownMenuItem asChild className="min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm lg:min-h-[38px] lg:text-[13px]">
             <a href={ACCESS_SELECTION_ROUTE}>
               <MapPin className="size-3.5 text-muted-foreground" />
               Cambiar de playa
@@ -325,7 +325,7 @@ export function OperationalNavUser({
           </DropdownMenuItem>}
           <DropdownMenuItem
             onClick={() => signOut()}
-            className="desktop-user-action desktop-user-action--danger min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-gm-peligro transition-colors duration-150 hover:bg-destructive/15 focus:bg-destructive/15 lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[12.5px]"
+            className="desktop-user-action desktop-user-action--danger min-h-11 cursor-pointer gap-3 rounded-lg px-3 py-2 text-sm text-gm-peligro transition-colors duration-150 hover:bg-destructive/15 focus:bg-destructive/15 lg:min-h-[38px] lg:gap-2.5 lg:px-2.5 lg:py-1.5 lg:text-[13px]"
           >
             <LogOut className="size-3.5" />
             Cerrar sesión
@@ -378,8 +378,8 @@ function PlatformNavUser({
             </AvatarFallback>
           </Avatar>
           <span className="hidden min-w-0 flex-col leading-tight lg:flex">
-            <span className="max-w-[150px] truncate text-[13.5px] font-semibold text-foreground">{nombre}</span>
-            <span className="text-[11.5px] text-muted-foreground">Super admin</span>
+            <span className="max-w-[150px] truncate text-[14px] font-semibold text-foreground">{nombre}</span>
+            <span className="text-[12px] text-muted-foreground">Super admin</span>
           </span>
           <ChevronDown className={cn('hidden size-4 shrink-0 text-muted-foreground transition-transform duration-200 lg:block', isOpen && 'rotate-180')} aria-hidden />
         </button>
@@ -388,7 +388,7 @@ function PlatformNavUser({
       <DropdownMenuContent
         align="end"
         sideOffset={8}
-        className="w-[min(260px,calc(100vw-24px))] rounded-2xl border border-white/[0.07] bg-[#0B0A08]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl lg:p-2"
+        className="w-[min(260px,calc(100vw-24px))] rounded-2xl border border-white/[0.07] bg-gm-hondo/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-xl lg:p-2"
       >
         <div className="mb-1 flex items-center gap-2.5 rounded-lg bg-white/[0.04] px-2.5 py-2">
           <Avatar className="h-7 w-7 rounded-lg">
@@ -398,7 +398,7 @@ function PlatformNavUser({
             </AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-[12.5px] font-medium leading-tight text-foreground">{nombre}</span>
+            <span className="truncate text-[13px] font-medium leading-tight text-foreground">{nombre}</span>
             <span className="truncate text-[11px] leading-tight text-muted-foreground">{userNav.email}</span>
           </div>
           <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-gm-yellow">Super</span>

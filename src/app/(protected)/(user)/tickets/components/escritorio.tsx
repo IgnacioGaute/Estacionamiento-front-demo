@@ -29,7 +29,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 const TZ = 'America/Argentina/Buenos_Aires';
 const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
-const AMARILLO = '#F5C219';
+const AMARILLO = 'hsl(var(--gm-yellow))';
 
 export type FiltroTablero = 'todos' | 'excedidos' | 'vencidas';
 type Refe = (el: HTMLElement | null) => void;
@@ -38,7 +38,7 @@ const enfoque = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:r
 
 export function Kbd({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <kbd aria-hidden className={cn('gm-mono inline-grid h-6 min-w-6 place-items-center rounded-[7px] border border-b-2 border-gm-line-strong bg-background px-1.5 text-[11.5px] font-bold text-muted-foreground', className)}>
+    <kbd aria-hidden className={cn('gm-mono inline-grid h-6 min-w-6 place-items-center rounded-[7px] border border-b-2 border-gm-line-strong bg-background px-1.5 text-[12px] font-bold text-muted-foreground', className)}>
       {children}
     </kbd>
   );
@@ -55,7 +55,7 @@ function Identidad({ r, size = 'sm', resaltar }: { r: TicketRegistration; size?:
   const chico = size === 'xs';
   if (isBarcodeOrigin(r)) {
     return (
-      <span className={cn('gm-mono inline-flex shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 font-bold', chico ? 'h-[26px] min-w-[78px] px-1.5 text-xs' : 'h-[33px] min-w-[96px] px-2 text-[13.5px]')}>
+      <span className={cn('gm-mono inline-flex shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 font-bold', chico ? 'h-[26px] min-w-[78px] px-1.5 text-xs' : 'h-[33px] min-w-[96px] px-2 text-[14px]')}>
         Ficha {r.ticket?.codeBar ?? r.codeBarTicket ?? '—'}
       </span>
     );
@@ -101,7 +101,7 @@ export function TarjetaAdentro({ total, porHora, largas, excedidos, vencidas, tu
   const { cobroHabilitado } = useTenant();
   // Los avisos filtran el tablero de al lado; tocarlos de nuevo vuelve a mostrar todo.
   const aviso = (activo: boolean) => cn(
-    'inline-flex h-[34px] items-center gap-1 rounded-full pl-3 pr-2 text-[12.5px] font-bold transition-[transform,background-color,color] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ink',
+    'inline-flex h-[34px] items-center gap-1 rounded-full pl-3 pr-2 text-[13px] font-bold transition-[transform,background-color,color] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ink',
     activo ? 'bg-gm-aviso text-gm-ink' : 'bg-gm-ink text-gm-aviso',
   );
   return (
@@ -199,7 +199,7 @@ export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef,
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gm-yellow text-gm-ink"><CalendarPlus className="size-6" aria-hidden /></span>
         <span className="relative min-w-0 flex-1">
           <span className="gm-display block text-[19px] leading-tight tracking-[0.04em]">Estadía larga</span>
-          <span className="block text-xs text-[#D9D1C3]">Por día, semana o mes · cobrás ahora o al retirar</span>
+          <span className="block text-xs text-gm-texto-2">Por día, semana o mes · cobrás ahora o al retirar</span>
         </span>
         <ArrowUpRight className="relative size-5 shrink-0 text-gm-yellow transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
       </button>}
@@ -326,7 +326,7 @@ function TarjetaTablero({ r, minutos, pasado, ahora, onSelect }: { r: TicketRegi
         'group relative flex w-full flex-col gap-1.5 overflow-hidden rounded-[14px] border p-2.5 pb-3 text-left transition-colors',
         enfoque,
         pasado ? 'border-gm-aviso/50 bg-gm-aviso/[0.08] hover:bg-gm-aviso/[0.14]'
-          : conAnticipo ? 'border-emerald-400/45 bg-emerald-400/[0.05] hover:bg-emerald-400/[0.09]'
+          : conAnticipo ? 'border-gm-ok/45 bg-gm-ok/[0.05] hover:bg-gm-ok/[0.09]'
           : 'border-gm-line bg-gm-surface-2 hover:border-gm-line-strong hover:bg-gm-surface-3',
       )}
     >
@@ -385,7 +385,7 @@ function TarjetaEstadiaLarga({ r, vence, vencida, ahora, onSelect }: { r: Ticket
           {!fecha ? 'Sin vencimiento' : vencida ? `Venció ${fecha}` : `Hasta ${fecha}`}
         </span>
         {r.paid ? (
-          <span className="inline-flex items-center gap-1 font-bold text-emerald-400"><Check className="size-3.5" strokeWidth={3} aria-hidden />Pagado</span>
+          <span className="inline-flex items-center gap-1 font-bold text-gm-ok"><Check className="size-3.5" strokeWidth={3} aria-hidden />Pagado</span>
         ) : (
           <span className="font-bold text-gm-aviso">Debe {formatImporte(r.price)}</span>
         )}
@@ -445,8 +445,8 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h2 id="titulo-tablero" className="text-[26px] font-bold leading-none tracking-tight">En la playa</h2>
           <p className="text-[13px] text-muted-foreground">{total === 1 ? '1 vehículo' : `${total} vehículos`} · el color dice hace cuánto entraron</p>
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400">
-            <span aria-hidden className="size-[7px] rounded-full bg-emerald-400 motion-safe:animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gm-ok">
+            <span aria-hidden className="size-[7px] rounded-full bg-gm-ok motion-safe:animate-pulse" />
             En vivo
           </span>
         </div>
@@ -605,7 +605,7 @@ export function BuscadorRapido({ inputRef, activos, diaActivos, esDiaVencido, re
             <kbd aria-hidden className="gm-mono grid h-[22px] min-w-[22px] place-items-center rounded-md bg-gm-ink/15 px-1 text-xs">↵</kbd>
           </span>
         ) : (
-          <span className="inline-flex h-9 shrink-0 items-center rounded-[10px] border border-gm-line-strong px-3 text-[13px] font-semibold text-[#D9D1C3]">{accion}</span>
+          <span className="inline-flex h-9 shrink-0 items-center rounded-[10px] border border-gm-line-strong px-3 text-[13px] font-semibold text-gm-texto-2">{accion}</span>
         )}
       </div>
     );

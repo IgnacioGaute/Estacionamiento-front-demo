@@ -43,7 +43,7 @@ export function NotificationSidebar() {
         <Button variant="ghost" size="icon" className="relative size-10">
           {count > 0 ? (
             <>
-              <BellRing className="size-5 text-[#FF8458]" />
+              <BellRing className="size-5 text-gm-aviso" />
               <span className="absolute -top-0.5 -right-0.5 grid size-5 place-items-center rounded-full bg-gm-orange text-[10px] font-bold text-white ring-2 ring-gm-surface">
                 {count}
               </span>
@@ -57,7 +57,7 @@ export function NotificationSidebar() {
       <SheetContent className="flex w-[400px] flex-col border-l border-border bg-gm-surface p-0 sm:w-[440px]">
         <SheetHeader className="border-b border-border px-5 py-4 space-y-1.5">
           <div className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-md border border-gm-orange/40 bg-gm-orange/15 text-[#FF8458]">
+            <span className="grid size-9 place-items-center rounded-md border border-gm-orange/40 bg-gm-orange/15 text-gm-aviso">
               <CircleDollarSign className="size-4" />
             </span>
             <div className="flex-1">
@@ -104,7 +104,7 @@ export function NotificationSidebar() {
               </Button>
 
               <div className="flex items-start gap-2.5 pr-7">
-                <AlertTriangle className="size-4 mt-0.5 text-[#FF8458] shrink-0" />
+                <AlertTriangle className="size-4 mt-0.5 text-gm-aviso shrink-0" />
                 <div className="flex-1 min-w-0">
                   <h4 className="text-[13px] font-semibold text-foreground">
                     {notification.title}

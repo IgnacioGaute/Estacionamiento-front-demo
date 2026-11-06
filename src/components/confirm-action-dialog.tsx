@@ -62,8 +62,8 @@ const TONE_STYLES: Record<
     tileText: 'text-gm-yellow',
   },
   success: {
-    tile: 'border-[hsl(120_35%_55%/0.4)] bg-[hsl(120_35%_55%/0.15)]',
-    tileText: 'text-[#9AD588]',
+    tile: 'border-gm-ok/40 bg-gm-ok/15',
+    tileText: 'text-gm-ok',
   },
 };
 
@@ -141,7 +141,7 @@ export function ConfirmActionDialog({
         </DialogHeader>
 
         {children && (
-          <div className="text-[13.5px] leading-relaxed text-muted-foreground">
+          <div className="text-[14px] leading-relaxed text-muted-foreground">
             {children}
           </div>
         )}

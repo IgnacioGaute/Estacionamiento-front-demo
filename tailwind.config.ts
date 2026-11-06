@@ -83,6 +83,8 @@ export default {
           ok:            "hsl(var(--gm-ok) / <alpha-value>)",
           "texto-tenue": "hsl(var(--gm-texto-tenue) / <alpha-value>)",
           peligro:       "hsl(var(--gm-peligro) / <alpha-value>)",
+          "texto-2":     "hsl(var(--gm-texto-2) / <alpha-value>)",
+          hondo:         "hsl(var(--gm-hondo) / <alpha-value>)",
         },
       },
       borderRadius: {

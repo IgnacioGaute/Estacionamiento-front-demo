@@ -56,20 +56,20 @@ export function RepasoEstadias({ estadias, confirmadas, onConfirmar, onCobrar, d
             <h3 id="repaso-estadias" className="text-[15px] font-semibold leading-tight">
               {estadias.length === 1 ? 'Un auto lleva más de 4 h' : `${estadias.length} autos llevan más de 4 h`}
             </h3>
-            <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
+            <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">
               {pendientes.length ? 'Marcá si sigue en la playa. Si se fue, cobralo antes de cerrar.' : 'Listo: quedaron todos revisados.'}
             </p>
           </div>
           {estadias.length > 1 && pendientes.length > 0 && (
             <button type="button" disabled={disabled} onClick={() => onConfirmar(pendientes.map((e) => e.id), true)}
-              className="min-h-11 shrink-0 rounded-xl px-3 text-[12.5px] font-semibold text-violet-200 transition-colors hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:opacity-50">
+              className="min-h-11 shrink-0 rounded-xl px-3 text-[13px] font-semibold text-violet-200 transition-colors hover:bg-violet-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 disabled:opacity-50">
               Siguen todos
             </button>
           )}
         </div>
       )}
       {sobrante > 0 && (
-        <p role="alert" className="rounded-2xl bg-violet-400/[0.08] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-violet-100">
+        <p role="alert" className="rounded-2xl bg-violet-400/[0.08] px-3.5 py-2.5 text-[13px] leading-relaxed text-violet-100">
           <strong className="font-semibold">Contaste {formatImporte(sobrante)} de más.</strong>{' '}
           {estadias.length ? 'Puede ser un auto que pagó y se fue sin registrar la salida: si alguno de estos no está, cobralo y el sobrante se corrige.' : 'Revisá si algún auto pagó y se fue sin registrar la salida.'}
         </p>
@@ -79,21 +79,21 @@ export function RepasoEstadias({ estadias, confirmadas, onConfirmar, onCobrar, d
           {estadias.map((e) => {
             const sigue = confirmadas.includes(e.id);
             return (
-              <li key={e.id} className={cn('rounded-2xl border bg-gm-surface-2/60 p-3 transition-colors', sigue ? 'border-emerald-400/35' : 'border-gm-line')}>
+              <li key={e.id} className={cn('rounded-2xl border bg-gm-surface-2/60 p-3 transition-colors', sigue ? 'border-gm-ok/35' : 'border-gm-line')}>
                 <div className="flex items-center gap-3">
                   <PlateChip plate={e.patente || '—'} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="gm-mono text-[14px] font-bold text-violet-200">{formatEstadia(e.minutos)}</p>
                     <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                       Entró {e.entryTime.slice(0, 5)}{todas && e.operador ? ` · ${e.operador}` : ''}
-                      {e.anticipo > 0 && <><Wallet className="size-3 shrink-0 text-emerald-300" aria-hidden /><span className="text-emerald-300">anticipo {formatImporte(e.anticipo)}</span></>}
+                      {e.anticipo > 0 && <><Wallet className="size-3 shrink-0 text-gm-ok" aria-hidden /><span className="text-gm-ok">anticipo {formatImporte(e.anticipo)}</span></>}
                     </p>
                   </div>
                 </div>
                 <div className={cn('mt-2.5 grid gap-2', onCobrar ? 'grid-cols-2' : 'grid-cols-1')}>
                   <button type="button" aria-pressed={sigue} disabled={disabled} onClick={() => onConfirmar([e.id], !sigue)}
-                    className={cn('inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 disabled:opacity-50',
-                      sigue ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-200' : 'border-gm-line-strong text-foreground hover:border-emerald-400/50')}>
+                    className={cn('inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ok disabled:opacity-50',
+                      sigue ? 'border-gm-ok/50 bg-gm-ok/15 text-gm-ok' : 'border-gm-line-strong text-foreground hover:border-gm-ok/50')}>
                     {sigue && <Check className="size-4" strokeWidth={2.6} aria-hidden />}
                     Sigue en la playa
                   </button>

@@ -35,7 +35,7 @@ import { getEstadoCuentaAction } from '@/actions/cuentas/cuentas.action';
 import { useTenant } from '@/components/tenant-provider';
 import { Customer } from '@/types/cutomer.type';
 import { CargoCuenta, EstadoCuenta, MovimientoCuenta, ResultadoPago, Tramo, nombreMetodo } from '@/types/cuenta.type';
-import { EJE, Pastilla, Rotulo, Segmentos, Tarjeta } from '@/components/plataforma/mono';
+import { Pastilla, Rotulo, Segmentos, Tarjeta } from '@/components/plataforma/mono';
 import { colorAvatar, iniciales, plata } from '@/components/plataforma/formato';
 import { UpdateRenterDialog } from '../update-renter-dialog';
 import { SoftDeleteRenterDialog } from '../soft-delete-renter-dialog';
@@ -66,7 +66,7 @@ const TIPOS: Record<MovimientoCuenta['tipo'], string> = {
 };
 
 const botonSec =
-  'flex h-11 items-center gap-2 rounded-xl border border-border px-3.5 text-[13.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2';
+  'flex h-11 items-center gap-2 rounded-xl border border-border px-3.5 text-[14px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2';
 // Igual que el botón chico de «Editar inquilino» y «Dar de baja», que viven en sus propios diálogos.
 const itemMenu =
   'flex h-8 w-full items-center gap-2 rounded-sm px-3 text-[12px] font-semibold tracking-tight text-muted-foreground transition-colors hover:bg-gm-surface-2 hover:text-foreground [&_svg]:size-4 [&_svg]:shrink-0';
@@ -74,12 +74,12 @@ const itemMenu =
 function EstadoCargo({ r }: { r: CargoCuenta }) {
   const [texto, clase] =
     r.situacion === 'SALDADO'
-      ? ['Saldado', 'bg-emerald-400/[0.12] text-emerald-400']
+      ? ['Saldado', 'bg-gm-ok/[0.12] text-gm-ok']
       : r.vencido
         ? [r.situacion === 'PARCIAL' ? 'Vencido · pago parcial' : 'Vencido', 'bg-gm-aviso/[0.16] text-gm-aviso']
         : r.situacion === 'PARCIAL'
           ? ['Pago parcial', 'bg-gm-yellow/[0.14] text-gm-yellow']
-          : ['Pendiente', 'bg-[#221F1A] text-[#E9E1D4]'];
+          : ['Pendiente', 'bg-gm-surface-2 text-foreground'];
   return <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${clase}`}>{texto}</span>;
 }
 
@@ -226,7 +226,8 @@ export function CuentaCorriente({
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="min-w-0 font-display text-[30px] font-semibold leading-none [overflow-wrap:anywhere] sm:text-[34px]">
+                {/* La misma medida y letra que el título de las demás pantallas (PageHeader). */}
+                <h1 className="gm-display min-w-0 text-[26px] font-bold leading-tight text-foreground [overflow-wrap:anywhere] md:text-[30px]">
                   {nombreFormal}
                 </h1>
                 {c.baja && (
@@ -245,7 +246,7 @@ export function CuentaCorriente({
               {c.cocheras.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {c.cocheras.map((x, i) => (
-                    <span key={i} className="rounded-full border border-border px-2.5 py-0.5 text-[11.5px] text-[#C9BFB1]">
+                    <span key={i} className="rounded-full border border-border px-2.5 py-0.5 text-[12px] text-gm-texto-2">
                       {x.numero ? `Cochera ${x.numero}` : 'Cochera'}
                       {x.duenio ? ` · ${x.duenio}` : ''} · {plata(x.importe)}
                       {c.baja ? ' (liberada)' : ''}
@@ -267,7 +268,7 @@ export function CuentaCorriente({
               <button
                 type="button"
                 onClick={() => setCobrar({})}
-                className="flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-[13.5px] font-bold text-gm-ink hover:bg-[#FFD23A]"
+                className="flex h-11 items-center gap-2 rounded-xl bg-gm-yellow px-5 text-[14px] font-bold text-gm-ink hover:bg-gm-yellow-deep"
               >
                 <Wallet className="size-4" /> Cobrar
               </button>
@@ -359,7 +360,7 @@ export function CuentaCorriente({
               type="button"
               onClick={() => setVerAnulados((v) => !v)}
               aria-pressed={verAnulados}
-              className="flex h-9 items-center gap-1.5 rounded-[10px] px-3 text-[12.5px] font-semibold text-muted-foreground hover:bg-gm-surface-2 hover:text-foreground"
+              className="flex h-9 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-semibold text-muted-foreground hover:bg-gm-surface-2 hover:text-foreground"
             >
               {verAnulados ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
               {verAnulados ? 'Ocultar anulados' : `Ver anulados (${ocultos})`}
@@ -371,7 +372,7 @@ export function CuentaCorriente({
       {tab === 'resumen' && (
         <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
           {/* En el teléfono, lista: la tabla de seis columnas obligaba a desplazarse de costado. */}
-          <ul aria-label="Estado de cuenta" className="divide-y divide-[#2B2620] md:hidden">
+          <ul aria-label="Estado de cuenta" className="divide-y divide-gm-line md:hidden">
             {!movimientos.length && (
               <li className="px-4 py-10 text-center text-sm text-muted-foreground">Todavía no hay movimientos.</li>
             )}
@@ -380,17 +381,17 @@ export function CuentaCorriente({
               return (
                 <li key={m.id} className={`flex items-start gap-3 px-4 py-3 ${m.anulado ? 'opacity-55' : ''}`}>
                   <span className="min-w-0 flex-1">
-                    <span className={`block text-[13.5px] font-semibold leading-snug [overflow-wrap:anywhere] ${m.anulado ? 'line-through' : ''}`}>
+                    <span className={`block text-[14px] font-semibold leading-snug [overflow-wrap:anywhere] ${m.anulado ? 'line-through' : ''}`}>
                       {m.concepto}
                     </span>
-                    <span className="mt-0.5 block text-xs" style={{ color: EJE }}>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
                       {[fechaAR(m.fecha), TIPOS[m.tipo], m.metodo ? nombreMetodo(m.metodo) : null, m.anulado ? 'ANULADO' : null]
                         .filter(Boolean)
                         .join(' · ')}
                     </span>
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className={`block text-sm font-semibold tabular-nums ${m.haber ? 'text-emerald-400' : ''}`}>
+                    <span className={`block text-sm font-semibold tabular-nums ${m.haber ? 'text-gm-ok' : ''}`}>
                       {m.debe ? `+ ${plata(m.debe)}` : `− ${plata(m.haber)}`}
                     </span>
                     <span className={`block text-[11px] tabular-nums ${colorSaldo(saldo)}`}>saldo {plata(Math.abs(saldo))}</span>
@@ -403,18 +404,17 @@ export function CuentaCorriente({
             <div role="table" aria-label="Estado de cuenta" className="min-w-[860px]">
               <div
                 role="row"
-                className="grid h-11 grid-cols-[100px_minmax(0,1fr)_120px_130px_130px_60px] items-center bg-[#15120E] px-5 font-mono text-[11px] tracking-[0.1em]"
-                style={{ color: EJE }}
+                className="grid h-11 grid-cols-[100px_minmax(0,1fr)_120px_130px_130px_60px] items-center bg-background px-5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground"
               >
-                <span role="columnheader">FECHA</span>
-                <span role="columnheader">CONCEPTO</span>
-                <span role="columnheader" className="text-right">CARGOS</span>
-                <span role="columnheader" className="text-right">PAGOS Y AJUSTES</span>
-                <span role="columnheader" className="text-right">SALDO</span>
+                <span role="columnheader">Fecha</span>
+                <span role="columnheader">Concepto</span>
+                <span role="columnheader" className="text-right">Cargos</span>
+                <span role="columnheader" className="text-right">Pagos y ajustes</span>
+                <span role="columnheader" className="text-right">Saldo</span>
                 <span role="columnheader" className="sr-only">Acciones</span>
               </div>
               {!movimientos.length && (
-                <p className="border-t border-[#2B2620] px-5 py-10 text-center text-sm text-muted-foreground">
+                <p className="border-t border-gm-line px-5 py-10 text-center text-sm text-muted-foreground">
                   Todavía no hay movimientos. El primero aparece al cargar su abono o su saldo inicial.
                 </p>
               )}
@@ -424,11 +424,11 @@ export function CuentaCorriente({
                   <div
                     key={m.id}
                     role="row"
-                    className={`grid min-h-[58px] grid-cols-[100px_minmax(0,1fr)_120px_130px_130px_60px] items-center border-t border-[#2B2620] px-5 py-2 text-[13.5px] ${
+                    className={`grid min-h-[58px] grid-cols-[100px_minmax(0,1fr)_120px_130px_130px_60px] items-center border-t border-gm-line px-5 py-2 text-[14px] ${
                       m.anulado ? 'opacity-55' : ''
                     }`}
                   >
-                    <span role="cell" className="font-mono text-[12px] text-[#C9BFB1]">{fechaAR(m.fecha)}</span>
+                    <span role="cell" className="font-mono text-[12px] text-gm-texto-2">{fechaAR(m.fecha)}</span>
                     <span role="cell" className="min-w-0">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className={`font-semibold ${m.anulado ? 'line-through' : ''}`}>{m.concepto}</span>
@@ -437,17 +437,17 @@ export function CuentaCorriente({
                         </Pastilla>
                         {m.anulado && <span className="text-[11px] font-bold text-gm-aviso">ANULADO</span>}
                       </span>
-                      <span className="mt-0.5 block truncate text-xs" style={{ color: EJE }}>
+                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                         {[m.metodo ? nombreMetodo(m.metodo) : null, m.motivo, m.usuario ? `por ${m.usuario}` : null, m.migrado ? 'traído del sistema anterior' : null]
                           .filter(Boolean)
                           .join(' · ')}
                       </span>
                     </span>
                     <span role="cell" className="text-right tabular-nums">{m.debe ? plata(m.debe) : ''}</span>
-                    <span role="cell" className="text-right tabular-nums text-emerald-400">{m.haber ? plata(m.haber) : ''}</span>
+                    <span role="cell" className="text-right tabular-nums text-gm-ok">{m.haber ? plata(m.haber) : ''}</span>
                     <span role="cell" className={`text-right font-semibold tabular-nums ${colorSaldo(saldo)}`}>
                       {plata(Math.abs(saldo))}
-                      <span className="ml-1 text-[11px] font-normal" style={{ color: EJE }}>
+                      <span className="ml-1 text-[11px] font-normal text-muted-foreground">
                         {saldo > 0 ? 'P' : saldo < 0 ? 'F' : ''}
                       </span>
                     </span>
@@ -481,7 +481,7 @@ export function CuentaCorriente({
               })}
             </div>
           </div>
-          <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-[#2B2620] bg-[#15120E] px-5 py-2.5 text-[12px] text-muted-foreground">
+          <div className="flex min-h-12 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-gm-line bg-background px-5 py-2.5 text-[12px] text-muted-foreground">
             <span className="hidden md:inline">P = pendiente · F = a favor</span>
             <span>
               Saldo: <strong className="text-foreground">{textoSaldo(estado.saldo)}</strong>
@@ -505,7 +505,7 @@ export function CuentaCorriente({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-semibold">{r.concepto}</div>
-                    <div className="mt-0.5 text-[11.5px]" style={{ color: EJE }}>
+                    <div className="mt-0.5 text-[12px] text-muted-foreground">
                       <span className="font-mono">{r.numero ?? 'Sin número'}</span>
                       {' · '}
                       {r.situacion === 'SALDADO' ? (
@@ -527,9 +527,9 @@ export function CuentaCorriente({
                   </div>
                 ) : (
                 <div>
-                  <div className="h-2 rounded-full bg-[#221F1A]">
+                  <div className="h-2 rounded-full bg-gm-surface-2">
                     <div
-                      className={`h-2 rounded-full ${r.situacion === 'SALDADO' ? 'bg-emerald-400' : 'bg-gm-yellow'}`}
+                      className={`h-2 rounded-full ${r.situacion === 'SALDADO' ? 'bg-gm-ok' : 'bg-gm-yellow'}`}
                       style={{ width: `${Math.max(3, pct)}%` }}
                     />
                   </div>
@@ -556,16 +556,16 @@ export function CuentaCorriente({
                       </>
                     )}
                     <dt className="font-semibold">Pendiente</dt>
-                    <dd className={`text-right font-semibold tabular-nums ${r.saldo ? 'text-gm-aviso' : 'text-emerald-400'}`}>
+                    <dd className={`text-right font-semibold tabular-nums ${r.saldo ? 'text-gm-aviso' : 'text-gm-ok'}`}>
                       {plata(r.saldo)}
                     </dd>
                   </dl>
                 </div>
                 )}
                 {r.pagos.length > 0 && (
-                  <ul className="space-y-1 border-t border-[#2B2620] pt-2 text-xs">
+                  <ul className="space-y-1 border-t border-gm-line pt-2 text-xs">
                     {r.pagos.map((p, i) => (
-                      <li key={i} className="flex justify-between gap-2 text-[#C9BFB1]">
+                      <li key={i} className="flex justify-between gap-2 text-gm-texto-2">
                         <span>
                           {fechaAR(p.fecha)} · {nombreMetodo(p.tipo)}
                         </span>
@@ -580,7 +580,7 @@ export function CuentaCorriente({
                       <button
                         type="button"
                         onClick={() => setCobrar({ preseleccion: r.id })}
-                        className="h-9 rounded-[10px] bg-gm-yellow px-3.5 text-[13px] font-bold text-gm-ink hover:bg-[#FFD23A]"
+                        className="h-9 rounded-[10px] bg-gm-yellow px-3.5 text-[13px] font-bold text-gm-ink hover:bg-gm-yellow-deep"
                       >
                         Cobrar este cargo
                       </button>
@@ -617,7 +617,7 @@ export function CuentaCorriente({
             {pagos.map((p) => (
               <li
                 key={p.id}
-                className={`flex flex-wrap items-center gap-4 border-b border-[#2B2620] px-5 py-3.5 last:border-b-0 ${p.anulado ? 'opacity-55' : ''}`}
+                className={`flex flex-wrap items-center gap-4 border-b border-gm-line px-5 py-3.5 last:border-b-0 ${p.anulado ? 'opacity-55' : ''}`}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -626,13 +626,13 @@ export function CuentaCorriente({
                     </span>
                     {p.anulado && <span className="text-[11px] font-bold text-gm-aviso">ANULADO</span>}
                   </div>
-                  <div className="mt-0.5 text-xs" style={{ color: EJE }}>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
                     {fechaAR(p.fecha)} · {p.medios.map((m) => `${nombreMetodo(m.metodo)} ${plata(m.importe)}`).join(' + ')}
                     {p.usuario ? ` · por ${p.usuario}` : ''}
                     {p.nota ? ` · ${p.nota}` : ''}
                   </div>
                 </div>
-                <span className="font-display text-xl font-semibold tabular-nums text-emerald-400">{plata(p.total)}</span>
+                <span className="font-display text-xl font-semibold tabular-nums text-gm-ok">{plata(p.total)}</span>
                 <div className="flex gap-1.5">
                   {p.numero && !p.anulado && (
                     <button type="button" onClick={() => setRecibo(p.id)} className="h-9 rounded-[10px] border border-border px-3 text-[13px] font-semibold hover:bg-gm-surface-2">

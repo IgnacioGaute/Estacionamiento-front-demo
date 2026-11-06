@@ -107,8 +107,8 @@ export function TarifasEscalera({ brackets, schedule }: { brackets: TicketPriceB
   const elegir = (e: Escalon) => setMinutos(e.minutos);
   const t = TEMA[periodo];
   const segmento = (on: boolean) => cn(
-    'relative inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 text-[13.5px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gm-yellow',
-    on ? cn('font-bold', t.textoPastilla) : 'font-semibold text-[#CFC6B8] hover:text-foreground',
+    'relative inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 text-[14px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gm-yellow',
+    on ? cn('font-bold', t.textoPastilla) : 'font-semibold text-gm-texto-2 hover:text-foreground',
   );
   const pastilla = (grupo: string) => <motion.span layoutId={`${id}-${grupo}`} transition={reducir ? { duration: 0 } : { type: 'spring', bounce: 0.18, duration: 0.4 }} className={cn('absolute inset-0 rounded-full transition-colors', t.pastilla)} aria-hidden />;
 
@@ -137,7 +137,7 @@ export function TarifasEscalera({ brackets, schedule }: { brackets: TicketPriceB
             ))}
           </div>
         </LayoutGroup>
-        <p className="text-[12.5px] text-muted-foreground max-sm:w-full">
+        <p className="text-[13px] text-muted-foreground max-sm:w-full">
           {nombre(vehiculo)} de {periodo === 'DAY' ? `día, ${hora(schedule.dayStartHour)} a ${hora(schedule.dayEndHour)}` : `noche, ${hora(schedule.dayEndHour)} a ${hora(schedule.dayStartHour)}`}
           {porPeriodo ? ' · se cobra por período' : ''}
         </p>
@@ -153,7 +153,7 @@ export function TarifasEscalera({ brackets, schedule }: { brackets: TicketPriceB
           <div className="relative hidden h-[262px] pl-14 sm:block">
             {guias.map((valor, k) => (
               <div key={k} aria-hidden className={cn('absolute inset-x-0 border-t', k ? 'border-dashed border-gm-line' : 'border-gm-line-strong')} style={{ bottom: 30 + Math.round((valor / tope) * ALTO_BARRA) }}>
-                <span className="gm-mono absolute -top-2 left-0 w-12 text-right text-[11px] text-[#8A8173]">{formatImporte(valor)}</span>
+                <span className="gm-mono absolute -top-2 left-0 w-12 text-right text-[11px] text-gm-texto-tenue">{formatImporte(valor)}</span>
               </div>
             ))}
             <ol aria-label="Precio por tiempo de estadía" className="relative grid h-full items-end gap-2.5" style={{ gridTemplateColumns: `repeat(${escalones.length}, minmax(0, 1fr))` }}>
@@ -164,14 +164,14 @@ export function TarifasEscalera({ brackets, schedule }: { brackets: TicketPriceB
                     <button type="button" aria-pressed={on} aria-label={etiquetaDe(e)} onClick={() => elegir(e)}
                       className="group flex h-full w-full flex-col items-stretch justify-end gap-2 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow focus-visible:ring-offset-4 focus-visible:ring-offset-card">
                       <motion.span initial={reducir ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reducir ? 0 : 0.3 + i * 0.06, duration: 0.4 }}
-                        className={cn('gm-mono truncate text-center font-bold transition-colors', on ? cn('text-[15px]', t.texto) : e.adicional ? cn('text-[13px]', t.texto) : 'text-[13px] text-[#CFC6B8]')}>
+                        className={cn('gm-mono truncate text-center font-bold transition-colors', on ? cn('text-[15px]', t.texto) : e.adicional ? cn('text-[13px]', t.texto) : 'text-[13px] text-gm-texto-2')}>
                         {valorDe(e)}
                       </motion.span>
                       <motion.span initial={reducir ? false : { scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ delay: reducir ? 0 : i * 0.06, duration: 0.7, ease: CURVA }}
                         className={cn('block origin-bottom rounded-b-[4px] rounded-t-[12px] transition-[height,background-color,box-shadow,filter] duration-500 ease-out group-hover:brightness-110 motion-reduce:transition-none',
-                          on ? cn(t.barra, t.brillo) : e.adicional ? t.bordeAdicional : 'bg-[#3A342B]')}
+                          on ? cn(t.barra, t.brillo) : e.adicional ? t.bordeAdicional : 'bg-gm-line-strong')}
                         style={{ height: alto(e.precio), backgroundImage: e.adicional ? rayas(on ? 'rgba(31,18,4,0.35)' : t.rayas) : undefined }} />
-                      <span className={cn('h-[22px] truncate text-center text-[12.5px] leading-[22px]', on ? 'font-bold text-foreground' : e.adicional ? cn('font-semibold', t.texto) : 'font-semibold text-muted-foreground')}>
+                      <span className={cn('h-[22px] truncate text-center text-[13px] leading-[22px]', on ? 'font-bold text-foreground' : e.adicional ? cn('font-semibold', t.texto) : 'font-semibold text-muted-foreground')}>
                         {e.tiempo}
                       </span>
                     </button>
@@ -189,16 +189,16 @@ export function TarifasEscalera({ brackets, schedule }: { brackets: TicketPriceB
                 <li key={i}>
                   <button type="button" aria-pressed={on} aria-label={etiquetaDe(e)} onClick={() => elegir(e)}
                     className={cn('grid min-h-11 w-full grid-cols-[minmax(0,6.5rem)_minmax(0,1fr)_auto] items-center gap-2.5 rounded-xl px-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-gm-yellow', on && t.fila)}>
-                    <span className={cn('truncate text-[13px]', on ? 'font-bold text-foreground' : e.adicional ? cn('font-semibold', t.texto) : 'font-medium text-[#CFC6B8]')}>
+                    <span className={cn('truncate text-[13px]', on ? 'font-bold text-foreground' : e.adicional ? cn('font-semibold', t.texto) : 'font-medium text-gm-texto-2')}>
                       {e.adicional ? e.tiempo : `Hasta ${e.tiempo}`}
                     </span>
                     <span className="relative h-[22px] overflow-hidden rounded-lg bg-gm-surface-2" aria-hidden>
                       <motion.span initial={reducir ? false : { scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: reducir ? 0 : 0.15 + i * 0.06, duration: 0.7, ease: CURVA }}
                         className={cn('absolute inset-y-0 left-0 origin-left rounded-lg transition-[width,background-color,box-shadow] duration-500 ease-out motion-reduce:transition-none',
-                          on ? cn(t.barra, t.brilloFila) : e.adicional ? t.bordeAdicional : 'bg-[#3A342B]')}
+                          on ? cn(t.barra, t.brilloFila) : e.adicional ? t.bordeAdicional : 'bg-gm-line-strong')}
                         style={{ width: `${Math.max(6, Math.round((e.precio / tope) * 100))}%`, backgroundImage: e.adicional ? rayas(on ? 'rgba(31,18,4,0.35)' : t.rayas) : undefined }} />
                     </span>
-                    <span className={cn('gm-mono text-right font-bold transition-colors', on ? cn('text-[15px]', t.texto) : e.adicional ? cn('text-[13.5px]', t.texto) : 'text-[13.5px] text-foreground')}>
+                    <span className={cn('gm-mono text-right font-bold transition-colors', on ? cn('text-[15px]', t.texto) : e.adicional ? cn('text-[14px]', t.texto) : 'text-[14px] text-foreground')}>
                       {valorDe(e)}
                     </span>
                   </button>
@@ -210,12 +210,12 @@ export function TarifasEscalera({ brackets, schedule }: { brackets: TicketPriceB
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_15rem]">
             <div className="flex flex-col justify-center gap-1.5 rounded-[18px] border border-gm-line bg-gm-surface-2 px-4 py-3">
               <div className="flex items-baseline justify-between gap-3">
-                <label htmlFor={`${id}-duracion`} className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Probá una duración</label>
+                <label htmlFor={`${id}-duracion`} className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Probá una duración</label>
                 <output htmlFor={`${id}-duracion`} className="gm-mono text-[15px] font-bold">{tiempoCorto(duracion)}</output>
               </div>
               <input id={`${id}-duracion`} type="range" min={15} max={maximo} step={5} value={duracion} onChange={(ev) => setMinutos(Number(ev.target.value))}
                 className={cn('h-8 w-full cursor-pointer', t.rango)} />
-              <div aria-hidden className="gm-mono flex justify-between text-[11px] text-[#8A8173]">
+              <div aria-hidden className="gm-mono flex justify-between text-[11px] text-gm-texto-tenue">
                 <span>15 min</span><span>{tiempoCorto(Math.round(maximo / 2 / 15) * 15)}</span><span>{tiempoCorto(maximo)}</span>
               </div>
             </div>
@@ -223,7 +223,7 @@ export function TarifasEscalera({ brackets, schedule }: { brackets: TicketPriceB
               className={cn('flex items-center justify-between gap-3 rounded-[18px] px-4 py-3 transition-colors sm:flex-col sm:items-start sm:justify-center sm:gap-1', t.tarjeta)}>
               <div className="min-w-0 sm:order-2">
                 <p className="text-[12px] font-semibold">Cobra por {tiempoCorto(duracion)}</p>
-                <p className={cn('truncate text-[11.5px] font-medium', t.tarjetaSecundario)}>
+                <p className={cn('truncate text-[12px] font-medium', t.tarjetaSecundario)}>
                   {error ? error : resultado ? `${resultado.label} · entrando ${hora(entrada)}` : 'Calculando…'}
                 </p>
               </div>
@@ -233,18 +233,18 @@ export function TarifasEscalera({ brackets, schedule }: { brackets: TicketPriceB
             </motion.div>
           </div>
           {resultado?.usedFallback && (
-            <p className="text-[12.5px] text-destructive">Esta duración supera las que tienen precio: se usó la última tarifa disponible.</p>
+            <p className="text-[13px] text-destructive">Esta duración supera las que tienen precio: se usó la última tarifa disponible.</p>
           )}
         </>
       )}
 
       <ul aria-label="Reglas" className="flex flex-wrap gap-1.5">
-        <li className="rounded-full border border-gm-line px-3 py-1.5 text-[12px] text-[#CFC6B8]">
+        <li className="rounded-full border border-gm-line px-3 py-1.5 text-[12px] text-gm-texto-2">
           {schedule.graceMinutes ? <>Tolerancia <strong className="gm-mono text-foreground">{schedule.graceMinutes} min</strong></> : 'Sin tolerancia'}
         </li>
-        {porPeriodo && <li className="rounded-full border border-gm-line px-3 py-1.5 text-[12px] text-[#CFC6B8]">Se cobra <strong className="text-foreground">{modoPeriodo}</strong></li>}
-        {hayMinutosDeMas && <li className="rounded-full border border-gm-line px-3 py-1.5 text-[12px] text-[#CFC6B8]">Minutos de más: <strong className="text-foreground">precio de los escalones cortos, sin pasar el siguiente</strong></li>}
-        <li className="rounded-full border border-gm-line px-3 py-1.5 text-[12px] text-[#CFC6B8]">Día a noche: <strong className="text-foreground">{cruce}</strong></li>
+        {porPeriodo && <li className="rounded-full border border-gm-line px-3 py-1.5 text-[12px] text-gm-texto-2">Se cobra <strong className="text-foreground">{modoPeriodo}</strong></li>}
+        {hayMinutosDeMas && <li className="rounded-full border border-gm-line px-3 py-1.5 text-[12px] text-gm-texto-2">Minutos de más: <strong className="text-foreground">precio de los escalones cortos, sin pasar el siguiente</strong></li>}
+        <li className="rounded-full border border-gm-line px-3 py-1.5 text-[12px] text-gm-texto-2">Día a noche: <strong className="text-foreground">{cruce}</strong></li>
       </ul>
       <p className="flex items-start gap-2 text-[12px] leading-relaxed text-muted-foreground">
         <Info className="mt-0.5 size-3.5 shrink-0 text-gm-yellow" aria-hidden />

@@ -44,11 +44,11 @@ export default function LoginPage() {
 
         <div className="relative [filter:drop-shadow(0_28px_40px_rgba(0,0,0,0.6))]">
           {/* La pieza: el logo en su círculo, centrado sobre el borde de arriba de la tarjeta. */}
-          <div className="absolute left-1/2 top-0 z-10 grid size-[88px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#0B0A08]">
+          <div className="absolute left-1/2 top-0 z-10 grid size-[88px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-gm-hondo">
             <AppIcon className="size-[58px]" />
           </div>
           {/* El hueco donde encaja: 3 px más grande que la pieza. */}
-          <div className="rounded-[28px] bg-[#0B0A08] px-6 pb-7 pt-[66px] [-webkit-mask-image:radial-gradient(circle_47px_at_50%_0,transparent_46.5px,#000_47px)] [mask-image:radial-gradient(circle_47px_at_50%_0,transparent_46.5px,#000_47px)] sm:px-9">
+          <div className="rounded-[28px] bg-gm-hondo px-6 pb-7 pt-[66px] [-webkit-mask-image:radial-gradient(circle_47px_at_50%_0,transparent_46.5px,#000_47px)] [mask-image:radial-gradient(circle_47px_at_50%_0,transparent_46.5px,#000_47px)] sm:px-9">
             {/* El saludo va como frase debajo del título y no como rótulo en mayúsculas encima. */}
             <h1 className="text-center font-display text-[34px] font-bold leading-none sm:text-[38px]">Iniciar sesión</h1>
             <p className="mt-2 text-center text-sm text-muted-foreground">{saludo()}, entrá con tu cuenta.</p>

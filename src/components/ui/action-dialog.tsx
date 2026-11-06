@@ -204,7 +204,7 @@ const ActionDialogPrimaryButton = React.forwardRef<
     {...props}
   >
     <span className="gm-display text-[16px] font-semibold leading-tight tracking-[0.05em]">{children}</span>
-    {detail && <span className="gm-mono text-[12.5px] font-semibold opacity-80">{detail}</span>}
+    {detail && <span className="gm-mono text-[13px] font-semibold opacity-80">{detail}</span>}
   </button>
 ))
 ActionDialogPrimaryButton.displayName = "ActionDialogPrimaryButton"
@@ -217,10 +217,10 @@ const ActionDialogSecondaryButton = React.forwardRef<
     ref={ref}
     type={type}
     className={cn(
-      "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-[14.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50 sm:w-auto",
+      "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-[15px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50 sm:w-auto",
       tone === "outline"
         ? "border-[1.5px] border-gm-line-strong text-foreground hover:bg-gm-surface-2"
-        : "min-h-11 text-[#D9D1C3] hover:text-foreground",
+        : "min-h-11 text-gm-texto-2 hover:text-foreground",
       className
     )}
     {...props}

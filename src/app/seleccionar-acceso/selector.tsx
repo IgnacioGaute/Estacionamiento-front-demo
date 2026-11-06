@@ -28,7 +28,7 @@ function Opcion({ value, seleccion, onElegir, icono, titulo, detalle }: {
     <label
       className={cn(
         'flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gm-yellow',
-        elegida ? 'border-gm-yellow/50 bg-gm-yellow/[0.06]' : 'border-white/[0.08] bg-[#14120F] hover:border-white/[0.16]',
+        elegida ? 'border-gm-yellow/50 bg-gm-yellow/[0.06]' : 'border-white/[0.08] bg-background hover:border-white/[0.16]',
       )}
     >
       <input type="radio" name="destino" value={value} checked={elegida} onChange={() => onElegir(value)} className="sr-only" />
@@ -37,7 +37,7 @@ function Opcion({ value, seleccion, onElegir, icono, titulo, detalle }: {
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-[14px] font-medium text-foreground">{titulo}</span>
-        {detalle && <span className="truncate text-[12.5px] text-muted-foreground">{detalle}</span>}
+        {detalle && <span className="truncate text-[13px] text-muted-foreground">{detalle}</span>}
       </span>
       <span aria-hidden className={cn('grid size-5 shrink-0 place-items-center rounded-full border', elegida ? 'border-gm-yellow bg-gm-yellow text-gm-ink' : 'border-white/20')}>
         {elegida && <Check className="size-3" strokeWidth={3} />}
@@ -91,11 +91,11 @@ export function AccessSelector({ playas, loadError = '' }: { playas: Operational
 
           {playas.length > 0 && (
             <div className="space-y-2">
-              <p className="m-0 text-[12.5px] font-medium text-muted-foreground">
+              <p className="m-0 text-[13px] font-medium text-muted-foreground">
                 Trabajar en una playa · {playas.length}
               </p>
               {playas.length > CON_BUSCADOR && (
-                <label className="flex h-10 items-center gap-2 rounded-lg border border-white/[0.08] bg-[#14120F] px-3 text-muted-foreground focus-within:ring-2 focus-within:ring-gm-yellow">
+                <label className="flex h-10 items-center gap-2 rounded-lg border border-white/[0.08] bg-background px-3 text-muted-foreground focus-within:ring-2 focus-within:ring-gm-yellow">
                   <Search className="size-4 shrink-0" aria-hidden />
                   <span className="sr-only">Buscar playa</span>
                   <input

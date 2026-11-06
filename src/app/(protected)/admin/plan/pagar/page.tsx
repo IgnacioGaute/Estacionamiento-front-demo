@@ -17,6 +17,7 @@ import {
 } from '@/components/plataforma/cuenta';
 import type { MiPlan } from '@/types/suscripcion.type';
 import { FormasDePago, VueltaDeMercadoPago } from './formas-de-pago';
+import { PageHeader } from '@/components/page-header';
 
 type Query = Record<string, string | string[] | undefined>;
 const uno = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
@@ -41,29 +42,21 @@ export default async function PagarPage({ searchParams }: { searchParams: Promis
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/admin/plan"
-            className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#2E2A23] px-4 text-sm font-semibold text-[#E3DBCE] transition-colors hover:bg-white/[0.04]"
+            className="inline-flex h-11 items-center gap-2 rounded-xl border border-gm-line px-4 text-sm font-semibold text-foreground transition-colors hover:bg-white/[0.04]"
           >
             <ArrowLeft aria-hidden className="size-4" />
             Mi plan
           </Link>
           {data?.mercadoPago && (
-            <span className="inline-flex items-center gap-2 text-[13px] text-[#8F8676]">
+            <span className="inline-flex items-center gap-2 text-[13px] text-gm-texto-tenue">
               <Lock aria-hidden className="size-[15px]" strokeWidth={1.9} />
               Pago seguro con MercadoPago
             </span>
           )}
         </div>
 
-        <header className="flex flex-col gap-3">
-          <div className="flex items-center gap-2.5">
-            <span aria-hidden className="h-px w-6 bg-gm-yellow" />
-            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-gm-yellow">Mi plan</span>
-          </div>
-          <h1 className="m-0 font-display text-[34px] font-semibold uppercase leading-none tracking-[0.01em] text-[#F6F0E6] sm:text-[48px]">
-            Pagar tu plan
-          </h1>
-          {subtitulo && <p className="m-0 text-base leading-relaxed text-[#A79E8F]">{subtitulo}</p>}
-        </header>
+        {/* El encabezado común de la administración, como Mi plan. */}
+        <PageHeader breadcrumb={['Administración', 'Mi plan', 'Pagar']} title="Pagar tu plan" description={subtitulo || undefined} />
 
         {(vuelta === 'pago' || vuelta === 'debito') && (
           <VueltaDeMercadoPago
@@ -141,13 +134,13 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
 
   if (!importe)
     return (
-      <section className="flex gap-4 rounded-[24px] border border-[#2E2A23] bg-[#1B1915] p-[26px]">
-        <span className="flex size-[46px] shrink-0 items-center justify-center rounded-[14px] bg-[#4ADE9B24] text-[#4ADE9B]">
+      <section className="flex gap-4 rounded-[24px] border border-gm-line bg-gm-surface p-[26px]">
+        <span className="flex size-[46px] shrink-0 items-center justify-center rounded-[14px] bg-[#4ADE9B24] text-gm-ok">
           <CheckCircle2 aria-hidden className="size-[22px]" strokeWidth={1.8} />
         </span>
         <div className="min-w-0">
-          <h2 className="m-0 text-[22px] font-semibold leading-tight text-[#F6F0E6]">Estás al día</h2>
-          <p className="m-0 mt-1.5 text-[15px] leading-relaxed text-[#BDB4A6]">
+          <h2 className="m-0 text-[22px] font-semibold leading-tight text-foreground">Estás al día</h2>
+          <p className="m-0 mt-1.5 text-[15px] leading-relaxed text-gm-texto-2">
             {cuenta.estado === 'BONIFICADA'
               ? 'Tu cuenta está bonificada: no tenés que pagar nada.'
               : cuenta.estado === 'SIN_ACTIVAR'
@@ -200,41 +193,41 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
     <>
       {/* Al revés a propósito: en pantalla ancha el resumen va a la derecha; en el celular, arriba. */}
       <div className="flex flex-row-reverse flex-wrap items-start gap-6">
-        <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-5 rounded-[24px] border border-[#2E2A23] bg-[#1B1915] p-[26px] lg:max-w-[400px]">
+        <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-5 rounded-[24px] border border-gm-line bg-gm-surface p-[26px] lg:max-w-[400px]">
           <div className="flex items-center justify-between gap-3">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#8F8676]">Resumen</span>
+            <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-gm-texto-tenue">Resumen</span>
             <EstadoCuentaPill cuenta={cuenta} />
           </div>
           <div className="flex flex-col gap-1">
-            <div className="text-sm text-[#A79E8F]">{concepto}</div>
+            <div className="text-sm text-muted-foreground">{concepto}</div>
             {desde && hasta && (
-              <div className="text-[17px] font-semibold text-[#F6F0E6]">
+              <div className="text-[17px] font-semibold text-foreground">
                 {fechaLarga(desde)} al {fechaLarga(hasta)}
               </div>
             )}
           </div>
           {lineas.length > 0 && (
-            <ul className="m-0 flex list-none flex-col gap-3 border-y border-[#2B2620] px-0 py-4">
+            <ul className="m-0 flex list-none flex-col gap-3 border-y border-gm-line px-0 py-4">
               {lineas.map((l) => (
                 <li key={l.id} className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-[15px] font-semibold text-[#F6F0E6]">{l.nombre}</div>
-                    <div className="mt-0.5 text-[13px] text-[#8F8676]">{descripcionPlan(l.plan)}</div>
+                    <div className="text-[15px] font-semibold text-foreground">{l.nombre}</div>
+                    <div className="mt-0.5 text-[13px] text-gm-texto-tenue">{descripcionPlan(l.plan)}</div>
                   </div>
-                  <div className="text-right font-mono text-[15px] font-bold text-[#F6F0E6]">
+                  <div className="text-right font-mono text-[15px] font-bold text-foreground">
                     {pesos(l.precio)}
-                    {meses > 1 && <span className="block text-[11.5px] font-medium text-[#8F8676]">por mes</span>}
+                    {meses > 1 && <span className="block text-[12px] font-medium text-gm-texto-tenue">por mes</span>}
                   </div>
                 </li>
               ))}
               {meses > 1 && (
-                <li className="flex flex-col gap-2 border-t border-[#2B2620] pt-3 text-sm">
-                  <span className="flex justify-between gap-3 text-[#A79E8F]">
+                <li className="flex flex-col gap-2 border-t border-gm-line pt-3 text-sm">
+                  <span className="flex justify-between gap-3 text-muted-foreground">
                     <span>× {meses} meses</span>
                     <span className="font-mono">{pesos(lista)}</span>
                   </span>
                   {ahorro > 0 && (
-                    <span className="flex justify-between gap-3 font-semibold text-[#4ADE9B]">
+                    <span className="flex justify-between gap-3 font-semibold text-gm-ok">
                       <span>
                         Pago {cuenta.periodo.nombre.toLowerCase()} −{descuento}%
                       </span>
@@ -246,17 +239,17 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
             </ul>
           )}
           <div className="flex items-baseline justify-between gap-3">
-            <span className="text-[15px] font-semibold text-[#E3DBCE]">
+            <span className="text-[15px] font-semibold text-foreground">
               {debitara ? (meses === 1 ? 'Por mes' : meses === 12 ? 'Por año' : `Cada ${meses} meses`) : 'A pagar'}
             </span>
             <span
               className="font-mono text-[34px] font-bold tracking-[-0.02em]"
-              style={{ color: debe ? '#F5C219' : '#F6F0E6' }}
+              style={{ color: debe ? 'hsl(var(--gm-yellow))' : 'hsl(var(--foreground))' }}
             >
               {pesos(importe)}
             </span>
           </div>
-          <p className="m-0 text-[13.5px] leading-relaxed text-[#A79E8F]">{nota}</p>
+          <p className="m-0 text-[14px] leading-relaxed text-muted-foreground">{nota}</p>
         </aside>
 
         {plan.mercadoPago ? (
@@ -269,20 +262,20 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
             qr={PAGO_QR_DEL_PLAN && plan.mercadoPagoQr}
           />
         ) : (
-          <section className="flex min-w-0 flex-[3_1_480px] flex-col gap-3.5 rounded-[24px] border border-[#2E2A23] bg-[#1B1915] p-[26px]">
-            <h2 className="m-0 text-xl font-semibold text-[#F6F0E6]">Cómo pagar</h2>
+          <section className="flex min-w-0 flex-[3_1_480px] flex-col gap-3.5 rounded-[24px] border border-gm-line bg-gm-surface p-[26px]">
+            <h2 className="m-0 text-xl font-semibold text-foreground">Cómo pagar</h2>
             {plan.comoPagar ? (
               <>
-                <p className="m-0 text-[15px] leading-relaxed text-[#BDB4A6]">
+                <p className="m-0 text-[15px] leading-relaxed text-gm-texto-2">
                   Transferí con estos datos y avisanos. Apenas nos llega, lo anotamos y tu cuenta queda al día en el
                   momento.
                 </p>
-                <p className="m-0 whitespace-pre-line rounded-xl border border-[#2E2A23] bg-[#14110D] p-4 font-mono text-[13px] leading-relaxed text-[#E3DBCE]">
+                <p className="m-0 whitespace-pre-line rounded-xl border border-gm-line bg-background p-4 font-mono text-[13px] leading-relaxed text-foreground">
                   {plan.comoPagar}
                 </p>
               </>
             ) : (
-              <p className="m-0 text-[15px] leading-relaxed text-[#BDB4A6]">
+              <p className="m-0 text-[15px] leading-relaxed text-gm-texto-2">
                 Por ahora el pago es por transferencia. Escribinos por WhatsApp, te pasamos los datos y, apenas nos llega,
                 lo anotamos. Tu cuenta queda al día en el momento.
               </p>
@@ -292,7 +285,7 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
                 href={whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-[46px] w-fit items-center gap-2.5 rounded-[13px] bg-[#25D366] px-[18px] text-[14.5px] font-bold text-[#0B2E17] hover:opacity-90"
+                className="inline-flex h-[46px] w-fit items-center gap-2.5 rounded-[13px] bg-[#25D366] px-[18px] text-[15px] font-bold text-[#0B2E17] hover:opacity-90"
               >
                 <MessageCircle aria-hidden className="size-[18px]" />
                 Escribinos por WhatsApp
@@ -304,13 +297,13 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
 
       {/* Con MercadoPago no se ofrece transferencia; WhatsApp queda solo para consultas. */}
       {plan.mercadoPago && whatsapp && (
-        <p className="m-0 text-center text-sm text-[#8F8676]">
+        <p className="m-0 text-center text-sm text-gm-texto-tenue">
           ¿Alguna duda con el pago?{' '}
           <a
             href={whatsapp}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-gm-yellow hover:text-[#FFD84D]"
+            className="font-semibold text-gm-yellow hover:text-gm-yellow-deep"
           >
             Escribinos por WhatsApp
           </a>

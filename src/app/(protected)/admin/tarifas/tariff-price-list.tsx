@@ -88,14 +88,14 @@ export function TariffPriceList({ draft, onChange, vehicles, night, onEnableNigh
   const removeButton = (row: TariffBracket, index: number, vehicle: Vehicle) => <Button type="button" variant="ghost" size="icon" className="size-11 shrink-0 text-muted-foreground hover:text-destructive" aria-label={'Quitar ' + row.label + ' de ' + vehicle.name} onClick={() => remove(index)}><Trash2 className="size-4" aria-hidden="true" /></Button>;
 
   const rowActions = (row: TariffBracket, index: number, vehicle: Vehicle) => <div className="flex items-center">
-    <Button type="button" variant="ghost" size="icon" className="size-11 shrink-0 text-muted-foreground hover:text-amber-500" title="Copiar precio" disabled={row.uptoMinutes === null && !availableEndingScopes(row).length} aria-label={'Copiar ' + row.label + ' de ' + vehicle.name} onClick={() => duplicate(index)}><Copy className="size-4" aria-hidden="true" /></Button>
+    <Button type="button" variant="ghost" size="icon" className="size-11 shrink-0 text-muted-foreground hover:text-gm-yellow" title="Copiar precio" disabled={row.uptoMinutes === null && !availableEndingScopes(row).length} aria-label={'Copiar ' + row.label + ' de ' + vehicle.name} onClick={() => duplicate(index)}><Copy className="size-4" aria-hidden="true" /></Button>
     {removeButton(row, index, vehicle)}
   </div>;
 
   return <div ref={container} className="space-y-5">
     {showDurations && <p className="text-sm leading-relaxed text-muted-foreground">Agregá una fila por duración y cargá su precio en pesos. Se ordenan de menor a mayor duración. Usá el botón de copiar para crear otra fila con el mismo precio.</p>}
     {section === 'endings' && <p className="text-sm leading-relaxed text-muted-foreground">Qué se cobra cuando la estadía supera la última duración. Podés usar una regla de día y otra de noche, con importes y formas de cobro distintos.</p>}
-    {copiedKey && <p role="status" className="text-sm text-amber-600 dark:text-amber-400">Precio copiado. Revisá el horario, la duración y el importe de la nueva fila.</p>}
+    {copiedKey && <p role="status" className="text-sm text-gm-atencion">Precio copiado. Revisá el horario, la duración y el importe de la nueva fila.</p>}
     {night && showDurations && <p className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">Los precios de día o noche reemplazan al de “Todo el día” para la misma duración.</p>}
     {vehicles.map(vehicle => {
       const rows = draft.brackets.map((row, index) => ({ row, index })).filter(({ row }) => row.vehicleType === vehicle.code);
@@ -123,7 +123,7 @@ export function TariffPriceList({ draft, onChange, vehicles, night, onEnableNigh
           {(() => { const avisos = masLargasMasBaratas(durations.map(({ row }) => row)); return avisos.length > 0 && (
             <div role="status" className="mt-3 rounded-xl border border-gm-atencion/40 bg-gm-atencion/10 p-3 text-[13px]">
               <p className="font-semibold text-gm-atencion">Revisá los importes: quedarse más tiempo cuesta menos</p>
-              <ul className="mt-1 space-y-0.5 text-[#D9D1C3]">{avisos.map(aviso => <li key={aviso}>{aviso}</li>)}</ul>
+              <ul className="mt-1 space-y-0.5 text-gm-texto-2">{avisos.map(aviso => <li key={aviso}>{aviso}</li>)}</ul>
             </div>
           ); })()}
           <div className="pb-4 pt-2"><Button type="button" size="sm" variant="outline" onClick={() => add(vehicle.code, false)}><Plus className="mr-1 size-4" aria-hidden="true" />Agregar duración</Button></div>
@@ -133,7 +133,7 @@ export function TariffPriceList({ draft, onChange, vehicles, night, onEnableNigh
           {section === 'endings' && durations.length > 0 && <p className="text-xs text-muted-foreground">Última duración: {durations[durations.length - 1].row.label} · {Number.isFinite(durations[durations.length - 1].row.price) ? '$ ' + durations[durations.length - 1].row.price.toLocaleString('es-AR') : 'sin precio'}</p>}
           {!endings.length && <p className="text-sm text-muted-foreground">Sin una regla adicional, se usa el último importe disponible. Comprobá el resultado en el simulador.</p>}
           {endings.map(({ row, index }, position) => <div key={keyFor(row)} data-row-key={keyFor(row)} data-tariff-ending={row.ticketDayType ?? 'ANY'} className="space-y-4 rounded-xl border bg-card p-3 sm:p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-amber-600 dark:text-amber-400">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gm-atencion">
               {row.ticketDayType === 'DAY' ? <Sun className="size-4" aria-hidden="true" /> : row.ticketDayType === 'NIGHT' ? <Moon className="size-4" aria-hidden="true" /> : <Clock3 className="size-4" aria-hidden="true" />}
               {row.ticketDayType === 'DAY' ? 'Cobro posterior de día' : row.ticketDayType === 'NIGHT' ? 'Cobro posterior de noche' : 'Cobro posterior general'}
             </div>

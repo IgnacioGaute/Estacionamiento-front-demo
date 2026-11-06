@@ -101,7 +101,7 @@ const Encabezado = forwardRef<HTMLDivElement, { ojo: string; titulo: string; baj
         ))}
       </h1>
       <p className={cn('overflow-hidden', grande ? 'mt-7' : 'mt-5')}>
-        <motion.span variants={v(renglon)} custom={0.32} className={cn('block max-w-2xl leading-relaxed text-[#C9C0B2]', grande ? 'text-lg sm:text-xl' : 'text-base sm:text-lg')}>{bajada}</motion.span>
+        <motion.span variants={v(renglon)} custom={0.32} className={cn('block max-w-2xl leading-relaxed text-gm-texto-2', grande ? 'text-lg sm:text-xl' : 'text-base sm:text-lg')}>{bajada}</motion.span>
       </p>
     </motion.div>
   );
@@ -175,7 +175,7 @@ function ListaPasos({ modo, pantalla, hechos, omitidos, alcanzable, onIr, quieto
               onClick={() => onIr(paso)}
               className={cn(
                 'relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-default',
-                activo ? 'text-foreground' : hecho || modo !== 'paso' ? 'text-[#D8D0C3]' : 'text-muted-foreground',
+                activo ? 'text-foreground' : hecho || modo !== 'paso' ? 'text-gm-texto-2' : 'text-muted-foreground',
                 puede && 'hover:bg-white/[0.04] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
               )}
             >
@@ -186,7 +186,7 @@ function ListaPasos({ modo, pantalla, hechos, omitidos, alcanzable, onIr, quieto
               )}
               <span className={cn(
                 'relative grid size-7 shrink-0 place-items-center rounded-full font-display text-[12px] tabular-nums transition-colors duration-300',
-                hecho ? 'bg-gm-yellow text-gm-ink' : activo ? 'bg-[#0e0d0b] text-gm-yellow ring-[1.5px] ring-gm-yellow' : omitido ? 'border border-dashed border-white/30 bg-[#0e0d0b] text-muted-foreground' : 'bg-[#0e0d0b] ring-1 ring-white/15',
+                hecho ? 'bg-gm-yellow text-gm-ink' : activo ? 'bg-gm-hondo text-gm-yellow ring-[1.5px] ring-gm-yellow' : omitido ? 'border border-dashed border-white/30 bg-gm-hondo text-muted-foreground' : 'bg-gm-hondo ring-1 ring-white/15',
               )}>
                 {hecho ? <Check className="size-3.5" strokeWidth={3} aria-hidden /> : omitido && !activo ? <Clock3 className="size-3.5" aria-hidden /> : dos(i + 1)}
               </span>
@@ -380,14 +380,14 @@ export function AsistenteConfiguracion({ estado, contenido, listos: listosServid
 
   return (
     <LayoutGroup>
-      <main className="relative min-h-[100dvh] bg-[#0e0d0b] text-foreground">
+      <main className="relative min-h-[100dvh] bg-gm-hondo text-foreground">
         {/* Luz cálida desde esquinas opuestas y una grilla que se pierde hacia los bordes. */}
         <div aria-hidden className="pointer-events-none fixed inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(900px_650px_at_0%_0%,rgba(243,107,43,0.10),transparent_70%),radial-gradient(1000px_760px_at_100%_100%,rgba(245,197,24,0.06),transparent_70%)]" />
           <div className="absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.028)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.028)_1px,transparent_1px)] [background-size:56px_56px] [mask-image:radial-gradient(ellipse_at_50%_40%,black_20%,transparent_75%)]" />
         </div>
 
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-white/[0.06] bg-[#0e0d0b]/80 px-4 backdrop-blur-md sm:px-8">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-white/[0.06] bg-gm-hondo/80 px-4 backdrop-blur-md sm:px-8">
           <AppIcon className="size-8 shrink-0" />
           <div className="min-w-0 flex-1 leading-tight">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Configuración inicial</p>
@@ -396,7 +396,7 @@ export function AsistenteConfiguracion({ estado, contenido, listos: listosServid
           <span aria-live="polite" className="hidden overflow-hidden sm:block">
             {guardados > 0 && (
               <motion.span key={guardados} initial={quieto ? false : { y: '100%', filter: 'blur(4px)' }} animate={{ y: '0%', filter: 'blur(0px)' }} transition={{ duration: 0.5, ease: EXPO }} className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                <Check className="size-4 text-emerald-400" aria-hidden />Guardado
+                <Check className="size-4 text-gm-ok" aria-hidden />Guardado
               </motion.span>
             )}
           </span>
@@ -539,7 +539,7 @@ export function AsistenteConfiguracion({ estado, contenido, listos: listosServid
 
             {/* Acciones: fijas abajo en el celular y pegadas al pie del contenido en la computadora. */}
             {paso && (
-              <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-white/[0.06] bg-[#0e0d0b]/90 backdrop-blur-md lg:sticky lg:-mx-10 lg:mt-14 xl:-mx-14">
+              <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-white/[0.06] bg-gm-hondo/90 backdrop-blur-md lg:sticky lg:-mx-10 lg:mt-14 xl:-mx-14">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-8 lg:px-10 lg:py-4 xl:px-14">
                   <p aria-live="polite" className={cn('order-first flex w-full items-center gap-2 text-sm sm:order-none sm:w-auto sm:flex-1 sm:justify-end', error ? 'font-medium text-gm-orange' : 'text-muted-foreground', !aviso && 'hidden sm:flex')}>
                     {aviso && !error && <Lock className="size-3.5 shrink-0" aria-hidden />}{aviso}

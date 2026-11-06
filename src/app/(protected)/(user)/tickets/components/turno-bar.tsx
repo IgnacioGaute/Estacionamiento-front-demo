@@ -177,8 +177,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     {variant === 'pill' ? (
       // Sin turno, la píldora dice para qué hace falta: el efectivo no se registra sin turno y el
       // operador se enteraba recién al confirmar un cobro. El ::before lleva el toque a 44 px.
-      <button type="button" onClick={abrir} className="relative inline-flex h-[34px] items-center gap-2 rounded-full bg-gm-ink px-3.5 text-[12.5px] font-bold text-[#F2EDE3] transition-transform before:absolute before:inset-x-0 before:-inset-y-[5px] before:content-[''] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ink focus-visible:ring-offset-2 focus-visible:ring-offset-gm-yellow">
-        <span aria-hidden className={'size-[7px] rounded-full ' + (active ? 'bg-emerald-400' : 'bg-gm-orange motion-safe:animate-pulse')} />
+      <button type="button" onClick={abrir} className="relative inline-flex h-[34px] items-center gap-2 rounded-full bg-gm-ink px-3.5 text-[13px] font-bold text-foreground transition-transform before:absolute before:inset-x-0 before:-inset-y-[5px] before:content-[''] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ink focus-visible:ring-offset-2 focus-visible:ring-offset-gm-yellow">
+        <span aria-hidden className={'size-[7px] rounded-full ' + (active ? 'bg-gm-ok' : 'bg-gm-orange motion-safe:animate-pulse')} />
         {active ? `Turno abierto · ${horaApertura(active.fechaApertura)}` : 'Abrí tu turno para cobrar'}
       </button>
     ) : (
@@ -252,8 +252,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             </Paso>
           </ol> : <div className="flex gap-3 rounded-2xl border border-gm-yellow/25 bg-gm-yellow/[0.06] p-4 text-sm"><Users className="mt-0.5 size-4 shrink-0 text-gm-yellow" aria-hidden /><div><p className="font-semibold">La caja continúa abierta</p><p className="mt-1 leading-relaxed text-muted-foreground">Tus operaciones quedan registradas a tu nombre. El fondo y el efectivo siguen en {active.caja?.nombre ?? 'la caja compartida'}; el cierre registra solamente el retiro de sueldo si está configurado y hay efectivo suficiente.</p></div></div>}
 
-          {salaryExpected > 0 && <div className="flex gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] p-4 text-sm">
-            <Banknote className="mt-0.5 size-4 shrink-0 text-amber-400" aria-hidden />
+          {salaryExpected > 0 && <div className="flex gap-3 rounded-2xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-4 text-sm">
+            <Banknote className="mt-0.5 size-4 shrink-0 text-gm-atencion" aria-hidden />
             <div className="min-w-0">
               <p>Sueldo previsto: <strong className="tabular-nums">{money(salaryExpected)}</strong> · Fondo de referencia: <span className="tabular-nums">{money(reserve)}</span></p>
               {arqueo && !amountValid(counted) ? <p className="mt-1 text-muted-foreground">Contá el efectivo para comprobar si alcanza.</p> : salaryAlcanza > 0 ? <>
@@ -268,7 +268,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
                   })}
                 </div>
                 <p className="mt-2 leading-relaxed text-muted-foreground">{retirarSueldo ? `Se registrará el retiro de ${money(salaryAlcanza)}. Retirá físicamente ese importe al confirmar. Está separado del retiro de recaudación.` : 'No se descuenta el sueldo: ese efectivo sigue en la caja y queda anotado en el historial.'}</p>
-              </> : <p role="alert" className="mt-1 leading-relaxed text-amber-600 dark:text-amber-400">{arqueo
+              </> : <p role="alert" className="mt-1 leading-relaxed text-gm-atencion">{arqueo
                 ? dejarParaSueldo >= 0
                   ? `Con lo que dejás en la caja no alcanza para el sueldo. Para retirarlo, dejá ${money(dejarParaSueldo)} o menos para el próximo turno; si no, no se descontará el sueldo y quedará una alerta en el historial.`
                   : 'El efectivo contado no alcanza para el sueldo. No se descontará el sueldo y quedará una alerta en el historial.'
@@ -283,9 +283,9 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
               {salaryExpected > 0 && <Linea label="Sueldo" value={salary > 0 ? '− ' + money(salary) : 'No se descuenta'} />}
               <Linea label="Retiro de recaudación" value={withdrawn === null ? '—' : '− ' + money(withdrawn)} />
             </dl>
-            <div className={cn('flex items-center justify-between gap-3 border-t border-gm-line px-4 py-3', handoverValid ? 'bg-emerald-400/[0.06]' : 'bg-destructive/10')}>
+            <div className={cn('flex items-center justify-between gap-3 border-t border-gm-line px-4 py-3', handoverValid ? 'bg-gm-ok/[0.06]' : 'bg-destructive/10')}>
               <span className="text-[13px] font-semibold">{handoverValid ? 'Queda para el próximo operador' : 'Revisá cuánto dejás en caja'}</span>
-              <strong className={cn('tabular-nums', handoverValid ? 'text-emerald-400' : 'text-destructive')}>{handoverValid ? money(Number(forNext)) : '—'}</strong>
+              <strong className={cn('tabular-nums', handoverValid ? 'text-gm-ok' : 'text-destructive')}>{handoverValid ? money(Number(forNext)) : '—'}</strong>
             </div>
           </section>}
 
@@ -294,7 +294,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             <div className="border-t border-gm-line p-3"><TurnoResumenPanel turno={active} /></div>
           </details>
           <div className="space-y-1.5"><Label htmlFor="cash-notes">{arqueo && amountValid(counted) && closingDifference !== 0 ? 'Motivo de la diferencia' : 'Nota del turno (opcional)'}</Label><Textarea id="cash-notes" value={notes} onChange={e => setNotes(e.target.value)} disabled={pending} required={arqueo && amountValid(counted) && closingDifference !== 0} placeholder="Algo que deba saber el próximo turno" className="min-h-20" /><p className="text-[11px] text-muted-foreground">Se publica automáticamente en Avisos.</p></div>
-          {forzando && <div className="space-y-1.5 rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] p-4"><Label htmlFor="forced-reason">¿Por qué cerrás el turno de otra persona?</Label><Input id="forced-reason" maxLength={255} value={forcedReason} onChange={e => setForcedReason(e.target.value)} disabled={pending} required placeholder="Ej.: se retiró sin cerrar su turno" /><p className="text-[11px] text-muted-foreground">Queda en el historial junto a tu nombre.</p></div>}
+          {forzando && <div className="space-y-1.5 rounded-2xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-4"><Label htmlFor="forced-reason">¿Por qué cerrás el turno de otra persona?</Label><Input id="forced-reason" maxLength={255} value={forcedReason} onChange={e => setForcedReason(e.target.value)} disabled={pending} required placeholder="Ej.: se retiró sin cerrar su turno" /><p className="text-[11px] text-muted-foreground">Queda en el historial junto a tu nombre.</p></div>}
           {enlaceHistorial}
         </ActionDialogBody>
           <ActionDialogFooter>
@@ -306,7 +306,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             <Wallet aria-hidden className="pointer-events-none absolute -bottom-8 -right-8 size-[130px] text-gm-ink/[0.06]" strokeWidth={1.5} />
             <div className="relative space-y-4 px-5 pb-5 pt-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="inline-flex h-7 items-center gap-2 rounded-full bg-gm-ink px-3 text-[12px] font-bold text-[#F2EDE3]"><span aria-hidden className="size-[7px] rounded-full bg-emerald-400" />En curso · desde {horaApertura(active.fechaApertura)}</span>
+                <span className="inline-flex h-7 items-center gap-2 rounded-full bg-gm-ink px-3 text-[12px] font-bold text-foreground"><span aria-hidden className="size-[7px] rounded-full bg-gm-ok" />En curso · desde {horaApertura(active.fechaApertura)}</span>
                 <span className="text-[12px] font-bold text-gm-ink/70">{active.caja?.nombre ?? 'Turno anterior'}</span>
               </div>
               <div><p className="text-lg font-bold leading-tight">{active.nombre}</p><p className="mt-0.5 text-xs font-semibold text-gm-ink/65">Abierto el {date(active.fechaApertura)}</p></div>
@@ -336,7 +336,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             <span className="flex min-w-0 items-center gap-3"><Iniciales nombre={nombreUsuario} className="size-8 text-[11px]" /><span className="min-w-0"><span className="block text-[11px] text-muted-foreground">Tu turno</span><strong className="block truncate text-sm font-semibold">{nombreUsuario}</strong></span></span>
             {(context.cajas?.length ?? 0) <= 1 && <Pill>{caja?.nombre ?? 'Caja principal'}</Pill>}
           </div>
-          {context.legacyOpen && <p role="alert" className="rounded-2xl border border-amber-500/40 bg-amber-500/[0.05] p-4 text-sm">Hay turnos del esquema anterior abiertos. El administrador debe cerrarlos antes de empezar a usar cajas compartidas.</p>}
+          {context.legacyOpen && <p role="alert" className="rounded-2xl border border-gm-atencion/40 bg-gm-atencion/[0.05] p-4 text-sm">Hay turnos del esquema anterior abiertos. El administrador debe cerrarlos antes de empezar a usar cajas compartidas.</p>}
           {(context.cajas?.length ?? 0) > 1 ? <div className="space-y-1.5"><Label htmlFor="cash-register">¿En qué caja vas a trabajar?</Label><Select value={cajaId} disabled={pending} onValueChange={value => { setCajaId(value); setReceived(''); setAdded('0'); setOpeningReason(''); }}><SelectTrigger id="cash-register" className="h-11"><SelectValue placeholder="Elegí tu caja" /></SelectTrigger><SelectContent>{context.cajas?.map(c => <SelectItem key={c.id} value={c.id}>{c.nombre} · {c.session ? 'Abierta' : 'Disponible'}</SelectItem>)}</SelectContent></Select></div> : null}
           {caja?.session ? <div className="space-y-3 rounded-2xl border border-gm-yellow/25 bg-gm-yellow/[0.06] p-4 text-sm">
             <p className="font-semibold">{context.multipleShiftsEnabled ? 'Te vas a unir a una caja abierta' : 'Esta caja ya tiene un turno abierto'}</p>
@@ -366,7 +366,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
                 <p className="text-sm leading-relaxed text-muted-foreground">Contá el dinero. Marcá lo que recibiste o escribí otro importe para poder abrir la caja.</p>
               </div>
               <CashAmountField id="cash-received" label="Efectivo que recibís" value={received} onChange={setReceived} disabled={pending} placeholder="Escribí el importe recibido" shortcuts={[...(hasPrior && openingExpected > 0 ? [{ label: 'Recibí todo · ' + money(openingExpected), amount: openingExpected }] : []), ...(!hasPrior && reserve > 0 ? [{ label: 'Fondo sugerido · ' + money(reserve), amount: reserve }] : []), { label: 'Sin efectivo recibido', amount: 0 }]} description="Confirmá el dinero que tenés en mano, antes de agregar cambio." />
-              {openingDifference !== 0 && amountValid(received) && <div className="space-y-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/[0.05] p-4"><Pill tono="aviso">{openingDifference > 0 ? 'Faltan ' + money(openingDifference) : 'Hay ' + money(-openingDifference) + ' adicionales'}</Pill><div className="space-y-1.5"><Label htmlFor="opening-reason">Motivo de la diferencia al recibir</Label><Input id="opening-reason" maxLength={255} required value={openingReason} onChange={e => setOpeningReason(e.target.value)} disabled={pending} placeholder="Ej.: retiro que no quedó registrado" /></div></div>}
+              {openingDifference !== 0 && amountValid(received) && <div className="space-y-2.5 rounded-2xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-4"><Pill tono="aviso">{openingDifference > 0 ? 'Faltan ' + money(openingDifference) : 'Hay ' + money(-openingDifference) + ' adicionales'}</Pill><div className="space-y-1.5"><Label htmlFor="opening-reason">Motivo de la diferencia al recibir</Label><Input id="opening-reason" maxLength={255} required value={openingReason} onChange={e => setOpeningReason(e.target.value)} disabled={pending} placeholder="Ej.: retiro que no quedó registrado" /></div></div>}
             </section>
             <details className="group rounded-2xl border border-dashed border-gm-line-strong text-xs">
               <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-semibold text-muted-foreground rounded-2xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow [&::-webkit-details-marker]:hidden"><Plus className="size-3.5 transition-transform group-open:rotate-45" aria-hidden />Agregar cambio · opcional</summary>
@@ -404,7 +404,7 @@ export function CashMovementForm({ sesionId, expected, onUpdated }: { sesionId: 
     {expanded && <form className="space-y-4 border-t border-gm-line p-4" onSubmit={e => { e.preventDefault(); if (!valid || pending) return; startTransition(async () => { const result = await addCashMovementAction(sesionId, { tipo: type, importe: Number(amount), efectivoEsperado: expected, motivo: reason }); if (result.error) { toast.error(result.error); onUpdated(); return; } toast.success(withdrawal ? 'Retiro registrado' : 'Aporte registrado'); setAmount(''); setReason(''); setExpanded(false); onUpdated(); }); }}>
       <CashAmountField id={'movement-amount-' + formId} label={withdrawal ? '¿Cuánto efectivo retirás?' : '¿Cuánto efectivo agregás?'} value={amount} onChange={setAmount} disabled={pending} max={withdrawal ? Math.max(0, expected) : undefined} shortcuts={withdrawal ? [{ label: 'Retirar todo · ' + money(expected), amount: expected, disabled: expected <= 0 }] : []} increments={!withdrawal} />
       <div className="space-y-2"><Label htmlFor={'movement-reason-' + formId}>Motivo del {withdrawal ? 'retiro' : 'aporte'}</Label><Input id={'movement-reason-' + formId} placeholder={withdrawal ? 'Ej.: entrega al encargado' : 'Ej.: reposición de cambio'} maxLength={255} value={reason} onChange={e => setReason(e.target.value)} disabled={pending} required /></div>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gm-line bg-background/40 px-3.5 py-3 text-xs"><span className="text-muted-foreground">{amountValid(amount) && nextCash >= 0 ? 'Efectivo después del movimiento' : 'Efectivo disponible'}</span><span className={cn('text-sm font-bold tabular-nums', amountValid(amount) && Number(amount) > 0 && nextCash >= 0 && (withdrawal ? 'text-amber-400' : 'text-emerald-400'))}>{money(amountValid(amount) && nextCash >= 0 ? nextCash : expected)}</span></div>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gm-line bg-background/40 px-3.5 py-3 text-xs"><span className="text-muted-foreground">{amountValid(amount) && nextCash >= 0 ? 'Efectivo después del movimiento' : 'Efectivo disponible'}</span><span className={cn('text-sm font-bold tabular-nums', amountValid(amount) && Number(amount) > 0 && nextCash >= 0 && (withdrawal ? 'text-gm-atencion' : 'text-gm-ok'))}>{money(amountValid(amount) && nextCash >= 0 ? nextCash : expected)}</span></div>
       <p className="text-xs leading-relaxed text-muted-foreground">Queda registrado con tu nombre y motivo. No modifica las ventas ni los gastos de la planilla.</p>
       <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="ghost" disabled={pending} onClick={() => { setExpanded(false); setAmount(''); setReason(''); }}>Cancelar</Button><Button className="rounded-xl font-bold" disabled={pending || !valid}>{pending ? 'Registrando…' : withdrawal ? 'Confirmar retiro' : 'Confirmar aporte'}</Button></div>
     </form>}

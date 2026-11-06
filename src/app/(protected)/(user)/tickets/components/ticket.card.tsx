@@ -416,11 +416,11 @@ export default function CardTicket({
   const hoy = dayjs(now).tz(TZ);
   const fechaLarga = `${DIAS[hoy.day()]} ${hoy.date()} ${MESES[hoy.month()]}`;
   const puedeEscanear = isMobile && !!reconocimientoPatentes;
-  const accesoTarifas = "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-border px-3.5 text-[13px] font-semibold text-[#D9D1C3] transition-colors hover:border-gm-yellow/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
+  const accesoTarifas = "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border border-border px-3.5 text-[13px] font-semibold text-gm-texto-2 transition-colors hover:border-gm-yellow/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
   // Accesos secundarios del administrador: texto sin borde para no competir con las acciones del mostrador.
-  const atajoSutil = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
+  const atajoSutil = "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
   // Botón de la barra de accesos del celular: ícono arriba, nombre abajo, ancho parejo.
-  const atajoMovil = "flex min-h-[60px] min-w-0 flex-col items-center justify-center gap-1 px-1 text-center text-[12px] font-medium text-[#D9D1C3] transition-colors hover:bg-white/[0.04] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow";
+  const atajoMovil = "flex min-h-[60px] min-w-0 flex-col items-center justify-center gap-1 px-1 text-center text-[12px] font-medium text-gm-texto-2 transition-colors hover:bg-white/[0.04] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow";
   const atajosAdmin = (alto: string) => isAdmin && (
     <nav aria-label="Accesos de administración" className="flex min-w-0 flex-wrap items-center gap-0.5">
       <Link href="/admin/vehiculos" className={cn(alto, atajoSutil)}>
@@ -447,7 +447,7 @@ export default function CardTicket({
     <div className="flex flex-col gap-4">
       <header className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
-          <p className="min-w-0 truncate text-[13.5px] text-muted-foreground">
+          <p className="min-w-0 truncate text-[14px] text-muted-foreground">
             {/* #857B6D: sigue más apagado que el saludo pero llega a 4,5:1 sobre el fondo (#6F665A daba 3,4:1). */}
             {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-gm-texto-tenue">· {fechaLarga}</span>
           </p>
@@ -511,10 +511,10 @@ export default function CardTicket({
 
       {latestRegistration && (
         <div ref={refVisible('ticket')} className="flex min-h-12 items-center gap-2.5 px-1">
-          <span className={cn("grid size-[30px] shrink-0 place-items-center rounded-full", ultimaEsEntrada ? "bg-sky-400/15 text-sky-400" : "bg-emerald-400/15 text-emerald-400")}>
+          <span className={cn("grid size-[30px] shrink-0 place-items-center rounded-full", ultimaEsEntrada ? "bg-sky-400/15 text-sky-400" : "bg-gm-ok/15 text-gm-ok")}>
             {ultimaEsEntrada ? <ArrowDownLeft className="size-4" strokeWidth={2.6} aria-hidden /> : <ArrowUpRight className="size-4" strokeWidth={2.6} aria-hidden />}
           </span>
-          <p className="min-w-0 flex-1 truncate text-[13.5px] text-muted-foreground">
+          <p className="min-w-0 flex-1 truncate text-[14px] text-muted-foreground">
             Última {ultimaEsEntrada ? "entrada" : "salida"} <strong className="gm-mono text-foreground">{ultimaIdentidad}</strong> · {ultimaHora}
             {!ultimaEsEntrada && !esGratuita(latestRegistration.modalidad) && <> · <strong className="gm-mono text-foreground">{formatImporte(latestRegistration.price)}</strong></>}
           </p>
@@ -541,7 +541,7 @@ export default function CardTicket({
           </span>
           <span className="relative">
             <span className="gm-display block text-[17px] tracking-[0.04em]">Estadía larga</span>
-            <span className="block text-xs text-[#D9D1C3]">Por día, semana o mes</span>
+            <span className="block text-xs text-gm-texto-2">Por día, semana o mes</span>
           </span>
         </button>}
         {receiptDeliveryEnabled && (
@@ -552,7 +552,7 @@ export default function CardTicket({
           >
             <span className="flex items-center justify-between">
               <span className="grid size-10 place-items-center rounded-full bg-background text-gm-yellow"><Receipt className="size-5" aria-hidden /></span>
-              <ChevronRight className="size-[18px] text-[#6F665A] transition-transform group-hover:translate-x-0.5" aria-hidden />
+              <ChevronRight className="size-[18px] text-gm-texto-tenue transition-transform group-hover:translate-x-0.5" aria-hidden />
             </span>
             <span>
               <span className="gm-display block text-[17px] tracking-[0.04em]">Comprobantes</span>
@@ -631,14 +631,14 @@ export default function CardTicket({
   );
 
   // ── Computadora: mostrador a la izquierda, la playa entera a la derecha ──
-  const accesoEscritorio = "inline-flex h-12 shrink-0 items-center gap-2 rounded-[16px] border-[1.5px] border-gm-line-strong bg-card px-4 text-sm font-semibold text-[#D9D1C3] transition-colors hover:border-gm-yellow/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
+  const accesoEscritorio = "inline-flex h-12 shrink-0 items-center gap-2 rounded-[16px] border-[1.5px] border-gm-line-strong bg-card px-4 text-sm font-semibold text-gm-texto-2 transition-colors hover:border-gm-yellow/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
   const escritorio = (
     <div className="flex flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         {/* Los accesos bajan de línea cuando falta espacio para conservar el saludo completo. */}
         <div className="min-w-[20rem] flex-1 basis-0">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-            <p className="min-w-0 max-w-full break-words text-[13.5px] text-muted-foreground">
+            <p className="min-w-0 max-w-full break-words text-[14px] text-muted-foreground">
               {saludo}{nombre ? `, ${nombre}` : ""} <span className="text-gm-texto-tenue">· {fechaLarga}</span>
             </p>
             {atajosAdmin("h-7 -my-1")}

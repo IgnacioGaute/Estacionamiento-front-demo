@@ -49,7 +49,7 @@ export function textoSaldo(saldo: number) {
   return saldo > 0 ? `Pendiente ${plata(saldo)}` : saldo < 0 ? `A favor ${plata(-saldo)}` : 'Al día';
 }
 
-export const colorSaldo = (saldo: number) => (saldo > 0 ? 'text-gm-aviso' : saldo < 0 ? 'text-emerald-400' : '');
+export const colorSaldo = (saldo: number) => (saldo > 0 ? 'text-gm-aviso' : saldo < 0 ? 'text-gm-ok' : '');
 
 const MAXIMO = 1_000_000_000;
 
@@ -80,10 +80,10 @@ export function leerImporte(texto: string): { valor: number; error: string | nul
 
 // Colores y nombres de los tramos de deuda: pendiente (todavía no vence) y vencido por días.
 export const TRAMOS: Record<Tramo, { label: string; corto: string; color: string }> = {
-  PENDIENTE: { label: 'Pendiente, sin vencer', corto: 'Sin vencer', color: '#E9E1D4' },
-  VENCIDO_30: { label: 'Vencido hasta 30 días', corto: 'Hasta 30 días', color: '#F5C219' },
-  VENCIDO_60: { label: 'Vencido 31 a 60 días', corto: '31 a 60 días', color: '#FF9A5C' },
-  VENCIDO_MAS: { label: 'Vencido hace más de 60 días', corto: 'Más de 60 días', color: '#FF5C4D' },
+  PENDIENTE: { label: 'Pendiente, sin vencer', corto: 'Sin vencer', color: 'hsl(var(--foreground))' },
+  VENCIDO_30: { label: 'Vencido hasta 30 días', corto: 'Hasta 30 días', color: 'hsl(var(--gm-yellow))' },
+  VENCIDO_60: { label: 'Vencido 31 a 60 días', corto: '31 a 60 días', color: 'hsl(var(--gm-aviso))' },
+  VENCIDO_MAS: { label: 'Vencido hace más de 60 días', corto: 'Más de 60 días', color: 'hsl(var(--destructive))' },
 };
 
 // La misma imputación que hace el backend (elegidos primero, después del más viejo al más

@@ -144,7 +144,7 @@ export function EntregaRecibo({
               href={`https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gm-yellow px-4 py-2 text-center text-sm font-bold text-gm-ink hover:bg-[#FFD23A]"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gm-yellow px-4 py-2 text-center text-sm font-bold text-gm-ink hover:bg-gm-yellow-deep"
             >
               <MessageCircle className="size-4 shrink-0" />
               <span className="flex flex-col items-start leading-tight">

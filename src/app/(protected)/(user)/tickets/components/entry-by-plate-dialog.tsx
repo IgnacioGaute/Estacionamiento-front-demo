@@ -348,7 +348,7 @@ export function EntryByPlateDialog({
           aria-pressed={method === value}
           onClick={() => setMethod(value)}
           className={cn(
-            'gm-display flex h-10 items-center justify-center gap-2 rounded-lg text-[12.5px] font-semibold tracking-[0.04em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
+            'gm-display flex h-10 items-center justify-center gap-2 rounded-lg text-[13px] font-semibold tracking-[0.04em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
             method === value ? 'bg-gm-yellow text-gm-ink' : 'text-muted-foreground hover:text-foreground',
           )}
         >
@@ -413,7 +413,7 @@ export function EntryByPlateDialog({
                   <PlateChip plate={plateValue || '—'} />
                   <p className="min-w-0 text-[15px] font-semibold">{entroDuplicada ? `Entró a las ${entroDuplicada}` : duplicateError.message}</p>
                 </div>
-                <p className="text-[13.5px] leading-relaxed text-[#D9D1C3]">
+                <p className="text-[14px] leading-relaxed text-gm-texto-2">
                   Lo más común: no se registró la salida anterior. Si el auto se está yendo, abrí esa estadía y cobrala.
                 </p>
               </div>
@@ -468,7 +468,7 @@ export function EntryByPlateDialog({
                     {parecidas.length === 1 ? 'Hay una patente parecida adentro' : 'Hay patentes parecidas adentro'}
                   </span>
                 </p>
-                <p className="text-[13.5px] leading-relaxed text-[#D9D1C3]">
+                <p className="text-[14px] leading-relaxed text-gm-texto-2">
                   Puede ser el mismo auto con un carácter mal leído. Si se está yendo, cobrá esa estadía en lugar de registrar una entrada nueva.
                 </p>
               </div>
@@ -580,13 +580,13 @@ export function EntryByPlateDialog({
 
                   <div aria-live="polite" className="space-y-1.5">
                     {selectedFrequent ? (
-                      <div className="flex items-center gap-3 rounded-2xl border border-emerald-400/35 bg-emerald-400/[0.08] px-3.5 py-2.5">
-                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-emerald-400/15 text-emerald-400">
+                      <div className="flex items-center gap-3 rounded-2xl border border-gm-ok/35 bg-gm-ok/[0.08] px-3.5 py-2.5">
+                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gm-ok/15 text-gm-ok">
                           <UserCheck className="size-5" aria-hidden />
                         </span>
                         <span className="min-w-0">
                           <span className="block text-[15px] font-semibold">Cliente frecuente identificado</span>
-                          <span className="block truncate text-[12.5px] text-muted-foreground">
+                          <span className="block truncate text-[13px] text-muted-foreground">
                             {selectedFrequent.lastNameCustomer || selectedFrequent.licensePlateOriginal} · {selectedFrequent.visits} {selectedFrequent.visits === 1 ? 'visita' : 'visitas'} · cargamos sus datos
                           </span>
                         </span>
@@ -615,7 +615,7 @@ export function EntryByPlateDialog({
                                 <span className={cn('block truncate text-[15px] font-semibold', !customer.lastNameCustomer && 'font-normal italic text-muted-foreground')}>
                                   {customer.lastNameCustomer || 'Sin apellido'}
                                 </span>
-                                <span className="block text-[12.5px] text-muted-foreground">
+                                <span className="block text-[13px] text-muted-foreground">
                                   {VEHICLE_TYPE_LABEL[customer.vehicleType] || customer.vehicleType} · {customer.visits} visitas
                                 </span>
                               </span>
@@ -671,7 +671,7 @@ export function EntryByPlateDialog({
                   >
                     <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-gm-surface-3 text-gm-yellow"><Plus className="size-[18px]" aria-hidden /></span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[14.5px] font-semibold">{gratuita ? 'Agregar apellido, DNI o modelo' : 'Agregar apellido, WhatsApp o modelo'}</span>
+                      <span className="block text-[15px] font-semibold">{gratuita ? 'Agregar apellido, DNI o modelo' : 'Agregar apellido, WhatsApp o modelo'}</span>
                       <span className="block truncate text-xs text-muted-foreground">Opcional · lo encontrás más rápido la próxima vez</span>
                     </span>
                     <ChevronDown className="size-[18px] shrink-0 text-muted-foreground" aria-hidden />

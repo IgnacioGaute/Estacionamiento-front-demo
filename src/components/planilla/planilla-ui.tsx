@@ -24,7 +24,7 @@ export function TarjetaResumen({ etiqueta, valor, detalle, destacada = false }: 
     <div className={cn('flex flex-col gap-1.5 rounded-[18px] border px-[18px] py-4', destacada ? 'border-gm-yellow/40 bg-gm-yellow/[0.06]' : 'border-gm-line bg-card')}>
       <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">{etiqueta}</span>
       <span className={cn('gm-display text-[40px] font-semibold leading-none tabular-nums sm:text-[44px]', destacada && 'text-gm-yellow')}>{valor}</span>
-      {detalle && <span className="text-[12.5px] text-muted-foreground">{detalle}</span>}
+      {detalle && <span className="text-[13px] text-muted-foreground">{detalle}</span>}
     </div>
   );
 }
@@ -35,14 +35,14 @@ export function ChapaVehiculo({ texto, tarjeta = false, className }: { texto: st
   // Solo si parece una patente (tiene números): un registro sin patente trae el apellido.
   if (!tarjeta && /\d/.test(texto)) return <PlateChip plate={texto} size="xs" className={className} />;
   return (
-    <span className={cn('gm-mono inline-flex h-[30px] shrink-0 items-center whitespace-nowrap rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 px-2.5 text-[13.5px] font-bold tracking-[0.04em] text-foreground', className)}>
+    <span className={cn('gm-mono inline-flex h-[30px] shrink-0 items-center whitespace-nowrap rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 px-2.5 text-[14px] font-bold tracking-[0.04em] text-foreground', className)}>
       {texto}
     </span>
   );
 }
 
 export function EtiquetaTipo({ children }: { children: ReactNode }) {
-  return <span className="inline-flex h-[26px] items-center rounded-full bg-gm-surface-3 px-2.5 text-[12.5px] font-semibold text-[#D9D1C3]">{children}</span>;
+  return <span className="inline-flex h-[26px] items-center rounded-full bg-gm-surface-3 px-2.5 text-[13px] font-semibold text-gm-texto-2">{children}</span>;
 }
 
 export function SelectorSegmentado<T extends string>({ opciones, valor, onChange, etiqueta, disabled }: {
@@ -62,7 +62,7 @@ export function ChipFiltro({ activo, onClick, disabled, children }: { activo?: b
   return (
     <button type="button" aria-pressed={activo} disabled={disabled} onClick={onClick}
       className={cn('inline-flex min-h-10 items-center gap-2 rounded-full border px-3.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50',
-        activo ? 'border-gm-yellow bg-gm-yellow/[0.12] font-bold text-gm-yellow' : 'border-gm-line-strong font-semibold text-[#D9D1C3] hover:text-foreground')}>
+        activo ? 'border-gm-yellow bg-gm-yellow/[0.12] font-bold text-gm-yellow' : 'border-gm-line-strong font-semibold text-gm-texto-2 hover:text-foreground')}>
       {children}
     </button>
   );
@@ -106,7 +106,7 @@ export function PieTabla({ pagina, porPagina, total, mostrados, onCambiar, disab
   pagina: number; porPagina: number; total: number; mostrados: number; onCambiar: (pagina: number) => void; disabled?: boolean;
 }) {
   const paginas = Math.max(1, Math.ceil(total / porPagina));
-  const boton = 'grid h-10 w-11 place-items-center rounded-[10px] border border-gm-line-strong text-foreground transition-colors hover:border-gm-yellow/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:border-gm-line disabled:text-[#6F665A]';
+  const boton = 'grid h-10 w-11 place-items-center rounded-[10px] border border-gm-line-strong text-foreground transition-colors hover:border-gm-yellow/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:border-gm-line disabled:text-gm-texto-tenue';
   return (
     <nav aria-label="Páginas" className="flex flex-wrap items-center justify-between gap-3 border-t border-gm-line px-[18px] py-3.5">
       <span aria-live="polite" className="text-[13px] text-muted-foreground">
@@ -123,5 +123,5 @@ export function PieTabla({ pagina, porPagina, total, mostrados, onCambiar, disab
 
 export function Iniciales({ nombre }: { nombre: string | null }) {
   const iniciales = (nombre ?? '').split(' ').filter(Boolean).map((p) => p[0]).join('').slice(0, 2).toUpperCase() || '—';
-  return <span aria-hidden className="grid size-[22px] shrink-0 place-items-center rounded-full bg-gm-surface-3 text-[10px] font-bold text-[#D9D1C3]">{iniciales}</span>;
+  return <span aria-hidden className="grid size-[22px] shrink-0 place-items-center rounded-full bg-gm-surface-3 text-[10px] font-bold text-gm-texto-2">{iniciales}</span>;
 }

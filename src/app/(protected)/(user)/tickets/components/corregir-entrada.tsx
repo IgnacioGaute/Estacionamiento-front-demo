@@ -73,11 +73,11 @@ export function CorregirEntrada({ summary, onCorregido }: { summary: Pick<Resume
     return (
       <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-white/[0.03] py-1.5 pl-2.5 pr-1.5">
         <Clock3 className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-        <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-muted-foreground">Entró hace {hace}</p>
+        <p className="min-w-0 flex-1 text-[13px] leading-snug text-muted-foreground">Entró hace {hace}</p>
         <button
           type="button"
           onClick={() => setAbierto(true)}
-          className="h-8 shrink-0 whitespace-nowrap rounded-full border border-gm-yellow/30 px-3 text-[12.5px] font-semibold text-gm-yellow transition-colors hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow"
+          className="h-8 shrink-0 whitespace-nowrap rounded-full border border-gm-yellow/30 px-3 text-[13px] font-semibold text-gm-yellow transition-colors hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow"
         >
           ¿Entró antes?
         </button>
@@ -101,7 +101,7 @@ export function CorregirEntrada({ summary, onCorregido }: { summary: Pick<Resume
             type="button"
             onClick={() => atajo(horas)}
             disabled={enviando}
-            className="h-9 whitespace-nowrap rounded-[10px] border border-white/[0.08] bg-white/[0.03] text-[12.5px] font-semibold text-foreground transition-colors hover:border-gm-yellow/40 disabled:opacity-50"
+            className="h-9 whitespace-nowrap rounded-[10px] border border-white/[0.08] bg-white/[0.03] text-[13px] font-semibold text-foreground transition-colors hover:border-gm-yellow/40 disabled:opacity-50"
           >
             Hace {horas} h
           </button>
@@ -115,26 +115,26 @@ export function CorregirEntrada({ summary, onCorregido }: { summary: Pick<Resume
         onChange={(e) => { setHora(e.target.value); setError(''); }}
         disabled={enviando}
         aria-describedby="hora-real-ayuda"
-        className="gm-mono mt-2 h-12 w-full rounded-xl border border-white/10 bg-[#16130F] px-3 text-center text-lg text-foreground focus-visible:border-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow/20"
+        className="gm-mono mt-2 h-12 w-full rounded-xl border border-white/10 bg-background px-3 text-center text-lg text-foreground focus-visible:border-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow/20"
       />
       {error ? (
         <p role="alert" className="mt-1.5 text-xs text-gm-orange">{error}</p>
       ) : (
-        <p id="hora-real-ayuda" className="mt-1.5 text-[11.5px] text-muted-foreground/80">Queda registrado quién corrigió la hora.</p>
+        <p id="hora-real-ayuda" className="mt-1.5 text-[12px] text-muted-foreground/80">Queda registrado quién corrigió la hora.</p>
       )}
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => { setAbierto(false); setError(''); setHora(''); }}
           disabled={enviando}
-          className="h-11 whitespace-nowrap rounded-xl border border-white/[0.08] text-[13.5px] font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          className="h-11 whitespace-nowrap rounded-xl border border-white/[0.08] text-[14px] font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={enviando || !hora}
-          className="h-11 whitespace-nowrap rounded-xl bg-gm-yellow text-[13.5px] font-bold text-gm-ink transition-[filter] hover:brightness-105 disabled:opacity-40"
+          className="h-11 whitespace-nowrap rounded-xl bg-gm-yellow text-[14px] font-bold text-gm-ink transition-[filter] hover:brightness-105 disabled:opacity-40"
         >
           {enviando ? 'Recalculando…' : 'Recalcular'}
         </button>

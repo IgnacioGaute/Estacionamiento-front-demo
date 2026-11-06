@@ -88,11 +88,11 @@ export function PlayaSelector() {
   }
   const textos = (
     <div className="min-w-0 text-left leading-tight">
-      <p className="truncate text-[14.5px] font-bold text-foreground sm:text-[15px]">{nombre}</p>
+      <p className="truncate text-[15px] font-bold text-foreground sm:text-[15px]">{nombre}</p>
       {error ? (
-        <p role="alert" className="truncate text-[11.5px] text-destructive">{error}</p>
+        <p role="alert" className="truncate text-[12px] text-destructive">{error}</p>
       ) : varias ? (
-        <p className="hidden truncate text-[11.5px] text-muted-foreground sm:block">{pending ? "Cambiando…" : "Cambiar de playa"}</p>
+        <p className="hidden truncate text-[12px] text-muted-foreground sm:block">{pending ? "Cambiando…" : "Cambiar de playa"}</p>
       ) : null}
     </div>
   );
@@ -115,9 +115,9 @@ export function PlayaSelector() {
       <DropdownMenuContent
         align="start"
         sideOffset={8}
-        className="w-[min(300px,calc(100vw-24px))] rounded-2xl border border-white/[0.07] bg-[#0B0A08]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl"
+        className="w-[min(300px,calc(100vw-24px))] rounded-2xl border border-white/[0.07] bg-gm-hondo/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl"
       >
-        <DropdownMenuLabel className="px-2.5 pb-1.5 pt-1 text-[11.5px] font-medium text-muted-foreground">Cambiar de playa</DropdownMenuLabel>
+        <DropdownMenuLabel className="px-2.5 pb-1.5 pt-1 text-[12px] font-medium text-muted-foreground">Cambiar de playa</DropdownMenuLabel>
         {context.playas.map((p) => {
           const actual = p.id === playaId;
           return (
@@ -125,7 +125,7 @@ export function PlayaSelector() {
               key={p.id}
               onSelect={() => { if (!actual) void cambiar(p.id); }}
               aria-current={actual ? "true" : undefined}
-              className={`min-h-11 cursor-pointer gap-3 rounded-lg px-2.5 text-[14px] focus:bg-white/[0.08] ${actual ? "font-semibold text-foreground" : "text-[#D9D1C3]"}`}
+              className={`min-h-11 cursor-pointer gap-3 rounded-lg px-2.5 text-[14px] focus:bg-white/[0.08] ${actual ? "font-semibold text-foreground" : "text-gm-texto-2"}`}
             >
               <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${actual ? "bg-gm-yellow text-gm-ink" : "bg-white/[0.05] text-muted-foreground"}`}>
                 <MapPin className="size-4" aria-hidden />

@@ -39,8 +39,8 @@ export function PlanesDeLaEmpresa({ plan }: { plan: MiPlan }) {
             valor={codigo}
             onChange={setCodigo}
           />
-          <p className="m-0 mb-[11px] text-sm text-[#8F8676]">
-            Hoy pagás <strong className="font-semibold text-[#F6F0E6]">{cuenta.periodo.nombre.toLowerCase()}</strong>
+          <p className="m-0 mb-[11px] text-sm text-gm-texto-tenue">
+            Hoy pagás <strong className="font-semibold text-foreground">{cuenta.periodo.nombre.toLowerCase()}</strong>
           </p>
         </div>
       )}
@@ -49,7 +49,7 @@ export function PlanesDeLaEmpresa({ plan }: { plan: MiPlan }) {
         const cocheras = !!p.plan?.incluyeCocheras;
         return (
           <div key={p.playaId} className="flex flex-col gap-3">
-            {variasPlayas && <div className="text-[14.5px] font-semibold text-[#C9BFB1]">{p.nombre}</div>}
+            {variasPlayas && <div className="text-[15px] font-semibold text-gm-texto-2">{p.nombre}</div>}
             <GrillaPlanes>
               {grupos.map((g) => {
                 const opcion = cocheras ? g.alquileres : g.base;
@@ -96,7 +96,7 @@ export function PlanesDeLaEmpresa({ plan }: { plan: MiPlan }) {
         );
       })}
 
-      <p className="m-0 text-[13px] leading-relaxed text-[#BDB4A6]">
+      <p className="m-0 text-[13px] leading-relaxed text-gm-texto-2">
         {mismo
           ? `Los precios muestran el equivalente mensual.${
               cuenta.periodo.meses > 1 && cuenta.importePeriodo

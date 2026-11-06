@@ -93,7 +93,7 @@ export function HojaDeRama({ activa, onSelect, children }: HojaProps) {
       onClick={onSelect}
       data-branch-active={activa ? 'true' : undefined}
       className={cn(
-        'relative min-h-[52px] cursor-pointer gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-150 [&>svg]:size-4 lg:min-h-0 lg:gap-2.5 lg:rounded-lg lg:px-2.5 lg:py-1.5 lg:text-[12.5px] lg:font-normal lg:[&>svg]:size-3.5',
+        'relative min-h-[52px] cursor-pointer gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-150 [&>svg]:size-4 lg:min-h-0 lg:gap-2.5 lg:rounded-lg lg:px-2.5 lg:py-1.5 lg:text-[13px] lg:font-normal lg:[&>svg]:size-3.5',
         "before:absolute before:-left-[21px] before:top-0 before:hidden before:h-[17px] before:w-[21px] before:rounded-bl-[9px] before:border-b before:border-l before:border-border before:transition-colors before:duration-300 before:content-[''] motion-reduce:before:transition-none lg:before:block",
         activa
           ? 'bg-gradient-to-r from-gm-yellow/25 via-gm-yellow/10 to-transparent text-gm-yellow ring-1 ring-inset ring-gm-yellow/20 before:border-gm-yellow focus:from-gm-yellow/30 lg:ring-0 lg:focus:bg-gm-yellow/15 lg:data-[highlighted]:bg-gm-yellow/15'

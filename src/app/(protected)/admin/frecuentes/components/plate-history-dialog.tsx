@@ -63,7 +63,7 @@ export function PlateHistoryDialog({ licensePlateNormalized, licensePlateOrigina
         type="button"
         variant="outline"
         size="sm"
-        className="gap-1.5 text-[12.5px]"
+        className="gap-1.5 text-[13px]"
         onClick={() => handleOpenChange(true)}
       >
         <History className="size-3.5" />
@@ -106,21 +106,21 @@ export function PlateHistoryDialog({ licensePlateNormalized, licensePlateOrigina
                       : null;
                   return (
                     <TableRow key={visit.id}>
-                      <TableCell className="whitespace-nowrap text-[12.5px]">
+                      <TableCell className="whitespace-nowrap text-[13px]">
                         {dayjs(visit.entryDay).format('DD/MM/YYYY')} {visit.entryTime?.slice(0, 5)}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-[12.5px]">
+                      <TableCell className="whitespace-nowrap text-[13px]">
                         {visit.departureDay
                           ? `${dayjs(visit.departureDay).format('DD/MM/YYYY')} ${visit.departureTime?.slice(0, 5)}`
                           : '—'}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-[12.5px]">
+                      <TableCell className="whitespace-nowrap text-[13px]">
                         {minutes !== null ? formatElapsed(minutes) : '—'}
                       </TableCell>
-                      {cobroHabilitado && <TableCell className="whitespace-nowrap text-[12.5px] text-muted-foreground">
+                      {cobroHabilitado && <TableCell className="whitespace-nowrap text-[13px] text-muted-foreground">
                         {esGratuita(visit.modalidad) ? 'Gratuita' : visit.priceBracketLabel ?? '—'}
                       </TableCell>}
-                      {cobroHabilitado && <TableCell className="whitespace-nowrap text-right text-[12.5px] font-medium">
+                      {cobroHabilitado && <TableCell className="whitespace-nowrap text-right text-[13px] font-medium">
                         {esGratuita(visit.modalidad) ? '—' : `$${visit.price?.toLocaleString('es-AR') ?? '0'}`}
                       </TableCell>}
                     </TableRow>

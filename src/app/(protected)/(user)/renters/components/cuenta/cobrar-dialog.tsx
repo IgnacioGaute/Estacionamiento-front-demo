@@ -306,7 +306,7 @@ export function CobrarDialog({
                   <button
                     type="button"
                     onClick={() => cambiarSeleccion(pendientes.map((r) => r.id))}
-                    className="text-xs font-semibold text-gm-yellow hover:text-[#FFD84D]"
+                    className="text-xs font-semibold text-gm-yellow hover:text-gm-yellow-deep"
                   >
                     Marcar todo
                   </button>
@@ -325,7 +325,7 @@ export function CobrarDialog({
                           marcado ? 'bg-gm-yellow/[0.05]' : 'hover:bg-gm-surface-2'
                         }`}
                       >
-                        <input type="checkbox" checked={marcado} onChange={() => alternar(r.id)} className="size-[18px] shrink-0 accent-[#F5C219]" />
+                        <input type="checkbox" checked={marcado} onChange={() => alternar(r.id)} className="size-[18px] shrink-0 accent-gm-yellow" />
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm font-semibold">{r.concepto}</span>
                           <span className={`block text-xs ${r.vencido ? 'font-semibold text-gm-aviso' : 'text-muted-foreground'}`}>
@@ -338,7 +338,7 @@ export function CobrarDialog({
                           {distintoDeLoMarcado && (
                             <span
                               className={`block text-[11px] font-semibold ${
-                                !linea ? 'text-muted-foreground' : linea.queda ? 'text-gm-yellow' : 'text-emerald-400'
+                                !linea ? 'text-muted-foreground' : linea.queda ? 'text-gm-yellow' : 'text-gm-ok'
                               }`}
                             >
                               {!linea ? 'No se cubre' : linea.queda ? `Paga ${plata(linea.aplicado)}` : 'Queda saldado'}
@@ -462,9 +462,9 @@ export function CobrarDialog({
 
         {resultado && (
           <div className="space-y-3">
-            <div className="flex items-center gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] px-4 py-3">
-              <span className="flex size-10 items-center justify-center rounded-full bg-emerald-400/15">
-                <Check className="size-5 text-emerald-400" />
+            <div className="flex items-center gap-3 rounded-2xl border border-gm-ok/30 bg-gm-ok/[0.06] px-4 py-3">
+              <span className="flex size-10 items-center justify-center rounded-full bg-gm-ok/15">
+                <Check className="size-5 text-gm-ok" />
               </span>
               <div>
                 <div className="font-display text-xl font-semibold">Recibiste {plata(resultado.total)}</div>
@@ -485,7 +485,7 @@ export function CobrarDialog({
                     <span>{i.concepto}</span>
                     <span className="tabular-nums">
                       {plata(i.aplicado)}{' '}
-                      <span className={i.saldoRecibo ? 'text-muted-foreground' : 'text-emerald-400'}>
+                      <span className={i.saldoRecibo ? 'text-muted-foreground' : 'text-gm-ok'}>
                         {i.saldoRecibo ? `· quedan ${plata(i.saldoRecibo)}` : '· saldado'}
                       </span>
                     </span>

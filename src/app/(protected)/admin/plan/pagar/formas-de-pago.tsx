@@ -29,21 +29,23 @@ import { fechaLarga, pesos } from '@/components/plataforma/cuenta';
 import type { QrDelPlan, ResumenCuenta } from '@/types/suscripcion.type';
 import { QRCodeSVG } from 'qrcode.react';
 import { FormularioTarjeta } from './formulario-tarjeta';
+import { tinte } from '@/lib/utils';
 
-const VERDE = '#4ADE9B';
-const AMARILLO = '#F5C219';
+// Los colores de estado del sistema. Para teñir, tinte(): pegarle «24» al final solo sirve con hex.
+const VERDE = 'hsl(var(--gm-ok))';
+const AMARILLO = 'hsl(var(--gm-yellow))';
 
 const botonPrincipal =
-  'inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-gm-yellow px-5 text-[15.5px] font-bold text-gm-ink transition-colors hover:bg-[#FFD23A] disabled:cursor-wait disabled:opacity-70';
+  'inline-flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-gm-yellow px-5 text-[16px] font-bold text-gm-ink transition-colors hover:bg-gm-yellow-deep disabled:cursor-wait disabled:opacity-70';
 const botonSecundario =
-  'inline-flex h-[46px] items-center justify-center gap-2 rounded-[13px] border border-[#3A342B] px-4 text-[14.5px] font-semibold text-[#F6F0E6] transition-colors hover:bg-white/[0.04] disabled:cursor-wait disabled:opacity-60';
+  'inline-flex h-[46px] items-center justify-center gap-2 rounded-[13px] border border-gm-line-strong px-4 text-[15px] font-semibold text-foreground transition-colors hover:bg-white/[0.04] disabled:cursor-wait disabled:opacity-60';
 const enlaceDiscreto =
-  'w-fit text-[13.5px] font-semibold text-[#A79E8F] underline-offset-4 hover:text-[#F6F0E6] hover:underline';
+  'w-fit text-[14px] font-semibold text-muted-foreground underline-offset-4 hover:text-foreground hover:underline';
 
 function MensajeError({ texto }: { texto: string | null }) {
   if (!texto) return null;
   return (
-    <p role="alert" className="m-0 text-[13.5px] leading-relaxed text-[#FF8A8D]">
+    <p role="alert" className="m-0 text-[14px] leading-relaxed text-gm-peligro">
       {texto}
     </p>
   );
@@ -86,24 +88,24 @@ export function FormasDePago({
 
   return (
     <section className="flex min-w-0 flex-[3_1_480px] flex-col gap-3.5">
-      <h2 className="m-0 mb-1 text-xl font-semibold text-[#F6F0E6]">
+      <h2 className="m-0 mb-1 text-xl font-semibold text-foreground">
         {debitoActivo && !debe ? 'Tu forma de pago' : 'Elegí cómo pagar'}
       </h2>
 
       {debitoActivo ? (
         <DebitoActivo cuenta={cuenta} debe={debe} />
       ) : debe || sinPrimerPago ? (
-        <div className="flex items-start gap-4 rounded-[20px] border border-dashed border-[#3A342B] bg-[#15120E] px-[22px] py-5">
-          <span aria-hidden className="mt-px size-[22px] shrink-0 rounded-full border-2 border-[#3A342B]" />
+        <div className="flex items-start gap-4 rounded-[20px] border border-dashed border-gm-line-strong bg-background px-[22px] py-5">
+          <span aria-hidden className="mt-px size-[22px] shrink-0 rounded-full border-2 border-gm-line-strong" />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-[16.5px] font-semibold text-[#A79E8F]">Débito automático</span>
-            <span className="text-sm leading-normal text-[#8F8676]">
+            <span className="text-[17px] font-semibold text-muted-foreground">Débito automático</span>
+            <span className="text-sm leading-normal text-gm-texto-tenue">
               {debe
                 ? 'Lo activás apenas pagues lo pendiente, y arranca con el mes que sigue.'
                 : 'Lo activás después de tu primer pago, y desde ahí se cobra solo el día 1 de cada mes.'}
             </span>
           </span>
-          <Lock aria-hidden className="mt-0.5 size-[18px] shrink-0 text-[#6E6457]" strokeWidth={1.9} />
+          <Lock aria-hidden className="mt-0.5 size-[18px] shrink-0 text-gm-texto-tenue" strokeWidth={1.9} />
         </div>
       ) : (
         <Opcion
@@ -166,7 +168,7 @@ function Opcion({
   return (
     <div
       className="overflow-hidden rounded-[20px] border transition-colors"
-      style={{ borderColor: activa ? AMARILLO : '#2E2A23', background: activa ? '#1E1A14' : '#1B1915' }}
+      style={{ borderColor: activa ? AMARILLO : 'hsl(var(--gm-line))', background: activa ? 'hsl(var(--muted))' : 'hsl(var(--gm-surface))' }}
     >
       <button
         type="button"
@@ -177,22 +179,22 @@ function Opcion({
         <span
           aria-hidden
           className="mt-px flex size-[22px] shrink-0 items-center justify-center rounded-full border-2"
-          style={{ borderColor: activa ? AMARILLO : '#53493C' }}
+          style={{ borderColor: activa ? AMARILLO : 'hsl(var(--gm-line-strong))' }}
         >
           {activa && <span className="size-2.5 rounded-full bg-gm-yellow" />}
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex flex-wrap items-center gap-2.5">
-            <span className="text-[16.5px] font-semibold text-[#F6F0E6]">{titulo}</span>
+            <span className="text-[17px] font-semibold text-foreground">{titulo}</span>
             {etiqueta && (
               <span className="rounded-full bg-[#F5C21924] px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-gm-yellow">
                 {etiqueta}
               </span>
             )}
           </span>
-          <span className="text-sm leading-normal text-[#A79E8F]">{descripcion}</span>
+          <span className="text-sm leading-normal text-muted-foreground">{descripcion}</span>
         </span>
-        <Icono aria-hidden className="mt-0.5 size-5 shrink-0 text-[#8F8676]" strokeWidth={1.8} />
+        <Icono aria-hidden className="mt-0.5 size-5 shrink-0 text-gm-texto-tenue" strokeWidth={1.8} />
       </button>
       {activa && children}
     </div>
@@ -218,7 +220,7 @@ function PagarUnaVez({ importe, debe }: { importe: number; debe: boolean }) {
 
   return (
     <div className="flex flex-col gap-4 px-[22px] pb-[22px] sm:pl-[60px]">
-      <p className="m-0 text-[14.5px] leading-relaxed text-[#BDB4A6]">
+      <p className="m-0 text-[15px] leading-relaxed text-gm-texto-2">
         Te llevamos a MercadoPago para pagar {pesos(importe)}. Apenas se acredita, tu cuenta queda al día sola: no hace
         falta que nos avises.
       </p>
@@ -296,7 +298,7 @@ function PagarConQr({ importe }: { importe: number }) {
   if (!qr)
     return (
       <div className="flex flex-col gap-4 px-[22px] pb-[22px] sm:pl-[60px]">
-        <p className="m-0 text-[14.5px] leading-relaxed text-[#BDB4A6]">
+        <p className="m-0 text-[15px] leading-relaxed text-gm-texto-2">
           Generamos un QR por {pesos(importe)}. Lo escaneás con la app de tu banco, MercadoPago o cualquier billetera, y
           apenas se acredita tu cuenta queda al día sola.
         </p>
@@ -319,11 +321,11 @@ function PagarConQr({ importe }: { importe: number }) {
 
   if (estado === 'pagado')
     return (
-      <div role="status" className="mx-[22px] mb-[22px] flex gap-3.5 rounded-[18px] border p-5" style={{ borderColor: `${VERDE}55`, background: `${VERDE}12` }}>
+      <div role="status" className="mx-[22px] mb-[22px] flex gap-3.5 rounded-[18px] border p-5" style={{ borderColor: tinte(VERDE, 33), background: tinte(VERDE, 7) }}>
         <CheckCircle2 aria-hidden className="mt-0.5 size-5 shrink-0" style={{ color: VERDE }} />
         <div className="min-w-0">
-          <p className="m-0 text-[15.5px] font-semibold text-[#F6F0E6]">¡Listo! Recibimos tu pago</p>
-          <p className="m-0 mt-1 text-[14px] leading-relaxed text-[#BDB4A6]">Tu cuenta ya está al día. Gracias por confiarnos tu playa.</p>
+          <p className="m-0 text-[16px] font-semibold text-foreground">¡Listo! Recibimos tu pago</p>
+          <p className="m-0 mt-1 text-[14px] leading-relaxed text-gm-texto-2">Tu cuenta ya está al día. Gracias por confiarnos tu playa.</p>
         </div>
       </div>
     );
@@ -341,7 +343,7 @@ function PagarConQr({ importe }: { importe: number }) {
       </div>
       {vencido ? (
         <div className="flex w-full flex-col gap-3">
-          <p role="alert" className="m-0 text-center text-[14px] leading-relaxed text-[#E3DBCE]">
+          <p role="alert" className="m-0 text-center text-[14px] leading-relaxed text-foreground">
             El QR venció sin pagarse. Generá uno nuevo para pagar.
           </p>
           <button type="button" onClick={generar} disabled={generando} className={botonSecundario}>
@@ -356,10 +358,10 @@ function PagarConQr({ importe }: { importe: number }) {
             <span className="relative size-3 rounded-full bg-gm-yellow" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-semibold text-[#F6F0E6]">Esperando el pago</span>
-            <span className="block text-[12.5px] text-[#A79E8F]">Se acredita solo. El QR vale por</span>
+            <span className="block text-[15px] font-semibold text-foreground">Esperando el pago</span>
+            <span className="block text-[13px] text-muted-foreground">Se acredita solo. El QR vale por</span>
           </span>
-          <span className="font-mono text-[15px] font-semibold text-[#A79E8F]">{reloj}</span>
+          <span className="font-mono text-[15px] font-semibold text-muted-foreground">{reloj}</span>
         </div>
       )}
       <MensajeError texto={error} />
@@ -423,8 +425,8 @@ function ActivarDebito({
   if (clavePublica)
     return (
       <div className="flex flex-col gap-4 px-[22px] pb-[22px]">
-        {aviso && <p className="m-0 text-sm leading-relaxed text-[#E3DBCE]">{aviso}</p>}
-        <div className="overflow-hidden rounded-2xl border border-[#2E2A23] bg-[#14110D]">
+        {aviso && <p className="m-0 text-sm leading-relaxed text-foreground">{aviso}</p>}
+        <div className="overflow-hidden rounded-2xl border border-gm-line bg-background">
           <FormularioTarjeta
             clavePublica={clavePublica}
             importe={cuenta.importePeriodo}
@@ -433,7 +435,7 @@ function ActivarDebito({
           />
         </div>
         <MensajeError texto={error} />
-        <p className="m-0 flex gap-2.5 text-[13px] leading-relaxed text-[#8F8676]">
+        <p className="m-0 flex gap-2.5 text-[13px] leading-relaxed text-gm-texto-tenue">
           <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={1.9} />
           <span>
             Los datos de tu tarjeta los recibe MercadoPago directamente: nosotros no los vemos. No hace falta tener cuenta
@@ -447,12 +449,12 @@ function ActivarDebito({
   if (debito?.estado === 'pending' && debito.url && !cambiarEmail)
     return (
       <div className="flex flex-col gap-3.5 px-[22px] pb-[22px] sm:pl-[60px]">
-        <p className="m-0 text-[14.5px] leading-relaxed text-[#BDB4A6]">
+        <p className="m-0 text-[15px] leading-relaxed text-gm-texto-2">
           Ya casi está. Falta un paso: entrá a MercadoPago y confirmalo con tu tarjeta.
           {debito.email && (
             <>
               {' '}
-              Lo pediste con <span className="text-[#E3DBCE]">{debito.email}</span>.
+              Lo pediste con <span className="text-foreground">{debito.email}</span>.
             </>
           )}
         </p>
@@ -468,16 +470,16 @@ function ActivarDebito({
 
   return (
     <form onSubmit={activarEnMercadoPago} className="flex flex-col gap-3.5 px-[22px] pb-[22px] sm:pl-[60px]">
-      {aviso && <p className="m-0 text-sm leading-relaxed text-[#E3DBCE]">{aviso}</p>}
+      {aviso && <p className="m-0 text-sm leading-relaxed text-foreground">{aviso}</p>}
       <label className="flex flex-col gap-2">
-        <span className="text-[13.5px] font-semibold text-[#E3DBCE]">Email de tu cuenta de MercadoPago</span>
+        <span className="text-[14px] font-semibold text-foreground">Email de tu cuenta de MercadoPago</span>
         <input
           type="email"
           required
           value={mail}
           onChange={(e) => setMail(e.target.value)}
           autoComplete="email"
-          className="h-[46px] w-full rounded-[12px] border border-[#3A342B] bg-[#14110D] px-3.5 text-[15px] text-[#F6F0E6] placeholder:text-[#6E6457] focus:border-gm-yellow focus:outline-none"
+          className="h-[46px] w-full rounded-[12px] border border-gm-line-strong bg-background px-3.5 text-[15px] text-foreground placeholder:text-gm-texto-tenue focus:border-gm-yellow focus:outline-none"
         />
       </label>
       <button type="submit" disabled={ocupado} className={botonPrincipal}>
@@ -491,7 +493,7 @@ function ActivarDebito({
         )}
       </button>
       <MensajeError texto={error} />
-      <p className="m-0 text-[13px] leading-relaxed text-[#8F8676]">
+      <p className="m-0 text-[13px] leading-relaxed text-gm-texto-tenue">
         Te llevamos a MercadoPago para que lo confirmes con tu tarjeta.
         {primerDebito && ` El primer débito es el ${primerDebito}.`}
       </p>
@@ -521,52 +523,52 @@ function DebitoActivo({ cuenta, debe }: { cuenta: ResumenCuenta; debe: boolean }
   };
 
   return (
-    <div className="flex flex-col gap-4 rounded-[20px] border border-[#2E2A23] bg-[#1B1915] p-[22px]">
+    <div className="flex flex-col gap-4 rounded-[20px] border border-gm-line bg-gm-surface p-[22px]">
       <div className="flex items-center gap-3">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#4ADE9B1f] text-[#4ADE9B]">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-[#4ADE9B1f] text-gm-ok">
           <RefreshCw aria-hidden className="size-5" strokeWidth={1.8} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[16.5px] font-semibold text-[#F6F0E6]">Débito automático</div>
-          <div className="text-[13px] text-[#8F8676]">Con tu tarjeta, por MercadoPago</div>
+          <div className="text-[17px] font-semibold text-foreground">Débito automático</div>
+          <div className="text-[13px] text-gm-texto-tenue">Con tu tarjeta, por MercadoPago</div>
         </div>
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-          style={{ background: `${VERDE}24`, color: VERDE }}
+          style={{ background: tinte(VERDE, 14), color: VERDE }}
         >
           <span aria-hidden className="size-1.5 rounded-full" style={{ background: VERDE }} />
           Activo
         </span>
       </div>
-      <p className="m-0 text-[15px] leading-relaxed text-[#BDB4A6]">
+      <p className="m-0 text-[15px] leading-relaxed text-gm-texto-2">
         {cuenta.periodo.meses === 1 ? 'Cada mes' : cuenta.periodo.meses === 12 ? 'Cada año' : `Cada ${cuenta.periodo.meses} meses`}, el día
         que vence, se cobra solo de tu tarjeta. No tenés que hacer nada.
       </p>
-      <dl className="m-0 grid gap-2.5 rounded-xl border border-[#2E2A23] bg-[#14110D] p-4 text-sm">
+      <dl className="m-0 grid gap-2.5 rounded-xl border border-gm-line bg-background p-4 text-sm">
         {cuenta.proximoVencimiento && (
           <div className="flex justify-between gap-3">
-            <dt className="text-[#A79E8F]">Próximo débito</dt>
-            <dd className="m-0 text-right font-semibold text-[#F6F0E6]">
+            <dt className="text-muted-foreground">Próximo débito</dt>
+            <dd className="m-0 text-right font-semibold text-foreground">
               {fechaLarga(cuenta.proximoVencimiento)} · <span className="font-mono">{pesos(cuenta.importePeriodo)}</span>
             </dd>
           </div>
         )}
         {debito?.email && (
           <div className="flex justify-between gap-3">
-            <dt className="shrink-0 text-[#A79E8F]">Avisos de cada cobro a</dt>
-            <dd className="m-0 min-w-0 truncate text-right text-[#E3DBCE]">{debito.email}</dd>
+            <dt className="shrink-0 text-muted-foreground">Avisos de cada cobro a</dt>
+            <dd className="m-0 min-w-0 truncate text-right text-foreground">{debito.email}</dd>
           </div>
         )}
       </dl>
       {debe && (
-        <p className="m-0 text-[13.5px] leading-relaxed text-[#BDB4A6]">
+        <p className="m-0 text-[14px] leading-relaxed text-gm-texto-2">
           MercadoPago todavía no pudo cobrar este mes y lo va a volver a intentar estos días. Si preferís, podés pagarlo
           ahora y listo.
         </p>
       )}
       {confirmarBaja ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-[#3A342B] p-4">
-          <p className="m-0 text-sm leading-relaxed text-[#E3DBCE]">
+        <div className="flex flex-col gap-3 rounded-xl border border-gm-line-strong p-4">
+          <p className="m-0 text-sm leading-relaxed text-foreground">
             ¿Lo damos de baja? Desde el próximo mes vas a tener que pagar desde acá.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -578,7 +580,7 @@ function DebitoActivo({ cuenta, debe }: { cuenta: ResumenCuenta; debe: boolean }
               type="button"
               onClick={() => setConfirmarBaja(false)}
               disabled={ocupado}
-              className="h-[46px] px-3 text-[14.5px] font-semibold text-[#A79E8F] hover:text-[#F6F0E6]"
+              className="h-[46px] px-3 text-[15px] font-semibold text-muted-foreground hover:text-foreground"
             >
               Mejor no
             </button>
@@ -679,7 +681,7 @@ export function VueltaDeMercadoPago({
         'Si elegiste pagar en efectivo, se acredita cuando lo pagues en el local. Apenas pase, tu cuenta se actualiza sola.',
     },
     'sin-pagar': {
-      color: '#A79E8F',
+      color: 'hsl(var(--muted-foreground))',
       titulo: 'El pago no se completó',
       texto: 'No se te cobró nada. Podés intentarlo de nuevo cuando quieras.',
     },
@@ -690,7 +692,7 @@ export function VueltaDeMercadoPago({
     <div
       role="status"
       className="flex gap-3.5 rounded-[18px] border p-5"
-      style={{ borderColor: `${m.color}55`, background: `${m.color}12` }}
+      style={{ borderColor: tinte(m.color, 33), background: tinte(m.color, 7) }}
     >
       <span className="mt-0.5 shrink-0" style={{ color: m.color }}>
         {vuelta === 'verificando' ? (
@@ -704,8 +706,8 @@ export function VueltaDeMercadoPago({
         )}
       </span>
       <div className="min-w-0">
-        <p className="m-0 text-[15.5px] font-semibold text-[#F6F0E6]">{m.titulo}</p>
-        <p className="m-0 mt-1 text-[14px] leading-relaxed text-[#BDB4A6]">{m.texto}</p>
+        <p className="m-0 text-[16px] font-semibold text-foreground">{m.titulo}</p>
+        <p className="m-0 mt-1 text-[14px] leading-relaxed text-gm-texto-2">{m.texto}</p>
       </div>
     </div>
   );

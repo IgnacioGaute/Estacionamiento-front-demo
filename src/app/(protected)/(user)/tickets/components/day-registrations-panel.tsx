@@ -99,7 +99,7 @@ export function DayRegistrationsPanel({
                 >
                   <span className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
                     <span className="flex items-center gap-1.5 min-w-0">
-                      <span className="gm-mono text-[11.5px] font-bold text-foreground truncate">
+                      <span className="gm-mono text-[12px] font-bold text-foreground truncate">
                         {r.vehiclePlateCustomer || "Sin patente"}
                       </span>
                       {isLate && (

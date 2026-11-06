@@ -142,7 +142,7 @@ export function OpenScannerDialog({
               <div className="text-sm font-semibold text-foreground truncate">
                 {customer.firstName} {customer.lastName}
               </div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11.5px] text-muted-foreground">
+              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[12px] text-muted-foreground">
                 <span className="gm-mono">{customer.phone}</span>
                 <span className="opacity-50">·</span>
                 <span>{customer.numberOfVehicles} {customer.numberOfVehicles === 1 ? 'cochera' : 'cocheras'}</span>
@@ -186,18 +186,18 @@ export function OpenScannerDialog({
                   <div className="flex gap-1.5">
                     <button type="button" onClick={() => field.onChange(true)}
                       className={cn(
-                        'flex-1 rounded-md border px-3 py-2 text-[12.5px] font-semibold transition-colors',
+                        'flex-1 rounded-md border px-3 py-2 text-[13px] font-semibold transition-colors',
                         field.value === true
-                          ? 'border-gm-orange bg-gm-orange/15 text-[#FF8458]'
+                          ? 'border-gm-orange bg-gm-orange/15 text-gm-aviso'
                           : 'border-border bg-gm-surface-2 text-muted-foreground hover:bg-gm-surface-3 hover:text-foreground'
                       )}>
                       Sí, pago a cuenta
                     </button>
                     <button type="button" onClick={() => field.onChange(false)}
                       className={cn(
-                        'flex-1 rounded-md border px-3 py-2 text-[12.5px] font-semibold transition-colors',
+                        'flex-1 rounded-md border px-3 py-2 text-[13px] font-semibold transition-colors',
                         field.value === false
-                          ? 'border-[hsl(120_35%_55%)] bg-[hsl(120_35%_55%/0.15)] text-[#9AD588]'
+                          ? 'border-gm-ok bg-gm-ok/15 text-gm-ok'
                           : 'border-border bg-gm-surface-2 text-muted-foreground hover:bg-gm-surface-3 hover:text-foreground'
                       )}>
                       Paga el total
@@ -266,7 +266,7 @@ export function OpenScannerDialog({
 
                     {!isCredit && fields.length > 1 && (
                       <Button type="button" variant="ghost" size="icon"
-                        className="size-9 text-muted-foreground hover:text-[#F08775]"
+                        className="size-9 text-muted-foreground hover:text-gm-peligro"
                         onClick={() => remove(index)}>
                         <Trash2 className="size-4" />
                       </Button>

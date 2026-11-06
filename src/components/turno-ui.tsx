@@ -17,20 +17,20 @@ export function Cifra({ value, className }: { value: number; className?: string 
 
 export function Iniciales({ nombre, className }: { nombre: string; className?: string }) {
   const letras = nombre.trim().split(/\s+/).slice(0, 2).map(parte => parte[0]?.toUpperCase() ?? '').join('') || '·';
-  return <span aria-hidden className={cn('grid size-9 shrink-0 place-items-center rounded-full border border-gm-line-strong bg-gm-surface-3 text-[12px] font-bold text-[#D9D1C3]', className)}>{letras}</span>;
+  return <span aria-hidden className={cn('grid size-9 shrink-0 place-items-center rounded-full border border-gm-line-strong bg-gm-surface-3 text-[12px] font-bold text-gm-texto-2', className)}>{letras}</span>;
 }
 
 type Tono = 'ok' | 'aviso' | 'error' | 'neutro' | 'marca';
 const TONOS: Record<Tono, { caja: string; punto: string }> = {
-  ok: { caja: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-400', punto: 'bg-emerald-400' },
+  ok: { caja: 'border-gm-ok/25 bg-gm-ok/10 text-gm-ok', punto: 'bg-gm-ok' },
   error: { caja: 'border-red-400/30 bg-red-400/10 text-red-400', punto: 'bg-red-400' },
-  aviso: { caja: 'border-amber-400/30 bg-amber-400/10 text-amber-400', punto: 'bg-amber-400' },
+  aviso: { caja: 'border-gm-atencion/30 bg-gm-atencion/10 text-gm-atencion', punto: 'bg-gm-atencion' },
   neutro: { caja: 'border-gm-line-strong bg-gm-surface-3 text-muted-foreground', punto: 'bg-muted-foreground/70' },
   marca: { caja: 'border-gm-yellow/30 bg-gm-yellow/10 text-gm-yellow', punto: 'bg-gm-yellow' },
 };
 
 export function Pill({ tono = 'neutro', children, className }: { tono?: Tono; children: ReactNode; className?: string }) {
-  return <span className={cn('inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-bold', TONOS[tono].caja, className)}>
+  return <span className={cn('inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-bold', TONOS[tono].caja, className)}>
     <span aria-hidden className={cn('size-1.5 rounded-full', TONOS[tono].punto)} />{children}
   </span>;
 }

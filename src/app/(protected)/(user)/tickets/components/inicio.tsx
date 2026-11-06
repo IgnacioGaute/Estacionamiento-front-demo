@@ -11,7 +11,7 @@ import { formatImporte } from '@/components/pricing-breakdown';
 import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { PlateChip } from '@/components/plate-chip';
 import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
-import { cn } from '@/lib/utils';
+import { cn, tinte } from '@/lib/utils';
 import { Segmento } from '@/components/ui/segmento';
 import { useTenant } from '@/components/tenant-provider';
 import { TicketRegistration } from '@/types/ticket-registration.type';
@@ -80,13 +80,13 @@ export function InicioHero({
         <div className="mt-2 flex flex-wrap gap-2">
           {turno}
           {excedidos > 0 && (
-            <button type="button" onClick={onExcedidos} className="inline-flex h-[34px] items-center gap-1 rounded-full bg-gm-ink pl-3 pr-2 text-[12.5px] font-bold text-gm-aviso transition-transform active:scale-95">
+            <button type="button" onClick={onExcedidos} className="inline-flex h-[34px] items-center gap-1 rounded-full bg-gm-ink pl-3 pr-2 text-[13px] font-bold text-gm-aviso transition-transform active:scale-95">
               {excedidos === 1 ? '1 superó el tiempo avisado' : `${excedidos} superaron el tiempo avisado`}
               <ChevronRight className="size-4" aria-hidden />
             </button>
           )}
           {vencidas > 0 && (
-            <button type="button" onClick={onVencidas} className="inline-flex h-[34px] items-center gap-1 rounded-full bg-gm-ink pl-3 pr-2 text-[12.5px] font-bold text-gm-aviso transition-transform active:scale-95">
+            <button type="button" onClick={onVencidas} className="inline-flex h-[34px] items-center gap-1 rounded-full bg-gm-ink pl-3 pr-2 text-[13px] font-bold text-gm-aviso transition-transform active:scale-95">
               {vencidas === 1 ? '1 estadía larga vencida' : `${vencidas} estadías largas vencidas`}
               <ChevronRight className="size-4" aria-hidden />
             </button>
@@ -144,16 +144,16 @@ function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration
             onClick={() => onZona(zona.id)}
             aria-label={`${zona.cantidad} ${zona.label.toLowerCase()}${zona.pasados ? `, ${zona.pasados} superaron el tiempo avisado` : ''}. Ver la lista`}
             className="flex min-h-[104px] min-w-0 flex-col rounded-[16px] border bg-gm-surface-2 p-2.5 text-left transition-[background-color,transform] hover:bg-gm-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.97]"
-            style={{ borderColor: zona.cantidad ? `${zona.color}59` : 'hsl(var(--gm-line))' }}
+            style={{ borderColor: zona.cantidad ? tinte(zona.color, 35) : 'hsl(var(--gm-line))' }}
           >
             <span className="flex w-full items-start justify-between gap-1">
               {/* El 0 sigue apagado, pero legible: #5C554B daba 2,2:1 y este 3,9:1. */}
-              <span className="font-display text-[34px] font-bold leading-none tabular-nums" style={{ color: zona.cantidad ? '#F2EDE3' : 'hsl(var(--gm-texto-tenue))' }}>
+              <span className="font-display text-[34px] font-bold leading-none tabular-nums" style={{ color: zona.cantidad ? 'hsl(var(--foreground))' : 'hsl(var(--gm-texto-tenue))' }}>
                 {zona.cantidad}
               </span>
               <span aria-hidden className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: zona.color }} />
             </span>
-            <span className="mt-1 text-[11.5px] font-semibold leading-tight text-[#D9D1C3]">{zona.label}</span>
+            <span className="mt-1 text-[12px] font-semibold leading-tight text-gm-texto-2">{zona.label}</span>
             <span aria-hidden className="mt-auto flex flex-wrap items-center gap-[3px] pt-2">
               {zona.cantidad === 0
                 ? Array.from({ length: 3 }, (_, i) => <span key={i} className="h-[13px] w-[9px] rounded-[3px] border border-dashed border-gm-line-strong" />)
@@ -216,13 +216,13 @@ function FilaEstadia({ r, minutos, tono, onSigue, onSeFueAntes, onCobrar }: {
       <span className="flex shrink-0 items-center gap-2">
         {onSigue && (
           <button type="button" onClick={onSigue} aria-label={`${patente} sigue en la playa`}
-            className={cn(BOTON_FILA, 'border border-gm-line-strong text-[#D9D1C3] hover:border-violet-300/60 focus-visible:ring-violet-300')}>
+            className={cn(BOTON_FILA, 'border border-gm-line-strong text-gm-texto-2 hover:border-violet-300/60 focus-visible:ring-violet-300')}>
             Sigue
           </button>
         )}
         {onSeFueAntes && (
           <button type="button" onClick={onSeFueAntes} aria-label={`${patente} se fue antes`}
-            className={cn(BOTON_FILA, 'border border-gm-line-strong text-[#D9D1C3] hover:border-gm-yellow/40 focus-visible:ring-gm-yellow')}>
+            className={cn(BOTON_FILA, 'border border-gm-line-strong text-gm-texto-2 hover:border-gm-yellow/40 focus-visible:ring-gm-yellow')}>
             Se fue antes
           </button>
         )}
@@ -277,7 +277,7 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar, onSeFueAntes }
         <button type="button" aria-expanded={abierto} onClick={alternar}
           className="flex min-h-11 w-full items-center gap-2.5 px-3.5 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-300">
           <span aria-hidden className="size-2 shrink-0 rounded-full bg-blue-400" />
-          <span className="min-w-0 flex-1 truncate text-[13px] text-[#D9D1C3]">
+          <span className="min-w-0 flex-1 truncate text-[13px] text-gm-texto-2">
             {deDosHoras.length === 1
               ? <><strong className="gm-mono font-semibold text-blue-100">{patenteDe(deDosHoras[0].r)}</strong> pasó las 2 h</>
               : <><strong className="font-semibold text-blue-100">{deDosHoras.length} autos</strong> pasaron las 2 h</>}
@@ -301,7 +301,7 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar, onSeFueAntes }
             {varias ? `${pendientes.length} autos sin confirmar` : <><span className="gm-mono">{patenteDe(primera.r)}</span> sin confirmar</>}
           </span>
           {/* La pregunta pasa a una segunda línea antes que cortarse en la columna angosta. */}
-          <span className={cn('block text-[11.5px] leading-snug', sinRespuesta ? 'text-violet-100' : 'text-muted-foreground')}>
+          <span className={cn('block text-[12px] leading-snug', sinRespuesta ? 'text-violet-100' : 'text-muted-foreground')}>
             {sinRespuesta
               ? (cobroHabilitado
                 ? (varias ? '¿Siguen en la playa? Si se fueron, cobralos.' : '¿Sigue en la playa? Si se fue, cobralo.')
@@ -309,7 +309,7 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar, onSeFueAntes }
               : `${varias ? 'El más largo lleva' : 'Lleva'} ${formatEstadia(primera.minutos)}`}
           </span>
         </span>
-        <span className="shrink-0 text-[12.5px] font-semibold text-violet-200">Revisar</span>
+        <span className="shrink-0 text-[13px] font-semibold text-violet-200">Revisar</span>
         <ChevronDown aria-hidden className={cn('size-4 shrink-0 text-violet-200 transition-transform', abierto && 'rotate-180')} />
       </button>
       {abierto && (
@@ -322,7 +322,7 @@ export function AvisoEstadiasLargas({ registros, ahora, onCobrar, onSeFueAntes }
           </ul>
           {varias && (
             <button type="button" onClick={() => confirmar(pendientes.map(({ r }) => r.id))}
-              className="mt-1 min-h-11 w-full rounded-xl border border-dashed border-gm-line-strong text-[12.5px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
+              className="mt-1 min-h-11 w-full rounded-xl border border-dashed border-gm-line-strong text-[13px] font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300">
               Siguen todos
             </button>
           )}
@@ -345,8 +345,8 @@ export function AvisoAnticipo({ r, ahora }: { r: TicketRegistration; ahora: numb
   if (!anticipo) return null;
   return (
     <span className={cn(
-      'flex w-full min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 text-[11.5px] font-semibold',
-      anticipo.vencido ? 'bg-gm-aviso/15 text-gm-aviso' : 'bg-emerald-400/12 text-emerald-300',
+      'flex w-full min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 text-[12px] font-semibold',
+      anticipo.vencido ? 'bg-gm-aviso/15 text-gm-aviso' : 'bg-gm-ok/12 text-gm-ok',
     )}>
       <Wallet className="size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0 truncate">
@@ -363,7 +363,7 @@ export function AvisoAnticipo({ r, ahora }: { r: TicketRegistration; ahora: numb
 export function AvisoDescuento({ r }: { r: TicketRegistration }) {
   if (!r.descuento || r.departureTime) return null;
   return (
-    <span className="flex w-full min-w-0 items-center gap-1.5 rounded-lg bg-gm-yellow/12 px-2 py-1 text-[11.5px] font-semibold text-gm-yellow">
+    <span className="flex w-full min-w-0 items-center gap-1.5 rounded-lg bg-gm-yellow/12 px-2 py-1 text-[12px] font-semibold text-gm-yellow">
       <BadgePercent className="size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0 truncate"><strong className="font-bold">Descuento {formatImporte(r.descuento)}</strong></span>
     </span>
@@ -389,11 +389,11 @@ export function VehiculoFila({ r, ahora, onSelect, resaltar }: {
     <button
       type="button"
       onClick={() => onSelect(r)}
-      className="relative flex min-h-[68px] w-full items-center gap-3.5 overflow-hidden rounded-[20px] border border-[#2A2620] bg-card py-2.5 pl-3 pr-3.5 text-left transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.99]"
+      className="relative flex min-h-[68px] w-full items-center gap-3.5 overflow-hidden rounded-[20px] border border-gm-line bg-card py-2.5 pl-3 pr-3.5 text-left transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.99]"
     >
       <span className="flex max-w-[120px] shrink-0 flex-col items-start gap-1.5">
         {ficha ? (
-          <span className="gm-mono inline-flex h-[33px] min-w-[96px] shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 px-2 text-[13.5px] font-bold">Ficha {ficha}</span>
+          <span className="gm-mono inline-flex h-[33px] min-w-[96px] shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-gm-line-strong bg-gm-surface-3 px-2 text-[14px] font-bold">Ficha {ficha}</span>
         ) : r.noPlate ? (
           <span className="inline-flex h-[33px] min-w-[96px] shrink-0 items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sin patente</span>
         ) : (
@@ -407,10 +407,10 @@ export function VehiculoFila({ r, ahora, onSelect, resaltar }: {
           {formatEstadia(minutos)}
           {pasado && <span className="sr-only">, superó el tiempo avisado</span>}
         </span>
-        <span className="block truncate text-[12.5px] text-muted-foreground">{detalle}</span>
+        <span className="block truncate text-[13px] text-muted-foreground">{detalle}</span>
         <span className="mt-1 flex flex-col gap-1 empty:hidden"><AvisoAnticipo r={r} ahora={ahora} /><AvisoDescuento r={r} /></span>
       </span>
-      <ChevronRight className="size-[18px] shrink-0 text-[#6F665A]" aria-hidden />
+      <ChevronRight className="size-[18px] shrink-0 text-gm-texto-tenue" aria-hidden />
       <LineaTramo minutos={minutos} pasado={pasado} />
     </button>
   );
@@ -432,7 +432,7 @@ export function EncabezadoVista({ titulo, cantidad, onVolver, acciones }: {
         <ChevronLeft className="size-[22px]" aria-hidden />
       </button>
       <div className="min-w-0 flex-1">
-        <p className="text-[12.5px] text-muted-foreground">Entradas y salidas</p>
+        <p className="text-[13px] text-muted-foreground">Entradas y salidas</p>
         <h1 className="truncate text-[26px] font-bold leading-tight tracking-tight">
           {titulo}
           {cantidad !== undefined && <span className="gm-mono ml-2 text-lg font-semibold text-muted-foreground">{cantidad}</span>}
@@ -561,7 +561,7 @@ export function TodosLosVehiculos({
           ) : grupos.length ? (
             grupos.map((g) => (
               <section key={g.id} id={`grupo-${g.id}`} aria-label={g.titulo} className="flex scroll-mt-28 flex-col gap-2">
-                <p className={cn('flex items-center gap-2 px-1 text-[13px] font-bold', g.alerta ? 'text-gm-aviso' : 'text-[#D9D1C3]')}>
+                <p className={cn('flex items-center gap-2 px-1 text-[13px] font-bold', g.alerta ? 'text-gm-aviso' : 'text-gm-texto-2')}>
                   <span aria-hidden className="size-2 rounded-full" style={{ background: g.color }} />
                   {g.titulo}<span className="gm-mono font-semibold text-muted-foreground">{g.filas.length}</span>
                 </p>
@@ -666,7 +666,7 @@ export function MostradorDock({ onEntrada, onSalida, escanear, entradaRef, salid
       <nav
         aria-label="Acciones del mostrador"
         className={cn(
-          'fixed inset-x-3 bottom-[max(env(safe-area-inset-bottom),14px)] z-40 grid h-[76px] items-center gap-1.5 rounded-[28px] border border-white/[0.08] bg-[#1F1C17]/95 px-2 shadow-[0_18px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur lg:hidden',
+          'fixed inset-x-3 bottom-[max(env(safe-area-inset-bottom),14px)] z-40 grid h-[76px] items-center gap-1.5 rounded-[28px] border border-white/[0.08] bg-muted/95 px-2 shadow-[0_18px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur lg:hidden',
           escanear ? 'grid-cols-[minmax(0,1fr)_80px_minmax(0,1fr)]' : 'grid-cols-2',
         )}
       >
@@ -677,13 +677,13 @@ export function MostradorDock({ onEntrada, onSalida, escanear, entradaRef, salid
           </span>
         </button>
         {escanear}
-        <button ref={salidaRef} type="button" onClick={onSalida} aria-label={sinConfirmar > 0 ? `Salida: ${cobroHabilitado ? 'cobrar' : 'registrar'}. ${sinConfirmar} sin confirmar` : undefined} className={cn(DOCK_LADO, 'relative bg-[#2E2A23] text-right text-foreground')}>
+        <button ref={salidaRef} type="button" onClick={onSalida} aria-label={sinConfirmar > 0 ? `Salida: ${cobroHabilitado ? 'cobrar' : 'registrar'}. ${sinConfirmar} sin confirmar` : undefined} className={cn(DOCK_LADO, 'relative bg-gm-line text-right text-foreground')}>
           <span className={cn(DOCK_DENTRO, 'justify-end pl-2.5 pr-1.5')}>
             <span className={cn(DOCK_TEXTO, 'items-end')}><span className="gm-display max-w-full truncate text-base tracking-[0.03em]">Salida</span><span className="max-w-full truncate text-[11px] font-semibold text-muted-foreground">{cobroHabilitado ? 'Cobrar' : 'Registrar'}</span></span>
             <span className={cn(DOCK_ICONO, 'bg-background text-gm-yellow')}><Banknote className="size-[18px]" aria-hidden /></span>
           </span>
           {sinConfirmar > 0 && (
-            <span aria-hidden className="gm-mono absolute -right-1 -top-2 grid h-[22px] min-w-[22px] place-items-center rounded-full border-2 border-[#1F1C17] bg-violet-400 px-1 text-[11px] font-bold text-[#1B1230]">{sinConfirmar}</span>
+            <span aria-hidden className="gm-mono absolute -right-1 -top-2 grid h-[22px] min-w-[22px] place-items-center rounded-full border-2 border-gm-line bg-violet-400 px-1 text-[11px] font-bold text-[#1B1230]">{sinConfirmar}</span>
           )}
         </button>
       </nav>

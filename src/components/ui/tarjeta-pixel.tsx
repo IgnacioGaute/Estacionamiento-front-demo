@@ -45,14 +45,14 @@ export function TarjetaPixel({
         noFocus
         className={cn(
           '!flex !h-auto !w-auto min-w-0 flex-1 flex-col !place-items-stretch ![background:#1B1915] !select-auto',
-          destacada ? 'border-[1.5px] border-[#F6F0E6]' : 'border border-[#2E2A23]',
+          destacada ? 'border-[1.5px] border-foreground' : 'border border-gm-line',
           className,
         )}
       >
         {children}
       </PixelCard>
       {distintivo && (
-        <span className="absolute -top-3 left-8 z-[3] rounded-full bg-gm-yellow px-2.5 py-1 text-xs font-bold text-[#12100D]">
+        <span className="absolute -top-3 left-8 z-[3] rounded-full bg-gm-yellow px-2.5 py-1 text-xs font-bold text-gm-ink">
           {distintivo}
         </span>
       )}

@@ -49,17 +49,17 @@ export function ConfirmacionDePago({
 
   return (
     <>
-      <div role="status" className="flex flex-col items-center gap-1.5 rounded-[20px] border-[1.5px] border-emerald-500/50 bg-emerald-500/10 px-5 pb-5 pt-6 text-center">
-        <span className="grid size-[72px] place-items-center rounded-full border-2 border-emerald-400/50 bg-emerald-400/15 text-emerald-400">
+      <div role="status" className="flex flex-col items-center gap-1.5 rounded-[20px] border-[1.5px] border-gm-ok/50 bg-gm-ok/10 px-5 pb-5 pt-6 text-center">
+        <span className="grid size-[72px] place-items-center rounded-full border-2 border-gm-ok/50 bg-gm-ok/15 text-gm-ok">
           <Check className="size-10" strokeWidth={2.4} />
         </span>
-        <p className="gm-display mt-2 text-[26px] font-bold tracking-wide text-emerald-400">Pago recibido</p>
+        <p className="gm-display mt-2 text-[26px] font-bold tracking-wide text-gm-ok">Pago recibido</p>
         <p className="gm-mono text-3xl font-semibold text-foreground">{formatImporte(importe)}</p>
         <p className="mt-0.5 text-sm text-muted-foreground">{detalle}</p>
         <p className="text-xs text-muted-foreground">{nota}</p>
-        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-emerald-400/15" aria-hidden>
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gm-ok/15" aria-hidden>
           <div
-            className="h-full rounded-full bg-emerald-400 transition-[width] duration-100 ease-linear"
+            className="h-full rounded-full bg-gm-ok transition-[width] duration-100 ease-linear"
             style={{ width: `${(restante / (SEGUNDOS_PARA_CERRAR * 1000)) * 100}%` }}
           />
         </div>

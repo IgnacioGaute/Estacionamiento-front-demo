@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { useTenant } from '@/components/tenant-provider';
 
 const medio = 'flex min-h-[62px] min-w-0 flex-col items-start justify-center gap-0.5 rounded-2xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 px-3.5 py-2 text-left transition-colors hover:border-gm-yellow/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow short:min-h-12';
-const medioTitulo = 'flex items-center gap-2 text-[14.5px] font-semibold';
+const medioTitulo = 'flex items-center gap-2 text-[15px] font-semibold';
 const medioDetalle = 'w-full truncate text-xs text-muted-foreground short:hidden';
 
 export function ParkingReceiptDelivery({ registrationId, kind, onDismiss, showDisabledMessage = false }: {
@@ -89,7 +89,7 @@ export function ParkingReceiptDelivery({ registrationId, kind, onDismiss, showDi
             >
               <PlateChip plate={snapshot.plate} size="sm" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13.5px] font-semibold">{snapshot.parkingName}</span>
+                <span className="block truncate text-[14px] font-semibold">{snapshot.parkingName}</span>
                 <span className="block truncate text-xs text-muted-foreground">
                   {hora ? `${salida ? 'Salida' : 'Entrada'} ${hora}` : 'Comprobante'}
                   {/* La flecha ya dice que se despliega; el texto queda para lectores de pantalla. */}
@@ -126,13 +126,13 @@ export function ParkingReceiptDelivery({ registrationId, kind, onDismiss, showDi
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <span className={medioTitulo}><MessageCircle className="size-[18px] shrink-0 text-emerald-400" aria-hidden />WhatsApp</span>
+                      <span className={medioTitulo}><MessageCircle className="size-[18px] shrink-0 text-gm-ok" aria-hidden />WhatsApp</span>
                       <span className={cn(medioDetalle, 'gm-mono')}>{receipt.phoneCustomer ? `+${receipt.phoneCustomer}` : 'Elegir contacto'}</span>
                     </a>
                   )}
                   {receipt.settings.print && (
                     <a className={medio} href={`${url}?print=${receipt.settings.paperWidth}`} target="_blank" rel="noopener noreferrer">
-                      <span className={medioTitulo}><Printer className="size-[18px] shrink-0 text-[#D9D1C3]" aria-hidden />Imprimir</span>
+                      <span className={medioTitulo}><Printer className="size-[18px] shrink-0 text-gm-texto-2" aria-hidden />Imprimir</span>
                       <span className={medioDetalle}>Térmica de {receipt.settings.paperWidth} mm</span>
                     </a>
                   )}

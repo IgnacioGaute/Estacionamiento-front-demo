@@ -173,17 +173,17 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gm-orange/20 text-gm-aviso"><AlertTriangle className="size-5" aria-hidden /></span>
               <span className="flex min-w-0 items-center gap-2.5"><PlateChip plate={plate ?? '—'} size="sm" /><span className="text-[14px] font-semibold text-gm-aviso">no está adentro</span></span>
             </p>
-            <p className="text-[13px] leading-relaxed text-[#D9D1C3]">Elegí la tarifa que le corresponde: se registra la entrada con ese tiempo y se cobra ahora, con cualquier medio. Queda anotado en la Actividad con tu usuario.</p>
+            <p className="text-[13px] leading-relaxed text-gm-texto-2">Elegí la tarifa que le corresponde: se registra la entrada con ese tiempo y se cobra ahora, con cualquier medio. Queda anotado en la Actividad con tu usuario.</p>
           </div>
 
           {/* Antes de registrar un auto nuevo hay que revisar las parecidas que figuran adentro: por
               cada una, si sigue en la playa o no. No se cobran desde acá. */}
           {candidatas === null ? <DataLoading label="Buscando patentes parecidas…" /> : hayParecidas && (
             <section aria-labelledby="sin-entrada-parecidas" className="space-y-2.5 rounded-2xl border-[1.5px] border-gm-atencion/50 bg-gm-atencion/[0.08] p-3.5">
-              <p id="sin-entrada-parecidas" className="text-[14px] font-semibold text-[#F5C26B]">
+              <p id="sin-entrada-parecidas" className="text-[14px] font-semibold text-gm-atencion">
                 {parecidas.length === 1 ? 'Hay una patente parecida en la playa' : `Hay ${parecidas.length} patentes parecidas en la playa`}
               </p>
-              <p className="text-[12.5px] leading-snug text-[#D9D1C3]">
+              <p className="text-[13px] leading-snug text-gm-texto-2">
                 Revisá si {parecidas.length === 1 ? 'sigue' : 'siguen'} en la playa antes de registrar este auto: puede ser una patente mal escrita o mal cargada.
               </p>
               <ul className="space-y-1.5">
@@ -196,7 +196,7 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
                         <div role="radiogroup" aria-label={`¿${patenteDe(r)} sigue en la playa?`} className="ml-auto grid grid-cols-2 gap-1.5">
                           {([['SIGUE', 'Sigue en la playa'], ['NO_ESTA', 'No está']] as const).map(([valor, texto]) => (
                             <button key={valor} type="button" role="radio" aria-checked={respuesta === valor} disabled={pending} onClick={() => responder(r.id, valor)}
-                              className={`min-h-10 rounded-lg border-[1.5px] px-2.5 text-[12.5px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow ${
+                              className={`min-h-10 rounded-lg border-[1.5px] px-2.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow ${
                                 respuesta === valor ? 'border-gm-yellow bg-gm-yellow/[0.12] text-foreground' : 'border-gm-line-strong text-muted-foreground hover:text-foreground'}`}>
                               {texto}
                             </button>
@@ -204,8 +204,8 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
                         </div>
                       </div>
                       {respuesta === 'NO_ESTA' && esAdmin && (
-                        <label className="flex cursor-pointer items-start gap-2.5 px-0.5 text-[12.5px] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gm-yellow">
-                          <input type="checkbox" checked={eliminar.includes(r.id)} disabled={pending} className="mt-0.5 size-4 accent-[#F5C219]"
+                        <label className="flex cursor-pointer items-start gap-2.5 px-0.5 text-[13px] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gm-yellow">
+                          <input type="checkbox" checked={eliminar.includes(r.id)} disabled={pending} className="mt-0.5 size-4 accent-gm-yellow"
                             onChange={(e) => setEliminar((actual) => (e.target.checked ? [...actual, r.id] : actual.filter((x) => x !== r.id)))} />
                           <span>
                             <span className="font-semibold">Eliminar la entrada de <span className="gm-mono">{patenteDe(r)}</span></span>

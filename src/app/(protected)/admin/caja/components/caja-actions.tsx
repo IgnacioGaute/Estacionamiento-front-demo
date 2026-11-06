@@ -52,7 +52,7 @@ export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean
           </dl>
           <p className="px-1 text-xs text-muted-foreground">El efectivo se suma una sola vez por caja. Incluye fondos iniciales; la recaudación del día está en la planilla.</p>
         </div>
-        {legacy.length > 0 && <div className="space-y-3 rounded-2xl border border-amber-500/40 bg-amber-500/[0.05] p-4"><div><p className="text-sm font-semibold">Turnos anteriores pendientes de cierre</p><p className="mt-1 text-xs text-muted-foreground">Contá el efectivo y cerralos antes de abrir una caja nueva.</p></div><ul className="divide-y divide-amber-500/20">{legacy.map(t => <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5"><span className="flex items-center gap-3"><Iniciales nombre={t.nombre} className="size-8 text-[11px]" /><span className="text-sm">{t.nombre} · <span className="tabular-nums">{money(t.efectivoDisponible)}</span></span></span><TurnoBar turnoId={t.id} revision={revision} /></li>)}</ul></div>}
+        {legacy.length > 0 && <div className="space-y-3 rounded-2xl border border-gm-atencion/40 bg-gm-atencion/[0.05] p-4"><div><p className="text-sm font-semibold">Turnos anteriores pendientes de cierre</p><p className="mt-1 text-xs text-muted-foreground">Contá el efectivo y cerralos antes de abrir una caja nueva.</p></div><ul className="divide-y divide-gm-atencion/20">{legacy.map(t => <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5"><span className="flex items-center gap-3"><Iniciales nombre={t.nombre} className="size-8 text-[11px]" /><span className="text-sm">{t.nombre} · <span className="tabular-nums">{money(t.efectivoDisponible)}</span></span></span><TurnoBar turnoId={t.id} revision={revision} /></li>)}</ul></div>}
         <div className="grid items-start gap-4 lg:grid-cols-2">{cajas.map(caja => {
           const operadores = turnos.filter(t => t.cajaId === caja.id);
           return <article key={caja.id} className="overflow-hidden rounded-[22px] border border-gm-line bg-gm-surface-2/50">
@@ -81,7 +81,7 @@ export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean
               <summary className="cursor-pointer px-5 py-3.5 font-semibold text-muted-foreground transition-colors hover:text-foreground">Retiros y aportes de esta apertura</summary>
               <ul className="divide-y divide-gm-line border-t border-gm-line">{caja.movimientos.map(m => <li key={m.id} className="flex items-start justify-between gap-3 px-5 py-3">
                 <span className="min-w-0"><span className="block font-medium">{m.tipo === 'RETIRO' ? 'Retiro' : 'Aporte'}</span><span className="mt-0.5 block text-xs text-muted-foreground">{m.motivo} · {m.operador}</span></span>
-                <span className={'shrink-0 font-semibold tabular-nums ' + (m.tipo === 'RETIRO' ? '' : 'text-emerald-400')}>{m.tipo === 'RETIRO' ? '−' : '+'}{money(Math.abs(m.amount))}</span>
+                <span className={'shrink-0 font-semibold tabular-nums ' + (m.tipo === 'RETIRO' ? '' : 'text-gm-ok')}>{m.tipo === 'RETIRO' ? '−' : '+'}{money(Math.abs(m.amount))}</span>
               </li>)}</ul>
             </details>}
           </article>;

@@ -51,7 +51,7 @@ export const expenseColumns: ColumnDef<OtherPayment>[] = [
     // de la caja y un ingreso suma. El signo no depende solo del color.
     cell: ({ row }) => {
       const egreso = row.original.type === 'EGRESOS';
-      return <div className={cn('min-w-[100px] whitespace-nowrap text-sm font-semibold tabular-nums', egreso ? 'text-foreground' : 'text-emerald-400')}>{egreso ? '− ' : '+ '}{formatImporte(Number(row.getValue('price')))}</div>;
+      return <div className={cn('min-w-[100px] whitespace-nowrap text-sm font-semibold tabular-nums', egreso ? 'text-foreground' : 'text-gm-ok')}>{egreso ? '− ' : '+ '}{formatImporte(Number(row.getValue('price')))}</div>;
     },
   },
 

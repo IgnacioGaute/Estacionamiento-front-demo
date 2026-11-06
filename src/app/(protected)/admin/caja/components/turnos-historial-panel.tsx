@@ -157,13 +157,13 @@ function ShiftCard({ turno }: { turno: Turno }) {
       {!individual && <dl className={cn('grid gap-px overflow-hidden rounded-2xl border border-gm-line bg-gm-line', turno.resumen ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4')}>
         <Amount label="Fondo inicial de la caja" value={turno.cashSession?.fondoInicial ?? turno.fondoInicial} />
         <Amount label="Esperado al cerrar" value={turno.efectivoTeorico} />
-        <Amount label="Contado" value={turno.efectivoContado} tono={difference == null || difference === 0 ? undefined : 'text-amber-400'} />
+        <Amount label="Contado" value={turno.efectivoContado} tono={difference == null || difference === 0 ? undefined : 'text-gm-atencion'} />
         {!turno.resumen && <Amount label="Efectivo retirado" value={turno.efectivoRetirado} />}
       </dl>}
-      {!!turno.cashSession?.diferenciaApertura && <p className="rounded-xl border border-amber-500/30 bg-amber-500/[0.05] p-3 text-xs text-amber-400">Diferencia al recibir esta caja: {money(turno.cashSession.diferenciaApertura)} · {turno.cashSession.motivoApertura}</p>}
+      {!!turno.cashSession?.diferenciaApertura && <p className="rounded-xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-3 text-xs text-gm-atencion">Diferencia al recibir esta caja: {money(turno.cashSession.diferenciaApertura)} · {turno.cashSession.motivoApertura}</p>}
       <TurnoResumenPanel turno={turno} />
       {turno.observaciones && <p className="whitespace-pre-wrap break-words rounded-xl bg-gm-surface-3/60 p-3 text-xs"><strong>Nota:</strong> {turno.observaciones}</p>}
-      {turno.cierreForzado && <p className="break-words rounded-xl border border-amber-500/30 bg-amber-500/[0.05] p-3 text-xs text-amber-400"><strong>Cierre por administrador:</strong> {turno.motivoCierreForzado || 'Sin motivo registrado'}</p>}
+      {turno.cierreForzado && <p className="break-words rounded-xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-3 text-xs text-gm-atencion"><strong>Cierre por administrador:</strong> {turno.motivoCierreForzado || 'Sin motivo registrado'}</p>}
     </div>
   </details>;
 }

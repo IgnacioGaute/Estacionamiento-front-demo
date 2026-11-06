@@ -55,13 +55,13 @@ export function TariffSimulator({ draft, revision, invalid, vehicles }: {
     {preview.result && <><p className="text-3xl font-bold tabular-nums">{formatPrice(preview.result.price)}</p>
       <p className="text-xs text-muted-foreground">{preview.result.elapsedMinutes} min de permanencia · {preview.result.billableMinutes} min considerados para cobrar.</p>
       <details className="rounded-lg border"><summary className="cursor-pointer p-3 text-sm">Ver cómo se calculó</summary><div className="border-t p-3"><PricingBreakdown lines={preview.result.breakdown} total={preview.result.price} /></div></details>
-      {preview.result.usedFallback && <p className="text-sm text-amber-600 dark:text-amber-400">Se usó el último precio disponible porque no hay una regla para esa duración. Configurá qué cobrar después de la última duración.</p>}
+      {preview.result.usedFallback && <p className="text-sm text-gm-atencion">Se usó el último precio disponible porque no hay una regla para esa duración. Configurá qué cobrar después de la última duración.</p>}
     </>}
   </div>;
-  return <section aria-labelledby="tariff-simulator-heading" className="space-y-4 rounded-2xl border border-amber-500/30 bg-amber-500/[0.03] p-4 sm:p-6">
+  return <section aria-labelledby="tariff-simulator-heading" className="space-y-4 rounded-2xl border border-gm-yellow/30 bg-gm-yellow/[0.03] p-4 sm:p-6">
     {/* Sin rótulo en mayúsculas encima: el ícono acompaña al título y «no registra cobros» ya lo
         dice la descripción. */}
-    <div><h2 id="tariff-simulator-heading" className="flex items-center gap-2 text-xl font-semibold"><FlaskConical className="size-5 shrink-0 text-amber-500" aria-hidden="true" />{draft ? 'Compará los precios actuales con tu borrador' : 'Probá cuánto cobrarías'}</h2>
+    <div><h2 id="tariff-simulator-heading" className="flex items-center gap-2 text-xl font-semibold"><FlaskConical className="size-5 shrink-0 text-gm-yellow" aria-hidden="true" />{draft ? 'Compará los precios actuales con tu borrador' : 'Probá cuánto cobrarías'}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{draft ? 'Usamos el mismo vehículo y permanencia con todas las reglas, precios y horarios que estás editando. Es una prueba: no registra cobros.' : 'Es una prueba con las tarifas vigentes: no registra ingresos ni cobros.'}</p></div>
     <form onSubmit={event => { event.preventDefault(); run(); }} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -19,7 +19,7 @@ export function TurnoResumenPanel({ turno }: { turno: Turno }) {
     <div className="rounded-2xl border border-gm-line bg-gm-surface-2/50">
       <Etiqueta className="px-4 pt-3.5">Cobros del turno</Etiqueta>
       <dl className="grid divide-y divide-gm-line py-1.5 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:py-3">
-        <Medio punto="bg-emerald-400" label="Efectivo" value={money(r.efectivoCobrado)} />
+        <Medio punto="bg-gm-ok" label="Efectivo" value={money(r.efectivoCobrado)} />
         <Medio punto="bg-sky-400" label="Mercado Pago" value={money(mercadoPago)}>
           {mercadoPago !== 0 && <span className="mt-1 flex flex-wrap justify-end gap-x-2 text-[11px] font-medium leading-snug text-muted-foreground sm:justify-start"><span>Alias {money(r.mercadoPagoAlias)}</span><span>QR {money(r.mercadoPagoQr)}</span></span>}
         </Medio>
@@ -44,23 +44,23 @@ export function TurnoResumenPanel({ turno }: { turno: Turno }) {
         </dl>
       </div>
 
-      {r.efectivoParaSiguiente != null ? <div className="bg-emerald-400/[0.06] px-4 py-3">
+      {r.efectivoParaSiguiente != null ? <div className="bg-gm-ok/[0.06] px-4 py-3">
         <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2 text-[13px] font-semibold"><ArrowRight className="size-4 text-emerald-400" aria-hidden />Deja al siguiente turno</span>
-          <strong className="tabular-nums text-emerald-400">{money(r.efectivoParaSiguiente)}</strong>
+          <span className="flex items-center gap-2 text-[13px] font-semibold"><ArrowRight className="size-4 text-gm-ok" aria-hidden />Deja al siguiente turno</span>
+          <strong className="tabular-nums text-gm-ok">{money(r.efectivoParaSiguiente)}</strong>
         </div>
         {fondoInicialCaja != null && <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Fondo inicial de caja: {money(fondoInicialCaja)}. Lo que queda no se incluye en lo retirado.</p>}
       </div>
         : !abierto && <p className="px-4 py-3 text-xs text-muted-foreground">{turno.cierreAutomatico ? 'Corte de las 00:00. La caja continúa abierta.' : 'La caja sigue abierta con otros operadores.'}</p>}
     </div>
 
-    {turno.alertaSueldo && <p role="alert" className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-600 dark:text-amber-400">{turno.alertaSueldo}</p>}
+    {turno.alertaSueldo && <p role="alert" className="rounded-xl border border-gm-atencion/40 bg-gm-atencion/5 p-3 text-xs text-gm-atencion">{turno.alertaSueldo}</p>}
     {r.movimientos.length > 0 && <details className="group text-xs">
       <summary className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground">Ver movimientos de caja</summary>
       <ul className="mt-2 divide-y divide-gm-line rounded-xl border border-gm-line">
         {r.movimientos.map(m => <li key={m.id} className="flex items-start justify-between gap-3 px-3 py-2.5">
           <span className="min-w-0"><span className="block font-semibold">{m.tipo === 'SUELDO' ? 'Sueldo' : m.tipo === 'APORTE' ? 'Dinero agregado' : 'Retiro'}</span><span className="mt-0.5 block text-muted-foreground">{m.operador || 'No informado'} · {m.motivo}</span></span>
-          <span className={cn('shrink-0 font-semibold tabular-nums', m.tipo === 'APORTE' ? 'text-emerald-400' : '')}>{m.tipo === 'APORTE' ? '+' : '−'}{money(Math.abs(m.amount))}</span>
+          <span className={cn('shrink-0 font-semibold tabular-nums', m.tipo === 'APORTE' ? 'text-gm-ok' : '')}>{m.tipo === 'APORTE' ? '+' : '−'}{money(Math.abs(m.amount))}</span>
         </li>)}
       </ul>
     </details>}

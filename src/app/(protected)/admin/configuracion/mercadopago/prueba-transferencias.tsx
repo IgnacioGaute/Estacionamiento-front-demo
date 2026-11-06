@@ -85,13 +85,13 @@ const plata = (n: number | null, moneda?: string | null) =>
 
 // Lo que MercadoPago dice con códigos, en palabras.
 const ESTADOS: Record<string, { label: string; clase: string }> = {
-  approved: { label: "Acreditado", clase: "bg-emerald-400/[0.12] text-emerald-400" },
+  approved: { label: "Acreditado", clase: "bg-gm-ok/[0.12] text-gm-ok" },
   pending: { label: "Pendiente", clase: "bg-gm-yellow/[0.14] text-gm-yellow" },
   in_process: { label: "En proceso", clase: "bg-gm-yellow/[0.14] text-gm-yellow" },
-  rejected: { label: "Rechazado", clase: "bg-[#E5484D]/[0.16] text-[#FF8A8D]" },
-  cancelled: { label: "Cancelado", clase: "bg-[#221F1A] text-muted-foreground" },
-  refunded: { label: "Devuelto", clase: "bg-[#221F1A] text-muted-foreground" },
-  charged_back: { label: "Contracargo", clase: "bg-[#E5484D]/[0.16] text-[#FF8A8D]" },
+  rejected: { label: "Rechazado", clase: "bg-destructive/[0.16] text-gm-peligro" },
+  cancelled: { label: "Cancelado", clase: "bg-gm-surface-2 text-muted-foreground" },
+  refunded: { label: "Devuelto", clase: "bg-gm-surface-2 text-muted-foreground" },
+  charged_back: { label: "Contracargo", clase: "bg-destructive/[0.16] text-gm-peligro" },
 };
 
 const TIPOS: Record<string, string> = {
@@ -112,7 +112,7 @@ function comoEntro(p: PagoDePrueba) {
 
 function Falla({ r }: { r: ConsultaFallida | { error: string } }) {
   return (
-    <p role="alert" className="m-0 rounded-[12px] border border-gm-aviso/30 bg-gm-aviso/10 px-4 py-3 text-[13px] text-[#FFB59C]">
+    <p role="alert" className="m-0 rounded-[12px] border border-gm-aviso/30 bg-gm-aviso/10 px-4 py-3 text-[13px] text-gm-aviso">
       {"estado" in r ? `MercadoPago contestó ${r.estado ?? "sin respuesta"}: ` : ""}
       {r.error}
     </p>
@@ -123,7 +123,7 @@ function Dato({ etiqueta, valor, mono }: { etiqueta: string; valor: React.ReactN
   return (
     <div className="min-w-0">
       <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{etiqueta}</dt>
-      <dd className={cn("m-0 mt-0.5 break-words text-[13px]", mono && "font-mono text-[12.5px]")}>{valor ?? "—"}</dd>
+      <dd className={cn("m-0 mt-0.5 break-words text-[13px]", mono && "font-mono text-[13px]")}>{valor ?? "—"}</dd>
     </div>
   );
 }
@@ -132,17 +132,17 @@ function TarjetaIngreso({ p, ahora }: { p: PagoDePrueba; ahora: string }) {
   const [abierto, setAbierto] = useState(false);
   const estado = (p.estado ? ESTADOS[p.estado] : undefined) ?? {
     label: p.estado ?? "—",
-    clase: "bg-[#221F1A] text-muted-foreground",
+    clase: "bg-gm-surface-2 text-muted-foreground",
   };
   const dudoso = p.recibido === null;
   return (
-    <li className="overflow-hidden rounded-[16px] border border-border bg-[#17140F]">
+    <li className="overflow-hidden rounded-[16px] border border-border bg-background">
       <div className="flex gap-4 p-4 sm:p-5">
         <span
           aria-hidden
           className={cn(
             "flex size-10 shrink-0 items-center justify-center rounded-full",
-            dudoso ? "bg-[#221F1A] text-muted-foreground" : "bg-emerald-400/[0.12] text-emerald-400",
+            dudoso ? "bg-gm-surface-2 text-muted-foreground" : "bg-gm-ok/[0.12] text-gm-ok",
           )}
         >
           {dudoso ? <CircleHelp className="size-5" /> : <ArrowDownLeft className="size-5" />}
@@ -170,20 +170,20 @@ function TarjetaIngreso({ p, ahora }: { p: PagoDePrueba; ahora: string }) {
           </div>
 
           {p.descripcion && (
-            <p className="m-0 mt-3 rounded-[10px] bg-secondary/40 px-3 py-2 text-[13px] text-[#D9D0C2]">
+            <p className="m-0 mt-3 rounded-[10px] bg-secondary/40 px-3 py-2 text-[13px] text-gm-texto-2">
               <span className="text-muted-foreground">Descripción: </span>
               {p.descripcion}
             </p>
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className={cn("rounded-full px-2.5 py-1 text-[11.5px] font-bold", estado.clase)}>{estado.label}</span>
+            <span className={cn("rounded-full px-2.5 py-1 text-[12px] font-bold", estado.clase)}>{estado.label}</span>
             {dudoso && (
-              <span className="rounded-full bg-[#221F1A] px-2.5 py-1 text-[11.5px] font-semibold text-muted-foreground">
+              <span className="rounded-full bg-gm-surface-2 px-2.5 py-1 text-[12px] font-semibold text-muted-foreground">
                 MercadoPago no dice si entró o salió
               </span>
             )}
-            <span className="font-mono text-[11.5px] text-muted-foreground">Operación {p.id}</span>
+            <span className="font-mono text-[12px] text-muted-foreground">Operación {p.id}</span>
             <button
               type="button"
               onClick={() => setAbierto((v) => !v)}
@@ -198,7 +198,7 @@ function TarjetaIngreso({ p, ahora }: { p: PagoDePrueba; ahora: string }) {
       </div>
 
       {abierto && (
-        <dl className="m-0 grid gap-x-6 gap-y-3 border-t border-border bg-[#15120E] px-5 py-4 [grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))]">
+        <dl className="m-0 grid gap-x-6 gap-y-3 border-t border-border bg-background px-5 py-4 [grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))]">
           <Dato etiqueta="Creado" valor={fechaHora(p.creado)} />
           <Dato etiqueta="Acreditado" valor={fechaHora(p.aprobado)} />
           <Dato etiqueta="Neto recibido" valor={plata(p.neto, p.moneda)} />
@@ -250,7 +250,7 @@ function BuscarNombre({ operacionId }: { operacionId: string }) {
         type="button"
         onClick={() => void buscar()}
         disabled={cargando}
-        className="inline-flex h-8 items-center gap-2 rounded-[9px] border border-border px-3 text-[12.5px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2 disabled:opacity-60"
+        className="inline-flex h-8 items-center gap-2 rounded-[9px] border border-border px-3 text-[13px] font-semibold transition-colors hover:border-gm-line-strong hover:bg-gm-surface-2 disabled:opacity-60"
       >
         {cargando ? <Loader2 className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
         Buscar el nombre en el detalle del pago
@@ -260,7 +260,7 @@ function BuscarNombre({ operacionId }: { operacionId: string }) {
         (!detalle.respuesta.ok ? (
           <Falla r={detalle.respuesta} />
         ) : (
-          <div className="space-y-2 text-[12.5px]">
+          <div className="space-y-2 text-[13px]">
             <p className="m-0">
               <span className="text-muted-foreground">Nombre: </span>
               <strong>{detalle.respuesta.pagador.nombre ?? "MercadoPago no lo manda en el detalle"}</strong>
@@ -268,7 +268,7 @@ function BuscarNombre({ operacionId }: { operacionId: string }) {
               {detalle.respuesta.pagador.entidad && ` · ${detalle.respuesta.pagador.entidad}`}
             </p>
             {detalle.respuesta.campos.length > 0 ? (
-              <ul className="m-0 list-none space-y-1 rounded-[10px] bg-secondary/30 p-3 font-mono text-[11.5px]">
+              <ul className="m-0 list-none space-y-1 rounded-[10px] bg-secondary/30 p-3 font-mono text-[12px]">
                 {detalle.respuesta.campos.map((c) => (
                   <li key={c.ruta} className="break-all">
                     <span className="text-muted-foreground">{c.ruta}</span>: {c.valor}
@@ -320,7 +320,7 @@ function Reporte() {
         <FileText className="size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-semibold">Reporte «Todas las transacciones»</span>
-          <span className="block text-[12.5px] text-muted-foreground">
+          <span className="block text-[13px] text-muted-foreground">
             Lo genera MercadoPago y tarda: sirve para conciliar después, no para el mostrador.
           </span>
         </span>
@@ -375,7 +375,7 @@ function Reporte() {
           {estado && (
             <div className="space-y-2">
               {estado.config.ok ? (
-                <p className="m-0 text-[12.5px] text-muted-foreground">
+                <p className="m-0 text-[13px] text-muted-foreground">
                   Configuración con {estado.config.columnas.length} columnas
                   {estado.config.faltan.length > 0 && ` · faltan ${estado.config.faltan.join(", ")}`}
                 </p>
@@ -391,7 +391,7 @@ function Reporte() {
                   {estado.reportes.items.map((r, i) => {
                     const nombre = typeof r.file_name === "string" ? r.file_name : null;
                     return (
-                      <li key={nombre ?? `sin-archivo-${i}`} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-[12.5px]">
+                      <li key={nombre ?? `sin-archivo-${i}`} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-[13px]">
                         <span className="min-w-0 flex-1 truncate font-mono">{nombre ?? "sin archivo"}</span>
                         <span className="text-muted-foreground">
                           creado {fechaHora(typeof r.date_created === "string" ? r.date_created : null)}
@@ -432,7 +432,7 @@ function Reporte() {
             (!lectura.respuesta.ok ? (
               <Falla r={lectura.respuesta} />
             ) : !lectura.respuesta.reconocible ? (
-              <p className="m-0 text-[13px] text-[#FFB59C]">
+              <p className="m-0 text-[13px] text-gm-aviso">
                 El reporte no trae TRANSACTION_TYPE y TRANSACTION_AMOUNT con esos nombres. Columnas:{" "}
                 {lectura.respuesta.columnas.join(", ")}
               </p>
@@ -443,7 +443,7 @@ function Reporte() {
             ) : (
               <ul className="m-0 list-none space-y-2 p-0">
                 {lectura.respuesta.ingresos.map((f, i) => (
-                  <li key={f.SOURCE_ID ?? i} className="rounded-[12px] border border-border bg-[#17140F] px-4 py-3 text-[13px]">
+                  <li key={f.SOURCE_ID ?? i} className="rounded-[12px] border border-border bg-background px-4 py-3 text-[13px]">
                     <div className="flex flex-wrap justify-between gap-2">
                       <span className="font-semibold">{f.PAYER_NAME || (Object.prototype.hasOwnProperty.call(f, "PAYER_NAME") ? "Nombre vacío en el reporte de MercadoPago" : "Columna de nombre ausente en el reporte")}</span>
                       <span className="font-mono font-semibold">${f.TRANSACTION_AMOUNT}</span>
@@ -453,7 +453,7 @@ function Reporte() {
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
-                    <p className="m-0 mt-1 font-mono text-[11.5px] text-muted-foreground">
+                    <p className="m-0 mt-1 font-mono text-[12px] text-muted-foreground">
                       Operación {f.SOURCE_ID}
                       {f.PAY_BANK_TRANSFER_ID && ` · Nº de transferencia ${f.PAY_BANK_TRANSFER_ID}`}
                       {f.PAYER_ID_NUMBER && ` · ${f.PAYER_ID_TYPE ?? ""} ${f.PAYER_ID_NUMBER}`}
@@ -495,20 +495,20 @@ export function PruebaTransferencias() {
           <span className="text-[12px] text-muted-foreground">Todavía no es la función de verificación</span>
         </div>
         <h3 className="m-0 text-[17px] font-semibold">Transferencias recibidas</h3>
-        <p className="m-0 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
+        <p className="m-0 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
           Mandá una transferencia chica al alias de esta cuenta y consultá. Muestra solo la plata que entró; lo que
           pagaste con la cuenta no aparece. No guarda nada ni toca cobros.
         </p>
       </header>
 
       <div className="flex flex-wrap items-center gap-3 border-y border-border bg-secondary/20 px-5 py-3 sm:px-6">
-        <span className="text-[12.5px] text-muted-foreground">Últimos</span>
+        <span className="text-[13px] text-muted-foreground">Últimos</span>
         <Segmentos etiqueta="Período de búsqueda" claro opciones={VENTANAS} valor={minutos} onChange={setMinutos} />
         <button
           type="button"
           onClick={() => void consultar()}
           disabled={cargando}
-          className="ml-auto inline-flex h-10 items-center gap-2 rounded-[10px] bg-[#F6F0E6] px-4 text-[13.5px] font-semibold text-[#12100D] transition-colors hover:bg-white disabled:opacity-60"
+          className="ml-auto inline-flex h-10 items-center gap-2 rounded-[10px] bg-foreground px-4 text-[14px] font-semibold text-background transition-colors hover:bg-white disabled:opacity-60"
         >
           {cargando ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
           {pagos ? "Volver a consultar" : "Consultar"}
@@ -521,13 +521,13 @@ export function PruebaTransferencias() {
         {!pagos && !error && (
           <div className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground">
             <Landmark className="size-6" />
-            <p className="m-0 text-[13.5px]">Elegí el período y tocá Consultar.</p>
+            <p className="m-0 text-[14px]">Elegí el período y tocá Consultar.</p>
           </div>
         )}
 
         {pagos && resultado && (
           <>
-            <p className="m-0 text-[12.5px] text-muted-foreground">
+            <p className="m-0 text-[13px] text-muted-foreground">
               Consultado a las {hora(pagos.consultadoEl)} · desde {fechaHora(pagos.desde)}
               {resultado.ok &&
                 resultado.egresosOmitidos > 0 &&
@@ -551,7 +551,7 @@ export function PruebaTransferencias() {
               </ul>
             )}
             {resultado.ok && resultado.truncado && (
-              <p className="m-0 text-[12.5px] text-[#FFB59C]">Hay más de 100 movimientos: acortá el período.</p>
+              <p className="m-0 text-[13px] text-gm-aviso">Hay más de 100 movimientos: acortá el período.</p>
             )}
           </>
         )}

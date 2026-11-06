@@ -19,6 +19,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { currentUser } from '@/lib/auth';
+import { tinte } from '@/lib/utils';
+import { PageHeader } from '@/components/page-header';
 import { getMiPlanAction } from '@/actions/suscripciones/suscripciones.action';
 import { PlanesDeLaEmpresa } from './planes-empresa';
 import {
@@ -59,15 +61,18 @@ export default async function MiPlanPage() {
   );
 }
 
-const AMARILLO = '#F5C219';
-const NARANJA = '#FF8A5C';
-const VERDE = '#4ADE9B';
-const ROJO = '#FF7B7F';
+// Los mismos colores de estado del resto del sistema (globals.css). La lavanda de «Bonificada» no
+// tiene par en otras pantallas y queda como hex. Para teñir un fondo, tinte(): pegarle «24» al
+// final solo funciona con hex.
+const AMARILLO = 'hsl(var(--gm-yellow))';
+const NARANJA = 'hsl(var(--gm-aviso))';
+const VERDE = 'hsl(var(--gm-ok))';
+const ROJO = 'hsl(var(--gm-peligro))';
 const LAVANDA = '#A9AFFF';
-const GRIS = '#A79E8F';
+const GRIS = 'hsl(var(--muted-foreground))';
 
-const tarjeta = 'rounded-[24px] border border-[#2E2A23] bg-[#1B1915]';
-const rotulo = 'font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#8F8676]';
+const tarjeta = 'rounded-[24px] border border-gm-line bg-gm-surface';
+const rotulo = 'font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-gm-texto-tenue';
 
 // Lo que incluye cualquier plan, con las palabras de la landing.
 const INCLUIDO = [
@@ -313,19 +318,16 @@ function Contenido({ plan }: { plan: MiPlan }) {
 
   return (
     <>
-      {/* Sin el rótulo «MI PLAN» encima: repetía el título. */}
-      <header className="flex flex-col gap-3">
-        <h1 className="m-0 font-display text-[36px] font-semibold uppercase leading-none tracking-[0.01em] text-[#F6F0E6] sm:text-[50px]">
-          Tu plan
-        </h1>
-        {subtitulo && <p className="m-0 text-[15px] text-[#A79E8F]">{subtitulo}</p>}
-      </header>
+      {/* El mismo encabezado que el resto de la administración: tenía un título de landing de
+          50 px y un rótulo «MI PLAN» encima que repetía el título. */}
+      <PageHeader breadcrumb={['Administración', 'Mi plan']} title="Mi plan" description={subtitulo || undefined} />
+
 
       <Estado r={r} />
 
       {cuenta.estado !== 'SIN_ACTIVAR' && (
         <section className="flex flex-col gap-6">
-          <h2 className="m-0 text-[24px] font-semibold tracking-[-0.01em] text-[#F6F0E6]">
+          <h2 className="m-0 text-[24px] font-semibold tracking-[-0.01em] text-foreground">
             {variasPlayas ? 'Tus planes' : 'Tu plan'}
           </h2>
           <PlanesDeLaEmpresa plan={plan} />
@@ -339,21 +341,21 @@ function Contenido({ plan }: { plan: MiPlan }) {
               <div className={rotulo}>Incluido en tu plan</div>
               <ul className="m-0 grid list-none gap-x-7 gap-y-3 p-0 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
                 {incluido.map((texto) => (
-                  <li key={texto} className="flex items-start gap-2.5 text-[14.5px] leading-snug text-[#D9D0C2]">
+                  <li key={texto} className="flex items-start gap-2.5 text-[15px] leading-snug text-gm-texto-2">
                     <Check aria-hidden className="mt-px size-[18px] shrink-0 text-gm-yellow" strokeWidth={2.2} />
                     {texto}
                   </li>
                 ))}
               </ul>
             </div>
-            <p className="m-0 border-t border-[#2B2620] pt-[18px] text-[14.5px] text-[#A79E8F]">
+            <p className="m-0 border-t border-gm-line pt-[18px] text-[15px] text-muted-foreground">
               ¿Tu playa creció?{' '}
               {whatsapp ? (
                 <a
                   href={whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold text-gm-yellow hover:text-[#FFD84D]"
+                  className="font-semibold text-gm-yellow hover:text-gm-yellow-deep"
                 >
                   Escribinos y lo vemos juntos
                 </a>
@@ -379,7 +381,7 @@ function Contenido({ plan }: { plan: MiPlan }) {
 
 // Arriba: en qué está la cuenta (con una barra de cuánto falta) y, al costado, lo que se paga y cuándo.
 function Estado({ r }: { r: Relato }) {
-  const suave = `${r.acento}24`;
+  const suave = tinte(r.acento, 14);
   return (
     <section className={`flex flex-wrap gap-7 p-[22px] sm:p-9 ${tarjeta}`}>
       <div className="flex min-w-0 flex-[1_1_420px] flex-col gap-[22px]">
@@ -399,16 +401,16 @@ function Estado({ r }: { r: Relato }) {
           </span>
         </div>
         <div className="flex flex-col gap-2.5">
-          <h2 className="m-0 text-[27px] font-semibold leading-[1.12] tracking-[-0.01em] text-[#F6F0E6] sm:text-[36px]">
+          <h2 className="m-0 text-[27px] font-semibold leading-[1.12] tracking-[-0.01em] text-foreground sm:text-[36px]">
             {r.titulo}
           </h2>
-          <p className="m-0 max-w-[580px] text-base leading-relaxed text-[#BDB4A6]">{r.texto}</p>
+          <p className="m-0 max-w-[580px] text-base leading-relaxed text-gm-texto-2">{r.texto}</p>
         </div>
         {r.barra && (
           <div className="flex max-w-[540px] flex-col gap-2.5">
-            <div className="text-sm font-semibold text-[#E3DBCE]">{r.barra.titulo}</div>
+            <div className="text-sm font-semibold text-foreground">{r.barra.titulo}</div>
             <div
-              className="h-2 overflow-hidden rounded-full bg-[#2B2620]"
+              className="h-2 overflow-hidden rounded-full bg-gm-surface-3"
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={100}
@@ -420,7 +422,7 @@ function Estado({ r }: { r: Relato }) {
                 style={{ width: `${Math.max(3, r.barra.fraccion * 100)}%`, background: r.acento }}
               />
             </div>
-            <div className="flex justify-between gap-3 text-[12.5px] text-[#8F8676]">
+            <div className="flex justify-between gap-3 text-[13px] text-gm-texto-tenue">
               <span>{r.barra.desde}</span>
               <span>{r.barra.hasta}</span>
             </div>
@@ -429,18 +431,18 @@ function Estado({ r }: { r: Relato }) {
       </div>
 
       {(r.monto || r.boton) && (
-        <div className="flex min-w-0 flex-[1_1_300px] flex-col justify-between gap-6 rounded-[18px] border border-[#2E2A23] bg-[#15120E] p-[26px] lg:max-w-[360px]">
+        <div className="flex min-w-0 flex-[1_1_300px] flex-col justify-between gap-6 rounded-[18px] border border-gm-line bg-background p-[26px] lg:max-w-[360px]">
           {r.monto && (
             <div className="flex flex-col gap-2">
               <div className={rotulo}>{r.monto.etiqueta}</div>
               <div
                 className="font-mono text-[38px] font-bold leading-none tracking-[-0.02em] sm:text-[46px]"
-                style={{ color: r.boton?.principal ? AMARILLO : '#F6F0E6' }}
+                style={{ color: r.boton?.principal ? AMARILLO : 'hsl(var(--foreground))' }}
               >
                 {r.monto.valor}
-                {r.monto.sufijo && <span className="ml-1 text-sm font-medium text-[#8F8676]">{r.monto.sufijo}</span>}
+                {r.monto.sufijo && <span className="ml-1 text-sm font-medium text-gm-texto-tenue">{r.monto.sufijo}</span>}
               </div>
-              {r.monto.detalle && <div className="text-sm text-[#A79E8F]">{r.monto.detalle}</div>}
+              {r.monto.detalle && <div className="text-sm text-muted-foreground">{r.monto.detalle}</div>}
             </div>
           )}
           <div className="flex flex-col gap-3">
@@ -449,14 +451,14 @@ function Estado({ r }: { r: Relato }) {
                 href={r.boton.href}
                 className={
                   r.boton.principal
-                    ? 'flex h-[50px] items-center justify-center rounded-[14px] bg-gm-yellow text-[15px] font-bold text-gm-ink transition-colors hover:bg-[#FFD23A]'
-                    : 'flex h-[50px] items-center justify-center rounded-[14px] border border-[#3A342B] text-[15px] font-semibold text-[#F6F0E6] transition-colors hover:bg-white/[0.04]'
+                    ? 'flex h-[50px] items-center justify-center rounded-[14px] bg-gm-yellow text-[15px] font-bold text-gm-ink transition-colors hover:bg-gm-yellow-deep'
+                    : 'flex h-[50px] items-center justify-center rounded-[14px] border border-gm-line-strong text-[15px] font-semibold text-foreground transition-colors hover:bg-white/[0.04]'
                 }
               >
                 {r.boton.texto}
               </Link>
             )}
-            {r.nota && <p className="m-0 text-[13px] leading-relaxed text-[#8F8676]">{r.nota}</p>}
+            {r.nota && <p className="m-0 text-[13px] leading-relaxed text-gm-texto-tenue">{r.nota}</p>}
           </div>
         </div>
       )}
@@ -470,18 +472,18 @@ function FormaDePago({ plan, whatsapp }: { plan: MiPlan; whatsapp: string | null
   const { cuenta } = plan;
   const debito = cuenta.debito;
   const caja = `flex flex-col gap-[18px] p-[26px] ${tarjeta}`;
-  const texto = 'm-0 text-[13.5px] leading-relaxed text-[#A79E8F]';
+  const texto = 'm-0 text-[14px] leading-relaxed text-muted-foreground';
 
   if (!plan.mercadoPago)
     return (
       <section id="como-pagar" className={`scroll-mt-24 ${caja}`}>
-        <h2 className="m-0 text-[19px] font-semibold text-[#F6F0E6]">Cómo pagar</h2>
+        <h2 className="m-0 text-[19px] font-semibold text-foreground">Cómo pagar</h2>
         {plan.comoPagar ? (
           <>
             <p className={texto}>
               Transferí con estos datos y avisanos. Apenas nos llega, lo anotamos y tu cuenta queda al día en el momento.
             </p>
-            <p className="m-0 whitespace-pre-line rounded-xl border border-[#2E2A23] bg-[#14110D] p-4 font-mono text-[13px] leading-relaxed text-[#E3DBCE]">
+            <p className="m-0 whitespace-pre-line rounded-xl border border-gm-line bg-background p-4 font-mono text-[13px] leading-relaxed text-foreground">
               {plan.comoPagar}
             </p>
           </>
@@ -496,7 +498,7 @@ function FormaDePago({ plan, whatsapp }: { plan: MiPlan; whatsapp: string | null
             href={whatsapp}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-[46px] w-fit items-center gap-2.5 rounded-[13px] bg-[#25D366] px-[18px] text-[14.5px] font-bold text-[#0B2E17] hover:opacity-90"
+            className="inline-flex h-[46px] w-fit items-center gap-2.5 rounded-[13px] bg-[#25D366] px-[18px] text-[15px] font-bold text-[#0B2E17] hover:opacity-90"
           >
             <MessageCircle aria-hidden className="size-[18px]" />
             Escribinos por WhatsApp
@@ -508,36 +510,36 @@ function FormaDePago({ plan, whatsapp }: { plan: MiPlan; whatsapp: string | null
   if (debito?.estado === 'authorized')
     return (
       <section className={caja}>
-        <h2 className="m-0 text-[19px] font-semibold text-[#F6F0E6]">Forma de pago</h2>
-        <div className="flex flex-col gap-4 rounded-2xl border border-[#2E2A23] bg-[#15120E] p-[18px]">
+        <h2 className="m-0 text-[19px] font-semibold text-foreground">Forma de pago</h2>
+        <div className="flex flex-col gap-4 rounded-2xl border border-gm-line bg-background p-[18px]">
           <div className="flex items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#4ADE9B1f] text-[#4ADE9B]">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#4ADE9B1f] text-gm-ok">
               <RefreshCw aria-hidden className="size-[19px]" strokeWidth={1.8} />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-[15px] font-semibold text-[#F6F0E6]">Débito automático</div>
-              <div className="text-[13px] text-[#8F8676]">Con tu tarjeta, por MercadoPago</div>
+              <div className="text-[15px] font-semibold text-foreground">Débito automático</div>
+              <div className="text-[13px] text-gm-texto-tenue">Con tu tarjeta, por MercadoPago</div>
             </div>
-            <span className="rounded-full bg-[#4ADE9B24] px-2.5 py-1 text-xs font-semibold text-[#4ADE9B]">Activo</span>
+            <span className="rounded-full bg-[#4ADE9B24] px-2.5 py-1 text-xs font-semibold text-gm-ok">Activo</span>
           </div>
-          <dl className="m-0 flex flex-col gap-2.5 border-t border-[#2B2620] pt-3.5 text-sm">
+          <dl className="m-0 flex flex-col gap-2.5 border-t border-gm-line pt-3.5 text-sm">
             {cuenta.proximoVencimiento && (
               <div className="flex justify-between gap-3">
-                <dt className="text-[#8F8676]">Próximo débito</dt>
-                <dd className="m-0 text-right font-semibold text-[#F6F0E6]">{fechaLarga(cuenta.proximoVencimiento)}</dd>
+                <dt className="text-gm-texto-tenue">Próximo débito</dt>
+                <dd className="m-0 text-right font-semibold text-foreground">{fechaLarga(cuenta.proximoVencimiento)}</dd>
               </div>
             )}
             <div className="flex justify-between gap-3">
-              <dt className="text-[#8F8676]">Importe</dt>
-              <dd className="m-0 text-right font-mono font-bold text-[#F6F0E6]">
+              <dt className="text-gm-texto-tenue">Importe</dt>
+              <dd className="m-0 text-right font-mono font-bold text-foreground">
                 {pesos(cuenta.importePeriodo)}
-                <span className="font-sans text-xs font-medium text-[#8F8676]">{sufijoPeriodo(cuenta.periodo.meses)}</span>
+                <span className="font-sans text-xs font-medium text-gm-texto-tenue">{sufijoPeriodo(cuenta.periodo.meses)}</span>
               </dd>
             </div>
             {debito.email && (
               <div className="flex justify-between gap-3">
-                <dt className="shrink-0 text-[#8F8676]">Avisos a</dt>
-                <dd className="m-0 min-w-0 truncate text-right text-[#E3DBCE]">{debito.email}</dd>
+                <dt className="shrink-0 text-gm-texto-tenue">Avisos a</dt>
+                <dd className="m-0 min-w-0 truncate text-right text-foreground">{debito.email}</dd>
               </div>
             )}
           </dl>
@@ -545,7 +547,7 @@ function FormaDePago({ plan, whatsapp }: { plan: MiPlan; whatsapp: string | null
         <p className={texto}>MercadoPago lo cobra el día que vence. Si un mes no puede, lo vuelve a intentar durante unos días.</p>
         <Link
           href="/admin/plan/pagar"
-          className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-gm-yellow hover:text-[#FFD84D]"
+          className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-gm-yellow hover:text-gm-yellow-deep"
         >
           Administrar el débito
           <ArrowRight aria-hidden className="size-4" />
@@ -579,20 +581,20 @@ function FormaDePago({ plan, whatsapp }: { plan: MiPlan; whatsapp: string | null
 
   return (
     <section className={caja}>
-      <h2 className="m-0 text-[19px] font-semibold text-[#F6F0E6]">Forma de pago</h2>
-      <div className="flex items-center gap-3 rounded-2xl border border-dashed border-[#3A342B] p-[18px]">
+      <h2 className="m-0 text-[19px] font-semibold text-foreground">Forma de pago</h2>
+      <div className="flex items-center gap-3 rounded-2xl border border-dashed border-gm-line-strong p-[18px]">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#F5C2191f] text-gm-yellow">
           <CreditCard aria-hidden className="size-[19px]" strokeWidth={1.8} />
         </span>
         <div className="min-w-0">
-          <div className="text-[15px] font-semibold text-[#F6F0E6]">{info.titulo}</div>
-          <div className="text-[13px] text-[#8F8676]">{info.sub}</div>
+          <div className="text-[15px] font-semibold text-foreground">{info.titulo}</div>
+          <div className="text-[13px] text-gm-texto-tenue">{info.sub}</div>
         </div>
       </div>
       <p className={texto}>{info.texto}</p>
       <Link
         href="/admin/plan/pagar"
-        className="flex h-[46px] items-center justify-center rounded-[13px] border border-[#3A342B] text-[14.5px] font-semibold text-[#F6F0E6] transition-colors hover:bg-white/[0.04]"
+        className="flex h-[46px] items-center justify-center rounded-[13px] border border-gm-line-strong text-[15px] font-semibold text-foreground transition-colors hover:bg-white/[0.04]"
       >
         {info.boton}
       </Link>
@@ -605,9 +607,9 @@ function Pagos({ facturas }: { facturas: FacturaSaas[] }) {
   const hoy = hoyAR();
   return (
     <section className={`flex flex-col p-[22px] sm:p-8 ${tarjeta}`}>
-      <h2 className="m-0 mb-2 text-[21px] font-semibold text-[#F6F0E6]">Tus pagos</h2>
+      <h2 className="m-0 mb-2 text-[21px] font-semibold text-foreground">Tus pagos</h2>
       {!facturas.length ? (
-        <p className="m-0 border-t border-[#2B2620] pb-1 pt-[18px] text-[15px] leading-relaxed text-[#A79E8F]">
+        <p className="m-0 border-t border-gm-line pb-1 pt-[18px] text-[15px] leading-relaxed text-muted-foreground">
           Todavía no hay pagos. Cada mes que pagues va a aparecer acá.
         </p>
       ) : (
@@ -630,18 +632,18 @@ function Pagos({ facturas }: { facturas: FacturaSaas[] }) {
             return (
               <li
                 key={f.id}
-                className={`flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-[#2B2620] py-[18px] ${anulado ? 'opacity-60' : ''}`}
+                className={`flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-t border-gm-line py-[18px] ${anulado ? 'opacity-60' : ''}`}
               >
                 <div className="flex min-w-0 items-center gap-3.5">
-                  <span className="flex size-[42px] shrink-0 items-center justify-center rounded-xl border border-[#2E2A23] bg-[#15120E] text-[#A79E8F]">
+                  <span className="flex size-[42px] shrink-0 items-center justify-center rounded-xl border border-gm-line bg-background text-muted-foreground">
                     <Receipt aria-hidden className="size-[18px]" strokeWidth={1.8} />
                   </span>
                   <div className="min-w-0">
-                    <div className="text-[15px] font-semibold text-[#F6F0E6]">
+                    <div className="text-[15px] font-semibold text-foreground">
                       {diaMesCorto(f.desde)} – {diaMesCorto(f.hasta)}
-                      {f.meses > 1 && <span className="font-normal text-[#8F8676]"> · {f.meses} meses</span>}
+                      {f.meses > 1 && <span className="font-normal text-gm-texto-tenue"> · {f.meses} meses</span>}
                     </div>
-                    <div className="mt-0.5 text-[13px]" style={{ color: pendiente ? color : '#8F8676' }}>
+                    <div className="mt-0.5 text-[13px]" style={{ color: pendiente ? color : 'hsl(var(--gm-texto-tenue))' }}>
                       {detalle}
                     </div>
                   </div>
@@ -649,12 +651,12 @@ function Pagos({ facturas }: { facturas: FacturaSaas[] }) {
                 <div className="ml-auto flex items-center gap-4">
                   <span
                     className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                    style={{ background: `${color}1f`, color }}
+                    style={{ background: tinte(color, 12), color }}
                   >
                     {estado}
                   </span>
                   <span
-                    className={`min-w-[92px] text-right font-mono text-base font-bold text-[#F6F0E6] ${anulado ? 'line-through' : ''}`}
+                    className={`min-w-[92px] text-right font-mono text-base font-bold text-foreground ${anulado ? 'line-through' : ''}`}
                   >
                     {pesos(f.importe)}
                   </span>

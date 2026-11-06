@@ -13,10 +13,11 @@ import { ArrowRight, X } from "lucide-react";
 import { useTenant } from "@/components/tenant-provider";
 import { cuentaConAlerta, diaAR, pesos } from "@/components/plataforma/cuenta";
 import type { SituacionCuenta } from "@/types/suscripcion.type";
+import { tinte } from "@/lib/utils";
 
-const AMARILLO = "#F5C219";
+const AMARILLO = "hsl(var(--gm-yellow))";
 const NARANJA = "hsl(var(--gm-aviso))";
-const ROJO = "#E5484D";
+const ROJO = "hsl(var(--destructive))";
 
 const enDias = (n: number) => (n === 1 ? "1 día" : `${n} días`);
 const cuandoEs = (n: number) => (n <= 0 ? "hoy" : n === 1 ? "mañana" : `en ${enDias(n)}`);
@@ -158,7 +159,7 @@ export function AvisoCuenta() {
       </span>
       {admin && aviso.accion ? (
         <span
-          className="flex shrink-0 items-center gap-1 text-[12.5px] font-bold transition-transform group-hover:translate-x-0.5"
+          className="flex shrink-0 items-center gap-1 text-[13px] font-bold transition-transform group-hover:translate-x-0.5"
           style={{ color: aviso.acento }}
         >
           {aviso.accion}
@@ -177,7 +178,7 @@ export function AvisoCuenta() {
       title={`${aviso.titulo} · ${aviso.detalle}`}
       className="relative flex items-center border-b border-border/60"
       // Apenas teñido desde la izquierda: se nota sin gritar.
-      style={{ background: `linear-gradient(90deg, ${aviso.acento}1f, ${aviso.acento}08 45%, transparent 85%)` }}
+      style={{ background: `linear-gradient(90deg, ${tinte(aviso.acento, 12)}, ${tinte(aviso.acento, 3)} 45%, transparent 85%)` }}
     >
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: aviso.acento }} />
       {admin ? (

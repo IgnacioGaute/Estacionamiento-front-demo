@@ -156,7 +156,7 @@ export function PlatformBar() {
           </kbd>
         </label>
         {abierto && busqueda.length >= 2 && (
-          <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0B0A08]/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl">
+          <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl border border-white/[0.07] bg-gm-hondo/95 p-1.5 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl">
             {!resultados.length && (
               <p className="p-4 text-sm text-muted-foreground">
                 Nada coincide con «{texto}».
@@ -177,7 +177,7 @@ export function PlatformBar() {
                     r.tipo === "Empresa"
                       ? "bg-gm-yellow/15 text-gm-yellow"
                       : r.tipo === "Playa"
-                        ? "bg-emerald-500/15 text-emerald-400"
+                        ? "bg-gm-ok/15 text-gm-ok"
                         : "bg-indigo-400/15 text-indigo-300"
                   }`}
                 >
@@ -198,26 +198,26 @@ export function PlatformBar() {
       <Link
         href="/admin/empresas"
         aria-label="Estado de la plataforma"
-        className="ml-auto hidden h-9 shrink-0 items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 text-[12.5px] text-[#C9BFB1] transition-colors hover:bg-white/[0.07] hover:text-foreground xl:flex"
+        className="ml-auto hidden h-9 shrink-0 items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 text-[13px] text-gm-texto-2 transition-colors hover:bg-white/[0.07] hover:text-foreground xl:flex"
       >
         <span className="flex items-center gap-1.5">
-          <span className="size-[7px] rounded-full bg-emerald-400" aria-hidden />
+          <span className="size-[7px] rounded-full bg-gm-ok" aria-hidden />
           {activas.length} activas
         </span>
         {suspendidas > 0 && (
           <>
-            <span aria-hidden className="text-[#53493C]">·</span>
+            <span aria-hidden className="text-gm-line-strong">·</span>
             <span className="flex items-center gap-1.5">
-              <span className="size-[7px] rounded-full bg-[#FF7A4D]" aria-hidden />
+              <span className="size-[7px] rounded-full bg-gm-aviso" aria-hidden />
               {suspendidas} suspendida{suspendidas === 1 ? "" : "s"}
             </span>
           </>
         )}
         {sinPlayas > 0 && (
           <>
-            <span aria-hidden className="text-[#53493C]">·</span>
+            <span aria-hidden className="text-gm-line-strong">·</span>
             <span className="flex items-center gap-1.5">
-              <span className="size-[7px] rounded-full bg-[#8A8073]" aria-hidden />
+              <span className="size-[7px] rounded-full bg-gm-texto-tenue" aria-hidden />
               {sinPlayas} sin playas
             </span>
           </>
@@ -229,7 +229,7 @@ export function PlatformBar() {
         href="/admin/empresas?nueva=1"
         data-tour="empresas-crear"
         aria-label="Nueva empresa"
-        className="flex h-9 shrink-0 items-center gap-2 rounded-xl bg-gm-yellow px-2.5 text-sm font-bold text-gm-ink transition-colors hover:bg-[#FFD23A] sm:h-10 sm:px-4"
+        className="flex h-9 shrink-0 items-center gap-2 rounded-xl bg-gm-yellow px-2.5 text-sm font-bold text-gm-ink transition-colors hover:bg-gm-yellow-deep sm:h-10 sm:px-4"
       >
         <Plus className="size-4" strokeWidth={2.5} />
         <span className="hidden sm:inline">Nueva empresa</span>

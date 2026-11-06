@@ -28,8 +28,8 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
   const reduceMotion = useReducedMotion();
   const isNight = day === 'NIGHT';
   const PeriodIcon = isNight ? Moon : Sun;
-  const accent = isNight ? 'text-indigo-300' : 'text-amber-300';
-  const border = isNight ? 'border-indigo-400/25' : 'border-amber-400/25';
+  const accent = isNight ? 'text-indigo-300' : 'text-gm-yellow';
+  const border = isNight ? 'border-indigo-400/25' : 'border-gm-yellow/25';
   const method = tariffMethod(plan), options = plan.schedule.pricingOptions;
   const names = new Map(vehicles.map(v => [v.code, v.name]));
   const pricedCodes = method === 'CUSTOM' ? plan.brackets.map(row => row.vehicleType) : options.charging.rates.map(rate => rate.vehicleType);
@@ -57,23 +57,23 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
     {/* El título dice qué es la sección y la forma de cobro va debajo: antes «TARIFAS VIGENTES» era
         un rótulo en mayúsculas encima de un título que sólo nombraba el método. */}
     <div><h2 id="current-tariff-heading" className="text-xl font-semibold">{hasPrices ? 'Tarifas vigentes' : 'Todavía no configuraste tus precios'}</h2>
-      {hasPrices && <p className="mt-1 text-sm font-semibold text-amber-500">{methodNames[method]}</p>}
+      {hasPrices && <p className="mt-1 text-sm font-semibold text-gm-yellow">{methodNames[method]}</p>}
       <p className="mt-1 text-sm text-muted-foreground">{hasPrices ? 'Las estadías con tarifa fijada al ingresar conservan sus precios. Los registros antiguos sin tarifa fijada usan los precios actuales.' : 'Cargá los importes de tu playa y probá un ejemplo antes de empezar a registrar ingresos.'}</p>
     </div>
     {hasPrices && <>
-      <div className={'flex flex-col gap-4 rounded-xl border p-3 transition-colors duration-500 motion-reduce:transition-none sm:flex-row sm:items-center sm:justify-between sm:p-4 ' + (isNight ? 'border-indigo-400/25 bg-indigo-500/[0.06]' : 'border-amber-400/25 bg-amber-500/[0.06]')}>
+      <div className={'flex flex-col gap-4 rounded-xl border p-3 transition-colors duration-500 motion-reduce:transition-none sm:flex-row sm:items-center sm:justify-between sm:p-4 ' + (isNight ? 'border-indigo-400/25 bg-indigo-500/[0.06]' : 'border-gm-yellow/25 bg-gm-yellow/[0.06]')}>
         <div className="min-w-0 space-y-2"><p className="text-xs font-medium text-muted-foreground">Tipo de vehículo</p><VehicleTariffTabs vehicles={tabs} value={vehicle} onChange={setSelected} panelId={panelId} /></div>
         <TariffDayNightToggle value={day} onChange={setDay} panelId={panelId} description={day === 'DAY' ? dayHours : nightHours} />
       </div>
       {/* Región con nombre propio: los vehículos se eligen con un Segmento, no con pestañas, y el
           aria-labelledby apuntaba a un id de pestaña que ya no existe. */}
-      <div id={panelId} role="region" aria-label={`Tarifas de ${isNight ? 'noche' : 'día'}: ${names.get(vehicle) ?? vehicle}`} tabIndex={0} className={'overflow-hidden rounded-2xl border outline-none transition-colors duration-500 motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background ' + border + (isNight ? ' bg-indigo-950/20 focus-visible:ring-indigo-400' : ' bg-amber-950/10 focus-visible:ring-amber-400')}>
+      <div id={panelId} role="region" aria-label={`Tarifas de ${isNight ? 'noche' : 'día'}: ${names.get(vehicle) ?? vehicle}`} tabIndex={0} className={'overflow-hidden rounded-2xl border outline-none transition-colors duration-500 motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background ' + border + (isNight ? ' bg-indigo-950/20 focus-visible:ring-indigo-400' : ' bg-gm-yellow/[0.03] focus-visible:ring-gm-yellow')}>
         <motion.div key={vehicle + day} initial={reduceMotion ? false : { opacity: 0.55, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduceMotion ? 0 : 0.28, ease: 'easeOut' }}>
-        <div className={'relative overflow-hidden border-b px-4 py-5 sm:px-5 ' + border + (isNight ? ' bg-gradient-to-r from-indigo-500/20 to-indigo-500/[0.03]' : ' bg-gradient-to-r from-amber-500/20 to-amber-500/[0.03]')}>
+        <div className={'relative overflow-hidden border-b px-4 py-5 sm:px-5 ' + border + (isNight ? ' bg-gradient-to-r from-indigo-500/20 to-indigo-500/[0.03]' : ' bg-gradient-to-r from-gm-yellow/20 to-gm-yellow/[0.03]')}>
           <PeriodIcon aria-hidden="true" className={'pointer-events-none absolute -right-3 -top-4 size-32 rotate-12 opacity-[0.08] ' + accent} />
           <div className="relative flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <span className={'flex size-11 shrink-0 items-center justify-center rounded-xl border ' + border + (isNight ? ' bg-indigo-400/10' : ' bg-amber-400/10')}><PeriodIcon className={'size-6 ' + accent} aria-hidden="true" /></span>
+              <span className={'flex size-11 shrink-0 items-center justify-center rounded-xl border ' + border + (isNight ? ' bg-indigo-400/10' : ' bg-gm-yellow/10')}><PeriodIcon className={'size-6 ' + accent} aria-hidden="true" /></span>
               <div className="min-w-0"><h3 className="break-words text-xl font-semibold">{names.get(vehicle) ?? vehicle}</h3><p className={'mt-0.5 text-sm font-semibold ' + accent}>Tarifas de {isNight ? 'noche' : 'día'}</p></div>
             </div>
             <span className={'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ' + border + ' ' + accent}><Clock3 className="size-3.5" aria-hidden="true" />{isNight ? nightHours : dayHours}</span>
@@ -87,14 +87,14 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
         </div> : <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">Este vehículo todavía no tiene precios configurados.</p> : rows.length ? <>
           <table className="w-full border-separate border-spacing-y-2 text-sm"><caption className="sr-only">Precios vigentes de {names.get(vehicle) ?? vehicle} — {day === 'DAY' ? 'día' : 'noche'}</caption>
             <thead><tr className="text-left text-muted-foreground"><th scope="col" className="px-3 pb-1 text-xs font-medium uppercase tracking-wide">Duración / regla</th><th scope="col" className="px-3 pb-1 text-right text-xs font-medium uppercase tracking-wide">Importe</th></tr></thead>
-            <tbody>{rows.map((row,index) => { const lista = derivado(row); return <tr key={row.id ?? index} className={'group transition-colors motion-reduce:transition-none ' + (row.uptoMinutes === null ? (isNight ? 'bg-indigo-400/10' : 'bg-amber-400/10') : 'bg-background/40 hover:bg-white/[0.04]')}>
-              <th scope="row" className={'rounded-l-xl border-y border-l px-3 py-4 text-left font-medium ' + (isNight ? 'border-indigo-400/10' : 'border-amber-400/10')}>
+            <tbody>{rows.map((row,index) => { const lista = derivado(row); return <tr key={row.id ?? index} className={'group transition-colors motion-reduce:transition-none ' + (row.uptoMinutes === null ? (isNight ? 'bg-indigo-400/10' : 'bg-gm-yellow/10') : 'bg-background/40 hover:bg-white/[0.04]')}>
+              <th scope="row" className={'rounded-l-xl border-y border-l px-3 py-4 text-left font-medium ' + (isNight ? 'border-indigo-400/10' : 'border-gm-yellow/10')}>
                 {row.uptoMinutes === null && <span className={'mb-1.5 block text-[11px] font-bold uppercase tracking-wider ' + accent}>Si se queda más tiempo</span>}
                 {row.uptoMinutes !== null ? 'Hasta ' + durationLabel(row.uptoMinutes) : row.recurringUnitMinutes ? 'Después: cada ' + durationLabel(row.recurringUnitMinutes) + ' adicional' : 'Después: precio total fijo'}
                 {row.ticketDayType === null && <span className="mt-1 block text-xs font-normal text-muted-foreground">Precio general para este horario</span>}
                 {row.recurringUnitMinutes && row.recurringPriceMode !== 'FIXED' ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{lista ? 'Sale de la lista de precios. Si no hubiera una duración de referencia, se cobraría el respaldo de ' + formatImporte(row.price) + '.' : 'No hay una duración de referencia en la lista: se cobra el precio de respaldo.'}</span> : null}
               </th>
-              <td className={'whitespace-nowrap rounded-r-xl border-y border-r px-2 py-4 text-right text-sm font-bold tabular-nums sm:px-3 sm:text-base ' + accent + (isNight ? ' border-indigo-400/10' : ' border-amber-400/10')}>{row.recurringUnitMinutes ? '+ ' : ''}{formatImporte(Math.round((lista?.price ?? row.price) * 100) / 100)}</td>
+              <td className={'whitespace-nowrap rounded-r-xl border-y border-r px-2 py-4 text-right text-sm font-bold tabular-nums sm:px-3 sm:text-base ' + accent + (isNight ? ' border-indigo-400/10' : ' border-gm-yellow/10')}>{row.recurringUnitMinutes ? '+ ' : ''}{formatImporte(Math.round((lista?.price ?? row.price) * 100) / 100)}</td>
             </tr>; })}</tbody>
           </table>
           <p className="text-xs text-muted-foreground">El cálculo puede combinar duraciones menores. Comprobá el resultado en el simulador.</p>
@@ -106,7 +106,7 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
       <div className="space-y-1 rounded-xl bg-muted/40 p-3 text-sm">
         <p>{night ? 'Precios según horario' : 'Mismos precios todo el día'}{(night || crossing === 'SPLIT') && <> · Día: {dayHours}</>}</p>
         {(night || crossing === 'SPLIT') && <p>{crossingNames[crossing]}.</p>}
-        {crossing === 'SPLIT' && <p className="text-amber-600 dark:text-amber-400">Cada tramo cuenta sus propios períodos, aun cuando el precio de día y noche sea igual.</p>}
+        {crossing === 'SPLIT' && <p className="text-gm-atencion">Cada tramo cuenta sus propios períodos, aun cuando el precio de día y noche sea igual.</p>}
         {(method === 'CUSTOM' || method === 'STARTED') && <p>Tolerancia: <strong>{plan.schedule.graceMinutes} min</strong> antes de pasar al siguiente período o duración.</p>}
       </div>
     </>}

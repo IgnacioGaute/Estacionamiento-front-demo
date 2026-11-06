@@ -14,7 +14,7 @@ const badgeVariants = cva(
         orange:
           "border-gm-orange/40 bg-gm-orange/15 text-gm-aviso",
         green:
-          "border-[hsl(120_35%_55%/0.4)] bg-[hsl(120_35%_55%/0.15)] text-[#9AD588]",
+          "border-gm-ok/40 bg-gm-ok/15 text-gm-ok",
         red:
           "border-destructive/40 bg-destructive/15 text-gm-peligro",
         blue:

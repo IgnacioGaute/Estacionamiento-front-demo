@@ -31,7 +31,7 @@ export default async function ConfiguracionInicialPage() {
   try {
     estado = await getConfiguracionInicial();
   } catch (error) {
-    return <main className="grid min-h-[100dvh] place-items-center bg-[#0e0d0b] p-6">{aviso(error instanceof Error ? error.message : 'No se pudo cargar la configuración de la playa.')}</main>;
+    return <main className="grid min-h-[100dvh] place-items-center bg-gm-hondo p-6">{aviso(error instanceof Error ? error.message : 'No se pudo cargar la configuración de la playa.')}</main>;
   }
   if (estado.configuracion.terminadaEn) redirect('/tickets');
 

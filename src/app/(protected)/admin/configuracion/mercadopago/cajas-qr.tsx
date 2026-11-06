@@ -226,7 +226,7 @@ function FilaPlaya({
           </p>
         </div>
         {playa.caja ? (
-          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400">
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gm-ok">
             <CheckCircle2 className="size-4" /> Cualquier banco
           </span>
         ) : (

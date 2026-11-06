@@ -140,14 +140,14 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       aria-current={actual ? 'page' : undefined}
                       className={cn(
                         'flex h-10 items-center gap-3 rounded-xl px-1.5 text-[13px] transition-colors hover:bg-white/[0.04] hover:text-foreground',
-                        actual ? 'bg-white/[0.06] font-semibold text-foreground' : 'text-[#D9D1C3]',
+                        actual ? 'bg-white/[0.06] font-semibold text-foreground' : 'text-gm-texto-2',
                       )}
                     >
                       <span
                         aria-hidden
                         className={cn(
                           'grid size-8 shrink-0 place-items-center rounded-[10px] text-[11px] font-semibold',
-                          actual ? 'bg-gm-yellow text-gm-ink' : 'bg-white/[0.05] text-[#E9E1D4]',
+                          actual ? 'bg-gm-yellow text-gm-ink' : 'bg-white/[0.05] text-foreground',
                         )}
                       >
                         {iniciales(e.nombre)}
@@ -156,7 +156,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
                       <span
                         role="img"
                         aria-label={e.estado === 'ACTIVA' ? 'Activa' : 'Suspendida'}
-                        className={cn('mr-2 size-[7px] shrink-0 rounded-full', e.estado === 'ACTIVA' ? 'bg-emerald-400' : 'bg-[#FF7A4D]')}
+                        className={cn('mr-2 size-[7px] shrink-0 rounded-full', e.estado === 'ACTIVA' ? 'bg-gm-ok' : 'bg-gm-aviso')}
                       />
                     </Link>
                   </li>
@@ -166,7 +166,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
             <Link
               href="/admin/empresas"
               onClick={cerrarEnMovil}
-              className="px-2.5 pt-2 text-[12.5px] font-semibold text-gm-yellow hover:text-[#FFD84D]"
+              className="px-2.5 pt-2 text-[13px] font-semibold text-gm-yellow hover:text-gm-yellow-deep"
             >
               Ver las {empresas.length} empresas →
             </Link>

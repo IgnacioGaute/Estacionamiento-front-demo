@@ -38,24 +38,40 @@ explícitas en middleware/routes. Los comprobantes públicos se sirven en otro r
   Each page titles itself with `EncabezadoSeccion`. Reserve tabs for views of the same thing on one page (Tarifas).
   The section layout also renders the same `items` as a row of links under its title (`Subpaginas`), because the
   collapsed sidebar shows only the section icon and on phones the sidebar is a separate sheet.
-- Títulos: sin rótulos en mayúsculas encima (`TARIFAS VIGENTES`, `MI TURNO`); lo que decía el rótulo va en
-  el título o en una línea debajo. Los rótulos en mayúsculas quedan para etiquetas de un dato (una cifra,
-  una columna). Texto mínimo de 11 px, salvo lo que tiene que entrar en una chapa o un ícono.
-- Botones: `Button` mide 44 px (comunes) y 40 px (`size="sm"`) en el celular y vuelve a 36/32 px desde
-  `sm`. Si el botón trae su propia altura en `className` (`h-7` en un buscador), se respeta en todas las
-  pantallas.
+- Títulos: cada pantalla de administración usa `PageHeader` (Mi plan y Pagar incluidas); un título
+  propio (Editar tarifas, la cuenta de un inquilino) copia su medida: `gm-display`, 26 px y 30 px desde
+  `md`. La portada de Entradas y salidas del operador tiene su propio saludo y título. Sin rótulos en
+  mayúsculas encima (`TARIFAS VIGENTES`, `MI TURNO`); lo que decía el rótulo va en el título o en una
+  línea debajo. Las mayúsculas quedan para etiquetas de un dato (una cifra, una columna).
+- Letra: mínimo 11 px y sin medios píxeles (11, 12, 13, 14, 15…), salvo lo que tiene que entrar en
+  una chapa.
+- Tablas: el encabezado de columna es el de las planillas (`thPlanilla` en `components/planilla`):
+  11 px, negrita, mayúsculas por CSS y `text-muted-foreground`. El texto de las celdas se escribe
+  normal («Abono mensual»), no en mayúsculas.
+- Botones y campos: `Button` mide 44 px (comunes y de ícono) y 40 px (`size="sm"`) en el celular y
+  vuelve a 36/32 px desde `sm`; `Input` mide 44 px en el celular y 40 desde `sm`, igual que la lista
+  desplegable. Si traen su propia altura en `className` (`h-7` en un buscador), se respeta en todas
+  las pantallas.
 - Setup flows (`SetupStepper`) are for configuring something the first time; once it exists, the same steps render as
   `SetupSections` (all visible, each with its own save). Tarifas goes back to steps only when the charging method changes.
 - Onboarding tours: a page defines `TOUR_STEPS` (selector, title, desc) targeting `data-tour="..."` elements and
   renders `<PageTour steps={TOUR_STEPS} />` in its header actions — see `admin/dashboard/page.tsx`.
-- Charts use `recharts` through `src/components/ui/chart.tsx`; toasts use `sonner` (`src/lib/toast.ts`).
+- Charts use `recharts` directly (see `admin/dashboard/components`); toasts use `sonner` (`src/lib/toast.ts`).
 - Colores de estado: `gm-aviso` (revisar antes de seguir: importe de respaldo, sin turno, tiempo
-  superado), `gm-atencion` (pendiente sin urgencia), `gm-ok` (confirmado) y `gm-texto-tenue` (lo más
-  apagado que pasa AA sobre el fondo). Peligro y error: fondos y bordes en `destructive`, texto en
-  `gm-peligro` (`destructive` como texto chico no llega a 4,5:1). Definidos en `globals.css` y
-  `tailwind.config.ts`, admiten opacidad (`bg-gm-aviso/10`). Las pantallas en uso ya están migradas.
-  Quedan hex sueltos en las pantallas sin uso (Propietarios, Particulares y sus comprobantes viejos),
-  que no se tocan, y en las de plataforma del super admin, que tienen su propia paleta
+  superado, deuda), `gm-atencion` (pendiente sin urgencia, avisos de caja y de tarifas), `gm-ok`
+  (confirmado, al día, a favor: el único verde) y `gm-yellow` para los acentos de marca (selección,
+  foco, el tema de día de Tarifas). Peligro y error: fondos y bordes en `destructive`, texto en
+  `gm-peligro` (`destructive` como texto chico no llega a 4,5:1). Sin colores de la paleta de
+  Tailwind (`amber-*`, `emerald-*`) para estados.
+- Textos en cuatro pasos: `foreground`, `gm-texto-2`, `muted-foreground` y `gm-texto-tenue` (lo más
+  apagado que pasa AA). Superficies: `gm-hondo` (barra lateral, barra del celular, login),
+  `background`, `gm-surface`, `muted`/`gm-surface-2`, `gm-surface-3`; bordes `gm-line` y
+  `gm-line-strong`. Todo en `globals.css` y `tailwind.config.ts`, con opacidad (`bg-gm-aviso/10`).
+  En estilos en línea, `hsl(var(--token))`, y para teñir `tinte(color, %)` de `lib/utils`: pegarle
+  «24» al final de un color solo funciona con hex y rompe con un token.
+- Quedan hex a propósito en lo que imita objetos reales (el QR impreso, la chapa, el comprobante de
+  muestra, el botón de WhatsApp), en las pantallas sin uso (Propietarios, Particulares y sus
+  comprobantes viejos), que no se tocan, y en las de plataforma del super admin, con su propia paleta
   (`components/plataforma`).
 - Pantallas de acceso (login, recuperar, nueva contraseña, verificación, registro, error): mismo marco
   que `/seleccionar-acceso` (`components/auth/card-wrapper.tsx`), con `AppIcon`, título y ancho fluido.

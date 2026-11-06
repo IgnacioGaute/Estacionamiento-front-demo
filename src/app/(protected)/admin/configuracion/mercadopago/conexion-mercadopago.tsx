@@ -33,7 +33,7 @@ function TextoCondiciones({ condiciones }: { condiciones: CondicionesMercadoPago
   return (
     <div className="rounded-lg border border-border bg-secondary/30 p-4">
       <p className="flex items-center gap-2 text-sm font-semibold">
-        <ShieldCheck className="size-4 shrink-0 text-emerald-400" />
+        <ShieldCheck className="size-4 shrink-0 text-gm-ok" />
         {condiciones.titulo}
       </p>
       <ul className="mt-2.5 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
@@ -215,7 +215,7 @@ export function ConexionMercadoPago({
                 <>
                   <div className="flex items-start gap-3">
                     {estado.estado === 'ACTIVA' ? (
-                      <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-400" />
+                      <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gm-ok" />
                     ) : (
                       <TriangleAlert className="mt-0.5 size-5 shrink-0 text-gm-orange" />
                     )}

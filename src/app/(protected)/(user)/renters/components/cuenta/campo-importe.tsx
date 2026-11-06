@@ -42,7 +42,7 @@ export function CampoImporte({
           mostrarError
             ? 'border-destructive'
             : bien
-              ? 'border-emerald-400/60'
+              ? 'border-gm-ok/60'
               : 'border-border focus-within:border-gm-yellow'
         }`}
       >

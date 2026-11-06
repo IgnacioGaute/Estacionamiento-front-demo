@@ -229,7 +229,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
           {cargando && !datos ? (
             <DataLoading label="Cargando tarifas…" />
           ) : datos && !datos.opciones.length ? (
-            <p className="rounded-2xl border border-border bg-gm-surface-2 p-3.5 text-[13.5px] leading-relaxed text-muted-foreground">
+            <p className="rounded-2xl border border-border bg-gm-surface-2 p-3.5 text-[14px] leading-relaxed text-muted-foreground">
               Todavía está en la primera tarifa: no hay una más barata. Cobralo normal, con {formatImporte(datos.ahora)}.
             </p>
           ) : datos && (
@@ -256,7 +256,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
           {error && <p role="alert" className="text-[13px] text-gm-orange">{error}</p>}
 
           {opcion && cobrado > 0 && (
-            <p className="text-[12.5px] text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               {saldo > 0 ? `Ya pagó ${formatImporte(cobrado)}: falta cobrar ${formatImporte(saldo)}.` : devolver > 0 ? `Ya pagó ${formatImporte(cobrado)}: se devuelven ${formatImporte(devolver)}.` : 'Ya está pago: solo se registra la salida.'}
             </p>
           )}
@@ -273,7 +273,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
                   <CashAmountField compact id="se-fue-efectivo" label="En efectivo" value={efectivoHibrido} onChange={setEfectivoHibrido} disabled={enviando} max={saldo} />
                   <div className="space-y-2 border-t border-dashed border-gm-line-strong pt-2.5">
                     <p className="flex items-center justify-between gap-2">
-                      <span className="text-[13.5px] font-semibold">El resto</span>
+                      <span className="text-[14px] font-semibold">El resto</span>
                       <span className="gm-mono text-[20px] font-bold leading-none">{formatImporte(Math.max(0, saldo - efectivoParte))}</span>
                     </p>
                     <div role="group" aria-label="Cómo paga el resto" className={cn('grid gap-2', restoMedios.length === 3 ? 'grid-cols-3' : 'grid-cols-2')}>

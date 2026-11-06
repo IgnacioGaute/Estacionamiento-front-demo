@@ -54,7 +54,7 @@ export function TarifasElegibles({ id, opciones, elegida, onElegir, cada, disabl
             {/* El contador vive dentro de la última tarifa y solo con ella elegida. */}
             {conCada && marcada && (
               <div className="flex items-center justify-between gap-3 border-t border-gm-yellow/25 px-3.5 py-2.5">
-                <span className="min-w-0 text-[12.5px] text-[#D9D1C3]">
+                <span className="min-w-0 text-[13px] text-gm-texto-2">
                   ¿Cuántas veces <strong className="font-semibold">{cada!.etiqueta}</strong>?
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
