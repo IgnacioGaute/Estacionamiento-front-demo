@@ -49,8 +49,9 @@ export default function LoginPage() {
           </div>
           {/* El hueco donde encaja: 3 px más grande que la pieza. */}
           <div className="rounded-[28px] bg-[#0B0A08] px-6 pb-7 pt-[66px] [-webkit-mask-image:radial-gradient(circle_47px_at_50%_0,transparent_46.5px,#000_47px)] [mask-image:radial-gradient(circle_47px_at_50%_0,transparent_46.5px,#000_47px)] sm:px-9">
-            <p className="text-center text-[11.5px] font-bold uppercase tracking-[0.16em] text-muted-foreground sm:text-xs">{saludo()}</p>
-            <h1 className="mt-2 text-center font-display text-[34px] font-bold leading-none sm:text-[38px]">Iniciar sesión</h1>
+            {/* El saludo va como frase debajo del título y no como rótulo en mayúsculas encima. */}
+            <h1 className="text-center font-display text-[34px] font-bold leading-none sm:text-[38px]">Iniciar sesión</h1>
+            <p className="mt-2 text-center text-sm text-muted-foreground">{saludo()}, entrá con tu cuenta.</p>
 
             <Suspense>
               <LoginForm />
@@ -63,7 +64,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <p className="absolute inset-x-0 bottom-8 text-center font-display text-[13px] font-bold tracking-[0.18em] text-[#7D7365]">
+      <p className="absolute inset-x-0 bottom-8 text-center font-display text-[13px] font-bold tracking-[0.18em] text-gm-texto-tenue">
         ESTACIONAMIENTO
       </p>
     </div>

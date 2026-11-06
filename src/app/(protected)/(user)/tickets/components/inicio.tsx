@@ -27,7 +27,7 @@ export { estaAdentro, estadiasLargas, HORAS_ESTADIA_LARGA };
 // Sin tildes antes de quitar lo que no es letra o número: «Gómez» se encuentra escribiendo «gomez».
 export const normalizar = (valor: string) => valor.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-export const NARANJA_AVISO = '#F0714A';
+export const NARANJA_AVISO = 'hsl(var(--gm-aviso))';
 
 // La línea fina al pie de cada vehículo: el color de su tramo, llena según cuánto le falta para
 // pasar al siguiente. Si se pasó del tiempo avisado, naranja.
@@ -80,13 +80,13 @@ export function InicioHero({
         <div className="mt-2 flex flex-wrap gap-2">
           {turno}
           {excedidos > 0 && (
-            <button type="button" onClick={onExcedidos} className="inline-flex h-[34px] items-center gap-1 rounded-full bg-gm-ink pl-3 pr-2 text-[12.5px] font-bold text-[#F0714A] transition-transform active:scale-95">
+            <button type="button" onClick={onExcedidos} className="inline-flex h-[34px] items-center gap-1 rounded-full bg-gm-ink pl-3 pr-2 text-[12.5px] font-bold text-gm-aviso transition-transform active:scale-95">
               {excedidos === 1 ? '1 superó el tiempo avisado' : `${excedidos} superaron el tiempo avisado`}
               <ChevronRight className="size-4" aria-hidden />
             </button>
           )}
           {vencidas > 0 && (
-            <button type="button" onClick={onVencidas} className="inline-flex h-[34px] items-center gap-1 rounded-full bg-gm-ink pl-3 pr-2 text-[12.5px] font-bold text-[#F0714A] transition-transform active:scale-95">
+            <button type="button" onClick={onVencidas} className="inline-flex h-[34px] items-center gap-1 rounded-full bg-gm-ink pl-3 pr-2 text-[12.5px] font-bold text-gm-aviso transition-transform active:scale-95">
               {vencidas === 1 ? '1 estadía larga vencida' : `${vencidas} estadías largas vencidas`}
               <ChevronRight className="size-4" aria-hidden />
             </button>
@@ -148,7 +148,7 @@ function TiempoAdentro({ porHora, ahora, onZona }: { porHora: TicketRegistration
           >
             <span className="flex w-full items-start justify-between gap-1">
               {/* El 0 sigue apagado, pero legible: #5C554B daba 2,2:1 y este 3,9:1. */}
-              <span className="font-display text-[34px] font-bold leading-none tabular-nums" style={{ color: zona.cantidad ? '#F2EDE3' : '#857B6D' }}>
+              <span className="font-display text-[34px] font-bold leading-none tabular-nums" style={{ color: zona.cantidad ? '#F2EDE3' : 'hsl(var(--gm-texto-tenue))' }}>
                 {zona.cantidad}
               </span>
               <span aria-hidden className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: zona.color }} />
@@ -211,7 +211,9 @@ function FilaEstadia({ r, minutos, tono, onSigue, onSeFueAntes, onCobrar }: {
         <span className="gm-mono block truncate text-[13px] font-bold">{patente}</span>
         <span className={cn('gm-mono block truncate text-[12px]', tono === 'violeta' ? 'text-violet-200' : 'text-blue-300')}>{formatEstadia(minutos)}</span>
       </span>
-      <span className="flex shrink-0 items-center gap-1">
+      {/* 8 px entre botones: «Sigue» y «Se fue antes» son decisiones opuestas y con 4 px el pulgar
+          se equivocaba de una a otra. */}
+      <span className="flex shrink-0 items-center gap-2">
         {onSigue && (
           <button type="button" onClick={onSigue} aria-label={`${patente} sigue en la playa`}
             className={cn(BOTON_FILA, 'border border-gm-line-strong text-[#D9D1C3] hover:border-violet-300/60 focus-visible:ring-violet-300')}>
@@ -344,7 +346,7 @@ export function AvisoAnticipo({ r, ahora }: { r: TicketRegistration; ahora: numb
   return (
     <span className={cn(
       'flex w-full min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 text-[11.5px] font-semibold',
-      anticipo.vencido ? 'bg-[#F0714A]/15 text-[#F0714A]' : 'bg-emerald-400/12 text-emerald-300',
+      anticipo.vencido ? 'bg-gm-aviso/15 text-gm-aviso' : 'bg-emerald-400/12 text-emerald-300',
     )}>
       <Wallet className="size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0 truncate">
@@ -401,7 +403,7 @@ export function VehiculoFila({ r, ahora, onSelect, resaltar }: {
       </span>
       <span className="min-w-0 flex-1">
         <span className="gm-mono flex items-center gap-1.5 text-base font-bold" style={{ color: pasado ? NARANJA_AVISO : tramoInfo(minutos).color }}>
-          {pasado && <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" />}
+          {pasado && <span aria-hidden className="size-[7px] rounded-full bg-gm-aviso" />}
           {formatEstadia(minutos)}
           {pasado && <span className="sr-only">, superó el tiempo avisado</span>}
         </span>
@@ -519,7 +521,7 @@ export function TodosLosVehiculos({
       <Segmento aria-label="Filtrar" size="lg" value={filtro} onChange={(id) => onFiltro(id as FiltroVehiculos)}
         items={[
           { value: 'hora', label: `Por hora · ${activos.length}` },
-          ...(pasados.length > 0 ? [{ value: 'excedidos', label: `Tiempo superado · ${pasados.length}`, icon: <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" /> }] : []),
+          ...(pasados.length > 0 ? [{ value: 'excedidos', label: `Tiempo superado · ${pasados.length}`, icon: <span aria-hidden className="size-[7px] rounded-full bg-gm-aviso" /> }] : []),
           ...(cobroHabilitado ? [{ value: 'dia', label: `Día/Sem/Mes · ${diaActivos.length}` }] : []),
         ]} />
 
@@ -559,7 +561,7 @@ export function TodosLosVehiculos({
           ) : grupos.length ? (
             grupos.map((g) => (
               <section key={g.id} id={`grupo-${g.id}`} aria-label={g.titulo} className="flex scroll-mt-28 flex-col gap-2">
-                <p className={cn('flex items-center gap-2 px-1 text-[13px] font-bold', g.alerta ? 'text-[#F0714A]' : 'text-[#D9D1C3]')}>
+                <p className={cn('flex items-center gap-2 px-1 text-[13px] font-bold', g.alerta ? 'text-gm-aviso' : 'text-[#D9D1C3]')}>
                   <span aria-hidden className="size-2 rounded-full" style={{ background: g.color }} />
                   {g.titulo}<span className="gm-mono font-semibold text-muted-foreground">{g.filas.length}</span>
                 </p>

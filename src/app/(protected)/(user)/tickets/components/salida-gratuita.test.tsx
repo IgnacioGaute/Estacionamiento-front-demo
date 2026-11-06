@@ -9,6 +9,9 @@ import type { SalidaGratuitaSummary } from '@/services/tickets.service';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 // useTenant vive junto a la acción de contexto (next-auth): se simula con una playa con cobro.
 jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ cobroHabilitado: true }) }));
+// El panel avisa si no hay turno propio: la consulta de caja importa la sesión del servidor.
+jest.mock('@/actions/turnos/cash-context.action', () => ({ getCashContextAction: jest.fn() }));
+jest.mock('./turno-bar', () => ({ TurnoBar: () => null }));
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn().mockResolvedValue([]) }));
 jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn() }));

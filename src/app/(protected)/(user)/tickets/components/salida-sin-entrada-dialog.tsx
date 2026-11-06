@@ -170,8 +170,8 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
         <ActionDialogBody>
           <div role="alert" className="space-y-3 rounded-[18px] border-[1.5px] border-gm-orange/55 bg-gm-orange/10 p-4">
             <p className="flex items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gm-orange/20 text-[#F0714A]"><AlertTriangle className="size-5" aria-hidden /></span>
-              <span className="flex min-w-0 items-center gap-2.5"><PlateChip plate={plate ?? '—'} size="sm" /><span className="text-[14px] font-semibold text-[#F0714A]">no está adentro</span></span>
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gm-orange/20 text-gm-aviso"><AlertTriangle className="size-5" aria-hidden /></span>
+              <span className="flex min-w-0 items-center gap-2.5"><PlateChip plate={plate ?? '—'} size="sm" /><span className="text-[14px] font-semibold text-gm-aviso">no está adentro</span></span>
             </p>
             <p className="text-[13px] leading-relaxed text-[#D9D1C3]">Elegí la tarifa que le corresponde: se registra la entrada con ese tiempo y se cobra ahora, con cualquier medio. Queda anotado en la Actividad con tu usuario.</p>
           </div>

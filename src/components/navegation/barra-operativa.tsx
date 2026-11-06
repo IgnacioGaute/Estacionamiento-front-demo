@@ -41,9 +41,9 @@ function Hora() {
       title={enLinea ? 'En línea: lo que registrás se guarda al instante' : 'Sin conexión: revisá internet o usá el modo sin conexión'}
       className="flex h-8 shrink-0 items-center gap-2 rounded-[10px] border border-white/[0.06] bg-white/[0.04] px-2.5 sm:h-9 sm:rounded-xl sm:px-3"
     >
-      <span aria-hidden className={cn('size-[7px] shrink-0 rounded-full', enLinea ? 'bg-emerald-400' : 'bg-[#F0714A]')} />
+      <span aria-hidden className={cn('size-[7px] shrink-0 rounded-full', enLinea ? 'bg-emerald-400' : 'bg-gm-aviso')} />
       <span className="sr-only">{enLinea ? 'En línea.' : 'Sin conexión.'}</span>
-      {!enLinea && <span className="whitespace-nowrap text-xs font-semibold text-[#F0714A]">Sin conexión</span>}
+      {!enLinea && <span className="whitespace-nowrap text-xs font-semibold text-gm-aviso">Sin conexión</span>}
       {hora && (
         <>
           <span className="gm-mono text-[12.5px] font-bold text-foreground sm:text-[13.5px]">{hora.format('HH:mm')}</span>

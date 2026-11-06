@@ -1,40 +1,34 @@
 'use client';
 
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from '@/components/ui/card';
 import { BackButton } from './back-button';
 import { Header } from './header';
 
 interface CardWrapperProps {
   children?: React.ReactNode;
+  title?: string;
   headerLabel?: string;
   backButtonLabel?: string;
   backButtonHref?: string;
 }
 
+// El mismo marco que «Elegí dónde entrar» y la pantalla de error: las pantallas de acceso eran
+// cuatro lenguajes distintos. Ancho fluido: con 420 px fijos la tarjeta se cortaba en un celular.
 export function CardWrapper({
   children,
+  title,
   headerLabel,
   backButtonLabel,
   backButtonHref,
 }: CardWrapperProps) {
   return (
-    <Card className="w-[420px] border-gm-line-strong shadow-[0_24px_80px_-24px_rgba(0,0,0,0.8)] overflow-hidden">
-      {/* caution-tape strip */}
-      <div className="gm-stripes h-[6px] w-full" aria-hidden />
-      <CardHeader className="pt-7">
-        <Header label={headerLabel} />
-      </CardHeader>
-      <CardContent>{children}</CardContent>
+    <section className="w-full min-w-0 max-w-md rounded-2xl border border-white/[0.07] bg-[#0E0D0B] p-6 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)] sm:p-8">
+      <Header title={title} label={headerLabel} />
+      {children}
       {backButtonHref && backButtonLabel && (
-        <CardFooter className="flex justify-center pt-3">
+        <div className="flex justify-center pt-5">
           <BackButton label={backButtonLabel} backButtonHref={backButtonHref} />
-        </CardFooter>
+        </div>
       )}
-    </Card>
+    </section>
   );
 }

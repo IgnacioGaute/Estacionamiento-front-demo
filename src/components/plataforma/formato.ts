@@ -18,9 +18,10 @@ export const plural = (n: number, uno: string, varios: string) =>
 // Importes grandes abreviados: en una tarjeta cabe «$ 236,4 M», no nueve dígitos.
 export function corto(valor: number) {
   const abs = Math.abs(valor);
-  if (abs >= 1e6) return `$ ${numero(valor / 1e6, 1)} M`;
-  if (abs >= 1e3) return `$ ${numero(valor / 1e3)} k`;
-  return `$ ${numero(Math.round(valor))}`;
+  // Sin espacios: en tipografía mono «$ 722 k» dejaba huecos anchos entre «$», número y «k».
+  if (abs >= 1e6) return `$${numero(valor / 1e6, 1)}M`;
+  if (abs >= 1e3) return `$${numero(valor / 1e3)}k`;
+  return `$${numero(Math.round(valor))}`;
 }
 
 // Variación porcentual. Null cuando no hay contra qué comparar: un «+100 %» contra cero no dice

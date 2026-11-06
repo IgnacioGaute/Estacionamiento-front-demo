@@ -447,7 +447,8 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
             }
           />
           <Escenario>
-            <Mosaicos items={mosaicos} />
+            {/* Con pocas empresas el mosaico era un bloque al 100 % que no decía nada: lista ordenada. */}
+            {mosaicos.length >= 3 ? <Mosaicos items={mosaicos} /> : <ListaVolumen items={mosaicos} total={total} />}
           </Escenario>
           <Pie
             izquierda={`${plural(mosaicos.length, "empresa", "empresas")} con cobros · ${empresas.length - mosaicos.length} sin operación`}
@@ -777,6 +778,29 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
         />
       )}
     </div>
+  );
+}
+
+// Pocas empresas con cobros: nombre, monto y su parte del total, de mayor a menor.
+function ListaVolumen({ items, total }: { items: { id: string; nombre: string; valor: number; monto: string; href: string }[]; total: number }) {
+  if (!items.length) return <p className="py-10 text-center text-sm text-muted-foreground">Todavía no hay cobros en los últimos 30 días.</p>;
+  return (
+    <ol className="flex flex-col gap-3 py-2">
+      {[...items].sort((a, b) => b.valor - a.valor).map((e) => {
+        const parte = total ? (e.valor / total) * 100 : 0;
+        return (
+          <li key={e.id} className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between gap-3 text-[13.5px]">
+              <Link href={e.href} className="min-w-0 truncate font-medium text-foreground hover:text-gm-yellow" title={e.nombre}>{e.nombre}</Link>
+              <span className="shrink-0 tabular-nums text-muted-foreground"><span className="font-semibold text-foreground">{e.monto}</span> · {numero(parte, 1)}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-gm-surface-3" aria-hidden>
+              <div className="h-full rounded-full bg-gm-yellow" style={{ width: `${parte}%` }} />
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

@@ -52,7 +52,8 @@ export function NewPasswordForm() {
 
   return (
     <CardWrapper
-      headerLabel="Elegí una nueva contraseña. Mínimo 8 caracteres con al menos un número."
+      title="Nueva contraseña"
+      headerLabel="Mínimo 8 caracteres, con al menos un número."
       backButtonLabel="← Volver al inicio de sesión"
       backButtonHref="/auth/login"
     >

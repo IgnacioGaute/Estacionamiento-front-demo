@@ -122,7 +122,7 @@ export function ScanPlateAction({ onEntry, onHourlyExit, onDailyExit, onSalidaSi
           </button>
           <button type="button" onClick={() => { const n = nueva!; setNueva(null); onSalidaSinEntrada?.(n.plate); }}
             className="flex min-h-16 w-full items-center gap-3 rounded-xl border border-border bg-secondary p-3 text-left hover:border-gm-yellow/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
-            <ArrowUpRight className="size-5 shrink-0 text-[#F0714A]" aria-hidden /><span className="min-w-0 flex-1"><span className="block font-semibold">Se está yendo</span><span className="block text-xs text-muted-foreground">No tiene entrada registrada: cobrarlo igual</span></span><ChevronRight className="size-4" aria-hidden />
+            <ArrowUpRight className="size-5 shrink-0 text-gm-aviso" aria-hidden /><span className="min-w-0 flex-1"><span className="block font-semibold">Se está yendo</span><span className="block text-xs text-muted-foreground">No tiene entrada registrada: cobrarlo igual</span></span><ChevronRight className="size-4" aria-hidden />
           </button>
         </div>
       </DialogContent>

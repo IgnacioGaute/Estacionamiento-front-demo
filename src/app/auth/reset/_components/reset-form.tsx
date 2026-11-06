@@ -46,6 +46,7 @@ export function ResetForm() {
 
   return (
     <CardWrapper
+      title="Recuperá tu contraseña"
       headerLabel="Te enviamos un link al email para que puedas crear una nueva contraseña."
       backButtonLabel="← Volver al inicio de sesión"
       backButtonHref="/auth/login"
@@ -66,7 +67,7 @@ export function ResetForm() {
                       disabled={isPending}
                       type="email"
                       className="pl-9"
-                      placeholder="juan.castro@garagemitre.ar"
+                      placeholder="tu@email.com"
                     />
                   </div>
                 </FormControl>

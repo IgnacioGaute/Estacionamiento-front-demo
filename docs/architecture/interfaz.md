@@ -41,6 +41,14 @@ explícitas en middleware/routes. Los comprobantes públicos se sirven en otro r
 - Onboarding tours: a page defines `TOUR_STEPS` (selector, title, desc) targeting `data-tour="..."` elements and
   renders `<PageTour steps={TOUR_STEPS} />` in its header actions — see `admin/dashboard/page.tsx`.
 - Charts use `recharts` through `src/components/ui/chart.tsx`; toasts use `sonner` (`src/lib/toast.ts`).
+- Colores de estado: `gm-aviso` (revisar antes de seguir: importe de respaldo, sin turno, tiempo
+  superado), `gm-atencion` (pendiente sin urgencia), `gm-ok` (confirmado) y `gm-texto-tenue` (lo más
+  apagado que pasa AA sobre el fondo). Peligro y error siguen en `destructive`. Definidos en
+  `globals.css` y `tailwind.config.ts`, admiten opacidad (`bg-gm-aviso/10`). Quedan hex sueltos de
+  alerta (`#F2725B`, `#FF7A4D`, `#F08775`, `#FF8458`, `#ed520a`, `#F0A43A`, `#3DD68C`): al tocar un
+  archivo, migrarlos al token que corresponda.
+- Pantallas de acceso (login, recuperar, nueva contraseña, verificación, registro, error): mismo marco
+  que `/seleccionar-acceso` (`components/auth/card-wrapper.tsx`), con `AppIcon`, título y ancho fluido.
 - All dates/times use `dayjs` in `America/Argentina/Buenos_Aires`.
 - User-visible copy and domain comments are in **Spanish** (Argentine operators). Match that; comments should say
   *why*, not restate the code.

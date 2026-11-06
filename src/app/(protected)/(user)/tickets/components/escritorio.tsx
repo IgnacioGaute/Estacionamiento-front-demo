@@ -102,7 +102,7 @@ export function TarjetaAdentro({ total, porHora, largas, excedidos, vencidas, tu
   // Los avisos filtran el tablero de al lado; tocarlos de nuevo vuelve a mostrar todo.
   const aviso = (activo: boolean) => cn(
     'inline-flex h-[34px] items-center gap-1 rounded-full pl-3 pr-2 text-[12.5px] font-bold transition-[transform,background-color,color] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ink',
-    activo ? 'bg-[#F0714A] text-gm-ink' : 'bg-gm-ink text-[#F0714A]',
+    activo ? 'bg-gm-aviso text-gm-ink' : 'bg-gm-ink text-gm-aviso',
   );
   return (
     <section aria-label="La playa ahora" className="relative overflow-hidden rounded-[26px] bg-gm-yellow text-gm-ink shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)]">
@@ -325,7 +325,7 @@ function TarjetaTablero({ r, minutos, pasado, ahora, onSelect }: { r: TicketRegi
       className={cn(
         'group relative flex w-full flex-col gap-1.5 overflow-hidden rounded-[14px] border p-2.5 pb-3 text-left transition-colors',
         enfoque,
-        pasado ? 'border-[#F0714A]/50 bg-[#F0714A]/[0.08] hover:bg-[#F0714A]/[0.14]'
+        pasado ? 'border-gm-aviso/50 bg-gm-aviso/[0.08] hover:bg-gm-aviso/[0.14]'
           : conAnticipo ? 'border-emerald-400/45 bg-emerald-400/[0.05] hover:bg-emerald-400/[0.09]'
           : 'border-gm-line bg-gm-surface-2 hover:border-gm-line-strong hover:bg-gm-surface-3',
       )}
@@ -348,7 +348,7 @@ function TarjetaTablero({ r, minutos, pasado, ahora, onSelect }: { r: TicketRegi
       <AvisoAnticipo r={r} ahora={ahora} />
       <AvisoDescuento r={r} />
       {pasado && !conAnticipo && (
-        <span className="flex min-w-0 items-center gap-1.5 text-xs font-bold text-[#F0714A]">
+        <span className="flex min-w-0 items-center gap-1.5 text-xs font-bold text-gm-aviso">
           <Clock3 className="size-3.5 shrink-0" aria-hidden />
           <span className="truncate">{avisoDe(r, minutos)}</span>
         </span>
@@ -367,7 +367,7 @@ function TarjetaEstadiaLarga({ r, vence, vencida, ahora, onSelect }: { r: Ticket
       className={cn(
         'relative flex w-full flex-col gap-2 overflow-hidden rounded-[14px] border p-2.5 text-left transition-colors',
         enfoque,
-        vencida ? 'border-[#F0714A]/50 bg-[#F0714A]/[0.08] hover:bg-[#F0714A]/[0.14]' : 'border-gm-line bg-gm-surface-2 hover:border-gm-line-strong hover:bg-gm-surface-3',
+        vencida ? 'border-gm-aviso/50 bg-gm-aviso/[0.08] hover:bg-gm-aviso/[0.14]' : 'border-gm-line bg-gm-surface-2 hover:border-gm-line-strong hover:bg-gm-surface-3',
       )}
     >
       <span className="flex w-full flex-wrap items-center justify-between gap-1.5">
@@ -381,13 +381,13 @@ function TarjetaEstadiaLarga({ r, vence, vencida, ahora, onSelect }: { r: Ticket
       <VehicleTypeBadge code={r.vehicleType} />
       {r.lastNameCustomer && <span className="truncate text-xs text-muted-foreground">{r.lastNameCustomer}</span>}
       <span className="flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-xs">
-        <span className={cn(vencida ? 'font-bold text-[#F0714A]' : 'text-muted-foreground')}>
+        <span className={cn(vencida ? 'font-bold text-gm-aviso' : 'text-muted-foreground')}>
           {!fecha ? 'Sin vencimiento' : vencida ? `Venció ${fecha}` : `Hasta ${fecha}`}
         </span>
         {r.paid ? (
           <span className="inline-flex items-center gap-1 font-bold text-emerald-400"><Check className="size-3.5" strokeWidth={3} aria-hidden />Pagado</span>
         ) : (
-          <span className="font-bold text-[#F0714A]">Debe {formatImporte(r.price)}</span>
+          <span className="font-bold text-gm-aviso">Debe {formatImporte(r.price)}</span>
         )}
       </span>
     </button>
@@ -454,8 +454,8 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
         <Segmento aria-label="Filtrar el tablero" size="sm" value={filtro} onChange={(id) => onFiltro(id as FiltroTablero)}
           items={[
             { value: 'todos', label: `Todos · ${total}` },
-            ...(excedidos > 0 ? [{ value: 'excedidos', label: `Tiempo superado · ${excedidos}`, icon: <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" /> }] : []),
-            ...(cobroHabilitado && vencidas > 0 ? [{ value: 'vencidas', label: `Vencidas · ${vencidas}`, icon: <span aria-hidden className="size-[7px] rounded-full bg-[#F0714A]" /> }] : []),
+            ...(excedidos > 0 ? [{ value: 'excedidos', label: `Tiempo superado · ${excedidos}`, icon: <span aria-hidden className="size-[7px] rounded-full bg-gm-aviso" /> }] : []),
+            ...(cobroHabilitado && vencidas > 0 ? [{ value: 'vencidas', label: `Vencidas · ${vencidas}`, icon: <span aria-hidden className="size-[7px] rounded-full bg-gm-aviso" /> }] : []),
           ]} />
       </div>
 
@@ -658,7 +658,7 @@ export function BuscadorRapido({ inputRef, activos, diaActivos, esDiaVencido, re
                             <span className="truncate text-sm font-bold">Entró {cuandoEntro(op.r)}</span>
                             <span className="gm-mono shrink-0 text-[13px] font-bold" style={{ color: op.pasado ? NARANJA_AVISO : tramoInfo(op.minutos).color }}>{formatEstadia(op.minutos)}</span>
                           </span>
-                          <span className={cn('block truncate text-xs', op.pasado ? 'font-semibold text-[#F0714A]' : 'text-muted-foreground')}>
+                          <span className={cn('block truncate text-xs', op.pasado ? 'font-semibold text-gm-aviso' : 'text-muted-foreground')}>
                             {op.pasado ? avisoDe(op.r, op.minutos) : op.r.lastNameCustomer || 'Por hora'}
                           </span>
                         </span>
@@ -672,7 +672,7 @@ export function BuscadorRapido({ inputRef, activos, diaActivos, esDiaVencido, re
                         {op.r.vehiclePlateCustomer ? <PlateChip plate={op.r.vehiclePlateCustomer} size="sm" highlight={texto} /> : <span className="inline-flex h-[33px] min-w-[96px] items-center justify-center rounded-[7px] border-[1.5px] border-dashed border-muted-foreground/60 px-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Sin patente</span>}
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-bold">Estadía · {UNIDAD_ESTADIA_LARGA[op.r.ticketTimeType] ?? op.r.ticketTimeType}</span>
-                          <span className={cn('block truncate text-xs', op.vencida || !op.r.paid ? 'font-semibold text-[#F0714A]' : 'text-muted-foreground')}>
+                          <span className={cn('block truncate text-xs', op.vencida || !op.r.paid ? 'font-semibold text-gm-aviso' : 'text-muted-foreground')}>
                             {fecha ? (op.vencida ? `Venció ${fecha}` : `Hasta ${fecha}`) : 'Sin vencimiento'} · {op.r.paid ? 'Pagado' : `Debe ${formatImporte(op.r.price)}`}
                           </span>
                         </span>

@@ -60,10 +60,10 @@ import { TurnoBar } from './turno-bar';
 // elegir el medio, con la forma de abrirlo ahí mismo; transferencia y QR no dependen del turno.
 function AvisoSinTurno() {
   return (
-    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-2xl border border-[#F0714A]/40 bg-[#F0714A]/10 p-3">
-      <Wallet className="size-4 shrink-0 self-start text-[#F0714A] max-sm:mt-0.5" aria-hidden />
+    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-2xl border border-gm-aviso/40 bg-gm-aviso/10 p-3">
+      <Wallet className="size-4 shrink-0 self-start text-gm-aviso max-sm:mt-0.5" aria-hidden />
       <div className="min-w-0 flex-1 basis-48">
-        <p className="text-[13px] font-bold text-[#F0714A]">No tenés un turno abierto</p>
+        <p className="text-[13px] font-bold text-gm-aviso">No tenés un turno abierto</p>
         <p className="mt-0.5 text-[12.5px] leading-snug text-[#D9D1C3]">Para cobrar en efectivo, abrilo primero. Con transferencia o QR podés cobrar igual.</p>
       </div>
       <TurnoBar variant="primary" />
@@ -157,7 +157,7 @@ function ResumenEstadia({
           <Identidad r={r} />
           <span className="gm-mono min-w-0 flex-1 truncate text-[13.5px] text-muted-foreground">{formatElapsed(summary.elapsedMinutes)}</span>
           <span className="gm-mono text-[19px] font-bold">{formatImporte(importe)}</span>
-          {summary.previewBracket.usedFallback && <p className="flex w-full items-start gap-1.5 text-[12.5px] font-semibold text-[#F0714A]"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />Importe de respaldo: el tiempo superó los precios cargados. Consultá antes de cobrar.</p>}
+          {summary.previewBracket.usedFallback && <p className="flex w-full items-start gap-1.5 text-[12.5px] font-semibold text-gm-aviso"><AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />Importe de respaldo: el tiempo superó los precios cargados. Consultá antes de cobrar.</p>}
         </div>
       )}
       <div className={cn('rounded-[18px] border border-border bg-gm-surface-2 p-3.5 short:p-3', compacto ? 'hidden md:block' : compactoEnBajas && 'short:hidden md:short:block')}>
@@ -222,13 +222,13 @@ function ResumenEstadia({
           </p>
         )}
         {/* Un bloque y no una línea de 12 px: el operador tiene que notar que este importe no sale de
-            la lista antes de cobrarlo. #F0714A es el naranja de aviso del inicio y pasa AA sobre la
+            la lista antes de cobrarlo. gm-aviso es el naranja de aviso del inicio y pasa AA sobre la
             tarjeta (gm-orange en texto chico daba 4,2:1). */}
         {summary.previewBracket.usedFallback && (
-          <div className="mt-3 flex items-start gap-2 rounded-xl border border-[#F0714A]/40 bg-[#F0714A]/10 p-3">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#F0714A]" aria-hidden />
+          <div className="mt-3 flex items-start gap-2 rounded-xl border border-gm-aviso/40 bg-gm-aviso/10 p-3">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-gm-aviso" aria-hidden />
             <div className="min-w-0">
-              <p className="text-[13px] font-bold text-[#F0714A]">Este es el importe de respaldo</p>
+              <p className="text-[13px] font-bold text-gm-aviso">Este es el importe de respaldo</p>
               <p className="mt-0.5 text-[12.5px] leading-snug text-[#D9D1C3]">
                 El tiempo superó los precios cargados.{summary.previewBracket.breakdown ? ' Mirá el cálculo y, si' : ' Si'} no te cierra, consultá con el encargado antes de cobrar.
               </p>
@@ -343,6 +343,9 @@ export function CloseTicketPanel({
   const { cobroHabilitado, shiftsEnabled } = useTenant();
   // Solo se consulta con el panel abierto y turnos activos; false = sabemos que no hay turno propio.
   const sinTurno = useTurnoPropio(open && shiftsEnabled) === false;
+  // En el celular el foco automático abría el teclado y tapaba la lista de «Sin confirmar» que el
+  // operador venía a tocar (o el botón de escanear). En la computadora se sigue escribiendo directo.
+  const [enfocarBusqueda] = useState(() => typeof window === 'undefined' || !window.matchMedia?.('(pointer: coarse)')?.matches);
   const aplicarResumen = (data: ResumenSalida) => {
     if (esSalidaGratuita(data)) { setSummary(null); setGratuita(data); }
     else { setGratuita(null); setSummary(data); }
@@ -727,7 +730,7 @@ export function CloseTicketPanel({
             <span className="block truncate text-[12.5px] text-muted-foreground">{detalle}</span>
           </span>
           {overdue ? (
-            <span className="shrink-0 rounded-full bg-gm-orange/15 px-2 py-1 text-[11.5px] font-bold text-[#F0714A]">Excedido</span>
+            <span className="shrink-0 rounded-full bg-gm-orange/15 px-2 py-1 text-[11.5px] font-bold text-gm-aviso">Excedido</span>
           ) : (
             <ChevronRight className="size-[18px] shrink-0 text-muted-foreground" aria-hidden />
           )}
@@ -823,7 +826,7 @@ export function CloseTicketPanel({
                   escribe o lee la cámara se compara de un vistazo con la del auto. */}
               <div className="relative min-w-0 flex-1">
                 <input
-                  autoFocus
+                  autoFocus={enfocarBusqueda}
                   aria-label="Buscar vehículo"
                   spellCheck={false}
                   autoComplete="off"

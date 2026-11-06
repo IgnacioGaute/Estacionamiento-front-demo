@@ -28,12 +28,9 @@ export function GarageMitreLogo({
         className
       )}
     >
-      <span className={cn('gm-display font-bold text-foreground', dims.garage)}>ESTACI</span>
-      <div className="flex flex-col leading-none">
-        <span className={cn('gm-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-gm-yellow to-gm-orange whitespace-nowrap', dims.mitre)}>
-          ONAMIENTO
-        </span>
-      </div>
+      {/* Una sola palabra y un solo tamaño: partida en «ESTACI» + «ONAMIENTO» (resto de «GARAGE
+          MITRE») se leía como un error. */}
+      <span className={cn('gm-display whitespace-nowrap font-bold text-foreground', dims.garage)}>ESTACIONAMIENTO</span>
     </div>
   );
 }

@@ -41,7 +41,7 @@ export function NewVerificationForm() {
 
   return (
     <CardWrapper
-      headerLabel="Confirmar tu email"
+      title="Confirmá tu email"
       backButtonHref="/auth/login"
       backButtonLabel="Volver al inicio de sesión"
     >

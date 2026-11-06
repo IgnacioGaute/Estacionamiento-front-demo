@@ -68,6 +68,18 @@
     --gm-surface-3:     38 12% 14%;
     --gm-line:          38 14% 16%;
     --gm-line-strong:   36 14% 24%;
+
+    /* Colores de estado. Había seis naranjas de alerta sueltos (#F2725B, #FF7A4D, #F08775,
+       #F0714A, #FF8458, #ed520a): estos son los que pasan AA en texto chico sobre las superficies.
+       - aviso (#F0714A): algo que el operador tiene que revisar (importe de respaldo, sin turno).
+       - atencion (#F0A43A): pendiente sin urgencia (requiere atención, faltan datos).
+       - ok (#3DD68C): confirmado o al día.
+       - texto-tenue (#857B6D): lo más apagado que llega a 4,5:1 sobre el fondo.
+       El peligro (borrar, error) sigue siendo --destructive. Los hex sueltos se migran de a poco. */
+    --gm-aviso:         14 85% 62%;
+    --gm-atencion:      35 86% 58%;
+    --gm-ok:            151 65% 54%;
+    --gm-texto-tenue:   35 10% 48%;
   }
 
   .dark {

@@ -404,10 +404,10 @@ export function EntryByPlateDialog({
             <ActionDialogBody>
               <div role="alert" className="space-y-3.5 rounded-[18px] border-[1.5px] border-gm-orange/55 bg-gm-orange/10 p-4 short:space-y-3 short:p-3.5">
                 <p className="flex items-center gap-3">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gm-orange/20 text-[#F0714A]">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-gm-orange/20 text-gm-aviso">
                     <AlertTriangle className="size-5" aria-hidden />
                   </span>
-                  <span className="gm-display text-[19px] leading-tight tracking-[0.02em] text-[#F0714A]">Esta patente ya está adentro</span>
+                  <span className="gm-display text-[19px] leading-tight tracking-[0.02em] text-gm-aviso">Esta patente ya está adentro</span>
                 </p>
                 <div className="flex items-center gap-3.5 rounded-[14px] bg-card p-3">
                   <PlateChip plate={plateValue || '—'} />
