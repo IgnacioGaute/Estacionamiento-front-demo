@@ -76,7 +76,13 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const reserve = active?.fondoObjetivo ?? caja?.fondoObjetivo ?? 15000;
   const salaryExpected = active?.sueldoPrevisto ?? 0;
   const salaryBase = arqueo ? (amountValid(counted) ? Number(counted) : 0) : expected;
-  const salaryAlcanza = salaryExpected > 0 && salaryBase - reserve >= salaryExpected ? salaryExpected : 0;
+  // Con arqueo, dejar menos que el fondo libera efectivo para el sueldo (el fondo es una referencia);
+  // dejar más no lo saca: se compara con el menor de los dos, igual que el backend. Sin elegir
+  // todavía, o sin arqueo, con el fondo de la caja.
+  const reservaSueldo = arqueo && cashForNext !== null && amountValid(cashForNext) ? Math.min(Number(cashForNext), reserve) : reserve;
+  const salaryAlcanza = salaryExpected > 0 && salaryBase - reservaSueldo >= salaryExpected ? salaryExpected : 0;
+  // Cuánto se puede dejar como máximo para que alcance el sueldo (para decírselo al operador).
+  const dejarParaSueldo = salaryBase - salaryExpected;
   const salary = retirarSueldo ? salaryAlcanza : 0;
   const afterSalary = Math.max(0, Number(counted) - salary);
   const forNext = cashForNext ?? (amountValid(counted) ? String(Math.min(reserve, afterSalary)) : '');
@@ -233,7 +239,11 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
                   })}
                 </div>
                 <p className="mt-2 leading-relaxed text-muted-foreground">{retirarSueldo ? `Se registrará el retiro de ${money(salaryAlcanza)}. Retirá físicamente ese importe al confirmar. Está separado del retiro de recaudación.` : 'No se descuenta el sueldo: ese efectivo sigue en la caja y queda anotado en el historial.'}</p>
-              </> : <p role="alert" className="mt-1 leading-relaxed text-amber-600 dark:text-amber-400">El efectivo no alcanza para preservar el fondo. No se descontará el sueldo y quedará una alerta en el historial.</p>}
+              </> : <p role="alert" className="mt-1 leading-relaxed text-amber-600 dark:text-amber-400">{arqueo
+                ? dejarParaSueldo >= 0
+                  ? `Con lo que dejás en la caja no alcanza para el sueldo. Para retirarlo, dejá ${money(dejarParaSueldo)} o menos para el próximo turno; si no, no se descontará el sueldo y quedará una alerta en el historial.`
+                  : 'El efectivo contado no alcanza para el sueldo. No se descontará el sueldo y quedará una alerta en el historial.'
+                : 'El efectivo no alcanza para preservar el fondo. No se descontará el sueldo y quedará una alerta en el historial.'}</p>}
             </div>
           </div>}
 

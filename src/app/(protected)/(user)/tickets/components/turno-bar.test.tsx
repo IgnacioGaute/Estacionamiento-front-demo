@@ -292,6 +292,23 @@ test.each([{ counted: 105000, salary: 25000, withdrawn: 65000 }, { counted: 2300
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: salary, efectivoParaSiguiente: 15000 })));
 });
 
+test('dejando menos que el fondo aparece el sueldo: se compara con lo que queda en la caja', async () => {
+  // Contó 15.000 (= fondo) y el sueldo es 5.000: con el fondo no alcanza; dejando 10.000, sí.
+  const active = { ...shift(), efectivoDisponible: 15000, fondoObjetivo: 15000, sueldoPrevisto: 5000 };
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(active) });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
+  await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  await contar(15000);
+  expect(screen.getByRole('alert')).toHaveTextContent(/dejá .*10\.000 o menos/);
+  expect(screen.queryByRole('button', { name: /Retirar sueldo/ })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?'), { target: { value: '10000' } });
+  expect(screen.getByRole('button', { name: /Retirar sueldo/ })).toHaveAttribute('aria-pressed', 'true');
+  const confirmar = screen.getByRole('button', { name: 'Confirmar cierre de turno y caja' }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
+  await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: 5000, efectivoContado: 15000, efectivoParaSiguiente: 10000 })));
+});
+
 test('si el efectivo alcanza, se puede elegir no retirar el sueldo y queda para el retiro', async () => {
   const active = { ...shift(), efectivoDisponible: 105000, fondoObjetivo: 15000, sueldoPrevisto: 25000 };
   jest.mocked(getCashContextAction).mockResolvedValue({ context: context(active) });
