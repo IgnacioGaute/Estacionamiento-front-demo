@@ -22,7 +22,7 @@ import {
 import { PaymentMethodChoices, MedioSalida } from './payment-method-choices';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
-import { AlertTriangle, Barcode, ChevronDown, ChevronRight, BadgePercent, CircleX, LogOut, Timer } from 'lucide-react';
+import { AlertTriangle, Barcode, ChevronDown, ChevronRight, BadgePercent, CircleX, LogOut, Timer, Wallet } from 'lucide-react';
 import { OrigenRegistro, TicketRegistration } from '@/types/ticket-registration.type';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
 import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
@@ -53,6 +53,23 @@ import { PlateCameraScanButton } from './plate-camera-scan-button';
 import { estadiasLargas, useConfirmadas } from './estadias-largas';
 import { SeFueAntes } from './se-fue-antes';
 import type { EntradaParecida } from './salida-sin-entrada-dialog';
+import { useTurnoPropio } from './use-turno-propio';
+import { TurnoBar } from './turno-bar';
+
+// Con turnos activos el efectivo exige turno propio (lo controla el backend). Se avisa antes de
+// elegir el medio, con la forma de abrirlo ahí mismo; transferencia y QR no dependen del turno.
+function AvisoSinTurno() {
+  return (
+    <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2.5 rounded-2xl border border-[#F0714A]/40 bg-[#F0714A]/10 p-3">
+      <Wallet className="size-4 shrink-0 self-start text-[#F0714A] max-sm:mt-0.5" aria-hidden />
+      <div className="min-w-0 flex-1 basis-48">
+        <p className="text-[13px] font-bold text-[#F0714A]">No tenés un turno abierto</p>
+        <p className="mt-0.5 text-[12.5px] leading-snug text-[#D9D1C3]">Para cobrar en efectivo, abrilo primero. Con transferencia o QR podés cobrar igual.</p>
+      </div>
+      <TurnoBar variant="primary" />
+    </div>
+  );
+}
 
 // Efectivo y transferencia los declara el cajero; QR y alias los verifica el sistema contra
 // MercadoPago. Los cuatro se eligen igual (tocar y confirmar abajo) para que el botón principal
@@ -323,7 +340,9 @@ export function CloseTicketPanel({
   const [summary, setSummary] = useState<CloseSummary | null>(null);
   // Una estadía que ingresó gratis: sin importes ni medios de pago, sale con «Registrar salida».
   const [gratuita, setGratuita] = useState<SalidaGratuitaSummary | null>(null);
-  const { cobroHabilitado } = useTenant();
+  const { cobroHabilitado, shiftsEnabled } = useTenant();
+  // Solo se consulta con el panel abierto y turnos activos; false = sabemos que no hay turno propio.
+  const sinTurno = useTurnoPropio(open && shiftsEnabled) === false;
   const aplicarResumen = (data: ResumenSalida) => {
     if (esSalidaGratuita(data)) { setSummary(null); setGratuita(data); }
     else { setGratuita(null); setSummary(data); }
@@ -1003,6 +1022,7 @@ export function CloseTicketPanel({
                       </div>
                     ) : mostrarMedios ? (
                       <>
+                        {sinTurno && <AvisoSinTurno />}
                         <fieldset className="min-w-0 space-y-2">
                           <legend className="sr-only">Medio de pago</legend>
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

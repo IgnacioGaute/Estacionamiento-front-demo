@@ -160,9 +160,11 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const enlaceHistorial = esAdmin && <Link href="/admin/caja/turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja/turnos'), 200); }} className="mx-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow"><History className="size-3.5" aria-hidden />Ver turnos e historial</Link>;
   return <>
     {variant === 'pill' ? (
-      <button type="button" onClick={abrir} className="inline-flex h-[34px] items-center gap-2 rounded-full bg-gm-ink px-3.5 text-[12.5px] font-bold text-[#F2EDE3] transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ink focus-visible:ring-offset-2 focus-visible:ring-offset-gm-yellow">
-        <span aria-hidden className={'size-[7px] rounded-full ' + (active ? 'bg-emerald-400' : 'bg-gm-orange')} />
-        {active ? `Turno abierto · ${horaApertura(active.fechaApertura)}` : 'Abrir mi turno'}
+      // Sin turno, la píldora dice para qué hace falta: el efectivo no se registra sin turno y el
+      // operador se enteraba recién al confirmar un cobro. El ::before lleva el toque a 44 px.
+      <button type="button" onClick={abrir} className="relative inline-flex h-[34px] items-center gap-2 rounded-full bg-gm-ink px-3.5 text-[12.5px] font-bold text-[#F2EDE3] transition-transform before:absolute before:inset-x-0 before:-inset-y-[5px] before:content-[''] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-ink focus-visible:ring-offset-2 focus-visible:ring-offset-gm-yellow">
+        <span aria-hidden className={'size-[7px] rounded-full ' + (active ? 'bg-emerald-400' : 'bg-gm-orange motion-safe:animate-pulse')} />
+        {active ? `Turno abierto · ${horaApertura(active.fechaApertura)}` : 'Abrí tu turno para cobrar'}
       </button>
     ) : (
       <Button variant={variant === 'primary' ? 'default' : 'outline'} size={variant === 'primary' ? 'default' : 'sm'} className={cn(variant === 'primary' && 'h-11 rounded-xl px-5 font-bold')} onClick={abrir}><Wallet className="size-4" />{turnoId ? 'Cerrar turno' : active ? 'Mi turno' : 'Abrir mi turno'}</Button>
@@ -189,15 +191,18 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
               <Iniciales nombre={active.nombre} />
               <div className="min-w-0"><p className="truncate font-semibold">{active.nombre}</p><p className="truncate text-xs text-muted-foreground">{active.caja?.nombre ?? 'Turno anterior'} · desde {date(active.fechaApertura)}</p></div>
             </div>
-            {arqueo && <div className="flex flex-wrap items-end justify-between gap-2 border-t border-gm-line px-3.5 py-3">
-              <p className="text-xs text-muted-foreground">Efectivo esperado de la caja</p>
+            {/* Arqueo ciego: el esperado aparece recién cuando el operador cargó lo que contó. Antes se
+                mostraba arriba y el primer atajo era «Conté todo · $esperado»: el camino corto era no
+                contar, y un faltante real quedaba como «Coincide». */}
+            {arqueo && amountValid(counted) && <div className="flex flex-wrap items-end justify-between gap-2 border-t border-gm-line px-3.5 py-3">
+              <p className="text-xs text-muted-foreground">Esperado por el sistema</p>
               <p className="font-display text-[30px] font-bold leading-none tracking-tight tabular-nums">{money(expected)}</p>
             </div>}
           </section>
 
           {arqueo ? <ol className="space-y-5">
             <Paso numero={1} listo={amountValid(counted) && (closingDifference === 0 || !!notes.trim())}>
-              <CashAmountField id="cash-counted" label="¿Cuánto efectivo contaste?" value={counted} onChange={setCounted} disabled={pending} placeholder="Contá el dinero antes de confirmar" shortcuts={[{ label: 'Conté todo · ' + money(expected), amount: expected, disabled: expected < 0 }, { label: 'Conté menos', edit: true, disabled: expected <= 0 }, { label: 'No hay efectivo', amount: 0 }]} description="Si coincide, tocá Conté todo. Con Conté menos podés escribir el importe real; si hay una diferencia, explicá el motivo."
+              <CashAmountField id="cash-counted" label="¿Cuánto efectivo contaste?" value={counted} onChange={setCounted} disabled={pending} placeholder="Escribí el total que contaste" editLabel="Escribir importe" shortcuts={[{ label: 'No hay efectivo', amount: 0 }]} description="Contá todo el efectivo de la caja y escribí el total. Después te mostramos lo que esperaba el sistema; si no coincide, explicá el motivo."
                 status={amountValid(counted) && <Pill tono={closingDifference === 0 ? 'ok' : 'aviso'}>{closingDifference === 0 ? 'Coincide' : closingDifference > 0 ? 'Faltan ' + money(closingDifference) : 'Sobran ' + money(-closingDifference)}</Pill>} />
             </Paso>
             <Paso numero={2} listo={handoverValid} ultimo>
@@ -266,11 +271,17 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
                 <span className="text-[12px] font-bold text-gm-ink/70">{active.caja?.nombre ?? 'Turno anterior'}</span>
               </div>
               <div><p className="text-lg font-bold leading-tight">{active.nombre}</p><p className="mt-0.5 text-xs font-semibold text-gm-ink/65">Abierto el {date(active.fechaApertura)}</p></div>
-              <div>
+              {/* El operador no ve el esperado antes de contar (arqueo ciego). El administrador sí: supervisa
+                  la caja y registra retiros y aportes con ese saldo. */}
+              {esAdmin ? <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gm-ink/70">Efectivo esperado en la caja</p>
                 <p className="mt-1 font-display text-[48px] font-bold leading-[0.95] tracking-tight tabular-nums">{money(expected)}</p>
                 <p className="mt-2 pr-16 text-xs font-medium text-gm-ink/70">Incluye el fondo inicial y los movimientos de todos los operadores.</p>
-              </div>
+              </div> : <div>
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gm-ink/70">Efectivo de la caja</p>
+                <p className="mt-1 text-2xl font-bold leading-tight">{arqueo ? 'Lo contás al cerrar' : 'Lo cuenta el último en cerrar'}</p>
+                <p className="mt-2 pr-16 text-xs font-medium text-gm-ink/70">{arqueo ? 'Después de cargar lo que contaste te mostramos si coincide.' : 'Tus cobros quedan registrados a tu nombre.'}</p>
+              </div>}
             </div>
           </section>
           <TurnoResumenPanel turno={active} />

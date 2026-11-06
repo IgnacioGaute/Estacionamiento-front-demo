@@ -9,10 +9,14 @@ import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active
 import { marcarOrigenSalidaAction } from '@/actions/tickets/origen-salida.action';
 import { pagoParcialEfectivoAction } from '@/actions/tickets/pago-parcial.action';
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
+import { getCashContextAction } from '@/actions/turnos/cash-context.action';
 import type { CloseSummary } from '@/services/tickets.service';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 // useTenant vive junto a la acción de contexto (next-auth): se simula con una playa con cobro.
-jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ cobroHabilitado: true }) }));
+const mockTenant = { cobroHabilitado: true, shiftsEnabled: false };
+jest.mock('@/components/tenant-provider', () => ({ useTenant: () => mockTenant }));
+jest.mock('@/actions/turnos/cash-context.action', () => ({ getCashContextAction: jest.fn() }));
+jest.mock('./turno-bar', () => ({ TurnoBar: () => <button type="button">Abrir mi turno</button> }));
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn() }));
 jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn() }));
@@ -36,6 +40,7 @@ const summary = (price = 1000, collected = 0) => ({ registration: { id: 'reg', v
 beforeEach(() => {
   jest.clearAllMocks();
   localStorage.clear();
+  mockTenant.shiftsEnabled = false;
   jest.mocked(getCloseSummaryAction).mockResolvedValue(summary());
   jest.mocked(closeRegistrationAction).mockResolvedValue({ success: 'OK', registrationId: 'reg' });
 });
@@ -47,6 +52,24 @@ async function openDiscount() {
   expect(screen.queryByText(/Cortesía/)).not.toBeInTheDocument();
   fireEvent.change(await screen.findByLabelText('Motivo del descuento'), { target: { value: 'Cliente frecuente' } });
 }
+test('con turnos activos y sin turno propio avisa antes de elegir el medio, y deja de avisar al abrirlo', async () => {
+  mockTenant.shiftsEnabled = true;
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: { active: null, pending: null, efectivoDisponible: 0, openTurnos: [] } });
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
+  expect(await screen.findByText('No tenés un turno abierto')).toBeInTheDocument();
+  expect(screen.getByText(/Con transferencia o QR podés cobrar igual/)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Abrir mi turno' })).toBeInTheDocument();
+  // TurnoBar avisa con este evento al abrir el turno; el aviso se va.
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: { active: { id: 't' } as never, pending: null, efectivoDisponible: 0, openTurnos: [] } });
+  window.dispatchEvent(new Event('parking-shift-changed'));
+  await waitFor(() => expect(screen.queryByText('No tenés un turno abierto')).not.toBeInTheDocument());
+});
+test('sin turnos activos no consulta la caja ni avisa', async () => {
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
+  await screen.findByRole('button', { name: /^Efectivo Contalo/ });
+  expect(getCashContextAction).not.toHaveBeenCalled();
+  expect(screen.queryByText('No tenés un turno abierto')).not.toBeInTheDocument();
+});
 test('el cálculo se despliega sin ocultar los medios de pago', async () => {
   const datos = summary();
   datos.previewBracket.breakdown = [];
