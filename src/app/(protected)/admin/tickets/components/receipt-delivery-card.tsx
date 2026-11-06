@@ -32,17 +32,18 @@ export function ReceiptDeliveryCard({ initial }: { initial?: ReceiptDeliverySett
       description: 'Imprimí desde la computadora del mostrador con una térmica instalada en el sistema.', hint: 'Elegí la térmica al imprimir y desactivá los encabezados y pies de página.' },
   ] as const;
   return <section className="w-full space-y-6 py-2">
+    {/* Sin título propio: la página ya se llama «Comprobantes» con casi la misma descripción. */}
     <header className="flex flex-wrap items-start justify-between gap-4">
-      <div className="max-w-2xl"><h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Entrega de comprobantes</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Elegí cómo entregar las entradas y salidas de esta playa, y los recibos de pago de los inquilinos. Podés combinar los medios que necesites. A los inquilinos con celular cargado el recibo siempre se les puede mandar por WhatsApp.</p></div>
+      <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">Podés combinar los medios que necesites. A los inquilinos con celular cargado el recibo siempre se les puede mandar por WhatsApp.</p>
       <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground"><span className={cn('size-1.5 rounded-full', enabledCount ? 'bg-gm-yellow' : 'bg-muted-foreground')} />{enabledCount} de 3 seleccionados</span>
     </header>
 
     <div className="grid items-stretch gap-4 lg:grid-cols-3">
       {channels.map(({ key, title, subtitle, icon: Icon, description, hint }) => {
         const enabled = settings[key];
+        // El estado se ve en el interruptor y el borde; antes además había una franja arriba y otra
+        // abajo con «Seleccionado / Desactivado».
         return <article key={key} className={cn('flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-card transition-colors', enabled ? 'border-gm-yellow/50' : 'border-border')}>
-          <div className={cn('h-1', enabled ? 'bg-gm-yellow' : 'bg-transparent')} />
           <div className="flex flex-1 flex-col p-5 xl:p-6">
             <div className="mb-5 flex items-center justify-between gap-3">
               <span className={cn('grid size-12 place-items-center rounded-xl border', enabled ? 'border-gm-yellow/20 bg-gm-yellow/10 text-gm-yellow' : 'border-border bg-secondary text-muted-foreground')}><Icon className="size-6" /></span>
@@ -62,7 +63,6 @@ export function ReceiptDeliveryCard({ initial }: { initial?: ReceiptDeliverySett
               <p className="border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground">{hint}</p>
             </div>
           </div>
-          <div className={cn('flex items-center gap-2 border-t px-5 py-3 text-xs font-medium xl:px-6', enabled ? 'border-gm-yellow/15 bg-gm-yellow/5 text-gm-yellow' : 'border-border text-muted-foreground')}><span className={cn('size-1.5 rounded-full', enabled ? 'bg-gm-yellow' : 'bg-muted-foreground/50')} />{enabled ? 'Seleccionado' : 'Desactivado'}</div>
         </article>;
       })}
     </div>

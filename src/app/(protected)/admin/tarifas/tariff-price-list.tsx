@@ -4,7 +4,23 @@ import { useEffect, useRef, useState } from 'react';
 import { Clock3, Copy, Moon, Plus, Sun, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { TariffBracket, TariffDraft } from '@/types/tariff-plan.type';
-import { bracketLabel } from '@/utils/tariff-plan.utils';
+import { bracketLabel, durationLabel } from '@/utils/tariff-plan.utils';
+import { formatImporte } from '@/components/pricing-breakdown';
+
+// Duraciones donde quedarse más cuesta menos (en el mismo horario): casi siempre es un error de
+// carga. Se avisa sin bloquear, porque puede ser una promoción a propósito.
+export function masLargasMasBaratas(rows: TariffBracket[]) {
+  const avisos: string[] = [];
+  for (const scope of [null, 'DAY', 'NIGHT'] as const) {
+    const lista = rows.filter(row => row.ticketDayType === scope && row.uptoMinutes !== null && Number.isFinite(row.uptoMinutes) && Number.isFinite(row.price))
+      .sort((a, b) => a.uptoMinutes! - b.uptoMinutes!);
+    for (let i = 1; i < lista.length; i++) {
+      const corta = lista[i - 1], larga = lista[i];
+      if (larga.price < corta.price) avisos.push(`Hasta ${durationLabel(larga.uptoMinutes!)} (${formatImporte(larga.price)}) cuesta menos que hasta ${durationLabel(corta.uptoMinutes!)} (${formatImporte(corta.price)}).`);
+    }
+  }
+  return avisos;
+}
 import { DurationField, MoneyField } from './tariff-form-fields';
 
 import { TariffSelect, tariffScheduleOptions } from './tariff-select';
@@ -104,6 +120,12 @@ export function TariffPriceList({ draft, onChange, vehicles, night, onEnableNigh
               <div className={'hidden sm:col-start-3 sm:row-start-1 sm:block ' + (night ? 'xl:col-start-4' : '')}>{rowActions(row, index, vehicle)}</div>
             </div>
           </div>)}
+          {(() => { const avisos = masLargasMasBaratas(durations.map(({ row }) => row)); return avisos.length > 0 && (
+            <div role="status" className="mt-3 rounded-xl border border-gm-atencion/40 bg-gm-atencion/10 p-3 text-[13px]">
+              <p className="font-semibold text-gm-atencion">Revisá los importes: quedarse más tiempo cuesta menos</p>
+              <ul className="mt-1 space-y-0.5 text-[#D9D1C3]">{avisos.map(aviso => <li key={aviso}>{aviso}</li>)}</ul>
+            </div>
+          ); })()}
           <div className="pb-4 pt-2"><Button type="button" size="sm" variant="outline" onClick={() => add(vehicle.code, false)}><Plus className="mr-1 size-4" aria-hidden="true" />Agregar duración</Button></div>
         </div>}
         {showEndings && <div className={'space-y-4 p-4 sm:p-5 ' + (showDurations ? 'border-t bg-muted/15' : '')}>

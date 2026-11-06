@@ -3,7 +3,8 @@
 import { useId, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Clock3, Moon, Sun } from 'lucide-react';
-import { formatPrice } from '@/components/pricing-breakdown';
+// Sin centavos cuando el importe es entero, como el resto del sistema («$ 1.500», no «$ 1.500,00»).
+import { formatImporte } from '@/components/pricing-breakdown';
 import type { TariffBracket, TariffPlan } from '@/types/tariff-plan.type';
 import { crossingMode, durationLabel, hasNightPrices, tariffMethod } from '@/utils/tariff-plan.utils';
 import { resolveRecurringUnitPrice } from '@/utils/ticket-price-bracket.utils';
@@ -78,7 +79,7 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
         </div>
         <div className="space-y-4 p-3 sm:p-5">
         {method !== 'CUSTOM' ? rate ? <div className="space-y-2 rounded-xl border bg-background/40 p-5">
-          <p className="text-3xl font-bold tabular-nums">{formatPrice(day === 'DAY' ? rate.dayPrice : rate.nightPrice)}</p>
+          <p className="text-3xl font-bold tabular-nums">{formatImporte(day === 'DAY' ? rate.dayPrice : rate.nightPrice)}</p>
           <p className="text-sm">Por cada <strong>{durationLabel(options.charging.unitMinutes)}</strong>.</p>
           <p className="text-xs text-muted-foreground">{method === 'STARTED' ? 'Se cobra cada período que empieza.' : method === 'PROPORTIONAL' ? 'Se cobra sólo la proporción utilizada y se redondea el total a pesos.' : 'El tiempo que no completa un período no se cobra.'}</p>
         </div> : <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">Este vehículo todavía no tiene precios configurados.</p> : rows.length ? <>
@@ -89,9 +90,9 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
                 {row.uptoMinutes === null && <span className={'mb-1.5 block text-[11px] font-bold uppercase tracking-wider ' + accent}>Si se queda más tiempo</span>}
                 {row.uptoMinutes !== null ? 'Hasta ' + durationLabel(row.uptoMinutes) : row.recurringUnitMinutes ? 'Después: cada ' + durationLabel(row.recurringUnitMinutes) + ' adicional' : 'Después: precio total fijo'}
                 {row.ticketDayType === null && <span className="mt-1 block text-xs font-normal text-muted-foreground">Precio general para este horario</span>}
-                {row.recurringUnitMinutes && row.recurringPriceMode !== 'FIXED' ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{lista ? 'Sale de la lista de precios. Si no hubiera una duración de referencia, se cobraría el respaldo de ' + formatPrice(row.price) + '.' : 'No hay una duración de referencia en la lista: se cobra el precio de respaldo.'}</span> : null}
+                {row.recurringUnitMinutes && row.recurringPriceMode !== 'FIXED' ? <span className="mt-1 block text-xs font-normal text-muted-foreground">{lista ? 'Sale de la lista de precios. Si no hubiera una duración de referencia, se cobraría el respaldo de ' + formatImporte(row.price) + '.' : 'No hay una duración de referencia en la lista: se cobra el precio de respaldo.'}</span> : null}
               </th>
-              <td className={'whitespace-nowrap rounded-r-xl border-y border-r px-2 py-4 text-right text-sm font-bold tabular-nums sm:px-3 sm:text-base ' + accent + (isNight ? ' border-indigo-400/10' : ' border-amber-400/10')}>{row.recurringUnitMinutes ? '+ ' : ''}{formatPrice(lista?.price ?? row.price)}</td>
+              <td className={'whitespace-nowrap rounded-r-xl border-y border-r px-2 py-4 text-right text-sm font-bold tabular-nums sm:px-3 sm:text-base ' + accent + (isNight ? ' border-indigo-400/10' : ' border-amber-400/10')}>{row.recurringUnitMinutes ? '+ ' : ''}{formatImporte(Math.round((lista?.price ?? row.price) * 100) / 100)}</td>
             </tr>; })}</tbody>
           </table>
           <p className="text-xs text-muted-foreground">El cálculo puede combinar duraciones menores. Comprobá el resultado en el simulador.</p>

@@ -25,24 +25,24 @@ beforeAll(() => {
 test('un adicional DERIVED muestra el precio que sale de la lista y deja el respaldo como dato', () => {
   render(<TariffSummary plan={plan([fila('min', 1, 50), fila('hora', 60, 2000), fila('extra', null, 1000, { recurringUnitMinutes: 1, recurringPriceMode: 'DERIVED' })])} vehicles={autos} />);
   // Antes: «cada 1 min adicional $ 1.000,00», mientras «Ver tarifas» del operador decía «+ $ 50».
-  expect(ultimaFila()).toHaveTextContent(/\+\s\$\s?50,00/);
-  expect(ultimaFila()).toHaveTextContent(/respaldo de \$\s?1\.000,00/);
+  expect(ultimaFila()).toHaveTextContent(/\+\s\$\s?50$/);
+  expect(ultimaFila()).toHaveTextContent(/respaldo de \$\s?1\.000\./);
 });
 
 test('un adicional FIXED muestra su propio precio con «+»', () => {
   render(<TariffSummary plan={plan([fila('hora', 60, 2000), fila('extra', null, 500, { recurringUnitMinutes: 60 })])} vehicles={autos} />);
-  expect(ultimaFila()).toHaveTextContent(/\+\s\$\s?500,00/);
+  expect(ultimaFila()).toHaveTextContent(/\+\s\$\s?500$/);
   expect(ultimaFila()).not.toHaveTextContent(/respaldo/);
 });
 
 test('DERIVED sin la duración exacta se calcula proporcional a una escala mayor de la lista', () => {
   // 15 min de una hora de $ 2.000: $ 500, el mismo criterio que «Ver tarifas» y el backend.
   render(<TariffSummary plan={plan([fila('hora', 60, 2000), fila('extra', null, 1000, { recurringUnitMinutes: 15, recurringPriceMode: 'DERIVED' })])} vehicles={autos} />);
-  expect(ultimaFila()).toHaveTextContent(/\+\s\$\s?500,00/);
+  expect(ultimaFila()).toHaveTextContent(/\+\s\$\s?500$/);
 });
 
 test('sin ninguna referencia en la lista, DERIVED cobra el respaldo y lo dice', () => {
   render(<TariffSummary plan={plan([fila('cinco', 5, 300), fila('extra', null, 1000, { recurringUnitMinutes: 15, recurringPriceMode: 'DERIVED' })])} vehicles={autos} />);
-  expect(ultimaFila()).toHaveTextContent(/\+\s\$\s?1\.000,00/);
+  expect(ultimaFila()).toHaveTextContent(/\+\s\$\s?1\.000$/);
   expect(ultimaFila()).toHaveTextContent('No hay una duración de referencia en la lista');
 });

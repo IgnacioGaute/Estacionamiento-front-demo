@@ -88,7 +88,8 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
   const steps = [
     <Step key="activar">
       <section className="space-y-4">
-        <SetupStepHeading number={1} total={4} title="Activar turnos de caja">Cada operador abre su turno para identificar sus cobros. El efectivo pertenece a la caja donde trabaja.</SetupStepHeading>
+        {/* «Turnos de caja» y no «Activar…»: el interruptor de abajo ya lo dice y se repetía. */}
+        <SetupStepHeading number={1} total={4} title="Turnos de caja">Cada operador abre su turno para identificar sus cobros. El efectivo pertenece a la caja donde trabaja.</SetupStepHeading>
         <div className="flex items-start gap-3 rounded-2xl border border-gm-line bg-gm-surface-2 p-4"><Wallet className="mt-0.5 size-5 shrink-0 text-gm-yellow" /><div className="min-w-0 flex-1"><label htmlFor="shifts-enabled" className="font-semibold">Activar turnos de caja</label><p className="mt-1 text-sm text-muted-foreground">{shifts ? 'Si lo apagás, se puede cobrar sin turno. El historial se conserva.' : 'Apagado: se puede cobrar sin turno. El historial se conserva.'}</p></div><Switch id="shifts-enabled" checked={shifts} onCheckedChange={setShifts} disabled={pending} /></div>
         <p className="text-xs text-muted-foreground">{turningOff ? 'Para desactivarlos, primero cerrá todos los turnos abiertos.' : savedShifts ? (sections ? 'Los turnos están activos.' : 'Los turnos están activos. Seguí para revisar el modo, las cajas y el sueldo.') : shifts ? 'Continuá para activarlos y elegir cómo trabajan.' : 'Activalos para configurar el modo, las cajas y el sueldo.'}</p>
         {sections && turningOff && guardarAca('Desactivar turnos', () => save({ shiftsEnabled: false, multipleShiftsEnabled: false }, () => { setSavedShifts(false); setMultiple(false); setSavedMultiple(false); setStep(1); }, 'Turnos de caja desactivados'))}
@@ -117,16 +118,18 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
         <SetupStepHeading number={4} total={4} title="Sueldo por usuario" optional>Elegí quién retira sueldo y cuánto cobra por jornada. Los demás quedan sin retiro.</SetupStepHeading>
         <div className="space-y-3 rounded-2xl border border-gm-line bg-gm-surface-2 p-4">
           <div className="flex items-center justify-between gap-3"><Label htmlFor="salary-enabled">Retirar sueldo de la caja automáticamente</Label><Switch id="salary-enabled" checked={salaryEnabled} onCheckedChange={setSalaryEnabled} disabled={pending} /></div>
-          {salaryLoading ? <DataLoading label="Cargando usuarios…" /> : salaryError ? <div role="alert"><p>{salaryError}</p><Button variant="outline" onClick={() => void loadSalaryUsers()}>Reintentar</Button></div> : salaryEnabled && <div className="space-y-3">{salaryUsers.map(u => {
+          {/* Filas separadas por una línea y no tarjetas dentro de la tarjeta. Debajo del nombre va el
+              usuario: dos cuentas con el mismo nombre se veían iguales. */}
+          {salaryLoading ? <DataLoading label="Cargando usuarios…" /> : salaryError ? <div role="alert"><p>{salaryError}</p><Button variant="outline" onClick={() => void loadSalaryUsers()}>Reintentar</Button></div> : salaryEnabled && <div className="divide-y divide-gm-line border-t border-gm-line">{salaryUsers.map(u => {
             const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username;
             const enabled = salaries[u.id] !== undefined;
-            return <div key={u.id} className="space-y-2 rounded-xl border border-gm-line p-3">
-              <div className="flex items-center justify-between gap-3"><Label htmlFor={'salary-user-' + u.id}>Retira sueldo: {name}</Label><Switch id={'salary-user-' + u.id} checked={enabled} disabled={pending} onCheckedChange={checked => setSalaries(current => { const next = { ...current }; if (checked) next[u.id] = ''; else delete next[u.id]; return next; })} /></div>
+            return <div key={u.id} className="space-y-2 py-3">
+              <div className="flex items-center justify-between gap-3"><div className="min-w-0"><Label htmlFor={'salary-user-' + u.id}>Retira sueldo: {name}</Label>{u.username && <p className="mt-0.5 truncate text-xs text-muted-foreground">Usuario: {u.username}</p>}</div><Switch id={'salary-user-' + u.id} checked={enabled} disabled={pending} onCheckedChange={checked => setSalaries(current => { const next = { ...current }; if (checked) next[u.id] = ''; else delete next[u.id]; return next; })} /></div>
               {enabled ? <div className="space-y-2"><Label htmlFor={'salary-amount-' + u.id}>Importe por jornada: {name}</Label><Input id={'salary-amount-' + u.id} type="number" min={1} max={100000000} step={1} required value={salaries[u.id]} onChange={e => setSalaries(current => ({ ...current, [u.id]: e.target.value }))} disabled={pending} /></div> : <p className="text-xs text-muted-foreground">Sin retiro de sueldo.</p>}
             </div>;
           })}{salaryUsers.length === 0 && <p className="text-sm text-muted-foreground">No hay usuarios habilitados para esta playa.</p>}</div>}
         </div>
-        <p className="text-xs text-muted-foreground">Se aplica al finalizar la jornada, una sola vez. A las 00:00 continúa en la nueva planilla sin retirar sueldo. Si no alcanza para preservar el fondo de la caja, no se descuenta y queda una alerta. Los cambios de sueldo rigen para nuevas jornadas.</p>
+        <p className="text-xs text-muted-foreground">Se aplica al finalizar la jornada, una sola vez. A las 00:00 continúa en la nueva planilla sin retirar sueldo. Si al cerrar no alcanza con lo que queda en la caja, no se descuenta y queda una alerta. Los cambios de sueldo rigen para los turnos que se abran después de guardar.</p>
         {sections && salaryChanged && guardarAca('Guardar sueldo', () => save({ sueldoAutomatico: salaryEnabled, sueldosPorUsuario: selectedSalaries }, () => undefined), !salaryValid)}
       </section>
     </Step>,
