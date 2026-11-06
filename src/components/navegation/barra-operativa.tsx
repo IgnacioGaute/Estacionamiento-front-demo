@@ -46,7 +46,8 @@ function Hora() {
       {!enLinea && <span className="whitespace-nowrap text-xs font-semibold text-gm-aviso">Sin conexión</span>}
       {hora && (
         <>
-          <span className="gm-mono text-[13px] font-bold text-foreground sm:text-[14px]">{hora.format('HH:mm')}</span>
+          {/* Sin red, en el celular, el aviso reemplaza a la hora: no entran los dos. */}
+          <span className={cn('gm-mono text-[13px] font-bold text-foreground sm:text-[14px]', !enLinea && 'max-sm:hidden')}>{hora.format('HH:mm')}</span>
           <span className="hidden whitespace-nowrap text-xs text-muted-foreground xl:inline">
             {DIAS[hora.day()]} {hora.date()} {MESES[hora.month()]}
           </span>
@@ -60,7 +61,9 @@ export function BarraOperativa({ userNav }: { userNav: UserNav }) {
   // Una sola consulta de avisos sin leer, para el contador de la cuenta.
   const notas = useNotifications();
   return (
-    <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">
+    // Conserva su ancho (shrink-0) y el nombre de la playa se recorta con «…». Con min-w-0 se
+    // achicaba por debajo de su contenido y, sin red, «Sin conexión» se montaba sobre el nombre.
+    <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
       <Hora />
       <OperationalNavUser userNav={userNav} notas={notas} />
     </div>

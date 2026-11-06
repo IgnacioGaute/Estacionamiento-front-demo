@@ -507,7 +507,7 @@ export function AsistenteConfiguracion({ estado, contenido, listos: listosServid
                       )}
                       {paso === 'nombre' && (
                         <form id="paso-form" onSubmit={(e) => { e.preventDefault(); if (listo('nombre')) guardarYSeguir(); }} className="space-y-3">
-                          <Label htmlFor="playa-nombre" className="text-[13px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Nombre de la playa</Label>
+                          <Label htmlFor="playa-nombre">Nombre de la playa</Label>
                           <Input id="playa-nombre" autoFocus value={nombre} maxLength={255} onChange={(e) => setNombre(e.target.value)} placeholder="Por ejemplo: Playa Centro" className="h-16 rounded-2xl border-white/10 bg-white/[0.03] px-5 text-2xl font-bold focus-visible:border-gm-yellow/60" />
                           <p className="text-sm text-muted-foreground">Lo podés cambiar cuando quieras desde Configuración.</p>
                         </form>
@@ -515,11 +515,11 @@ export function AsistenteConfiguracion({ estado, contenido, listos: listosServid
                       {paso === 'ubicacion' && (
                         <form id="paso-form" onSubmit={(e) => { e.preventDefault(); if (listo('ubicacion')) guardarYSeguir(); }} className="grid gap-5 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
                           <div className="space-y-3">
-                            <Label htmlFor="playa-calle" className="text-[13px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Calle y número</Label>
+                            <Label htmlFor="playa-calle">Calle y número</Label>
                             <Input id="playa-calle" autoFocus value={calle} maxLength={200} onChange={(e) => setCalle(e.target.value)} placeholder="Av. San Martín 1234" autoComplete="street-address" className="h-16 rounded-2xl border-white/10 bg-white/[0.03] px-5 text-xl font-bold focus-visible:border-gm-yellow/60" />
                           </div>
                           <div className="space-y-3">
-                            <Label htmlFor="playa-ciudad" className="text-[13px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Ciudad <span className="font-medium normal-case tracking-normal">· opcional</span></Label>
+                            <Label htmlFor="playa-ciudad">Ciudad <span className="font-medium normal-case tracking-normal">· opcional</span></Label>
                             <Input id="playa-ciudad" value={ciudad} maxLength={50} onChange={(e) => setCiudad(e.target.value.replace(/,/g, ''))} placeholder="Mendoza" autoComplete="address-level2" className="h-16 rounded-2xl border-white/10 bg-white/[0.03] px-5 text-xl font-bold focus-visible:border-gm-yellow/60" />
                           </div>
                           {/* Enter en cualquiera de los dos campos sigue. */}

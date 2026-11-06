@@ -44,7 +44,11 @@ explícitas en middleware/routes. Los comprobantes públicos se sirven en otro r
   mayúsculas encima (`TARIFAS VIGENTES`, `MI TURNO`); lo que decía el rótulo va en el título o en una
   línea debajo. Las mayúsculas quedan para etiquetas de un dato (una cifra, una columna).
 - Letra: mínimo 11 px y sin medios píxeles (11, 12, 13, 14, 15…), salvo lo que tiene que entrar en
-  una chapa.
+  una chapa. Las etiquetas de campo (`Label`, `FormLabel`) van en 13 px seminegrita y sin
+  mayúsculas, igual que en Tarifas y en el modo sin conexión.
+- Reglas globales como `admin/mobile.css` (40 px mínimos en los botones del celular) agrandan
+  también los botones de componentes compuestos: lo que se dibuja encima de un botón (la pastilla
+  del segmentado) tiene que seguir su altura real, no una fija.
 - Tablas: el encabezado de columna es el de las planillas (`thPlanilla` en `components/planilla`):
   11 px, negrita, mayúsculas por CSS y `text-muted-foreground`. El texto de las celdas se escribe
   normal («Abono mensual»), no en mayúsculas.

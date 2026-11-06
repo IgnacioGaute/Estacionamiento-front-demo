@@ -59,8 +59,11 @@ p{font-size:13px;line-height:1.6;color:hsl(var(--muted-foreground))}
 #connection[data-online=false]{color:hsl(var(--gm-aviso))}
 #connection:before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
 
-#status{margin:16px 0 0;color:hsl(var(--gm-atencion));overflow-wrap:anywhere}
+/* Mensajes de la pantalla (sin datos guardados, errores al operar): un recuadro de aviso. */
+#status{margin:20px 0 0;padding:14px 16px;border:1px solid hsl(var(--gm-atencion) / .3);border-radius:12px;background:hsl(var(--gm-atencion) / .06);color:hsl(var(--gm-atencion));overflow-wrap:anywhere}
 #status:empty{display:none}
+/* Sin datos la página es corta: el «Volver al sistema» del pie quedaba pegado al de arriba. */
+main:has(#workspace[hidden]) footer .return-online{display:none}
 #workspace{padding:24px 0 0}
 .workspace-summary{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:16px}
 /* Con pendientes, en color de atención; en cero, tranquilo. */

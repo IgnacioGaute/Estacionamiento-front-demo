@@ -420,10 +420,13 @@ const RubberSegment: React.FC<RubberSegmentProps> = ({
         aria-hidden="true"
         style={{ clipPath }}
       >
+        {/* Las etiquetas de la pastilla llenan su capa, que mide lo mismo que los botones: si una
+            regla de afuera agranda los botones (admin/mobile.css les da 40 px en el celular), el
+            texto sigue centrado. Con la altura fija quedaba arriba, pegado al borde. */}
         {list.map(item => (
           <span
             key={item.value}
-            className="inline-flex h-[calc(var(--rs-h)-var(--rs-inset)*2)] min-w-[var(--rs-min)] items-center justify-center gap-1.5 m-0 border-0 bg-transparent px-[var(--rs-pad)] py-0 rounded-[var(--rs-thumb-radius)] [font-family:inherit] text-[length:var(--rs-font)] font-semibold leading-none whitespace-nowrap outline-none [transition:opacity_160ms_ease,transform_160ms_var(--rs-ease-out)] motion-reduce:[transition:opacity_160ms_ease] cursor-default [color:inherit]"
+            className="inline-flex h-full min-w-[var(--rs-min)] items-center justify-center gap-1.5 m-0 border-0 bg-transparent px-[var(--rs-pad)] py-0 rounded-[var(--rs-thumb-radius)] [font-family:inherit] text-[length:var(--rs-font)] font-semibold leading-none whitespace-nowrap outline-none [transition:opacity_160ms_ease,transform_160ms_var(--rs-ease-out)] motion-reduce:[transition:opacity_160ms_ease] cursor-default [color:inherit]"
           >
             {item.icon}
             {item.label}

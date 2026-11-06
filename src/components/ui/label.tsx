@@ -6,8 +6,11 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+// Etiqueta de un campo: 13 px, seminegrita y sin mayúsculas, la misma de Tarifas y del modo sin
+// conexión. Eran 11 px en mayúsculas espaciadas, chicas para leer en el celular y distintas de las
+// demás pantallas. Las mayúsculas quedan para etiquetas de un dato (Etiqueta en turno-ui).
 const labelVariants = cva(
-  "text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+  "text-[13px] font-semibold leading-snug text-gm-texto-2 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
 )
 
 const Label = React.forwardRef<

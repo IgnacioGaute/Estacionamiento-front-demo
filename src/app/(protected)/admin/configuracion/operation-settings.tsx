@@ -88,8 +88,9 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
   const steps = [
     <Step key="activar">
       <section className="space-y-4">
-        {/* «Turnos de caja» y no «Activar…»: el interruptor de abajo ya lo dice y se repetía. */}
-        <SetupStepHeading number={1} total={4} title="Turnos de caja">Cada operador abre su turno para identificar sus cobros. El efectivo pertenece a la caja donde trabaja.</SetupStepHeading>
+        {/* Una pregunta, como «¿Cómo trabajan con la caja?»: «Turnos de caja» repetía el título de
+            la página justo encima, y «Activar…» repetía el interruptor de abajo. */}
+        <SetupStepHeading number={1} total={4} title="¿Trabajan con turnos?">Cada operador abre su turno para identificar sus cobros. El efectivo pertenece a la caja donde trabaja.</SetupStepHeading>
         <div className="flex items-start gap-3 rounded-2xl border border-gm-line bg-gm-surface-2 p-4"><Wallet className="mt-0.5 size-5 shrink-0 text-gm-yellow" /><div className="min-w-0 flex-1"><label htmlFor="shifts-enabled" className="font-semibold">Activar turnos de caja</label><p className="mt-1 text-sm text-muted-foreground">{shifts ? 'Si lo apagás, se puede cobrar sin turno. El historial se conserva.' : 'Apagado: se puede cobrar sin turno. El historial se conserva.'}</p></div><Switch id="shifts-enabled" checked={shifts} onCheckedChange={setShifts} disabled={pending} /></div>
         <p className="text-xs text-muted-foreground">{turningOff ? 'Para desactivarlos, primero cerrá todos los turnos abiertos.' : savedShifts ? (sections ? 'Los turnos están activos.' : 'Los turnos están activos. Seguí para revisar el modo, las cajas y el sueldo.') : shifts ? 'Continuá para activarlos y elegir cómo trabajan.' : 'Activalos para configurar el modo, las cajas y el sueldo.'}</p>
         {sections && turningOff && guardarAca('Desactivar turnos', () => save({ shiftsEnabled: false, multipleShiftsEnabled: false }, () => { setSavedShifts(false); setMultiple(false); setSavedMultiple(false); setStep(1); }, 'Turnos de caja desactivados'))}
