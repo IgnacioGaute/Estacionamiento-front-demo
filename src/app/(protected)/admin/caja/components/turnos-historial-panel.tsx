@@ -1,6 +1,6 @@
 'use client';
 import { TurnoResumenPanel } from '@/components/turno-resumen';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Skeleton } from '@/components/ui/skeleton';
 
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
@@ -34,6 +34,20 @@ function CorteDiario({ turno }: { turno: Turno }) {
     <div className="border-t border-dashed border-gm-line px-4 py-3 text-sm"><TurnoResumenPanel turno={turno} /></div>
   </details>;
 }
+// Mientras carga, filas con la forma de los turnos en vez del ícono grande: junto con el de las
+// cajas eran dos animaciones con brillo a la vez y la página saltaba al llegar los datos.
+function TurnosCargando() {
+  return <div role="status" className="space-y-2">
+    <span className="sr-only">Cargando turnos…</span>
+    <Skeleton aria-hidden className="mx-1 h-3 w-14" />
+    {[0, 1, 2].map(i => <div key={i} aria-hidden className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-gm-line px-4 py-3">
+      <Skeleton className="h-3.5 w-24" />
+      <Skeleton className="h-3 w-56 max-w-full" />
+      <Skeleton className="ml-auto h-3 w-28" />
+    </div>)}
+  </div>;
+}
+
 // Si el turno cruza de día se muestran las fechas: un corte diario se leía «00:00 – 00:00», como si
 // hubiera durado cero.
 const rango = (desde: string, hasta?: string | null) => {
@@ -108,7 +122,7 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
       <div className="w-full sm:w-60"><Select value={usuarioId || 'all'} onValueChange={value => { setUsuarioId(value === 'all' ? '' : value); setPage(0); }}><SelectTrigger aria-label="Filtrar por usuario" className="h-10 rounded-xl"><SelectValue placeholder="Todos los usuarios" /></SelectTrigger><SelectContent><SelectItem value="all">Todos los usuarios</SelectItem>{operadores.map(user => <SelectItem key={user.id} value={user.id}>{user.firstName} {user.lastName}</SelectItem>)}</SelectContent></Select></div>
     </div>
     <div aria-live="polite" aria-busy={pending} data-tour="caja-tabla">
-      {pending ? <DataLoading label="Cargando turnos…" />
+      {pending ? <TurnosCargando />
         : error ? <div role="alert" className="space-y-2 rounded-2xl border border-destructive/50 bg-destructive/5 p-4 text-sm"><p>{error}</p><Button variant="outline" size="sm" onClick={() => setRetry(value => value + 1)}>Reintentar</Button></div>
           : turnos.length === 0 ? <p className="rounded-2xl border border-dashed border-gm-line-strong p-8 text-center text-sm text-muted-foreground">No hay turnos cerrados en este período.</p>
             : <div className="space-y-6">

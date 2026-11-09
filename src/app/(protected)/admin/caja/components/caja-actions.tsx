@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { RefreshCw, Wallet } from 'lucide-react';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getCashContextAction } from '@/actions/turnos/cash-context.action';
 import { CashContext } from '@/types/turno.type';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean
           <Button variant="outline" size="sm" className="rounded-xl" onClick={update} disabled={loading}><RefreshCw className={'size-4 ' + (loading ? 'animate-spin' : '')} aria-hidden />Actualizar</Button>
         </div>
       </div>
-      {error ? <p role="alert" className="rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm">{error}</p> : loading && !context ? <DataLoading label="Cargando cajas…" /> : <>
+      {error ? <p role="alert" className="rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm">{error}</p> : loading && !context ? <CajasCargando /> : <>
         <div className="space-y-2">
           <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[22px] border border-gm-line bg-gm-line sm:grid-cols-[1.4fr_1fr_1fr]">
             <div className="col-span-2 bg-card p-5 sm:col-span-1"><dt><Etiqueta>Efectivo esperado en las cajas abiertas</Etiqueta></dt><dd className="mt-2"><Cifra value={total} className="text-[40px]" /></dd></div>
@@ -94,4 +94,21 @@ export function CajaActions({ shiftsEnabled = false }: { shiftsEnabled?: boolean
 }
 function Stat({ label, value, de }: { label: string; value: number; de?: number }) {
   return <div className="bg-card p-5"><dt><Etiqueta>{label}</Etiqueta></dt><dd className="mt-2 font-display text-[32px] sm:text-[40px] font-bold leading-none tabular-nums">{value}{de != null && <span className="ml-1 text-xl text-muted-foreground">/ {de}</span>}</dd></div>;
+}
+
+// Mientras carga, la forma de lo que viene (las tres cifras y una caja) en vez del ícono grande:
+// con el historial cargando a la vez había dos animaciones con brillo en la misma pantalla, y al
+// llegar los datos la página saltaba.
+function CajasCargando() {
+  return <div role="status" className="space-y-4">
+    <span className="sr-only">Cargando cajas…</span>
+    <div aria-hidden className="grid grid-cols-2 gap-px overflow-hidden rounded-[22px] border border-gm-line bg-gm-line sm:grid-cols-[1.4fr_1fr_1fr]">
+      <div className="col-span-2 space-y-3 bg-card p-5 sm:col-span-1"><Skeleton className="h-3 w-48 max-w-full" /><Skeleton className="h-10 w-40" /></div>
+      <div className="space-y-3 bg-card p-5"><Skeleton className="h-3 w-28" /><Skeleton className="h-10 w-16" /></div>
+      <div className="space-y-3 bg-card p-5"><Skeleton className="h-3 w-32" /><Skeleton className="h-10 w-10" /></div>
+    </div>
+    <div aria-hidden className="grid gap-4 lg:grid-cols-2">
+      <div className="space-y-3 rounded-[22px] border border-gm-line bg-gm-surface-2/50 p-5"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-40" /><Skeleton className="mt-4 h-9 w-36" /></div>
+    </div>
+  </div>;
 }
