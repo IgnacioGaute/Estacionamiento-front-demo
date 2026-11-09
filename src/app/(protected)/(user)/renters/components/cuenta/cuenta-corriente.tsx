@@ -1,5 +1,6 @@
 'use client';
 import { DataLoading } from '@/components/ui/data-loading';
+import { CuentaCargando } from './cargando';
 
 // La cuenta de un inquilino, en tres vistas:
 //   · Resumen: el estado de cuenta (cargos, pagos y ajustes con su saldo acumulado).
@@ -132,7 +133,7 @@ export function CuentaCorriente({
     );
   if (!estado)
     return (
-      <DataLoading label="Cargando la cuenta…" />
+      <CuentaCargando />
     );
 
   const c = estado.cliente;

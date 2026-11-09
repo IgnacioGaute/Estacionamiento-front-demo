@@ -1,5 +1,5 @@
 'use client';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Cargando, Hueso } from '@/components/esqueletos';
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -129,7 +129,7 @@ export function FormularioTarjeta({
   return (
     <div className="flex flex-col">
       {estado === 'cargando' && (
-        <DataLoading label="Cargando formulario seguro…" className="p-5" />
+        <Cargando texto="Cargando formulario seguro…" className="block space-y-4 p-5"><div className="space-y-2"><Hueso className="h-3 w-32" /><Hueso className="h-11 w-full rounded-md" /></div><div className="grid grid-cols-2 gap-3"><div className="space-y-2"><Hueso className="h-3 w-24" /><Hueso className="h-11 w-full rounded-md" /></div><div className="space-y-2"><Hueso className="h-3 w-28" /><Hueso className="h-11 w-full rounded-md" /></div></div><div className="space-y-2"><Hueso className="h-3 w-40" /><Hueso className="h-11 w-full rounded-md" /></div><div className="grid grid-cols-[1fr_2fr] gap-3"><Hueso className="h-11 rounded-md" /><Hueso className="h-11 rounded-md" /></div><Hueso className="h-12 w-full rounded-[13px]" /></Cargando>
       )}
       {estado === 'error' && (
         <p role="alert" className="m-0 px-5 py-5 text-[14px] leading-relaxed text-gm-peligro">

@@ -12,6 +12,7 @@ import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { CalendarDays, ReceiptText } from 'lucide-react';
 import { AppDatePicker } from '@/components/app-date-picker';
 import { DataLoading } from '@/components/ui/data-loading';
+import { ComprobantesCargando } from './cargando';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 import type { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
 
@@ -61,7 +62,7 @@ export function DepartureHistory({ registrations, dailyRegistrations, onReceipt,
       </div>
       <p role="status" className="text-xs text-muted-foreground">{pending ? '…' : total} estadías · {date === today ? 'Hoy' : date.split('-').reverse().join('/')}</p>
       <AnimatedScrollList key={`${date}-${query}`} label="Comprobantes: desplazá para ver más">
-        {pending ? <DataLoading label="Cargando comprobantes…" /> : rows.map(row => <div key={row.id} className="min-w-0 rounded-xl border border-border bg-secondary/40 p-3 transition-colors hover:border-gm-yellow/40 hover:bg-gm-yellow/5">
+        {pending ? (rows.length ? <DataLoading label="Cargando comprobantes…" /> : <ComprobantesCargando />) : rows.map(row => <div key={row.id} className="min-w-0 rounded-xl border border-border bg-secondary/40 p-3 transition-colors hover:border-gm-yellow/40 hover:bg-gm-yellow/5">
           <div className="flex min-w-0 items-start gap-2.5"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-gm-yellow/10 text-gm-yellow"><ReceiptText className="size-4" /></span><div className="min-w-0 flex-1"><p className="break-words text-base font-semibold leading-tight tracking-wide">{row.identification}</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{row.type}</p></div></div>
           <p className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] text-muted-foreground"><span>{row.departed ? 'Salida registrada' : 'En la playa'}</span>{row.time && <span className="tabular-nums">{row.time}</span>}</p>
           <div className="mt-2 space-y-0.5 text-xs text-muted-foreground"><p>Entrada: {row.entryOperatorName || 'Operador no registrado'}</p>{row.departed && <p>Salida: {row.exitOperatorName || 'Operador no registrado'}</p>}</div>

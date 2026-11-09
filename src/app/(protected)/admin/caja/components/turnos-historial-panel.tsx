@@ -36,7 +36,7 @@ function CorteDiario({ turno }: { turno: Turno }) {
 }
 // Mientras carga, filas con la forma de los turnos en vez del ícono grande: junto con el de las
 // cajas eran dos animaciones con brillo a la vez y la página saltaba al llegar los datos.
-function TurnosCargando() {
+export function TurnosCargando() {
   return <div role="status" className="space-y-2">
     <span className="sr-only">Cargando turnos…</span>
     <Skeleton aria-hidden className="mx-1 h-3 w-14" />

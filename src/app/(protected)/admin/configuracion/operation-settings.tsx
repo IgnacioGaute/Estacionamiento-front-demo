@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Cargando, Hueso } from '@/components/esqueletos';
 import { SetupSections, SetupStepHeading, SetupStepper, Step } from '@/components/setup-stepper/setup-stepper';
 import { toast } from '@/lib/toast';
 import { updateTicketScheduleAction } from '@/actions/tickets/update-ticket-schedule.action';
@@ -121,7 +121,7 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
           <div className="flex items-center justify-between gap-3"><Label htmlFor="salary-enabled">Retirar sueldo de la caja automáticamente</Label><Switch id="salary-enabled" checked={salaryEnabled} onCheckedChange={setSalaryEnabled} disabled={pending} /></div>
           {/* Filas separadas por una línea y no tarjetas dentro de la tarjeta. Debajo del nombre va el
               usuario: dos cuentas con el mismo nombre se veían iguales. */}
-          {salaryLoading ? <DataLoading label="Cargando usuarios…" /> : salaryError ? <div role="alert"><p>{salaryError}</p><Button variant="outline" onClick={() => void loadSalaryUsers()}>Reintentar</Button></div> : salaryEnabled && <div className="divide-y divide-gm-line border-t border-gm-line">{salaryUsers.map(u => {
+          {salaryLoading ? <Cargando texto="Cargando usuarios…" className="block divide-y divide-border">{[0, 1].map(i => <div key={i} className="space-y-2 py-3"><div className="flex items-center justify-between gap-3"><div className="space-y-1.5"><Hueso className="h-3.5 w-48" /><Hueso className="h-2.5 w-28" /></div><Hueso className="h-6 w-11 rounded-full" /></div><Hueso className="h-11 w-full rounded-md sm:h-10" /></div>)}</Cargando> : salaryError ? <div role="alert"><p>{salaryError}</p><Button variant="outline" onClick={() => void loadSalaryUsers()}>Reintentar</Button></div> : salaryEnabled && <div className="divide-y divide-gm-line border-t border-gm-line">{salaryUsers.map(u => {
             const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username;
             const enabled = salaries[u.id] !== undefined;
             return <div key={u.id} className="space-y-2 py-3">
@@ -194,7 +194,7 @@ function CajasSettings({ multiple }: { multiple: boolean }) {
   const load = async () => { const result = await getCashConfigurationAction(); setCajas(result.configuration?.cajas ?? []); setError(result.error ?? ''); setLoading(false); };
   useEffect(() => { void load(); }, []);
   return <section aria-label="Cajas físicas" className="space-y-4">
-    {loading ? <DataLoading label="Cargando cajas…" /> : error ? <div role="alert" className="space-y-2 text-sm"><p>{error}</p><Button variant="outline" type="button" onClick={() => { setLoading(true); void load(); }}>Reintentar</Button></div> : <>
+    {loading ? <Cargando texto="Cargando cajas…" className="block space-y-3"><div className="space-y-3 rounded-xl border border-border p-3.5"><Hueso className="h-3 w-52" /><Hueso className="h-11 w-full rounded-md sm:h-10" /><Hueso className="h-3 w-40" /><div className="flex gap-3"><Hueso className="h-11 flex-1 rounded-md sm:h-10" /><Hueso className="h-11 w-28 rounded-md sm:h-10" /></div></div></Cargando> : error ? <div role="alert" className="space-y-2 text-sm"><p>{error}</p><Button variant="outline" type="button" onClick={() => { setLoading(true); void load(); }}>Reintentar</Button></div> : <>
       <div className="space-y-3">{cajas.filter(c => multiple || c.principal).map(caja => <CajaRow key={caja.id} caja={caja} onUpdated={load} />)}</div>
       {multiple ? <form className="flex flex-wrap items-end gap-3 border-t border-border pt-4" onSubmit={event => { event.preventDefault(); startTransition(async () => { const result = await saveCajaAction({ nombre: name }); if (result.error) { toast.error(result.error); return; } setName(''); await load(); toast.success('Caja agregada'); }); }}>
         <div className="min-w-0 w-full flex-none space-y-1.5 sm:w-auto sm:flex-1"><Label htmlFor="new-caja">Agregar otra caja</Label><Input id="new-caja" placeholder="Ej.: Entrada lateral" maxLength={80} value={name} onChange={e => setName(e.target.value)} disabled={pending} required /></div><Button disabled={pending || !name.trim()}><Plus className="size-4" /> Agregar caja</Button>

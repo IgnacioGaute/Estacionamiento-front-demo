@@ -1,6 +1,6 @@
 'use client';
 import LatticeLoader from '@/components/ui/lattice-loader';
-import { DataLoading } from '@/components/ui/data-loading';
+import { AbonosCargando } from './cargando';
 
 // Las acciones de administración sobre la cuenta: ajustes, devoluciones, anulaciones y la carga
 // de los abonos del mes. Todas piden motivo o confirmación: tocan plata y quedan en el libro con
@@ -542,7 +542,7 @@ export function CargarAbonosDialog({
         {!diaOk && <p className="text-xs text-destructive">Elegí un día del 1 al 28 (todos los meses lo tienen).</p>}
 
         {cargando && (
-          <DataLoading label="Revisando abonos…" />
+          <AbonosCargando />
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}
 

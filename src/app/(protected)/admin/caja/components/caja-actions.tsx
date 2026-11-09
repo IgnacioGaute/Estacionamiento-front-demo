@@ -99,7 +99,7 @@ function Stat({ label, value, de }: { label: string; value: number; de?: number 
 // Mientras carga, la forma de lo que viene (las tres cifras y una caja) en vez del ícono grande:
 // con el historial cargando a la vez había dos animaciones con brillo en la misma pantalla, y al
 // llegar los datos la página saltaba.
-function CajasCargando() {
+export function CajasCargando() {
   return <div role="status" className="space-y-4">
     <span className="sr-only">Cargando cajas…</span>
     <div aria-hidden className="grid grid-cols-2 gap-px overflow-hidden rounded-[22px] border border-gm-line bg-gm-line sm:grid-cols-[1.4fr_1fr_1fr]">

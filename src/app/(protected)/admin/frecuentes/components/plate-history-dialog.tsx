@@ -1,5 +1,5 @@
 'use client';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Cargando, Hueso } from '@/components/esqueletos';
 
 import { useEffect, useState } from 'react';
 import { CompactPagination } from '@/components/compact-pagination';
@@ -77,7 +77,7 @@ export function PlateHistoryDialog({ licensePlateNormalized, licensePlateOrigina
         </DialogHeader>
 
         {loading && (
-          <DataLoading label="Cargando historial…" />
+          <Cargando texto="Cargando historial…" className="block overflow-hidden rounded-md border border-border"><div className="grid grid-cols-4 gap-3 bg-background px-3 py-2.5">{[0, 1, 2, 3].map(i => <Hueso key={i} className="h-2.5 w-14" />)}</div>{[0, 1, 2, 3, 4].map(i => <div key={i} className="grid grid-cols-4 gap-3 border-t border-border px-3 py-3">{[0, 1, 2, 3].map(c => <Hueso key={c} className="h-3 w-16" />)}</div>)}</Cargando>
         )}
 
         {!loading && visits && visits.length === 0 && (

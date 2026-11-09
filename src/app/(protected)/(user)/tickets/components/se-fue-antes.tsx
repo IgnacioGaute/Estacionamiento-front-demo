@@ -23,7 +23,7 @@ import {
   ActionDialogHeader,
   ActionDialogPrimaryButton,
 } from '@/components/ui/action-dialog';
-import { DataLoading } from '@/components/ui/data-loading';
+import { TarifasCargando } from './cargando';
 import { CashAmountField } from '@/components/cash-amount-field';
 import { formatImporte } from '@/components/pricing-breakdown';
 import { cn } from '@/lib/utils';
@@ -227,7 +227,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
         <ActionDialogHeader title="Se fue antes" description={`${patente} · entró ${cuandoEntro(registration)}`} />
         <ActionDialogBody>
           {cargando && !datos ? (
-            <DataLoading label="Cargando tarifas…" />
+            <TarifasCargando />
           ) : datos && !datos.opciones.length ? (
             <p className="rounded-2xl border border-border bg-gm-surface-2 p-3.5 text-[14px] leading-relaxed text-muted-foreground">
               Todavía está en la primera tarifa: no hay una más barata. Cobralo normal, con {formatImporte(datos.ahora)}.

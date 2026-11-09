@@ -1,5 +1,5 @@
 'use client';
-import { DataLoading } from '@/components/ui/data-loading';
+import { MostradorCargando } from './cargando';
 
 // La cuenta de un inquilino como la ve el operador: lo que debe y lo que pagó, en dos pestañas.
 // Sin movimientos ni nada que corregir: cobrar y volver a entregar el recibo de un pago. El
@@ -108,7 +108,7 @@ export function CuentaMostradorDialog({
 
         {error && <p className="py-4 text-sm text-destructive">{error}</p>}
         {!cuenta && !error && (
-          <DataLoading label="Cargando cuenta…" />
+          <MostradorCargando />
         )}
 
         {cuenta && recibo && (

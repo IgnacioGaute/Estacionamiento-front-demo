@@ -1,5 +1,5 @@
 'use client';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Cargando, Hueso } from '@/components/esqueletos';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -64,7 +64,7 @@ export function AssignPlayaDialog({ user, assigned }: { user: User; assigned: Pl
           <DialogTitle>Playa de {user.firstName}</DialogTitle>
           <DialogDescription>Elegí la playa donde trabajará este operador. El cambio se aplica a su próximo ingreso.</DialogDescription>
         </DialogHeader>
-        {loading && !playas.length ? <DataLoading label="Cargando playas…" /> : <fieldset disabled={loading} className="space-y-2">
+        {loading && !playas.length ? <Cargando texto="Cargando playas…" className="block space-y-2"><Hueso className="mb-2 h-3.5 w-28" />{[0, 1, 2].map(i => <div key={i} className="flex min-h-14 items-center gap-3 rounded-xl border border-border bg-background/50 px-4 py-3"><Hueso className="size-9 rounded-lg" /><Hueso className="h-3.5 w-40" /></div>)}</Cargando> : <fieldset disabled={loading} className="space-y-2">
           <legend className="mb-2 text-sm font-semibold">Playa asignada</legend>
           {playas.map(playa => <label key={playa.id} className="group flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-border bg-background/50 px-4 py-3 transition-colors hover:border-gm-yellow/50 has-[:checked]:border-gm-yellow has-[:checked]:bg-gm-yellow/10 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gm-yellow">
             <input type="radio" name={`playa-${user.id}`} value={playa.id} checked={selected === playa.id} onChange={() => setSelected(playa.id)} className="sr-only" />

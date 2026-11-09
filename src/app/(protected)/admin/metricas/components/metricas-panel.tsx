@@ -1,5 +1,6 @@
 "use client";
 import { DataLoading } from '@/components/ui/data-loading';
+import { MetricasCargando } from '@/components/plataforma/cargando';
 
 // Métricas de toda la plataforma. El período (7/30/90 días) y la empresa recalculan todo: KPIs,
 // curva, medios de pago, mapa de calor, ranking y comparativa salen de la misma consulta, así que
@@ -389,7 +390,7 @@ export function MetricasPanel() {
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
-  if (cargando && !detalle && !error) return <DataLoading label="Cargando métricas…" className="p-4" />;
+  if (cargando && !detalle && !error) return <MetricasCargando />;
 
   // Barra horizontal de una lista (ranking, temas, abonos): la primera en amarillo.
   const barra = (fraccion: number, primera: boolean, minimo = 2) => (

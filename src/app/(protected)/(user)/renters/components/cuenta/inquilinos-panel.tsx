@@ -1,5 +1,6 @@
 'use client';
 import { DataLoading } from '@/components/ui/data-loading';
+import { FilasInquilinosCargando } from './cargando';
 import { PageHeader } from '@/components/page-header';
 
 // La sección de inquilinos: a quién buscar, cuánto tiene pendiente (y si ya venció) y cobrarle
@@ -490,7 +491,7 @@ export function InquilinosPanel() {
         </ul>
 
         {cargando && !resumen && (
-          <DataLoading label="Cargando cuentas…" className="p-4" />
+          <FilasInquilinosCargando />
         )}
         {resumen && !lista.length && (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground md:border-t md:border-gm-line">

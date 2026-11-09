@@ -8,7 +8,7 @@ import { useTenant } from '@/components/tenant-provider';
 import { PageHeader } from '@/components/page-header';
 import { PageTour, type PageTourStep } from '@/components/page-tour';
 import { Button } from '@/components/ui/button';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Cargando, EsqueletoFilasTabla } from '@/components/esqueletos';
 import { cn } from '@/lib/utils';
 import { getFrequentCustomersPageAction } from '@/actions/tickets/get-frequent-customers.action';
 import type { FrequentCustomer } from '@/types/frequent-customer.type';
@@ -157,7 +157,7 @@ export function FrequentCustomersBody({ initialCustomers, initialTotal }: { init
       <CabeceraTabla titulo="Clientes" cantidad={total}>
         <span className="text-xs text-muted-foreground">{resumenFiltros} · ordenados por visitas</span>
       </CabeceraTabla>
-      {isPending ? <div className="p-6"><DataLoading label="Cargando clientes…" /></div> : !customers.length ? (
+      {isPending ? <Cargando texto="Cargando clientes…"><EsqueletoFilasTabla filas={6} columnas={[3, 2, 1, 2, 2]} /></Cargando> : !customers.length ? (
         <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
           <Inbox className="size-8 text-muted-foreground" aria-hidden />
           <h3 className="font-semibold">No encontramos clientes</h3>

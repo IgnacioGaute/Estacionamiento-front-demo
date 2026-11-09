@@ -2,7 +2,7 @@
 import { useState, useTransition } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Bike, Bus, CarFront, Check, Plus, Truck } from 'lucide-react';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Cargando, Hueso } from '@/components/esqueletos';
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -53,7 +53,7 @@ export function VehicleTypesCard({ enConfiguracionInicial = false, sinEncabezado
       {!loading && types.length > 0 && <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"><span className="text-gm-yellow">{activos}</span> de {types.length} activos</p>}
     </header>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    {loading && !types.length ? <DataLoading label="Cargando vehículos…" /> : <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    {loading && !types.length ? <Cargando texto="Cargando vehículos…" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[0, 1, 2].map(i => <div key={i} className="space-y-3 rounded-2xl border border-gm-line bg-card p-4"><div className="flex items-center gap-3"><Hueso className="size-10 rounded-xl" /><Hueso className="h-4 w-28" /><Hueso className="ml-auto h-6 w-11 rounded-full" /></div><Hueso className="h-11 w-full rounded-md sm:h-10" /></div>)}</Cargando> : <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <AnimatePresence initial={false}>
         {types.map(t => {
           const Icon = iconoDe(t.name);

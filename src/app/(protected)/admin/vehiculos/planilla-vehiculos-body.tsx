@@ -10,7 +10,7 @@ import { CalendarDays, Download, FileText, Inbox, Search } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { AppDatePicker } from '@/components/app-date-picker';
 import { Button } from '@/components/ui/button';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Cargando, EsqueletoFilasTabla } from '@/components/esqueletos';
 import { useVehicleTypes } from '@/components/vehicle-type-options';
 import { toast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -225,7 +225,7 @@ export function PlanillaVehiculosBody() {
         <CabeceraTabla titulo={presentes ? TITULOS.PRESENTES : `${TITULOS[filtros.estado]} ${esHoy ? 'de hoy' : rango}`} cantidad={total}>
           <LeyendaTramos />
         </CabeceraTabla>
-        {isPending && !datos ? <div className="p-6"><DataLoading label="Cargando la planilla…" /></div> : !filas.length ? (
+        {isPending && !datos ? <Cargando texto="Cargando la planilla…"><EsqueletoFilasTabla filas={6} columnas={[3, 2, 2, 2, 2, 2]} /></Cargando> : !filas.length ? (
           <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
             <Inbox className="size-8 text-muted-foreground" aria-hidden />
             {/* Con autos adentro, «No hay movimientos» sola contradecía la tarjeta de arriba. */}

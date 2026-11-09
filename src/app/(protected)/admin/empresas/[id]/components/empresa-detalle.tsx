@@ -1,5 +1,5 @@
 "use client";
-import { DataLoading } from '@/components/ui/data-loading';
+import { EmpresaCargando } from '@/components/plataforma/cargando';
 
 // La ficha de una empresa en su propia página. Antes era un desplegable dentro del listado: los
 // botones para agregar playas y usuarios quedaban escondidos detrás de dos clics y no había
@@ -184,7 +184,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
     );
   if (!empresa)
     return (
-      <DataLoading label="Cargando la empresa…" />
+      <EmpresaCargando />
     );
 
   const metricasDe = (playaId: string): PlayaMetrics | undefined =>

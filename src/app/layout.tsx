@@ -5,7 +5,6 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { Toaster } from '@/components/ui/toaster';
 import { Metadata, Viewport } from 'next';
-import { NavigationLoader } from '@/components/navigation-loader';
 import { PwaRuntime } from '@/components/pwa-runtime';
 
 // Las tipografías viven en el repo (src/fonts, subconjunto latino de Google Fonts, versiones
@@ -101,7 +100,8 @@ export default async function RootLayout({
           forcedTheme="dark"
           disableTransitionOnChange
         >
-          <NavigationLoader />
+          {/* Sin la pantalla del auto en cada clic: tapaba los esqueletos de cada página (loading.tsx)
+              y se quedaba al menos 3,5 s aunque la página ya estuviera. Queda para el arranque. */}
           <PwaRuntime />
           {children}
         </ThemeProvider>

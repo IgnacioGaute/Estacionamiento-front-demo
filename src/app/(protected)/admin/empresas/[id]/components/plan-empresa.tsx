@@ -1,5 +1,5 @@
 "use client";
-import { DataLoading } from '@/components/ui/data-loading';
+import { PlanEmpresaCargando } from '@/components/plataforma/cargando';
 
 // La solapa «Plan» de la ficha de una empresa. Arriba, en qué está la cuenta y qué hacer; abajo el
 // ciclo (alta → prueba → vencimiento → suspensión) con hoy marcado, el plan de cada playa con las
@@ -150,7 +150,7 @@ export function PlanDeEmpresa({
     );
   if (!detalle)
     return (
-      <DataLoading label="Cargando el plan…" />
+      <PlanEmpresaCargando />
     );
 
   const { cuenta } = detalle;

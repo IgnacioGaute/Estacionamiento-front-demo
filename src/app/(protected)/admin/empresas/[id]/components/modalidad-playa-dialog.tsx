@@ -13,6 +13,7 @@ import { DataLoading } from "@/components/ui/data-loading";
 import { NOMBRE_MODALIDAD, type Modalidad } from "@/lib/modalidad";
 import type { PendienteModalidad, PrevisualizacionModalidad } from "@/services/tenancy.service";
 import { cambiarModalidadAction, previsualizarModalidadAction } from "@/actions/tenancy/tenancy.action";
+import { ModalidadCargando } from '@/components/plataforma/cargando';
 
 export type CambioModalidad = { playaId: string; nombre: string };
 
@@ -102,7 +103,7 @@ export function ModalidadPlayaDialog({ cambio, cerrar, hecho }: { cambio: Cambio
           </DialogDescription>
         </DialogHeader>
 
-        {!datos && !error ? <DataLoading label="Revisando la playa…" /> : null}
+        {!datos && !error ? <ModalidadCargando /> : null}
         {error && <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</p>}
 
         {datos && destino && (

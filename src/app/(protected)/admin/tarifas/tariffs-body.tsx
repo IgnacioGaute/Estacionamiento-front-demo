@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ChevronDown, FlaskConical, Pencil, X } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Cargando, EsqueletoCampos, Hueso } from '@/components/esqueletos';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -148,7 +148,7 @@ export function TariffsBody({ initialPlan, loadError, passPrices, enConfiguracio
         <details className="rounded-xl border border-gm-atencion/30 bg-background/40"><summary className="cursor-pointer px-3 py-2 font-medium">Ver las tarifas vigentes</summary><div className="border-t border-gm-atencion/30 p-3"><TariffSummary plan={current} vehicles={vehicles} /></div></details>
         {current.revision !== baseRevision ? <Button type="button" variant="outline" disabled={pending} onClick={() => { setBaseRevision(current.revision); setDraft(previous => previous ? { ...previous, brackets: previous.brackets.map(row => { if (!row.id || current.brackets.some(saved => saved.id === row.id)) return row; const { id: _obsoleteId, ...fields } = row; return fields; }) } : previous); setBaseDraft(JSON.stringify(copyDraft(current))); setConflict(false); setError(''); }}>Revisé la versión vigente: conservar mi borrador</Button> : <Button variant="outline" disabled={pending} onClick={reload}>Cargar la versión vigente</Button>}
         <p className="text-xs text-muted-foreground">Luego podrás aplicar tu borrador completo. Si otra persona vuelve a modificar las tarifas, te avisaremos nuevamente.</p></div>}
-      {loading ? <DataLoading label="Cargando tipos de vehículo…" /> : <fieldset disabled={pending || !!vehicleError} className="min-w-0">
+      {loading ? <Cargando texto="Cargando tipos de vehículo…" className="block space-y-4"><div className="flex flex-wrap gap-2">{[0, 1, 2, 3].map(i => <Hueso key={i} className="h-9 w-28 rounded-full" />)}</div><div className="space-y-4 rounded-2xl border border-gm-line bg-card p-5"><Hueso className="h-5 w-48" /><Hueso className="h-3 w-72 max-w-full" /><EsqueletoCampos campos={4} columnas={2} /></div></Cargando> : <fieldset disabled={pending || !!vehicleError} className="min-w-0">
         <TariffEditor draft={draft} onChange={next => { setDraft(next); setError(''); }} vehicles={vehicles} step={step} onStepChange={setStep} canApply={canApply} applying={pending} onApply={save} disabled={pending || !!vehicleError}
           view={view} onMethodChange={() => { setView('steps'); setMethodChanged(true); setStep(2); }} stickyApply={!enConfiguracionInicial}
           notice={<>
@@ -195,7 +195,7 @@ export function TariffsBody({ initialPlan, loadError, passPrices, enConfiguracio
           <TariffSummary plan={current} vehicles={vehicles} />
           {vehicleError && <p role="alert" className="text-sm text-destructive">{vehicleError}</p>}
           <div className="flex flex-wrap items-center gap-3"><Button onClick={edit} disabled={pending}><Pencil className="mr-2 size-4" aria-hidden="true" />{hasPrices ? 'Editar tarifas' : 'Configurar mis tarifas'}</Button><p className="text-sm text-muted-foreground">Podés probar los cambios antes de aplicarlos.</p></div>
-          {loading ? <DataLoading label="Cargando tarifas…" /> : <TariffSimulator draft={null} revision={current.revision} invalid={!!vehicleError} vehicles={vehicles} />}
+          {loading ? <Cargando texto="Cargando tarifas…" className="block space-y-4 rounded-2xl border border-gm-yellow/30 bg-gm-yellow/[0.03] p-4 sm:p-6"><Hueso className="h-6 w-56" /><Hueso className="h-3.5 w-80 max-w-full" /><EsqueletoCampos campos={4} columnas={4} /><div className="flex justify-end"><Hueso className="h-10 w-36 rounded-md" /></div></Cargando> : <TariffSimulator draft={null} revision={current.revision} invalid={!!vehicleError} vehicles={vehicles} />}
           {error && <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
         </>}
       </TabsContent>

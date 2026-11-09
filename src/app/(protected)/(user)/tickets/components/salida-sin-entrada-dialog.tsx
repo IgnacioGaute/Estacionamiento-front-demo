@@ -24,6 +24,7 @@ import {
   ActionDialogPrimaryButton,
 } from '@/components/ui/action-dialog';
 import { DataLoading } from '@/components/ui/data-loading';
+import { TarifasCargando } from './cargando';
 import { PlateChip } from '@/components/plate-chip';
 import { VehicleTypeButtons } from '@/components/vehicle-type-options';
 import { formatImporte } from '@/components/pricing-breakdown';
@@ -227,7 +228,7 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
 
           <section aria-labelledby="sin-entrada-tarifa" className="space-y-2">
             <p id="sin-entrada-tarifa" className="text-[14px] font-semibold">¿Qué tarifa le corresponde?</p>
-            {cargando ? <DataLoading label="Cargando tarifas…" /> : opciones.length ? (
+            {cargando ? <TarifasCargando /> : opciones.length ? (
               <TarifasElegibles
                 id="sin-entrada-tarifa"
                 disabled={pending}

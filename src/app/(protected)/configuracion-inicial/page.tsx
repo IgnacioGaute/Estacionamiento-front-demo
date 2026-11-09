@@ -4,7 +4,8 @@ export const fetchCache = 'force-no-store';
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { currentUser } from '@/lib/auth';
-import { DataLoading } from '@/components/ui/data-loading';
+import { TarifasPantallaCargando } from '../admin/tarifas/cargando';
+import { MercadoPagoCargando } from '../admin/configuracion/mercadopago/cargando';
 import { getConfiguracionInicial } from '@/services/configuracion-inicial.service';
 import { getTicketSchedule, getTicketsPrice } from '@/services/tickets.service';
 import { getUsers } from '@/services/users.service';
@@ -63,7 +64,7 @@ export default async function ConfiguracionInicialPage() {
       contenido={{
         vehiculos: <VehicleTypesCard enConfiguracionInicial />,
         // TariffsBody lee la URL (useSearchParams): necesita su límite de Suspense.
-        tarifas: <Suspense fallback={<DataLoading label="Cargando tarifas…" />}><TariffsBody initialPlan={plan ?? null} loadError={tarifa.error} passPrices={precioPases} enConfiguracionInicial /></Suspense>,
+        tarifas: <Suspense fallback={<TarifasPantallaCargando />}><TariffsBody initialPlan={plan ?? null} loadError={tarifa.error} passPrices={precioPases} enConfiguracionInicial /></Suspense>,
         pases: <PasesConfiguracion precios={precioPases} />,
         turnos: schedule
           ? <OperationSettings sueldoAutomatico={schedule.sueldoAutomatico} sueldosPorUsuario={schedule.sueldosPorUsuario} shiftsEnabled={schedule.shiftsEnabled ?? false} multipleShiftsEnabled={schedule.multipleShiftsEnabled ?? false} enConfiguracionInicial />
@@ -72,7 +73,7 @@ export default async function ConfiguracionInicialPage() {
           ? aviso(mercadoPago.error ?? 'No se pudo consultar la cuenta de MercadoPago. Podés omitir este paso y hacerlo después.')
           : (
             // useSearchParams necesita un límite de Suspense.
-            <Suspense fallback={<DataLoading label="Cargando MercadoPago…" />}>
+            <Suspense fallback={<MercadoPagoCargando />}>
               <ConexionMercadoPago inicial={mercadoPago.estado} verificacionAlias={verificacion.datos ?? null} comisiones={comisiones.datos?.conectada ? comisiones.datos : null} cajasQr={qr.cajas ?? null} enConfiguracionInicial />
             </Suspense>
           ),

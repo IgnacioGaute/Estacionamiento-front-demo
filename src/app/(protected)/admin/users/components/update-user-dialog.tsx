@@ -1,5 +1,5 @@
 'use client';
-import { DataLoading } from '@/components/ui/data-loading';
+import { Cargando, EsqueletoCampos, Hueso } from '@/components/esqueletos';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -91,7 +91,7 @@ export function UpdateUserDailog({ user }: { user: User }) {
   }
 
   if (session.status === 'loading') {
-    return <DataLoading label="Cargando usuario…" />;
+    return <Cargando texto="Cargando usuario…" className="block space-y-4"><EsqueletoCampos campos={4} columnas={2} /><Hueso className="ml-auto h-11 w-40 rounded-md sm:h-9" /></Cargando>;
   }
 
   const checkUsername = async (username: string) => {

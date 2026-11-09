@@ -46,6 +46,15 @@ explícitas en middleware/routes. Los comprobantes públicos se sirven en otro r
 - Letra: mínimo 11 px y sin medios píxeles (11, 12, 13, 14, 15…), salvo lo que tiene que entrar en
   una chapa. Las etiquetas de campo (`Label`, `FormLabel`) van en 13 px seminegrita y sin
   mayúsculas, igual que en Tarifas y en el modo sin conexión.
+- Carga: la primera carga de una pantalla o de un componente muestra un esqueleto con su forma
+  (el mismo contenedor, la misma grilla, las mismas tarjetas y filas), armado con las piezas de
+  `components/esqueletos.tsx` (`Cargando`, `Hueso`, `EsqueletoEncabezado`, `EsqueletoTabla`…). Cada
+  pantalla en uso tiene su `loading.tsx` y cada componente su esqueleto (por ejemplo
+  `renters/components/cuenta/cargando.tsx`, `components/plataforma/cargando.tsx`). El ícono
+  (`DataLoading`) queda solo para datos que se actualizan o se buscan dentro de algo que ya está en
+  pantalla («Actualizando cuentas…», «Buscando patentes parecidas…»). La pantalla del auto
+  (`LoadingScreen`) es solo para el arranque de la app (`app/loading.tsx`, `(protected)/loading.tsx`);
+  ya no se muestra en cada navegación.
 - Reglas globales como `admin/mobile.css` (40 px mínimos en los botones del celular) agrandan
   también los botones de componentes compuestos: lo que se dibuja encima de un botón (la pastilla
   del segmentado) tiene que seguir su altura real, no una fija.

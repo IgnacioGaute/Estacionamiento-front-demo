@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
 import { CalendarDays, Car, CheckCheck, Inbox, MessageSquare, RotateCcw, Search, SlidersHorizontal, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { DataLoading } from '@/components/ui/data-loading';
+import { FilasAvisosCargando } from './cargando';
 import { AppDatePicker } from '@/components/app-date-picker';
 import { useTenant } from '@/components/tenant-provider';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ import {
 } from '@/components/planilla/planilla-ui';
 import { UpdateNoteDialog } from './update-note-dialog';
 import { DeleteNoteDialog } from './delete-note-dialog';
+import { Cargando, Hueso } from '@/components/esqueletos';
 
 const POR_PAGINA = 20; // El mismo límite que pide getNotes (AVISOS_POR_PAGINA).
 const ZONA = 'America/Argentina/Buenos_Aires';
@@ -163,7 +164,7 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
           <span className={cn('font-semibold', sinLeer > 0 ? 'text-gm-yellow' : 'text-foreground')}>{sinLeer > 0 ? `${sinLeer} sin leer` : 'Estás al día'}</span>
           <span aria-hidden>·</span><span>{datos.resumen.hoy} {datos.resumen.hoy === 1 ? 'publicado' : 'publicados'} hoy</span>
           <span aria-hidden>·</span><span>{datos.resumen.total} en la cartelera</span>
-        </> : <span>Cargando resumen…</span>}
+        </> : <Cargando texto="Cargando resumen…" className="contents"><Hueso className="h-4 w-80 max-w-full" /></Cargando>}
       </section>
 
       <section data-tour="avisos-filtro" aria-label="Filtros" className={cn(tarjetaPlanilla, 'flex flex-col gap-3 p-3.5')}>
@@ -221,7 +222,7 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
             </Button>
           )}
         </CabeceraTabla>
-        {!datos ? <div className="p-6"><DataLoading label="Cargando avisos…" /></div> : !avisos.length ? (
+        {!datos ? <FilasAvisosCargando /> : !avisos.length ? (
           <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
             <Inbox className="size-8 text-muted-foreground" aria-hidden />
             <h3 className="font-semibold">{hayFiltros ? 'No hay avisos con estos filtros' : 'Todavía no hay avisos'}</h3>

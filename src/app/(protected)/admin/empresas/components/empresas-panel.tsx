@@ -1,5 +1,5 @@
 "use client";
-import { DataLoading } from '@/components/ui/data-loading';
+import { FilasPlataformaCargando, PanelPlataformaCargando } from '@/components/plataforma/cargando';
 
 // El listado de empresas: dónde está el volumen, qué hay que resolver y la tabla con estado,
 // playas, usuarios, cobrado, última operación y MercadoPago de cada una.
@@ -277,7 +277,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
     setPagina(1);
   };
 
-  if (cargando && !empresas.length && !error) return <DataLoading label="Cargando empresas…" className="p-4" />;
+  if (cargando && !empresas.length && !error) return <PanelPlataformaCargando texto="Cargando empresas…" />;
 
   return (
     <div className="space-y-5">
@@ -579,7 +579,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               </span>
             </div>
             {cargando && !empresas.length && (
-              <DataLoading label="Cargando empresas…" className="border-t border-[#211F1B] p-4" />
+              <FilasPlataformaCargando texto="Cargando empresas…" />
             )}
             {!cargando && !filtradas.length && (
               <p className="border-t border-[#211F1B] px-5 py-12 text-center text-sm text-muted-foreground">

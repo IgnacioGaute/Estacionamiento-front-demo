@@ -4,6 +4,7 @@ import { TurnoResumenPanel } from '@/components/turno-resumen';
 import { Pill } from '@/components/turno-ui';
 import LatticeLoader from '@/components/ui/lattice-loader';
 import { DataLoading } from '@/components/ui/data-loading';
+import { Cargando, Hueso } from '@/components/esqueletos';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActionDialog,
@@ -263,7 +264,7 @@ export function BoxListDialog({ open, setOpen }: BoxListDialogProps) {
             </section>
           )}
 
-          {loading && <DataLoading label="Cargando planilla…" />}
+          {loading && (boxData ? <DataLoading label="Cargando planilla…" /> : <Cargando texto="Cargando planilla…" className="block space-y-3"><div className="space-y-3 rounded-2xl border border-border bg-background/40 px-4 py-4 sm:px-6 sm:py-6"><Hueso className="h-3 w-40" /><Hueso className="h-3 w-52" /><Hueso className="h-10 w-48 sm:h-12" /><Hueso className="h-3 w-44" /></div><div className="space-y-3 rounded-2xl border border-border bg-secondary/20 p-3.5"><Hueso className="h-3 w-32" /><Hueso className="h-12 w-full rounded-xl" /><Hueso className="h-12 w-full rounded-xl" /></div></Cargando>)}
           {error && (
             <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12px] text-gm-peligro">
               {error}

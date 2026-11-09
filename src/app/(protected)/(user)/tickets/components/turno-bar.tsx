@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ActionDialog, ActionDialogBody, ActionDialogContent, ActionDialogFooter, ActionDialogHeader, ActionDialogPrimaryButton } from '@/components/ui/action-dialog';
-import { DataLoading } from '@/components/ui/data-loading';
+import { TurnoCargando } from './cargando';
 import { CashContext, EstadiaAbiertaTurno } from '@/types/turno.type';
 import { getEstadiasAbiertasTurnoAction } from '@/actions/turnos/estadias-abiertas.action';
 import { paraRepasar, RepasoEstadias } from './repaso-estadias';
@@ -226,7 +226,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             <ActionDialogPrimaryButton onClick={() => { setCierreListo(null); setOpen(false); }}>Listo</ActionDialogPrimaryButton>
           </ActionDialogFooter>
         </> : !context ? <ActionDialogBody className="[&>*]:shrink-0">
-          {error ? <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : <DataLoading label="Cargando caja…" />}
+          {error ? <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : <TurnoCargando />}
           {enlaceHistorial}
         </ActionDialogBody> : active ? closing ? <form onSubmit={e => { e.preventDefault(); submitClose(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-5 [&>*]:shrink-0">
           {arqueo && <p className="text-[13px] leading-relaxed text-muted-foreground">Sos el último operador de esta caja: contá el efectivo de todos los turnos desde su apertura.</p>}

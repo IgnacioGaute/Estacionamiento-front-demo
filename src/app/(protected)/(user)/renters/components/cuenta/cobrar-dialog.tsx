@@ -1,6 +1,6 @@
 'use client';
 import LatticeLoader from '@/components/ui/lattice-loader';
-import { DataLoading } from '@/components/ui/data-loading';
+import { CobrarCargando } from './cargando';
 
 // Cobrarle a un inquilino, en el orden en que se piensa en el mostrador:
 //   1. Qué paga: los cargos pendientes, arriba y ya marcados. El total sale de lo marcado.
@@ -287,7 +287,7 @@ export function CobrarDialog({
         <ActionDialogBody>
 
         {cargando && (
-          <DataLoading label="Cargando la cuenta…" />
+          <CobrarCargando />
         )}
         {error && <p className="py-4 text-sm text-destructive">{error}</p>}
 

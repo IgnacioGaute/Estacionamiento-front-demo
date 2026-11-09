@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/lib/toast';
 import { CajasQr, DireccionCaja, UbicacionMp } from '@/types/mercadopago.type';
+import { Cargando, Hueso } from '@/components/esqueletos';
 import {
   crearCajaQrAction,
   crearCajaQrConUbicacionAction,
@@ -288,7 +289,7 @@ export function CajasQrConfig({ inicial = null, alCambiar }: { inicial?: CajasQr
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
-        {!cajas && !error && <p className="text-sm text-muted-foreground">Cargando playas…</p>}
+        {!cajas && !error && <Cargando texto="Cargando playas…" className="block space-y-3">{[0, 1].map(i => <div key={i} className="flex flex-wrap items-center gap-3 rounded-xl border border-border p-3.5"><Hueso className="size-10 rounded-lg" /><div className="flex-1 space-y-1.5"><Hueso className="h-3.5 w-36" /><Hueso className="h-2.5 w-24" /></div><Hueso className="h-9 w-28 rounded-md" /></div>)}</Cargando>}
 
         {cajas?.playas.map((p) => <FilaPlaya key={p.playaId} playa={p} alCambiar={setCajas} />)}
       </div>

@@ -1,6 +1,6 @@
 'use client';
 import LatticeLoader from '@/components/ui/lattice-loader';
-import { DataLoading } from '@/components/ui/data-loading';
+import { AnulacionesCargando } from './cargando';
 
 // Las anulaciones de la playa en un mes. En la cuenta de cada inquilino quedan ocultas (suman
 // cero y confunden); este es el lugar donde el dueño controla quién anuló qué, cuándo y por qué.
@@ -95,7 +95,7 @@ export function AnulacionesDialog({ open, onOpenChange }: { open: boolean; onOpe
           </div>
         )}
 
-        {cargando && !t && <DataLoading label="Cargando anulaciones…" />}
+        {cargando && !t && <AnulacionesCargando />}
         {error && <p className="text-sm text-destructive">{error}</p>}
         {t && datos && !datos.lista.length && (
           <p className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">

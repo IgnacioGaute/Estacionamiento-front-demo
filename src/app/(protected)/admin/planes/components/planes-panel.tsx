@@ -1,5 +1,5 @@
 "use client";
-import { DataLoading } from '@/components/ui/data-loading';
+import { FilasPlataformaCargando, PanelPlataformaCargando } from '@/components/plataforma/cargando';
 import LatticeLoader from '@/components/ui/lattice-loader';
 
 // Planes y cobros de la plataforma: cuánto entra por mes, a quién hay que cobrarle, en qué está
@@ -158,7 +158,7 @@ export function PlanesPanel() {
 
   const pagosDelMes = pagos.filter((p) => p.pagadaEl.startsWith(mes));
 
-  if (cargando && !empresas.length && !error) return <DataLoading label="Cargando planes…" className="p-4" />;
+  if (cargando && !empresas.length && !error) return <PanelPlataformaCargando texto="Cargando planes…" />;
 
   return (
     <div className="space-y-5">
@@ -307,7 +307,7 @@ export function PlanesPanel() {
               </span>
             </div>
             {cargando && !cuentas.length && (
-              <DataLoading label="Cargando cuentas…" className="border-t border-[#211F1B] p-4" />
+              <FilasPlataformaCargando texto="Cargando cuentas…" />
             )}
             {!cargando && !filtradas.length && (
               <p className="border-t border-[#211F1B] px-5 py-12 text-center text-sm text-muted-foreground">

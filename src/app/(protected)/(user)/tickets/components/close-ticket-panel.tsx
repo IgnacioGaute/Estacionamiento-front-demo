@@ -2,6 +2,7 @@
 import { CashAmountField } from '@/components/cash-amount-field';
 import { discountRegistrationAction } from '@/actions/tickets/discount-registration.action';
 import { DataLoading } from '@/components/ui/data-loading';
+import { EstadiaCargando } from './cargando';
 
 import { PricingBreakdown, formatImporte } from '@/components/pricing-breakdown';
 import { ParkingReceiptDelivery } from '@/components/parking-receipt-delivery';
@@ -824,8 +825,9 @@ export function CloseTicketPanel({
           // Al entrar desde un vehículo ya elegido no hay nada que buscar: mostrar el buscador
           // mientras carga el resumen hacía aparecer una pantalla intermedia que nadie pidió y
           // que se iba sola.
-          <ActionDialogBody className="justify-center">
-            <DataLoading label="Cargando la estadía…" />
+          // Mientras tanto, la forma del resumen (misma grilla) en vez del ícono al centro.
+          <ActionDialogBody className="md:grid md:grid-cols-[300px_minmax(0,1fr)] md:items-start md:gap-6">
+            <EstadiaCargando />
           </ActionDialogBody>
         ) : gratuita ? (
           <SalidaGratuita
