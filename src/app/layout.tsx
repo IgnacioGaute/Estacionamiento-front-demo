@@ -6,6 +6,7 @@ import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { Toaster } from '@/components/ui/toaster';
 import { Metadata, Viewport } from 'next';
 import { PwaRuntime } from '@/components/pwa-runtime';
+import { BarraNavegacion } from '@/components/barra-navegacion';
 
 // Las tipografías viven en el repo (src/fonts, subconjunto latino de Google Fonts, versiones
 // variables): con next/font/google la compilación las descargaba y, cuando Google no respondía,
@@ -100,8 +101,10 @@ export default async function RootLayout({
           forcedTheme="dark"
           disableTransitionOnChange
         >
-          {/* Sin la pantalla del auto en cada clic: tapaba los esqueletos de cada página (loading.tsx)
-              y se quedaba al menos 3,5 s aunque la página ya estuviera. Queda para el arranque. */}
+          {/* Al tocar un enlace, una barra fina arriba confirma el toque hasta que llega la pantalla
+              nueva (y su esqueleto). Antes era la pantalla del auto en cada clic: tapaba los
+              esqueletos y se quedaba al menos 3,5 s. El auto queda para el arranque. */}
+          <BarraNavegacion />
           <PwaRuntime />
           {children}
         </ThemeProvider>

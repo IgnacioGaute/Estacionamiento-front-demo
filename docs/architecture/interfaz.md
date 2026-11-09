@@ -54,7 +54,9 @@ explícitas en middleware/routes. Los comprobantes públicos se sirven en otro r
   (`DataLoading`) queda solo para datos que se actualizan o se buscan dentro de algo que ya está en
   pantalla («Actualizando cuentas…», «Buscando patentes parecidas…»). La pantalla del auto
   (`LoadingScreen`) es solo para el arranque de la app (`app/loading.tsx`, `(protected)/loading.tsx`);
-  ya no se muestra en cada navegación.
+  ya no se muestra en cada navegación. Al tocar un enlace interno, `BarraNavegacion` (barra amarilla
+  de 3 px arriba, desde los 120 ms) confirma el toque hasta que cambia la dirección: en desarrollo
+  cubre la compilación de la primera visita y en producción una respuesta lenta.
 - Reglas globales como `admin/mobile.css` (40 px mínimos en los botones del celular) agrandan
   también los botones de componentes compuestos: lo que se dibuja encima de un botón (la pastilla
   del segmentado) tiene que seguir su altura real, no una fija.
