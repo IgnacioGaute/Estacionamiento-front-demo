@@ -169,7 +169,17 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     setEstadiasConfirmadas(actuales => sigue ? [...new Set([...actuales, ...ids])] : actuales.filter(id => !ids.includes(id)));
     confirmarEnDispositivo(ids, sigue);
   };
+  const conDiferencia = arqueo && amountValid(counted) && closingDifference !== 0;
   const closingValid = canClose && estadias !== null && largas.every(e => confirmadas.includes(e.id)) &&(!forzando || forcedReason.trim()) && (!arqueo ||(handoverValid && (closingDifference === 0 || notes.trim())));
+  // Lo primero que falta, en el orden del diálogo: el botón lo dice en vez de quedar gris sin más.
+  const faltaParaCerrar = closingValid ? undefined
+    : estadias === null ? 'Revisando los vehículos…'
+    : !largas.every(e => confirmadas.includes(e.id)) ? 'Confirmá los vehículos de más de 4 h'
+    : arqueo && !amountValid(counted) ? 'Escribí cuánto contaste'
+    : conDiferencia && !notes.trim() ? 'Falta el motivo de la diferencia'
+    : arqueo && !handoverValid ? 'Revisá cuánto dejás en caja'
+    : forzando && !forcedReason.trim() ? 'Escribí por qué cerrás este turno'
+    : undefined;
   const openingValid = !!caja && !context?.legacyOpen && (caja.session ? context?.multipleShiftsEnabled : amountValid(received) && amountValid(added) && (openingDifference === 0 || openingReason.trim()));
   const abrir = () => { setCierreListo(null); setClosing(!!turnoId); setReceived(''); setAdded('0'); setOpeningReason(''); setCounted(''); setCashForNext(null); setNotes(''); setForcedReason(''); setRetirarSueldo(true); setOpen(true); startTransition(() => refresh(true)); };
   const enlaceHistorial = esAdmin && <Link href="/admin/caja/turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja/turnos'), 200); }} className="mx-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow"><History className="size-3.5" aria-hidden />Ver turnos e historial</Link>;
@@ -239,6 +249,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             <Paso numero={1} listo={amountValid(counted) && (closingDifference === 0 || !!notes.trim())}>
               <CashAmountField id="cash-counted" label="¿Cuánto efectivo contaste?" value={counted} onChange={setCounted} disabled={pending} placeholder="Escribí el total que contaste" editLabel="Escribir importe" shortcuts={[{ label: 'No hay efectivo', amount: 0 }]} description="Contá todo el efectivo de la caja y escribí el total. Después te mostramos lo que esperaba el sistema; si no coincide, explicá el motivo."
                 status={amountValid(counted) && <Pill tono={closingDifference === 0 ? 'ok' : 'aviso'}>{closingDifference === 0 ? 'Coincide' : closingDifference > 0 ? 'Faltan ' + money(closingDifference) : 'Sobran ' + money(-closingDifference)}</Pill>} />
+              {conDiferencia && <MotivoDiferencia diferencia={closingDifference} value={notes} onChange={setNotes} disabled={pending} />}
             </Paso>
             <Paso numero={2} listo={handoverValid} ultimo>
               <CashAmountField id="cash-for-next" label="¿Cuánto dejás en caja para el próximo turno?" labelClassName="min-w-[min(100%,14rem)] text-[13px] normal-case tracking-normal text-foreground" value={forNext} onChange={setCashForNext} disabled={pending || !amountValid(counted)} max={amountValid(counted) ? afterSalary : undefined} editLabel="Cambiar importe"
@@ -293,12 +304,13 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 font-semibold text-muted-foreground rounded-2xl transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow [&::-webkit-details-marker]:hidden">Ver resumen del turno<ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden /></summary>
             <div className="border-t border-gm-line p-3"><TurnoResumenPanel turno={active} /></div>
           </details>
-          <div className="space-y-1.5"><Label htmlFor="cash-notes">{arqueo && amountValid(counted) && closingDifference !== 0 ? 'Motivo de la diferencia' : 'Nota del turno (opcional)'}</Label><Textarea id="cash-notes" value={notes} onChange={e => setNotes(e.target.value)} disabled={pending} required={arqueo && amountValid(counted) && closingDifference !== 0} placeholder="Algo que deba saber el próximo turno" className="min-h-20" /><p className="text-[11px] text-muted-foreground">Se publica automáticamente en Avisos.</p></div>
+          {/* Con diferencia, el mismo texto se escribe arriba como motivo (MotivoDiferencia). */}
+          {!conDiferencia && <div className="space-y-1.5"><Label htmlFor="cash-notes">Nota del turno (opcional)</Label><Textarea id="cash-notes" value={notes} onChange={e => setNotes(e.target.value)} disabled={pending} placeholder="Algo que deba saber el próximo turno" className="min-h-20" /><p className="text-[11px] text-muted-foreground">Se publica automáticamente en Avisos.</p></div>}
           {forzando && <div className="space-y-1.5 rounded-2xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-4"><Label htmlFor="forced-reason">¿Por qué cerrás el turno de otra persona?</Label><Input id="forced-reason" maxLength={255} value={forcedReason} onChange={e => setForcedReason(e.target.value)} disabled={pending} required placeholder="Ej.: se retiró sin cerrar su turno" /><p className="text-[11px] text-muted-foreground">Queda en el historial junto a tu nombre.</p></div>}
           {enlaceHistorial}
         </ActionDialogBody>
           <ActionDialogFooter>
-            <ActionDialogPrimaryButton type="submit" disabled={pending || !closingValid}>{pending ? 'Cerrando…' : arqueo ? 'Confirmar cierre de turno y caja' : 'Confirmar cierre de turno'}</ActionDialogPrimaryButton>
+            <ActionDialogPrimaryButton type="submit" disabled={pending || !closingValid} detail={pending ? undefined : faltaParaCerrar}>{pending ? 'Cerrando…' : arqueo ? 'Confirmar cierre de turno y caja' : 'Confirmar cierre de turno'}</ActionDialogPrimaryButton>
           </ActionDialogFooter>
         </form> : <><ActionDialogBody className="[&>*]:shrink-0">
           <section aria-label="Tu turno en curso" className="relative overflow-hidden rounded-[22px] bg-gm-yellow text-gm-ink shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)]">
@@ -413,4 +425,25 @@ export function CashMovementForm({ sesionId, expected, onUpdated }: { sesionId: 
 
 function Linea({ label, value }: { label: string; value: string }) {
   return <div className="flex items-center justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className="font-semibold tabular-nums">{value}</dd></div>;
+}
+
+// Motivos rápidos para una diferencia al contar. «No sé el motivo» también vale: el operador no
+// queda trabado, y la diferencia y el motivo quedan igual en el historial y en Avisos.
+export const MOTIVOS_DIFERENCIA = ['Error en un vuelto', 'Cobro sin registrar', 'Pago por transferencia anotado como efectivo', 'No sé el motivo'];
+
+// Va en el paso 1, debajo del importe: antes el motivo estaba al final del diálogo, después del
+// sueldo y del resumen, y el operador no lo veía; el botón quedaba gris sin decir por qué.
+function MotivoDiferencia({ diferencia, value, onChange, disabled }: { diferencia: number; value: string; onChange: (value: string) => void; disabled?: boolean }) {
+  const elegido = MOTIVOS_DIFERENCIA.find(m => m === value.trim());
+  return <div className="mt-3 space-y-2.5 rounded-2xl border border-gm-aviso/30 bg-gm-aviso/[0.05] p-3.5">
+    <div>
+      <Label htmlFor="cash-notes">Motivo de la diferencia</Label>
+      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{diferencia > 0 ? 'Faltan ' + money(diferencia) : 'Sobran ' + money(-diferencia)}: contá qué pasó. Queda en el historial y en Avisos.</p>
+    </div>
+    <div role="group" aria-label="Motivos rápidos" className="flex flex-wrap gap-2">
+      {MOTIVOS_DIFERENCIA.map(m => <button key={m} type="button" aria-pressed={elegido === m} disabled={disabled} onClick={() => onChange(elegido === m ? '' : m)}
+        className={cn('min-h-10 rounded-full border px-3.5 py-1.5 text-left text-[13px] font-semibold leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50', elegido === m ? 'border-gm-yellow bg-gm-yellow/10 text-gm-yellow' : 'border-gm-line-strong text-gm-texto-2 hover:bg-gm-surface-3/70')}>{m}</button>)}
+    </div>
+    <Textarea id="cash-notes" value={value} onChange={e => onChange(e.target.value)} disabled={disabled} required placeholder="Ej.: di mal un vuelto de $500" className="min-h-20" />
+  </div>;
 }
