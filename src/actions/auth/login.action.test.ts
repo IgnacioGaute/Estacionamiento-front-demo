@@ -14,3 +14,15 @@ test.each(['https://ajeno.test', '//ajeno.test', '/\\ajeno.test'])('rechaza un d
   const result = await loginAction({ identifier: 'superadmin', password: 'password-test' }, callback);
   expect(result.redirectTo).toBe('/seleccionar-acceso?callbackUrl=%2Ftickets');
 });
+
+test('distingue credenciales incorrectas de un servicio de acceso indisponible', async () => {
+  const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    mockSignIn.mockRejectedValueOnce({ type: 'CredentialsSignin' });
+    expect((await loginAction({ identifier: 'test-user', password: 'password-test' })).error).toBe('Email o contraseña incorrectos');
+    mockSignIn.mockRejectedValueOnce({ type: 'CallbackRouteError' });
+    expect((await loginAction({ identifier: 'test-user', password: 'password-test' })).error).toContain('servicio de acceso no está disponible');
+  } finally {
+    log.mockRestore();
+  }
+});

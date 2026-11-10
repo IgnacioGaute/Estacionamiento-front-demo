@@ -44,6 +44,7 @@ templates in `src/lib/email/templates`.
 | Variable | Used in |
 |---|---|
 | `NEXT_PUBLIC_API_URL` | every service fetch, the assistant proxy and the socket connection |
+| `API_INTERNAL_URL` | opcional, solo servidor: destino privado de las consultas a la API hechas por `tenantFetch`; conserva `NEXT_PUBLIC_API_URL` como destino público para el navegador y los sockets |
 | `NEXTAUTH_SECRET` | NextAuth session + signing/verifying the backend access token in `src/auth.ts` |
 | `API_SECRET_TOKEN` | server-to-server login and user lookup during the NextAuth callbacks only |
 | `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS` | password-reset email |
@@ -51,6 +52,26 @@ templates in `src/lib/email/templates`.
 | `NEXT_PUBLIC_RECEIPTS_URL` | domain of the public comprobantes app; the QR / WhatsApp link is `<esta>/c/<token>` |
 
 No Gemini or Plate Recognizer key belongs here — both stay on the backend.
+
+### Railway: HTTP 429 y red privada
+
+Si varias consultas fallan con HTTP 429 y el cuerpo `rate limited`, revisar los Network Logs
+del backend y las cabeceras `server`, `x-railway-request-id` y `retry-after`. Un rechazo del
+proxy puede ocurrir antes de llegar a Nest; no equivale a una contraseña incorrecta.
+El login y la validación de sesión registran esos metadatos sin volcar cuerpos ni tokens.
+
+Para comunicar frontend y backend por la red privada, ambos deben estar en el mismo proyecto
+y entorno de Railway. Configurar **en el frontend** `API_INTERNAL_URL` con
+`http://<dominio-privado-del-backend>:<PORT-del-backend>` usando los valores reales del servicio
+(por ejemplo `http://api.railway.internal:3030` si ese es su nombre y puerto).
+Verificar conectividad desde el contenedor del frontend antes de activarlo. En entornos que
+resuelven solo IPv6, el backend también debe escuchar en IPv6; `0.0.0.0` solo admite IPv4.
+Referencia: https://docs.railway.com/networking/private-networking/library-configuration
+
+No reemplazar `NEXT_PUBLIC_API_URL` por un dominio `.railway.internal`: el navegador y los
+sockets necesitan la URL pública. Sin `API_INTERNAL_URL`, las consultas siguen usando la URL
+pública. El cambio de destino conserva autorización y playa, fuerza `no-store` y no agrega
+reintentos automáticos a escrituras ni consultas de sesión.
 
 ### Tooling
 

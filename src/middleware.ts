@@ -12,16 +12,17 @@ import {
 // Acá no hay ninguna ruta pública: los comprobantes que se entregan al cliente los sirve otro
 // servicio, en su propio dominio (repo `estacionamiento-comprobantes-demo`).
 export default async function middleware(req: NextRequest) {
-  const session = await auth();
   const { nextUrl } = req;
-
-  const isLoggedIn = !!session?.user?.id && !!session?.token;
-  const role = session?.user?.role?.toUpperCase() ?? "USER";
 
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicApiRoute = publicApiRoutes.includes(nextUrl.pathname as never);
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname as never);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname as never);
+  // Estas APIs resuelven su propia autenticación. Consultar acá la sesión duplicaba pedidos al backend.
+  if (isApiAuthRoute || isPublicApiRoute || nextUrl.pathname.startsWith('/api/offline/')) return NextResponse.next();
+  const session = await auth();
+  const isLoggedIn = !!session?.user?.id && !!session?.token;
+  const role = session?.user?.role?.toUpperCase() ?? "USER";
   // Los layouts del servidor no conocen la ruta: la necesita (protected)/layout para llevar al
   // administrador de una playa nueva a su configuración inicial sin cortar la vuelta de MercadoPago.
   const seguir = () => {
@@ -30,10 +31,6 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next({ request: { headers } });
   };
 
-  // 🔓 Permitir rutas públicas o de autenticación
-  // La API de contingencia valida la sesión y responde JSON por sí misma. Un redirect
-  // del middleware a login devolvía HTML y ocultaba el motivo real del fallo.
-  if (isApiAuthRoute || isPublicApiRoute || nextUrl.pathname.startsWith('/api/offline/')) return NextResponse.next();
   // Configuración no tiene portada: va directo a su primera opción antes de dibujar nada (redirigir
   // desde la página dejaba el encabezado solo, en negro, mientras tanto). En una playa gratuita, Turnos
   // lleva a Tipos de vehículo.

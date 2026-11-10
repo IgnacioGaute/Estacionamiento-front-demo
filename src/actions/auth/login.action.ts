@@ -37,7 +37,7 @@ export async function loginAction(
         }
       }
 
-      return { error: "No se pudo iniciar sesión. Intentá de nuevo." };
+      return { error: "El servicio de acceso no está disponible. Esperá unos minutos e intentá de nuevo." };
     }
     
   }

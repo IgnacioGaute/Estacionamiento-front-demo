@@ -1,5 +1,6 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
+import { AuthBackendError, readAuthResponse } from '@/lib/auth-response';
 import { LoginSchemaType } from '@/schemas/auth/login.schema';
 import { PasswordResetToken } from '@/types/password-reset-token.type';
 import { User } from '@/types/user.type';
@@ -14,17 +15,11 @@ export const loginUser = async (values: LoginSchemaType, authToken: string) => {
       headers: await getAuthHeaders(authToken),
       body: JSON.stringify(values),
     });
-    const data = await user.json();
-
-    if (user.ok) {
-      return data as User;
-    } else {
-      console.error(data);
-      return null;
-    }
+    return await readAuthResponse(user, 'login');
   } catch (error) {
-    console.error(error);
-    return null;
+    console.error('No se pudo consultar el servicio de acceso', error instanceof AuthBackendError ? error.details : error);
+    // La indisponibilidad no equivale a una contraseña incorrecta.
+    throw error;
   }
 };
 

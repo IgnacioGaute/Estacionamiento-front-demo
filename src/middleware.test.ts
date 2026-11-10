@@ -3,7 +3,8 @@ import type { NextRequest } from 'next/server';
 // El middleware se prueba solo: la sesión la decide cada test y NextResponse devuelve algo fácil
 // de comparar ('next' o la ruta del redirect) en lugar de una Response de verdad.
 let mockSession: { user: { role: string; id: string }; token: string } | null = null;
-jest.mock('./auth', () => ({ auth: async () => mockSession }));
+const mockAuth = jest.fn(async () => mockSession);
+jest.mock('./auth', () => ({ auth: () => mockAuth() }));
 jest.mock('next/server', () => ({
   NextResponse: { next: () => 'next', redirect: (url: URL) => url.pathname },
 }));
@@ -54,4 +55,14 @@ test('administración de plataforma no admite operadores ni administradores de e
   expect(await visit('/admin/tickets', 'ADMIN')).toBe('next');
   expect(await visit('/admin/tickets', 'USER')).toBe('/403');
   expect(await visit('/tickets', 'USER')).toBe('next');
+});
+
+test('las APIs con autenticación propia no duplican la validación de sesión en middleware', async () => {
+  mockAuth.mockClear();
+  for (const route of ['/api/auth/session', '/api/auth/signout', '/api/version', '/api/errores', '/api/offline/context']) {
+    expect(await visit(route, 'USER')).toBe('next');
+  }
+  expect(mockAuth).not.toHaveBeenCalled();
+  await visit('/tickets', 'USER');
+  expect(mockAuth).toHaveBeenCalledTimes(1);
 });

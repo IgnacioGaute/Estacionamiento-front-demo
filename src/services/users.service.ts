@@ -10,6 +10,7 @@ import { User } from '@/types/user.type';
 import { revalidateTag } from 'next/cache';
 import { getCacheTag } from './cache-tags';
 import { getAuthHeaders } from '@/lib/auth';
+import { AuthBackendError, readAuthResponse } from '@/lib/auth-response';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -41,15 +42,9 @@ export const getUserById = async (id: string, authToken?: string) => {
     const response = await fetch(`${BASE_URL}/users/${id}`, {
       headers: await getAuthHeaders(authToken),
     });
-    const data = await response.json();
-
-    if (response.ok) {
-      return data as User;
-    } else {
-      return null;
-    }
+    return await readAuthResponse(response, 'session');
   } catch (error) {
-    console.error(error);
+    console.error('No se pudo validar la sesión', error instanceof AuthBackendError ? error.details : error);
     return null;
   }
 };

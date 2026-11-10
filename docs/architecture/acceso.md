@@ -43,6 +43,12 @@ Las rutas de autenticación y contingencia tienen tratamientos explícitos; no i
   returns `null`, which kills the session instead of silently renewing it. `session.token` is what services send
   as the bearer token.
 - `src/lib/auth.ts` — server-only `currentUser()`, `currentRole()`, `currentToken()`, `getAuthHeaders(token?)`.
+- `src/lib/auth-response.ts` distingue los rechazos de acceso de fallos HTTP o respuestas inválidas del
+  proxy. La indisponibilidad del login no se presenta como contraseña incorrecta; una sesión que no puede
+  validarse sigue sin habilitar acceso. Las APIs de NextAuth, contingencia y las APIs públicas omiten la
+  consulta de sesión del middleware porque cada handler resuelve su autenticación.
+- `tenantFetch` permite usar `API_INTERNAL_URL` solo en el servidor para consultar la API por la red privada
+  de Railway. El navegador y los sockets conservan `NEXT_PUBLIC_API_URL`; no se cachean permisos ni sesiones.
 
 ### Data flow pattern
 
