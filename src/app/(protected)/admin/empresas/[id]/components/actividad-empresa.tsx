@@ -587,7 +587,7 @@ export function ActividadDeEmpresa({
                         <span className="text-[#C9BFB1]">{d.que}</span>
                       </span>
                       {nueva && (
-                        <span className="rounded-full bg-gm-yellow px-[7px] py-0.5 text-[10.5px] font-extrabold text-gm-ink">
+                        <span className="rounded-full bg-gm-yellow px-[7px] py-0.5 text-[11px] font-extrabold text-gm-ink">
                           Nuevo
                         </span>
                       )}

@@ -117,12 +117,12 @@ export function ModalidadPlayaDialog({ cambio, cerrar, hecho }: { cambio: Cambio
             </p>
             {ALCANCE[destino].oculta.length > 0 && (
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Se deja de usar</p>
+                <p className="text-[13px] font-semibold text-muted-foreground">Se deja de usar</p>
                 <ul className="mt-2 space-y-1 text-sm">{ALCANCE[destino].oculta.map((t) => <li key={t} className="flex gap-2"><X className="mt-0.5 size-4 shrink-0 text-muted-foreground" />{t}</li>)}</ul>
               </div>
             )}
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Se mantiene</p>
+              <p className="text-[13px] font-semibold text-muted-foreground">Se mantiene</p>
               <ul className="mt-2 space-y-1 text-sm">{ALCANCE[destino].conserva.map((t) => <li key={t} className="flex gap-2"><Check className="mt-0.5 size-4 shrink-0 text-emerald-400" />{t}</li>)}</ul>
             </div>
 

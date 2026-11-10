@@ -534,7 +534,7 @@ export function MetricasPanel() {
                 const cambio = variacion(serie[i], anterior[i]);
                 return (
                   <>
-                    <div className="border-b border-border pb-1.5 font-mono text-[10.5px] text-muted-foreground">
+                    <div className="border-b border-border pb-1.5 font-mono text-[11px] text-muted-foreground">
                       {etiqueta(diasEje[i])}
                       {dual ? ` · vs ${etiqueta(diasEje[i].subtract(dias, "day"))}` : ""}
                     </div>
@@ -604,7 +604,7 @@ export function MetricasPanel() {
           {temas > ALERTAS_VISIBLES && (
             <Link
               href="/admin/empresas?filtro=alertas"
-              className="mt-auto border-t border-[#211F1B] px-5 py-3 text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
+              className="mt-auto border-t border-[#211F1B] px-5 py-3 text-[12.5px] font-medium text-gm-texto-2 hover:text-gm-yellow"
             >
               Ver las {temas} en Empresas →
             </Link>
@@ -656,7 +656,7 @@ export function MetricasPanel() {
               ariaLabel={`Entradas y salidas por día en los últimos ${dias} días: ${numero(totalIngresos)} entradas y ${numero(totalEgresos)} salidas`}
               tooltip={(i) => (
                 <>
-                  <div className="border-b border-border pb-1.5 font-mono text-[10.5px] text-muted-foreground">
+                  <div className="border-b border-border pb-1.5 font-mono text-[11px] text-muted-foreground">
                     {etiqueta(diasEje[i])}
                   </div>
                   <FilaTooltip color={AMARILLO} label="Entradas" valor={numero(ingresos[i])} />
@@ -789,7 +789,7 @@ export function MetricasPanel() {
           <Pie
             izquierda="Tarifas · accesos · estado"
             derecha={
-              <Link href="/admin/empresas?filtro=alertas" className="font-sans font-medium text-gm-yellow hover:text-[#FFD84D]">
+              <Link href="/admin/empresas?filtro=alertas" className="font-sans font-medium text-gm-texto-2 hover:text-gm-yellow">
                 Revisar →
               </Link>
             }
@@ -828,7 +828,7 @@ export function MetricasPanel() {
           <Pie
             izquierda={`${plural(playas.length, "playa", "playas")} en total`}
             derecha={
-              <Link href="/admin/empresas" className="font-sans font-medium text-gm-yellow hover:text-[#FFD84D]">
+              <Link href="/admin/empresas" className="font-sans font-medium text-gm-texto-2 hover:text-gm-yellow">
                 Ver todas →
               </Link>
             }

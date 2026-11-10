@@ -48,7 +48,7 @@ export default async function MiPlanPage() {
 
   return (
     <div className="px-4 pb-16 pt-6 sm:px-10 sm:pt-12">
-      <main className="mx-auto flex max-w-[1160px] flex-col gap-7">
+      <div className="mx-auto flex max-w-[1160px] flex-col gap-7">
         {error || !data ? (
           <p role="alert" className="rounded-2xl border border-destructive p-6 text-sm">
             {error ?? 'No pudimos cargar tu plan. Probá de nuevo en un ratito.'}
@@ -56,7 +56,7 @@ export default async function MiPlanPage() {
         ) : (
           <Contenido plan={data} />
         )}
-      </main>
+      </div>
     </div>
   );
 }

@@ -164,7 +164,7 @@ export function BorradoDialog({
 
         {resumen && (
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            <p className="text-[13px] font-semibold text-muted-foreground">
               Antes de eliminar
             </p>
             {requisitos.map((req) => (
@@ -201,7 +201,7 @@ export function BorradoDialog({
         )}
 
         {bloqueado && borrado?.suspender && (
-          <div className="rounded-lg border border-border border-l-4 border-l-gm-yellow bg-gm-surface-2 p-4">
+          <div className="rounded-lg border border-gm-yellow/30 bg-gm-yellow/[0.06] p-4">
             <p className="text-sm font-medium">
               Lo que probablemente quieras es suspenderla
             </p>

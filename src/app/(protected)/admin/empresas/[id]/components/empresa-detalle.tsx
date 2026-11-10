@@ -555,7 +555,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
               {cuenta.estado === "VENCIDA" && " Al suspenderse solo pueden registrar salidas y cerrar el turno."}
             </span>
           </p>
-          <button type="button" onClick={() => setTab("plan")} className="text-[13px] font-medium text-gm-yellow hover:text-[#FFD84D]">
+          <button type="button" onClick={() => setTab("plan")} className="text-[13px] font-medium text-gm-texto-2 hover:text-gm-yellow">
             Ver plan y facturas
           </button>
         </div>
@@ -687,7 +687,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   ariaLabel={`Recaudado por día en los últimos 30 días, ${nombreSerie}`}
                   tooltip={(i) => (
                     <>
-                      <div className="border-b border-border pb-1.5 font-mono text-[10.5px] text-muted-foreground">
+                      <div className="border-b border-border pb-1.5 font-mono text-[11px] text-muted-foreground">
                         {DIAS_SEMANA[dias30[i].day()]} {dias30[i].format("DD/MM")}
                       </div>
                       <FilaTooltip label="Recaudado" valor={plata(serie[i])} />
@@ -717,7 +717,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                 <button
                   type="button"
                   onClick={() => setTab("playas")}
-                  className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
+                  className="text-[12.5px] font-medium text-gm-texto-2 hover:text-gm-yellow"
                 >
                   Gestionar playas →
                 </button>
@@ -790,7 +790,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                     <button
                       type="button"
                       onClick={() => setTab("plan")}
-                      className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
+                      className="text-[12.5px] font-medium text-gm-texto-2 hover:text-gm-yellow"
                     >
                       Ver plan →
                     </button>
@@ -860,7 +860,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   <button
                     type="button"
                     onClick={() => setEditor({ tipo: "empresa", empresa })}
-                    className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
+                    className="text-[12.5px] font-medium text-gm-texto-2 hover:text-gm-yellow"
                   >
                     {faltan.length === 4 ? "Cargar" : "Editar"}
                   </button>
@@ -1006,7 +1006,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                 <button
                   type="button"
                   onClick={() => setTab("actividad")}
-                  className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
+                  className="text-[12.5px] font-medium text-gm-texto-2 hover:text-gm-yellow"
                 >
                   Ver todo →
                 </button>
@@ -1179,7 +1179,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                           <span className={p.modulos?.inquilinos ? "font-semibold" : "text-muted-foreground"}>
                             Inquilinos
                             {planDe(p.id) && (
-                              <span className="block text-[10.5px] font-normal" style={{ color: EJE }}>
+                              <span className="block text-[11px] font-normal" style={{ color: EJE }}>
                                 según el plan
                               </span>
                             )}

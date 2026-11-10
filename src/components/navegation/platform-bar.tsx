@@ -136,7 +136,7 @@ export function PlatformBar() {
       </nav>
 
       <div ref={caja} className="relative min-w-0 flex-1 md:min-w-[260px] md:max-w-md">
-        <label className="flex h-9 items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 transition-colors focus-within:border-gm-yellow/50 focus-within:bg-white/[0.06] sm:h-10">
+        <label className="flex h-11 items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 transition-colors focus-within:border-gm-yellow/50 focus-within:bg-white/[0.06] sm:h-10">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <span className="sr-only">Buscar en la plataforma</span>
           <input
@@ -229,7 +229,7 @@ export function PlatformBar() {
         href="/admin/empresas?nueva=1"
         data-tour="empresas-crear"
         aria-label="Nueva empresa"
-        className="flex h-9 shrink-0 items-center gap-2 rounded-xl bg-gm-yellow px-2.5 text-sm font-bold text-gm-ink transition-colors hover:bg-gm-yellow-deep sm:h-10 sm:px-4"
+        className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-gm-yellow px-2.5 text-sm font-bold text-gm-ink transition-colors hover:bg-gm-yellow-deep max-sm:w-11 sm:h-10 sm:px-4"
       >
         <Plus className="size-4" strokeWidth={2.5} />
         <span className="hidden sm:inline">Nueva empresa</span>

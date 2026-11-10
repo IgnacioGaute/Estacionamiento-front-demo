@@ -164,7 +164,7 @@ export function Curva({
           {Array.from({ length: marcas + 1 }, (unused, k) => (
             <span
               key={k}
-              className="absolute right-2.5 font-mono text-[10.5px]"
+              className="absolute right-2.5 font-mono text-[11px]"
               style={{ top: Y(paso * k) - 7, color: EJE }}
             >
               {k === 0 ? "0" : formatoEje(paso * k)}
@@ -267,7 +267,8 @@ export function Curva({
         {indices.map((i, k) => (
           <span
             key={i}
-            className="absolute top-2 whitespace-nowrap font-mono text-[10.5px]"
+            // En el celular entran la mitad: las intermedias impares se ocultan para que no se pisen.
+            className={`absolute top-2 whitespace-nowrap font-mono text-[11px] ${k % 2 === 1 && k !== indices.length - 1 ? "max-sm:hidden" : ""}`}
             style={{
               left: `${pct(i)}%`,
               color: EJE,
@@ -357,7 +358,8 @@ export function Espejo({
         {indices.map((i, k) => (
           <span
             key={i}
-            className="absolute top-2 whitespace-nowrap font-mono text-[10.5px]"
+            // En el celular entran la mitad: las intermedias impares se ocultan para que no se pisen.
+            className={`absolute top-2 whitespace-nowrap font-mono text-[11px] ${k % 2 === 1 && k !== indices.length - 1 ? "max-sm:hidden" : ""}`}
             style={{
               left: `${pct(i)}%`,
               color: EJE,
@@ -594,14 +596,14 @@ export function MapaCalor({
       <div className="mb-0.5 grid gap-1" style={{ gridTemplateColumns: columnas }}>
         <span />
         {Array.from({ length: 24 }, (unused, h) => (
-          <span key={h} className="text-center font-mono text-[9.5px]" style={{ color: EJE }}>
+          <span key={h} className="text-center font-mono text-[11px]" style={{ color: EJE }}>
             {h % 3 === 0 ? String(h).padStart(2, "0") : ""}
           </span>
         ))}
       </div>
       {matriz.map((fila, d) => (
         <div key={d} className="grid items-center gap-1" style={{ gridTemplateColumns: columnas }}>
-          <span className="font-mono text-[10.5px] text-muted-foreground">{dias[d]}</span>
+          <span className="font-mono text-[11px] text-muted-foreground">{dias[d]}</span>
           {fila.map((valor, h) => {
             const activa = seleccion?.d === d && seleccion.h === h;
             return (
@@ -646,7 +648,7 @@ export function Pilares({
             <div className="w-[13px] rounded-full bg-[#3A342B]" style={{ height: altura(c.anterior) }} />
           </div>
           <span
-            className="font-mono text-[10.5px]"
+            className="font-mono text-[11px]"
             style={{ color: c.destacado ? AMARILLO : EJE }}
           >
             {c.nombre}

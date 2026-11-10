@@ -85,12 +85,14 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
     <Sidebar variant="floating" collapsible="icon" className={PANEL_FLOTANTE} mobileSide="top" mobileClassName={PANEL_MOVIL} {...props}>
       <PestaniaLateral />
       <SidebarHeader className="h-12 shrink-0 flex-row items-center px-4 pb-0 pt-1">
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground group-data-[collapsible=icon]:hidden">
+        <span className="text-[12.5px] font-semibold text-muted-foreground group-data-[collapsible=icon]:hidden">
           Plataforma
         </span>
       </SidebarHeader>
 
+      {/* Un landmark de navegación: los lectores de pantalla saltan acá con la tecla de regiones. */}
       <SidebarContent className="gap-0 px-1">
+        <nav aria-label="Plataforma" className="flex flex-col">
         <SidebarGroup>
           <SidebarMenu className={CENTRADO}>
             {items.map(({ titulo, url, Icono, activo, cuenta }) => (
@@ -122,7 +124,7 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
         {atajos.length > 0 && (
           <SidebarGroup className="pt-1 group-data-[collapsible=icon]:hidden">
             <span aria-hidden className="mx-1.5 mb-3 h-px bg-white/[0.07]" />
-            <span className="px-2.5 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            <span className="px-2.5 pb-2 text-[12.5px] font-semibold text-muted-foreground">
               Acceso rápido
             </span>
             <ul className="flex flex-col gap-1">
@@ -162,12 +164,14 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
             <Link
               href="/admin/empresas"
               onClick={cerrarEnMovil}
-              className="px-2.5 pt-2 text-[13px] font-semibold text-gm-yellow hover:text-gm-yellow-deep"
+              // El amarillo queda para lo activo: un enlace secundario va en el color del texto.
+              className="flex min-h-10 items-center px-2.5 text-[13px] font-semibold text-gm-texto-2 underline-offset-4 hover:text-foreground hover:underline"
             >
               Ver las {empresas.length} empresas →
             </Link>
           </SidebarGroup>
         )}
+        </nav>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-white/[0.06] p-2">

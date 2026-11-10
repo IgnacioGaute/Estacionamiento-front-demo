@@ -493,7 +493,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               <button
                 type="button"
                 onClick={() => cambiarFiltro("alertas")}
-                className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
+                className="text-[12.5px] font-medium text-gm-texto-2 hover:text-gm-yellow"
               >
                 Filtrar tabla
               </button>

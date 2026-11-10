@@ -320,12 +320,14 @@ const SidebarRail = React.forwardRef<
 })
 SidebarRail.displayName = "SidebarRail"
 
+// Un div y no <main>: envuelve también la barra superior, y cada layout pone su propio <main>
+// alrededor del contenido. Con los dos quedaban dos «main» anidados para los lectores de pantalla.
 const SidebarInset = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"main">
+  React.ComponentProps<"div">
 >(({ className, ...props }, ref) => {
   return (
-    <main
+    <div
       ref={ref}
       className={cn(
         // min-w-0: sin esto, un flex item no se achica más allá del ancho de su propio

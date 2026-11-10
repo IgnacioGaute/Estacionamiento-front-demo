@@ -62,10 +62,16 @@ export const mesAnio = (iso: string) =>
 
 // «Cocheras del Sur» → «CS». Los conectores no cuentan: «CD» no se reconoce como nada.
 const CONECTORES = new Set(["de", "del", "la", "las", "el", "los", "y", "&"]);
+// Las palabras del rubro tampoco: «Estacionamiento Calle Mitre» y «Estacionamiento Calle Colon»
+// daban «EC» las dos. Se saltean solo si quedan dos palabras propias: con una sola, la inicial
+// sola se lee peor («Cocheras del Sur» sigue siendo «CS»).
+const RUBRO = new Set(["estacionamiento", "estacionamientos", "playa", "playas", "parking", "garage", "garaje", "cochera", "cocheras"]);
 export function iniciales(nombre: string) {
-  const palabras = nombre
+  const todas = nombre
     .split(/\s+/)
     .filter((p) => p && !CONECTORES.has(p.toLowerCase()));
+  const propias = todas.filter((p) => !RUBRO.has(p.toLowerCase()));
+  const palabras = propias.length >= 2 ? propias : todas;
   return (
     palabras
       .slice(0, 2)

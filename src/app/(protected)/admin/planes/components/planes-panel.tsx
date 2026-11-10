@@ -475,7 +475,7 @@ function Kpi({
         <Rotulo>{rotulo}</Rotulo>
         {derecha}
         {accion && (
-          <button type="button" onClick={accion.hacer} className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]">
+          <button type="button" onClick={accion.hacer} className="text-[12.5px] font-medium text-gm-texto-2 hover:text-gm-yellow">
             {accion.label} →
           </button>
         )}
@@ -749,7 +749,7 @@ function ListaDePrecios({
                     <Input
                       inputMode="numeric"
                       value={maximo}
-                      placeholder="sin límite"
+                      placeholder="—"
                       aria-label={`Vehículos a la vez de ${g.nombre}`}
                       onChange={(e) => setMaximos((m) => ({ ...m, [g.tamano]: entero(e.target.value) }))}
                       className="h-8 w-[84px] rounded-lg border-[#3A342B] bg-[#14110D] px-2.5 font-mono text-sm"

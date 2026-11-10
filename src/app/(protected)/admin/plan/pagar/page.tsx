@@ -38,7 +38,7 @@ export default async function PagarPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="px-4 pb-16 pt-5 sm:px-10 sm:pt-10">
-      <main className="mx-auto flex max-w-[1100px] flex-col gap-7">
+      <div className="mx-auto flex max-w-[1100px] flex-col gap-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/admin/plan"
@@ -73,7 +73,7 @@ export default async function PagarPage({ searchParams }: { searchParams: Promis
         ) : (
           <Contenido plan={data} email={user?.email ?? ''} />
         )}
-      </main>
+      </div>
     </div>
   );
 }
