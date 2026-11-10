@@ -94,6 +94,7 @@ export type ResumenCuenta = SituacionCuenta & {
   pagadoHasta: string | null;
   prorrogaHasta: string | null;
   bonificada: boolean;
+  primerMesCompleto?: boolean;
   suspendidaEl: string | null;
   mensual: number;
   // Cada cuánto paga, con los meses y el descuento congelados al asignárselo.
@@ -101,7 +102,7 @@ export type ResumenCuenta = SituacionCuenta & {
   // Lo que paga cada período: lo mensual por los meses, con el descuento.
   importePeriodo: number;
   // La próxima factura, emitida o no. En prueba es el primer pago: lo que queda del mes cuando
-  // termina la prueba gratis, proporcional. Después, cada período desde el día 1.
+  // termina la prueba gratis, proporcional o con mensualidad entera según lo acordado. Después, cada período desde el día 1.
   proximaFactura?: { desde: string; hasta: string; importe: number; proporcional: boolean } | null;
   planes: LineaPlan[];
   facturaPendiente: {

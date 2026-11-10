@@ -83,7 +83,7 @@ export const asignarPlanAction = async (
 
 export const editarSuscripcionAction = async (
   empresaId: string,
-  cambios: { alta?: string; pagadoHasta?: string; bonificada?: boolean; notas?: string | null; periodo?: string },
+  cambios: { alta?: string; pagadoHasta?: string; bonificada?: boolean; primerMesCompleto?: boolean; notas?: string | null; periodo?: string },
 ) => intentar(() => editarSuscripcion(empresaId, cambios), 'No se pudo guardar.');
 
 export const activarCuentaAction = async (empresaId: string, alta: string, diasPrueba: number) =>

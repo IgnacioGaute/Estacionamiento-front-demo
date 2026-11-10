@@ -250,7 +250,7 @@ function EstadoDeCuenta({
           titular: "Prueba gratis",
           bajada: `Termina el ${diaAR(cuenta.pruebaHasta)} (${quedan <= 0 ? "hoy" : `quedan ${enDias(quedan)}`}). El ${diaAR(cuenta.proximoVencimiento)} vence el primer pago${
             cuenta.proximaFactura && cuenta.proximaFactura.importe
-              ? `, del ${diaAR(cuenta.proximaFactura.desde)} al ${diaAR(cuenta.proximaFactura.hasta)} por ${pesos(cuenta.proximaFactura.importe)} (proporcional)`
+              ? `, del ${diaAR(cuenta.proximaFactura.desde)} al ${diaAR(cuenta.proximaFactura.hasta)} por ${pesos(cuenta.proximaFactura.importe)} (${cuenta.proximaFactura.proporcional ? "proporcional" : "mensualidad entera"})`
               : ""
           } y desde ese día se cuentan los días de atraso. Después, el plan completo el día 1${meses > 1 ? `, cada ${meses} meses` : ""}.${conDebito ? " Tiene débito automático: ese día MercadoPago lo cobra de su tarjeta." : ""}${sinPlan ? " Todavía falta elegir el plan." : ""}`,
         };
@@ -813,7 +813,7 @@ function PicoDelMes({ uso, limite }: { uso: UsoPlaya; limite: number | null }) {
   );
 }
 
-function Ajustes({
+export function Ajustes({
   empresaId,
   detalle,
   accion,
@@ -829,7 +829,7 @@ function Ajustes({
   const [guardando, setGuardando] = useState(false);
   useEffect(() => setNotas(detalle.notas ?? ""), [detalle.notas]);
 
-  async function editar(cambios: { bonificada?: boolean; notas?: string | null }, aviso: string) {
+  async function editar(cambios: { bonificada?: boolean; primerMesCompleto?: boolean; notas?: string | null }, aviso: string) {
     setGuardando(true);
     const r = await editarSuscripcionAction(empresaId, cambios);
     setGuardando(false);
@@ -840,6 +840,35 @@ function Ajustes({
   return (
     <Tarjeta className="gap-3 pb-5 pt-5">
       <Rotulo>Ajustes de la cuenta</Rotulo>
+      {!cuenta.pagadoHasta && (
+        <div className="space-y-1.5 rounded-xl border border-border px-3.5 py-3">
+          <Label htmlFor="primer-mes">Cobro del primer mes</Label>
+          <select
+            id="primer-mes"
+            className="h-11 w-full rounded-md border border-border bg-background px-3 text-[13px] sm:h-10"
+            value={cuenta.primerMesCompleto ? "COMPLETO" : "PROPORCIONAL"}
+            disabled={guardando}
+            aria-describedby="primer-mes-ayuda"
+            onChange={(e) => void editar(
+              { primerMesCompleto: e.target.value === "COMPLETO" },
+              "Cobro del primer mes actualizado.",
+            )}
+          >
+            <option value="PROPORCIONAL">Proporcional por los días restantes</option>
+            <option value="COMPLETO">Mes completo hasta fin de mes</option>
+          </select>
+          <p id="primer-mes-ayuda" className="text-xs" style={{ color: EJE }}>
+            Al terminar la prueba, cobra el proporcional por los días restantes o la mensualidad entera.
+            Ambas opciones cubren hasta fin de ese mes. Si hay una factura pendiente, se actualiza.
+          </p>
+          {cuenta.proximaFactura && cuenta.mensual > 0 && (
+            <p className="text-[13px]">
+              Primer pago: <b>{pesos(cuenta.facturaPendiente?.importe ?? cuenta.proximaFactura.importe)}</b>,
+              del {diaAR(cuenta.proximaFactura.desde)} al {diaAR(cuenta.proximaFactura.hasta)}.
+            </p>
+          )}
+        </div>
+      )}
       <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border px-3.5 py-3 text-[13px]">
         <span>
           <span className="block font-semibold">Bonificada</span>
@@ -1125,8 +1154,9 @@ export function AccionDialog({
   const graciaValida = Number(diasGracia) >= 1 && Number(diasGracia) <= maxGracia;
   const graciaHasta = sumarDiasAR(baseGracia, Number(diasGracia) || 0);
   // Pago: por defecto, lo que debe o un período entero (tres meses con su descuento si es trimestral).
-  const [meses, setMeses] = useState(cuenta.facturaPendiente?.meses ?? cuenta.periodo.meses);
-  const [importe, setImporte] = useState(String(cuenta.facturaPendiente?.importe ?? cuenta.importePeriodo ?? ""));
+  const primerPago = !cuenta.pagadoHasta && !!cuenta.pruebaHasta;
+  const [meses, setMeses] = useState(primerPago ? 1 : (cuenta.facturaPendiente?.meses ?? cuenta.periodo.meses));
+  const [importe, setImporte] = useState(String(cuenta.facturaPendiente?.importe ?? cuenta.proximaFactura?.importe ?? cuenta.importePeriodo ?? ""));
   const [importeTocado, setImporteTocado] = useState(false);
   const [medio, setMedio] = useState<MedioPagoSaas>("TRANSFERENCIA");
   const [fecha, setFecha] = useState(hoy);
@@ -1136,7 +1166,9 @@ export function AccionDialog({
   const cortada = cuenta.estado === "SUSPENDIDA" && cuenta.motivoSuspension === "FALTA_DE_PAGO";
   const ultimo = cuenta.pagadoHasta ?? cuenta.pruebaHasta;
   const periodo =
-    !ultimo || cortada
+    primerPago && cuenta.proximaFactura
+      ? cuenta.proximaFactura
+      : !ultimo || cortada
       ? { desde: hoy, hasta: sumarDiasAR(sumarMesesAR(hoy, meses), -1) }
       : { desde: sumarDiasAR(ultimo, 1), hasta: sumarMesesAR(ultimo, meses) };
   const finPrueba = sumarDiasAR(alta, (conPrueba ? diasPrueba : 0) - 1);
@@ -1146,7 +1178,7 @@ export function AccionDialog({
   const titulos: Record<Accion["tipo"], [string, string]> = {
     alta: [
       cuenta.estado === "SIN_ACTIVAR" ? "Dar de alta la cuenta" : "Cambiar la prueba",
-      "Desde qué día es cliente y cuántos días de prueba gratis tiene. Al terminar la prueba se factura el primer pago: lo que queda de ese mes, proporcional. Después, el plan completo el día 1. No hace falta tener el plan elegido.",
+      `Desde qué día es cliente y cuántos días de prueba gratis tiene. Al terminar la prueba se factura el primer pago: ${cuenta.primerMesCompleto ? "la mensualidad entera hasta fin de mes" : "lo que queda de ese mes, proporcional"}. Después, el plan completo el día 1. No hace falta tener el plan elegido.`,
     ],
     fechaAlta: [
       "Fecha de alta",
@@ -1327,12 +1359,12 @@ export function AccionDialog({
                 conPrueba ? (
                   <>
                     Prueba gratis del <b>{diaAR(alta)}</b> al <b>{diaAR(finPrueba)}</b>. El{" "}
-                    <b>{diaAR(sumarDiasAR(finPrueba, 1))}</b> vence el primer pago: lo que queda de ese mes,
-                    proporcional. Con más de {DIAS_DE_GRACIA} días de atraso se suspende.
+                    <b>{diaAR(sumarDiasAR(finPrueba, 1))}</b> vence el primer pago: {cuenta.primerMesCompleto ? "la mensualidad entera hasta fin de mes" : "lo que queda de ese mes, proporcional"}.
+                    Con más de {DIAS_DE_GRACIA} días de atraso se suspende.
                   </>
                 ) : (
                   <>
-                    Sin prueba: el primer pago (del alta a fin de mes, proporcional) se factura el{" "}
+                    Sin prueba: el primer pago (del alta a fin de mes, {cuenta.primerMesCompleto ? "mensualidad entera" : "proporcional"}) se factura el{" "}
                     <b>{diaAR(alta)}</b> y vence ese mismo día.
                   </>
                 ),
@@ -1442,6 +1474,7 @@ export function AccionDialog({
                     id="meses"
                     className={select}
                     value={meses}
+                    disabled={primerPago}
                     onChange={(e) => {
                       const n = Number(e.target.value);
                       setMeses(n);

@@ -161,7 +161,7 @@ function Contenido({ plan, email }: { plan: MiPlan; email: string }) {
         .filter((p) => p.plan)
         .map((p) => ({ id: p.playaId, nombre: p.nombre, plan: p.plan!.plan, precio: p.plan!.precio }));
   const concepto = primero
-    ? 'Tu primer pago · lo que queda del mes'
+    ? `Tu primer pago · ${cuenta.primerMesCompleto ? 'mensualidad entera' : 'proporcional'}`
     : meses === 1
       ? pendiente && cuenta.diasDeAtraso
           ? 'Tu último mes'

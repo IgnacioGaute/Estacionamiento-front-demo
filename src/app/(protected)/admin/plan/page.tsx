@@ -139,8 +139,8 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
         titulo: total === 7 ? 'Estás en tu semana de prueba' : 'Estás en tu prueba gratis',
         texto:
           quedan <= 0
-            ? 'Hoy es tu último día de prueba. Si seguís, mañana vence tu primer pago, que es solo lo que queda del mes.'
-            : `Usá todo el sistema con tranquilidad: te ${quedan === 1 ? 'queda 1 día' : `quedan ${quedan} días`}. Si seguís, tu primer pago es solo lo que queda del mes, y después pagás el plan completo el día 1.`,
+            ? `Hoy es tu último día de prueba. Si seguís, mañana vence tu primer pago: ${cuenta.primerMesCompleto ? 'la mensualidad entera hasta fin de mes' : 'el proporcional por lo que queda del mes'}.`
+            : `Usá todo el sistema con tranquilidad: te ${quedan === 1 ? 'queda 1 día' : `quedan ${quedan} días`}. Si seguís, tu primer pago es ${cuenta.primerMesCompleto ? 'la mensualidad entera hasta fin de mes' : 'el proporcional por lo que queda del mes'}, y después pagás el plan completo el día 1.`,
         barra: {
           titulo: `Día ${dia} de ${total}`,
           fraccion: dia / total,
@@ -151,7 +151,7 @@ function relatoDe(cuenta: ResumenCuenta, plan: string | null, mercadoPago: boole
           ? {
               etiqueta: 'Si seguís, tu primer pago',
               valor: pesos(primerPago.importe),
-              detalle: `Del ${fechaLarga(primerPago.desde)} al ${fechaLarga(primerPago.hasta)}, lo que queda del mes`,
+              detalle: `Del ${fechaLarga(primerPago.desde)} al ${fechaLarga(primerPago.hasta)}, ${primerPago.proporcional ? 'proporcional' : 'mensualidad entera'}`,
             }
           : undefined,
         boton: cuenta.mensual ? verFormas : undefined,

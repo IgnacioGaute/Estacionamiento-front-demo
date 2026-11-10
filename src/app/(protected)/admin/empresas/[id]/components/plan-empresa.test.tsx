@@ -1,9 +1,9 @@
 /** @jest-environment jsdom */
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { activarCuentaAction, darDiasDeGraciaAction } from '@/actions/suscripciones/suscripciones.action';
+import { activarCuentaAction, darDiasDeGraciaAction, editarSuscripcionAction, registrarPagoAction } from '@/actions/suscripciones/suscripciones.action';
 import type { DetalleSuscripcion } from '@/types/suscripcion.type';
 import type { EmpresaConDetalle } from '@/types/tenancy.type';
-import { AccionDialog } from './plan-empresa';
+import { AccionDialog, Ajustes } from './plan-empresa';
 
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 // Lo que no participa del diálogo y arrastra la autenticación del servidor.
@@ -43,6 +43,54 @@ beforeEach(() => {
   jest.useFakeTimers({ now: new Date('2026-10-20T15:00:00-03:00'), doNotFake: ['setTimeout', 'setInterval', 'queueMicrotask'] });
 });
 afterEach(() => jest.useRealTimers());
+
+test('permite elegir mes completo y muestra el error si no se pudo guardar', async () => {
+  jest.mocked(editarSuscripcionAction).mockResolvedValue({ error: 'No se pudo guardar.' });
+  const aplicar = jest.fn();
+  render(<Ajustes empresaId="empresa" detalle={detalle} accion={jest.fn()} aplicar={aplicar} />);
+  const selector = screen.getByLabelText('Cobro del primer mes');
+  expect(selector).toHaveValue('PROPORCIONAL');
+  fireEvent.change(selector, { target: { value: 'COMPLETO' } });
+  await waitFor(() => expect(editarSuscripcionAction).toHaveBeenCalledWith('empresa', { primerMesCompleto: true }));
+  await waitFor(() => expect(selector).not.toBeDisabled());
+  expect(selector).toHaveValue('PROPORCIONAL');
+  expect(aplicar).not.toHaveBeenCalled();
+});
+
+test('permite volver al proporcional antes del primer pago y aplica el detalle actualizado', async () => {
+  jest.mocked(editarSuscripcionAction).mockResolvedValue({ data: detalle });
+  const aplicar = jest.fn();
+  render(<Ajustes empresaId="empresa" detalle={{ ...detalle, cuenta: { ...detalle.cuenta, primerMesCompleto: true } }} accion={jest.fn()} aplicar={aplicar} />);
+  fireEvent.change(screen.getByLabelText('Cobro del primer mes'), { target: { value: 'PROPORCIONAL' } });
+  await waitFor(() => expect(editarSuscripcionAction).toHaveBeenCalledWith('empresa', { primerMesCompleto: false }));
+  expect(aplicar).toHaveBeenCalledWith(detalle, 'Cobro del primer mes actualizado.');
+});
+
+test('después del primer pago no ofrece cambiar el cobro del primer mes', () => {
+  render(<Ajustes empresaId="empresa" detalle={{ ...detalle, cuenta: { ...detalle.cuenta, pagadoHasta: '2026-10-31' } }} accion={jest.fn()} aplicar={jest.fn()} />);
+  expect(screen.queryByLabelText('Cobro del primer mes')).not.toBeInTheDocument();
+});
+
+test.each([true, false])('el primer pago manual usa importe y fechas del backend, completo=%s', async (primerMesCompleto) => {
+  jest.mocked(registrarPagoAction).mockResolvedValue({ data: detalle });
+  const primerPago = {
+    ...detalle,
+    cuenta: {
+      ...detalle.cuenta,
+      primerMesCompleto,
+      periodo: { codigo: 'TRIMESTRAL', nombre: 'Trimestral', meses: 3, descuento: 10 },
+      importePeriodo: 189000,
+      proximaFactura: { desde: '2026-10-31', hasta: '2026-10-31', importe: primerMesCompleto ? 63000 : 2032, proporcional: !primerMesCompleto },
+    },
+  } as DetalleSuscripcion;
+  render(<AccionDialog accion={{ tipo: 'pago' }} empresa={empresa} detalle={primerPago} cerrar={jest.fn()} hecho={jest.fn()} />);
+  expect(screen.getByLabelText('Meses que paga')).toHaveValue('1');
+  expect(screen.getByLabelText('Meses que paga')).toBeDisabled();
+  expect(screen.getByLabelText('Importe recibido')).toHaveValue(String(primerPago.cuenta.proximaFactura!.importe));
+  expect(screen.getByText(/Cubre del/).textContent).toMatch(/31\/10\/2026.*31\/10\/2026/);
+  fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+  await waitFor(() => expect(registrarPagoAction).toHaveBeenCalledWith('empresa', expect.objectContaining({ meses: 1, importe: primerPago.cuenta.proximaFactura!.importe })));
+});
 
 test('la prueba se puede cortar en un día exacto y se guardan los días que corresponden', async () => {
   jest.mocked(activarCuentaAction).mockResolvedValue({ data: detalle });

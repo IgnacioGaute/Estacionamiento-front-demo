@@ -60,6 +60,9 @@ export function describirMovimientoCuenta(
           d.pagadoHasta !== undefined ? `fijó «pagado hasta» en el ${fecha(d.pagadoHasta)}` : null,
           d.bonificada === true ? "la marcó como bonificada" : null,
           d.bonificada === false ? "le quitó la bonificación" : null,
+          typeof d.primerMesCompleto === "boolean"
+            ? `cambió el primer pago a ${d.primerMesCompleto ? "mensualidad entera hasta fin de mes" : "proporcional por los días restantes"}`
+            : null,
           typeof d.periodo === "string"
             ? `la pasó a pago ${d.periodo.toLowerCase()}${typeof d.descuento === "number" && d.descuento > 0 ? ` (−${d.descuento}%)` : ""}`
             : null,

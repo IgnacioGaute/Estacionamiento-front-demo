@@ -111,7 +111,7 @@ export const asignarPlan = (empresaId: string, playaId: string, planId: string, 
 
 export const editarSuscripcion = (
   empresaId: string,
-  cambios: { alta?: string; pagadoHasta?: string; bonificada?: boolean; notas?: string | null; periodo?: string },
+  cambios: { alta?: string; pagadoHasta?: string; bonificada?: boolean; primerMesCompleto?: boolean; notas?: string | null; periodo?: string },
 ) => pedir<DetalleSuscripcion>(deEmpresa(empresaId), 'No se pudo guardar.', enviar('PATCH', cambios));
 
 // Da de alta la cuenta: desde qué día es cliente y cuántos días de prueba gratis (0 = sin prueba).
