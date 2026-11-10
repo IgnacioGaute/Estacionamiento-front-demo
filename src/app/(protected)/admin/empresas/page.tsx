@@ -13,7 +13,7 @@ const TOUR_STEPS: PageTourStep[] = [
     key: 'resumen',
     selector: '[data-tour="empresas-resumen"]',
     title: 'El pulso de la plataforma',
-    desc: 'Empresas, playas y usuarios con lo que falta resolver de cada uno, más lo cobrado en los últimos 30 días.',
+    desc: 'Empresas, playas y usuarios con lo que falta resolver de cada uno, más lo recaudado en los últimos 30 días.',
     radius: 22,
   },
   {
@@ -48,7 +48,7 @@ const TOUR_STEPS: PageTourStep[] = [
     key: 'ficha',
     selector: '[data-tour="empresas-ficha"]',
     title: 'La ficha de cada empresa',
-    desc: 'Cada fila muestra su estado, lo cobrado con su tendencia, cuándo fue su última operación y si cobra con QR. La ficha tiene sus playas, usuarios y actividad.',
+    desc: 'Cada fila muestra su estado, lo recaudado con su tendencia, cuándo fue su última operación y si cobra con QR. La ficha tiene sus playas, usuarios y actividad.',
     radius: 8,
   },
 ];

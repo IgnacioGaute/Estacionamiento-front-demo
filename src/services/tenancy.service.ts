@@ -63,7 +63,7 @@ export async function createEmpresa(
 
 export async function updateEmpresa(
   id: string,
-  cambios: { nombre?: string; estado?: string },
+  cambios: { nombre?: string; estado?: string; motivo?: string },
 ): Promise<EmpresaConDetalle> {
   const response = await fetch(`${BASE_URL}/tenancy/empresas/${id}`, {
     method: "PATCH",

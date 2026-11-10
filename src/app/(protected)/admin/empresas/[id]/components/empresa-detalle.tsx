@@ -1,5 +1,6 @@
 "use client";
 import { EmpresaCargando } from '@/components/plataforma/cargando';
+import { SuspenderDialog } from './suspender-dialog';
 
 // La ficha de una empresa en su propia página. Antes era un desplegable dentro del listado: los
 // botones para agregar playas y usuarios quedaban escondidos detrás de dos clics y no había
@@ -20,8 +21,10 @@ import {
   Pencil,
   Plus,
   UserPlus,
+  UserX,
   Users,
 } from "lucide-react";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
 import {
   ActividadEmpresa,
   EmpresaConDetalle,
@@ -201,12 +204,20 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
       .sort()
       .pop() ?? null;
   const minutosUltima = minutosDesde(ultimaOperacion);
-  const cobrado =
-    detalle?.totales.actual ?? playas.reduce((n, p) => n + (p.m?.cobrado ?? 0), 0);
   const topeCobrado = Math.max(1, ...playas.map((p) => p.m?.cobrado ?? 0));
 
   const dias30 = eje(30);
-  const serieEmpresa = completar(detalle?.serie ?? [], dias30);
+  // Sobre la unión de las dos mitades, como en Métricas: el backend las corta por la fecha UTC y
+  // de noche el primer día del eje caía en «anterior», así que el gráfico lo dibujaba en cero.
+  const porDia = [...(detalle?.serie ?? []), ...(detalle?.anterior ?? [])];
+  const serieEmpresa = completar(porDia, dias30);
+  const sumar = (valores: number[]) => valores.reduce((n, v) => n + v, 0);
+  // El KPI suma los mismos 30 días que dibuja el gráfico: antes salía de otro corte y la tarjeta
+  // y el gráfico de abajo daban cifras distintas para «Todas».
+  const cobrado = detalle
+    ? sumar(serieEmpresa)
+    : playas.reduce((n, p) => n + (p.m?.cobrado ?? 0), 0);
+  const cobradoAnterior = detalle ? sumar(completar(porDia, dias30, 30)) : 0;
   const seriePlaya = (id: string) =>
     completar((detalle?.seriePlayas ?? []).filter((f) => f.playaId === id), dias30);
   const serie = playaSel === "todas" ? serieEmpresa : seriePlaya(playaSel);
@@ -343,19 +354,23 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
     void refrescar();
   }
 
-  async function suspender() {
-    if (!empresa) return { error: "Empresa no disponible." };
+  // Lo confirma SuspenderDialog, que muestra el impacto y pide el motivo. `false` deja el diálogo
+  // abierto para reintentar.
+  async function suspender(motivo: string) {
+    if (!empresa) return false;
     const r = await updateEmpresaAction(empresa.id, {
       estado: activa ? "SUSPENDIDA" : "ACTIVA",
+      ...(motivo ? { motivo } : {}),
     });
-    if (r.error) toast.error(r.error);
-    else {
-      toast.success(
-        activa ? "Empresa suspendida: solo puede registrar salidas y cerrar el turno." : "Empresa reactivada.",
-      );
-      await refrescar();
+    if (r.error) {
+      toast.error(r.error);
+      return false;
     }
-    return r;
+    toast.success(
+      activa ? "Empresa suspendida: solo puede registrar salidas y cerrar el turno." : "Empresa reactivada.",
+    );
+    await refrescar();
+    return true;
   }
 
   // Lo no visto se marca contra la última visita a la solapa, guardada por empresa en este
@@ -501,9 +516,9 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
           <div className="grid gap-px overflow-hidden rounded-xl border border-[#26231E] bg-[#26231E] sm:grid-cols-2 xl:grid-cols-4">
             <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 overflow-hidden rounded-none border-0">
               <div className="flex items-center justify-between">
-                <Rotulo>Cobrado · 30 días</Rotulo>
+                <Rotulo>Recaudado · 30 días</Rotulo>
                 <Variacion
-                  valor={detalle ? variacion(detalle.totales.actual, detalle.totales.anterior) : null}
+                  valor={detalle ? variacion(cobrado, cobradoAnterior) : null}
                   decimales={0}
                 />
               </div>
@@ -571,7 +586,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
             <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-5">
             <Tarjeta className="min-h-[360px]">
               <Encabezado
-                rotulo="Cobrado por día"
+                rotulo="Recaudado por día"
 
                 valor={corto(serie.reduce((n, v) => n + v, 0))}
                 unidad={`${nombreSerie} · 30 días`}
@@ -610,13 +625,13 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   area={0.45}
                   ejeX={dias30.map((d) => `${DIAS_SEMANA[d.day()]} ${d.format("DD/MM")}`)}
                   formatoEje={formatoEje}
-                  ariaLabel={`Cobrado por día en los últimos 30 días, ${nombreSerie}`}
+                  ariaLabel={`Recaudado por día en los últimos 30 días, ${nombreSerie}`}
                   tooltip={(i) => (
                     <>
                       <div className="border-b border-border pb-1.5 font-mono text-[10.5px] text-muted-foreground">
                         {DIAS_SEMANA[dias30[i].day()]} {dias30[i].format("DD/MM")}
                       </div>
-                      <FilaTooltip label="Cobrado" valor={plata(serie[i])} />
+                      <FilaTooltip label="Recaudado" valor={plata(serie[i])} />
                       {playaSel === "todas" && (
                         <FilaTooltip label="Estadías" valor={numero(cierres[i])} tenue />
                       )}
@@ -669,7 +684,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                       <span>Estado</span>
                       <span>Abiertas</span>
                       <span>Turnos</span>
-                      <span>Cobrado 30 d</span>
+                      <span>Recaudado 30 d</span>
                     </div>
                     <div className="mt-2 flex flex-col gap-1.5">
                       {playas.map((p, i) => (
@@ -942,7 +957,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   <span role="columnheader">Abiertas</span>
                   <span role="columnheader">Turnos</span>
                   <span role="columnheader">Operadores</span>
-                  <span role="columnheader">Cobrado 30 d</span>
+                  <span role="columnheader">Recaudado 30 d</span>
                   <span role="columnheader">Comprobantes</span>
                   <span role="columnheader">Modalidad</span>
                   <span role="columnheader">Secciones</span>
@@ -1190,20 +1205,27 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                         >
                           Asignar playas
                         </button>
-                        <button
-                          type="button"
-                          className={botonPeligro}
-                          onClick={async () => {
+                        {/* Antes daba de baja con un clic: el usuario perdía el acceso en el acto. */}
+                        <ConfirmActionDialog
+                          trigger={<button type="button" className={botonPeligro}>Dar de baja</button>}
+                          icon={UserX}
+                          tone="warning"
+                          title={`Dar de baja a ${[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}`}
+                          description="Deja de poder entrar al sistema en este momento."
+                          actionLabel="Dar de baja"
+                          actionVariant="destructive"
+                          onConfirm={async () => {
                             const r = await deleteUsuarioEmpresaAction(empresa.id, u.id);
-                            if (r.error) toast.error(r.error);
-                            else {
-                              toast.success("Usuario dado de baja.");
-                              await refrescar();
+                            if (r.error) {
+                              toast.error(r.error);
+                              return false;
                             }
+                            toast.success("Usuario dado de baja.");
+                            await refrescar();
                           }}
                         >
-                          Dar de baja
-                        </button>
+                          <p>Lo que registró (entradas, cobros, turnos) se conserva con su nombre.{u.role === "ADMIN" ? " Si era el único administrador, la empresa se queda sin quien la configure." : ""}</p>
+                        </ConfirmActionDialog>
                       </span>
                     </div>
                   );
@@ -1235,13 +1257,17 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                     : "Vuelve a habilitar el acceso de sus usuarios."}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => void suspender()}
-              className="h-[38px] shrink-0 rounded-[10px] border border-[#F2725B]/50 px-3.5 text-[13px] font-bold text-[#F2725B] transition-colors hover:bg-[#F2725B]/10"
-            >
-              {activa ? "Suspender" : "Reactivar"}
-            </button>
+            <SuspenderDialog
+              activa={activa}
+              nombre={empresa.nombre}
+              usuarios={empresa.usuarios.length}
+              turnosAbiertos={playas.reduce((n, p) => n + (p.m?.turnosAbiertos ?? 0), 0)}
+              estadiasAbiertas={playas.reduce((n, p) => n + (p.m?.estadiasAbiertas ?? 0), 0)}
+              avisoReactivar={cuenta?.motivoSuspension === "FALTA_DE_PAGO" && !!cuenta.suspendeEl && cuenta.suspendeEl <= hoyAR()
+                ? "Está suspendida por falta de pago: si la reactivás sin registrar el pago ni darle días de gracia, la revisión de esta noche la vuelve a suspender."
+                : undefined}
+              onConfirm={suspender}
+            />
           </div>
           <div className="flex items-center gap-4 px-5 py-[18px]">
             <div className="flex-1">
@@ -1266,7 +1292,10 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   tipo: "empresa",
                   id: empresa.id,
                   nombre: empresa.nombre,
-                  suspender: activa ? () => suspender() : undefined,
+                  // Desde el borrado bloqueado ya es una decisión explícita: el motivo lo dice.
+                  suspender: activa
+                    ? async () => ((await suspender("Se pidió eliminarla y no se podía: se suspendió en su lugar.")) ? {} : { error: "No se pudo suspender." })
+                    : undefined,
                   ejecutar: () => deleteEmpresaAction(empresa.id),
                 })
               }

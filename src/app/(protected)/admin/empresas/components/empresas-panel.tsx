@@ -2,7 +2,7 @@
 import { FilasPlataformaCargando, PanelPlataformaCargando } from '@/components/plataforma/cargando';
 
 // El listado de empresas: dónde está el volumen, qué hay que resolver y la tabla con estado,
-// playas, usuarios, cobrado, última operación y MercadoPago de cada una.
+// playas, usuarios, recaudado, última operación y MercadoPago de cada una.
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -11,9 +11,12 @@ import {
   AlertTriangle,
   Ban,
   Building2,
+  CalendarClock,
   Check,
   ChevronRight,
+  CircleDollarSign,
   Clock,
+  CreditCard,
   Download,
   MapPin,
   Search,
@@ -71,6 +74,7 @@ import { Editor, EditorDialog } from "./editor-dialog";
 import {
   EstadoCuentaPill,
   cuentaConAlerta,
+  cuentaDebe,
   diaAR,
 } from "@/components/plataforma/cuenta";
 
@@ -79,9 +83,12 @@ type Orden = "cobrado" | "caida" | "ultima" | "nombre" | "alta";
 const POR_PAGINA = 20;
 
 const ICONOS: Record<TipoAlerta, typeof Tag> = {
+  debe: CircleDollarSign,
   "sin-tarifas": Tag,
   "sin-playa": UserX,
   suspendida: Ban,
+  "vence-pronto": CalendarClock,
+  "debito-pausado": CreditCard,
   "sin-operar": Clock,
   "sin-playas": MapPin,
 };
@@ -196,7 +203,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
           : filtro === "alertas"
             ? conAlertas.has(e.id)
             : filtro === "cobro"
-              ? cuentaConAlerta(e.suscripcion)
+              ? cuentaDebe(e.suscripcion)
               : true,
     )
     .filter(
@@ -246,7 +253,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
 
   function exportar() {
     const filas = [
-      ["Empresa", "Estado", "Cuenta", "Paga por mes", "Vence", "Playas", "Usuarios", "Cobrado 30 días", "Período anterior", "Última operación", "MercadoPago"],
+      ["Empresa", "Estado", "Cuenta", "Paga por mes", "Vence", "Playas", "Usuarios", "Recaudado 30 días", "Período anterior", "Última operación", "MercadoPago"],
       ...filtradas.map((e) => [
         e.nombre,
         e.estado,
@@ -420,7 +427,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
 
         <Tarjeta as="div" className="min-h-[150px] justify-between gap-3 overflow-hidden rounded-none border-0">
           <div className="flex items-center justify-between">
-            <Rotulo>Cobrado · 30 días</Rotulo>
+            <Rotulo>Recaudado · 30 días</Rotulo>
             <Variacion valor={variacion(total, totalPrevio)} />
           </div>
           <div className="flex flex-wrap items-baseline gap-2">
@@ -439,10 +446,10 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
             rotulo="Dónde está el volumen"
             valor={`${cuantasTop} empresa${cuantasTop === 1 ? "" : "s"}`}
             valorClassName="font-sans text-[22px] font-semibold tracking-[-0.02em]"
-            unidad={`concentran el ${numero(concentracion)}% de lo cobrado`}
+            unidad={`concentran el ${numero(concentracion)}% de lo recaudado`}
             derecha={
               <span className="mt-1 text-[12px]" style={{ color: EJE }}>
-                Tamaño = cobrado en 30 días
+                Tamaño = recaudado en 30 días
               </span>
             }
           />
@@ -520,8 +527,8 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               { id: "todas" as Filtro, label: "Todas", cuenta: empresas.length },
               { id: "activas" as Filtro, label: "Activas", cuenta: activas.length },
               { id: "alertas" as Filtro, label: "Con alertas", cuenta: conAlertas.size },
-              // Vence en 3 días o menos, vencida o suspendida: lo que hay que cobrar.
-              { id: "cobro" as Filtro, label: "Cobro", cuenta: empresas.filter((e) => cuentaConAlerta(e.suscripcion)).length },
+              // Vencidas o suspendidas por falta de pago: la misma cuenta que «Para cobrar» de Planes y la barra lateral.
+              { id: "cobro" as Filtro, label: "Deben", cuenta: empresas.filter((e) => cuentaDebe(e.suscripcion)).length },
               { id: "suspendidas" as Filtro, label: "Suspendidas", cuenta: suspendidas },
             ]}
             valor={filtro}
@@ -534,7 +541,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
           ariaLabel="Ordenar"
           valor={orden}
           opciones={[
-            { id: "cobrado", label: "Más cobrado" },
+            { id: "cobrado", label: "Más recaudado" },
             { id: "caida", label: "Mayor caída" },
             { id: "ultima", label: "Última operación" },
             { id: "nombre", label: "Nombre" },
@@ -570,7 +577,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               <span role="columnheader">Plan</span>
               <span role="columnheader">Playas</span>
               <span role="columnheader">Usuarios</span>
-              <span role="columnheader">Cobrado 30 d</span>
+              <span role="columnheader">Recaudado 30 d</span>
               <span role="columnheader">Vs. anterior</span>
               <span role="columnheader">Última operación</span>
               <span role="columnheader">MercadoPago</span>
@@ -856,7 +863,7 @@ function FilaAlerta({ alerta }: { alerta: Alerta }) {
       <div className="min-w-0 flex-1">
         {/* Dos renglones: con nombres largos de empresa, cortar en uno se comía el problema. */}
         <div className="line-clamp-2 text-[13px] font-medium leading-snug">{alerta.titulo}</div>
-        <div className="truncate text-[12.5px] text-muted-foreground">{alerta.detalle}</div>
+        <div className="line-clamp-2 text-[12.5px] text-muted-foreground">{alerta.detalle}</div>
       </div>
       <Link
         href={alerta.href}

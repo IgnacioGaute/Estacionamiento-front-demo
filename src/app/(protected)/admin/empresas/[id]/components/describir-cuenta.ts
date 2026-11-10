@@ -84,11 +84,14 @@ export function describirMovimientoCuenta(
     case "EMPRESA_SUSPENDIDA":
       return d.motivo === "FALTA_DE_PAGO"
         ? `suspendió la empresa por falta de pago (venció el ${fecha(d.vencio)}${typeof d.diasDeAtraso === "number" ? `, ${enDias(d.diasDeAtraso)} de atraso` : ""})`
-        : "suspendió la empresa";
+        : d.motivo
+          ? `suspendió la empresa: «${d.motivo}»`
+          : "suspendió la empresa";
     case "EMPRESA_REACTIVADA":
       return "reactivó la empresa al regularizar la cuenta";
     case "EMPRESA_ACTIVA":
-      return "reactivó la empresa";
+      // El motivo lo pide el diálogo de suspender; las de antes no lo tienen.
+      return d.motivo ? `reactivó la empresa: «${d.motivo}»` : "reactivó la empresa";
     case "EMPRESA_BAJA":
       return d.motivo === "FALTA_DE_PAGO" ? `dio de baja la empresa tras ${d.dias} días suspendida` : "dio de baja la empresa";
     case "EMPRESA_CREADA":

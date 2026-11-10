@@ -63,11 +63,26 @@ export const getPagosPlataforma = (desde: string, hasta: string) =>
     'No se pudieron cargar los pagos.',
   );
 
+export type ResultadoRevision = {
+  suspendidas: number;
+  bajas: number;
+  facturas: number;
+  // Los nombres de las empresas de cada caso (para decir a quién antes de confirmar).
+  empresas?: { suspende: string[]; baja: string[]; factura: string[] };
+};
+
 export const revisarVencimientos = () =>
-  pedir<{ suspendidas: number; bajas: number; facturas: number }>(
+  pedir<ResultadoRevision>(
     '/tenancy/suscripciones/revisar',
     'No se pudo revisar los vencimientos.',
     enviar('POST'),
+  );
+
+// Lo que haría la revisión ahora, sin guardar nada.
+export const previaRevision = () =>
+  pedir<ResultadoRevision>(
+    '/tenancy/suscripciones/revisar/previa',
+    'No se pudo calcular qué haría la revisión.',
   );
 
 export const getSuscripcion = (empresaId: string) =>

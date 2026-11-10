@@ -46,7 +46,7 @@ export async function createEmpresaAction(nombre: string, diasPrueba?: number) {
 
 export async function updateEmpresaAction(
   id: string,
-  cambios: { nombre?: string; estado?: string },
+  cambios: { nombre?: string; estado?: string; motivo?: string },
 ) {
   try {
     return { empresa: await updateEmpresa(id, cambios) };

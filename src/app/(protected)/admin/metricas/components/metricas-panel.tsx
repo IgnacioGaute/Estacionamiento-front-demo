@@ -199,7 +199,7 @@ export function MetricasPanel() {
 
   const kpis = [
     {
-      label: "Cobrado",
+      label: "Recaudado",
       valor: corto(total),
       unidad: "ARS",
       delta: variacion(total, totalPrevio),
@@ -368,7 +368,7 @@ export function MetricasPanel() {
   // El CSV sale de lo que se está viendo: mismo período y misma empresa.
   function exportar() {
     const filas = [
-      ["Empresa", "Cobrado", "Período anterior", "Estadías cerradas", "Ticket promedio"],
+      ["Empresa", "Recaudado", "Período anterior", "Estadías cerradas", "Ticket promedio"],
       ...(detalle?.empresas ?? []).map((e) => [
         e.nombre,
         String(e.cobrado),
@@ -494,7 +494,7 @@ export function MetricasPanel() {
       <div className="grid gap-5 lg:grid-cols-3">
         <Tarjeta className="min-h-[410px] lg:col-span-2">
           <Encabezado
-            rotulo="Cobrado por día"
+            rotulo="Recaudado por día"
             valor={corto(total)}
             unidad={`en ${dias} días · vs ${corto(totalPrevio)} el período anterior`}
             derecha={
@@ -529,7 +529,7 @@ export function MetricasPanel() {
               comparacion={dual ? anterior : null}
               ejeX={diasEje.map(etiqueta)}
               formatoEje={formatoEje}
-              ariaLabel={`Cobrado por día en los últimos ${dias} días: ${corto(total)}, contra ${corto(totalPrevio)} el período anterior`}
+              ariaLabel={`Recaudado por día en los últimos ${dias} días: ${corto(total)}, contra ${corto(totalPrevio)} el período anterior`}
               tooltip={(i) => {
                 const cambio = variacion(serie[i], anterior[i]);
                 return (
@@ -538,7 +538,7 @@ export function MetricasPanel() {
                       {etiqueta(diasEje[i])}
                       {dual ? ` · vs ${etiqueta(diasEje[i].subtract(dias, "day"))}` : ""}
                     </div>
-                    <FilaTooltip color={AMARILLO} label="Cobrado" valor={plata(serie[i])} />
+                    <FilaTooltip color={AMARILLO} label="Recaudado" valor={plata(serie[i])} />
                     {dual && (
                       <FilaTooltip color="#A59B8D" hueco label="Anterior" valor={plata(anterior[i])} tenue />
                     )}
@@ -584,8 +584,8 @@ export function MetricasPanel() {
                     className={cn("mt-1.5 size-2 shrink-0 rounded-full", a.grave ? "bg-[#F2725B]" : "bg-[#F0A43A]")}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-medium">{a.titulo}</div>
-                    <div className="truncate text-[12.5px] text-muted-foreground">{a.detalle}</div>
+                    <div className="line-clamp-2 text-[13px] font-medium leading-snug">{a.titulo}</div>
+                    <div className="line-clamp-2 text-[12.5px] text-muted-foreground">{a.detalle}</div>
                   </div>
                   <Link
                     href={a.href}
@@ -907,12 +907,12 @@ export function MetricasPanel() {
             <Medidor
               fraccion={fraccionQr}
               color="#7E86F0"
-              ariaLabel={`Cobros con QR: ${numero(fraccionQr * 100, 1)}% de lo cobrado`}
+              ariaLabel={`Cobros con QR: ${numero(fraccionQr * 100, 1)}% de lo recaudado`}
             >
               <span className="font-mono text-[26px] font-medium leading-none">
                 {numero(fraccionQr * 100, 1)}%
               </span>
-              <span className="text-[11px] text-muted-foreground">del cobrado</span>
+              <span className="text-[11px] text-muted-foreground">de lo recaudado</span>
             </Medidor>
             <div className="mt-auto w-full">
               <div className="mb-[7px] flex justify-between text-xs text-muted-foreground">
@@ -1049,7 +1049,7 @@ export function MetricasPanel() {
       <section className="overflow-hidden rounded-xl border border-[#26231E] bg-[#161411]">
         <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
           <div>
-            <h2 className="m-0 text-[14px] font-semibold">Empresas por cobrado</h2>
+            <h2 className="m-0 text-[14px] font-semibold">Empresas por recaudado</h2>
             <p className="mt-0.5 text-[12.5px] text-muted-foreground">
               Comparativa de los últimos {dias} días contra el período anterior
             </p>
@@ -1068,7 +1068,7 @@ export function MetricasPanel() {
             >
               <span role="columnheader" className="pl-2">#</span>
               <span role="columnheader">Empresa</span>
-              <span role="columnheader">Cobrado</span>
+              <span role="columnheader">Recaudado</span>
               <span role="columnheader">Vs. anterior</span>
               <span role="columnheader">Tendencia</span>
               <span role="columnheader">Estadías</span>

@@ -25,6 +25,7 @@ import {
   getPlataformaMetricsAction,
 } from '@/actions/tenancy/tenancy.action';
 import { iniciales } from '@/components/plataforma/formato';
+import { cuentaDebe } from '@/components/plataforma/cuenta';
 import { cn } from '@/lib/utils';
 import { CAJITA, CENTRADO, ITEM, NavAprender, PANEL_FLOTANTE, PANEL_MOVIL, PestaniaLateral } from './nav-main';
 
@@ -75,13 +76,8 @@ export function SuperAdminSidebar(props: React.ComponentProps<typeof Sidebar>) {
       url: '/admin/planes',
       Icono: CreditCard,
       activo: pathname.startsWith('/admin/planes'),
-      // Las que vencieron o están suspendidas por falta de pago: lo que hay que cobrar.
-      cuenta:
-        empresas.filter(
-          (e) =>
-            e.suscripcion?.estado === 'VENCIDA' ||
-            (e.suscripcion?.estado === 'SUSPENDIDA' && e.suscripcion.motivoSuspension === 'FALTA_DE_PAGO'),
-        ).length || undefined,
+      // Las que deben: la misma regla que el filtro «Deben» de Empresas y «Para cobrar» de Planes.
+      cuenta: empresas.filter((e) => cuentaDebe(e.suscripcion)).length || undefined,
     },
   ];
 

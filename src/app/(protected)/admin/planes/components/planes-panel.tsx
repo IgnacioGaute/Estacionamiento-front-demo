@@ -1,6 +1,5 @@
 "use client";
 import { FilasPlataformaCargando, PanelPlataformaCargando } from '@/components/plataforma/cargando';
-import LatticeLoader from '@/components/ui/lattice-loader';
 
 // Planes y cobros de la plataforma: cuánto entra por mes, a quién hay que cobrarle, en qué está
 // cada cuenta, la lista de precios (con el mismo dibujo que la landing) y lo cobrado. El detalle
@@ -9,7 +8,8 @@ import LatticeLoader from '@/components/ui/lattice-loader';
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { RevisarVencimientos } from "./revisar-vencimientos";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { EmpresaConDetalle } from "@/types/tenancy.type";
@@ -21,7 +21,6 @@ import {
   getPagosPlataformaAction,
   getPeriodosAction,
   getPlanesAction,
-  revisarVencimientosAction,
 } from "@/actions/suscripciones/suscripciones.action";
 import { Avatar, EJE, Leyenda, Pastilla, Rotulo, Segmentos, Tarjeta, Variacion } from "@/components/plataforma/mono";
 import { Anillo } from "@/components/plataforma/graficos";
@@ -35,6 +34,7 @@ import {
   MEDIOS_PAGO,
   PAGO_QR_DEL_PLAN,
   agruparPlanes,
+  cuentaDebe,
   diaAR,
   diasEntreAR,
   hoyAR,
@@ -61,7 +61,7 @@ const nombreMes = (mes: string) => MESES[Number(mes.slice(5, 7)) - 1];
 type Filtro = "todas" | "cobrar" | "prueba" | "alDia" | "sinActivar" | "otras";
 const FILTROS: Record<Filtro, (c: ResumenCuenta) => boolean> = {
   todas: () => true,
-  cobrar: (c) => c.estado === "VENCIDA" || (c.estado === "SUSPENDIDA" && c.motivoSuspension === "FALTA_DE_PAGO"),
+  cobrar: (c) => cuentaDebe(c),
   prueba: (c) => c.estado === "PRUEBA",
   alDia: (c) => c.estado === "AL_DIA",
   sinActivar: (c) => c.estado === "SIN_ACTIVAR",
@@ -87,7 +87,6 @@ export function PlanesPanel() {
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
-  const [revisando, setRevisando] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -142,20 +141,6 @@ export function PlanesPanel() {
       return ua - ub || va - vb || a.empresa.nombre.localeCompare(b.empresa.nombre);
     });
 
-  async function revisar() {
-    setRevisando(true);
-    const r = await revisarVencimientosAction();
-    setRevisando(false);
-    if (r.error) return toast.error(r.error);
-    const { suspendidas = 0, facturas = 0, bajas = 0 } = r.data ?? {};
-    toast.success(
-      suspendidas || facturas || bajas
-        ? `Revisado: ${facturas} facturas emitidas, ${suspendidas} suspendidas, ${bajas} bajas.`
-        : "Revisado: no había nada que hacer.",
-    );
-    void cargar();
-  }
-
   const pagosDelMes = pagos.filter((p) => p.pagadaEl.startsWith(mes));
 
   if (cargando && !empresas.length && !error) return <PanelPlataformaCargando texto="Cargando planes…" />;
@@ -170,16 +155,8 @@ export function PlanesPanel() {
             pagos, deuda y la lista de precios que muestra la landing.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void revisar()}
-          disabled={revisando}
-          title="Corre ahora la revisión diaria: emite las facturas del día y suspende lo que pasó la gracia"
-          className="flex h-9 items-center gap-2 rounded-lg border border-[#2A2824] bg-[#151411] px-3.5 text-[13px] font-medium transition-colors hover:border-[#3A362F] disabled:opacity-50"
-        >
-          {revisando ? <LatticeLoader compact cellSize={4} gap={1} showTimer={false} /> : <RefreshCw className="size-4" />}
-          Revisar vencimientos
-        </button>
+        {/* Antes corría con un clic: ahora muestra primero a quién va a suspender y facturar. */}
+        <RevisarVencimientos onRevisado={() => void cargar()} />
       </div>
 
       {error && (
@@ -205,7 +182,7 @@ export function PlanesPanel() {
           accion={morosas.length ? { label: "Ver", hacer: () => setFiltro("cobrar") } : undefined}
         />
         <Kpi
-          rotulo={`Cobrado en ${nombreMes(mesActual)}`}
+          rotulo={`Pagos recibidos en ${nombreMes(mesActual)}`}
           valor={corto(cobradoMes)}
           derecha={<Variacion valor={variacion(cobradoMes, cobradoAnterior)} decimales={0} />}
           pie={`${plural(pagos.filter((p) => p.estado === "PAGADA" && p.pagadaEl.startsWith(mesActual)).length, "pago", "pagos")} · ${corto(cobradoAnterior)} en ${nombreMes(meses[4])}`}
@@ -222,7 +199,7 @@ export function PlanesPanel() {
         <Tarjeta className="min-h-[300px] lg:col-span-2">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="m-0 text-[14px] font-semibold">Cobrado por mes</h2>
+              <h2 className="m-0 text-[14px] font-semibold">Pagos recibidos por mes</h2>
               <div className="mt-2 flex items-baseline gap-2.5">
                 <span className="font-mono text-[24px] font-medium tracking-[-0.03em] leading-none tabular-nums">
                   {corto(cobradoPorMes.reduce((n, v) => n + v, 0))}

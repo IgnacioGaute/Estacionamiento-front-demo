@@ -22,6 +22,7 @@ import {
   Rocket,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { ConfirmActionDialog } from "@/components/confirm-action-dialog";
 import {
   Dialog,
   DialogContent,
@@ -835,14 +836,35 @@ function Ajustes({
             No se le factura ni se suspende
           </span>
         </span>
-        <Switch
-          checked={cuenta.bonificada}
-          disabled={guardando}
-          onCheckedChange={(v) =>
-            void editar({ bonificada: v }, v ? "Bonificada: no vence ni se suspende." : "Se le vuelve a cobrar.")
-          }
-          className="data-[state=checked]:bg-gm-yellow"
-        />
+        {/* Bonificar deja de facturar en el acto (y anula la factura pendiente): se confirma. Quitarlo
+            vuelve a cobrar y no necesita confirmación. */}
+        {cuenta.bonificada ? (
+          <Switch
+            checked
+            disabled={guardando}
+            onCheckedChange={() => void editar({ bonificada: false }, "Se le vuelve a cobrar.")}
+            className="data-[state=checked]:bg-gm-yellow"
+          />
+        ) : (
+          <ConfirmActionDialog
+            trigger={<Switch checked={false} disabled={guardando} aria-label="Bonificada" />}
+            icon={Gift}
+            tone="warning"
+            title="Bonificar la cuenta"
+            description="Deja de facturarse y no se suspende por falta de pago."
+            actionLabel="Bonificar"
+            onConfirm={async () => {
+              await editar({ bonificada: true }, "Bonificada: no vence ni se suspende.");
+            }}
+          >
+            <p>
+              {cuenta.facturaPendiente
+                ? `Se anula la factura pendiente de ${pesos(cuenta.facturaPendiente.importe)}. `
+                : ""}
+              Mientras esté bonificada no se le cobra; para volver a cobrarle, apagalo.
+            </p>
+          </ConfirmActionDialog>
+        )}
       </label>
       <button
         type="button"

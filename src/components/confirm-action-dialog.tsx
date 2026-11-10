@@ -43,6 +43,10 @@ interface ConfirmActionDialogProps {
   onConfirm: () => void | boolean | Promise<void | boolean>;
   /** External pending flag. */
   pending?: boolean;
+  /** Avisa al abrir o cerrar (por ejemplo, para cargar lo que se muestra adentro). */
+  onOpenChange?: (open: boolean) => void;
+  /** Deshabilita la acción sin marcarla como en curso (falta un dato, se está cargando). */
+  disabled?: boolean;
 }
 
 const TONE_STYLES: Record<
@@ -83,6 +87,8 @@ export function ConfirmActionDialog({
   actionVariant,
   onConfirm,
   pending,
+  onOpenChange,
+  disabled,
 }: ConfirmActionDialogProps) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
@@ -114,6 +120,7 @@ export function ConfirmActionDialog({
       onOpenChange={(o) => {
         setOpen(o);
         if (!o) setText('');
+        onOpenChange?.(o);
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -171,14 +178,14 @@ export function ConfirmActionDialog({
             Cancelar
           </Button>
           {mantener ? (
-            <BotonMantener onHold={handleConfirm} disabled={isPending} hecho={isPending ? 'Eliminando…' : 'Eliminado'}>
+            <BotonMantener onHold={handleConfirm} disabled={isPending || !!disabled} hecho={isPending ? 'Eliminando…' : 'Eliminado'}>
               Mantené para {actionLabel.charAt(0).toLowerCase() + actionLabel.slice(1)}
             </BotonMantener>
           ) : (
             <Button
               variant={actionVariant ?? fallbackVariant}
               onClick={handleConfirm}
-              disabled={isPending || (pideTexto && text !== confirmText)}
+              disabled={isPending || !!disabled || (pideTexto && text !== confirmText)}
             >
               {isPending && <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} />}
               {actionLabel}

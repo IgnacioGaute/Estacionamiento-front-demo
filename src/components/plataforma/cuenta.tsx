@@ -168,6 +168,15 @@ export function textoVencimiento(c: SituacionCuenta | ResumenCuenta) {
   }
 }
 
+/**
+ * Debe plata: venció o está suspendida por falta de pago. Una sola regla para el filtro «Deben»
+ * de Empresas, «Para cobrar» de Planes, el contador de la barra lateral y las alertas: antes
+ * cada pantalla contaba distinto (3, 1 y otra regla) y ninguna se creía.
+ */
+export function cuentaDebe(c: SituacionCuenta | ResumenCuenta | null | undefined) {
+  return !!c && (c.estado === "VENCIDA" || (c.estado === "SUSPENDIDA" && c.motivoSuspension === "FALTA_DE_PAGO"));
+}
+
 /** Si conviene llamar la atención: vence pronto, venció o está cortada. */
 export function cuentaConAlerta(c: SituacionCuenta | ResumenCuenta | null | undefined) {
   if (!c) return false;

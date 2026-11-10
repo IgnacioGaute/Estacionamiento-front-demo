@@ -28,6 +28,7 @@ import {
   getSuscripcion,
   registrarPago,
   revisarVencimientos,
+  previaRevision,
 } from '@/services/suscripciones.service';
 import type { DireccionCajaQr } from '@/types/suscripcion.type';
 
@@ -62,6 +63,9 @@ export const getPagosPlataformaAction = async (desde: string, hasta: string) =>
 
 export const revisarVencimientosAction = async () =>
   intentar(revisarVencimientos, 'No se pudo revisar los vencimientos.');
+
+export const previaRevisionAction = async () =>
+  intentar(previaRevision, 'No se pudo calcular qué haría la revisión.');
 
 export const getSuscripcionAction = async (empresaId: string) =>
   intentar(() => getSuscripcion(empresaId), 'No se pudo cargar el plan de la empresa.');

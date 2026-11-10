@@ -1,14 +1,19 @@
 import { EmpresaConDetalle, PlayaMetrics } from "@/types/tenancy.type";
+import { diaAR, pesos } from "./cuenta";
 import { diaMes, haceCuanto, minutosDesde } from "./formato";
 
 // Lo que el super admin tiene que resolver. Una sola fuente para las tres pantallas: el listado
 // de «Requiere atención», el filtro «Con alertas» y el contador de salud de la plataforma tienen
-// que dar el mismo número, o ninguno de los tres se cree.
+// que dar el mismo número, o ninguno de los tres se cree. La cobranza entra acá también: una
+// empresa que debe es lo primero que hay que resolver, y antes solo se veía entrando a Planes.
 
 export type TipoAlerta =
+  | "debe"
   | "sin-tarifas"
   | "sin-playa"
   | "suspendida"
+  | "vence-pronto"
+  | "debito-pausado"
   | "sin-operar"
   | "sin-playas";
 
@@ -22,19 +27,32 @@ export type Alerta = {
   empresaIds: string[];
   // Bloquea la operación o el acceso. Las demás son pendientes, no urgencias.
   grave: boolean;
+  // Dentro del mismo tipo, la más urgente primero: más días de atraso, menos días para vencer.
+  urgencia?: number;
 };
 
 // Dos días sin movimientos en una empresa que ya opera es raro: una playa no cierra 48 horas
 // seguidas sin avisar. Menos que eso sería ruido cada domingo.
 const SIN_OPERAR_MINUTOS = 48 * 60;
 
+// Los mismos 3 días que `cuentaConAlerta`: antes no hay nada que hacer.
+const VENCE_PRONTO_DIAS = 3;
+
+// La plata adelante: lo que se debe y lo que va a cortar el acceso, después lo que frena la
+// operación, después los avisos.
 const ORDEN: Record<TipoAlerta, number> = {
-  "sin-tarifas": 0,
-  "sin-playa": 1,
-  suspendida: 2,
-  "sin-operar": 3,
-  "sin-playas": 4,
+  debe: 0,
+  "sin-tarifas": 1,
+  "sin-playa": 2,
+  suspendida: 3,
+  "vence-pronto": 4,
+  "debito-pausado": 5,
+  "sin-operar": 6,
+  "sin-playas": 7,
 };
+
+const enDias = (n: number) => (n === 1 ? "1 día" : `${n} días`);
+const cuandoVence = (dias: number) => (dias <= 0 ? "hoy" : dias === 1 ? "mañana" : `en ${enDias(dias)}`);
 
 export function alertasDePlataforma(
   empresas: EmpresaConDetalle[],
@@ -46,21 +64,96 @@ export function alertasDePlataforma(
 
   for (const empresa of empresas) {
     const ficha = `/admin/empresas/${empresa.id}`;
+    const cuenta = empresa.suscripcion;
+    const debe = cuenta?.facturaPendiente?.importe;
+    const usuarios = `${empresa.usuarios.length} ${empresa.usuarios.length === 1 ? "usuario" : "usuarios"} sin acceso`;
 
     if (empresa.estado === "SUSPENDIDA") {
+      // La fecha de la suspensión, no la del último cambio de la empresa: editarle el nombre
+      // corría el «desde».
+      const desde = cuenta?.suspendidaEl ?? empresa.updatedAt;
+      const porFalta = cuenta?.estado === "SUSPENDIDA" && cuenta.motivoSuspension === "FALTA_DE_PAGO";
       alertas.push({
         id: `suspendida-${empresa.id}`,
-        tipo: "suspendida",
-        titulo: `${empresa.nombre} suspendida`,
-        detalle: `Desde el ${diaMes(empresa.updatedAt)} · ${empresa.usuarios.length} usuarios sin acceso`,
-        accion: "Revisar",
-        href: ficha,
+        tipo: porFalta ? "debe" : "suspendida",
+        titulo: porFalta
+          ? `${empresa.nombre} suspendida por falta de pago`
+          : `${empresa.nombre} suspendida`,
+        detalle: [
+          `Desde el ${diaMes(desde)}`,
+          porFalta && debe ? `debe ${pesos(debe)}` : null,
+          usuarios,
+        ].filter(Boolean).join(" · "),
+        accion: porFalta ? "Cobrar" : "Revisar",
+        href: porFalta ? `${ficha}?tab=plan` : ficha,
         empresaIds: [empresa.id],
         grave: true,
+        urgencia: -(cuenta?.diasDeAtraso ?? 0),
       });
       continue;
     }
     if (empresa.estado !== "ACTIVA") continue;
+
+    if (cuenta?.estado === "VENCIDA") {
+      alertas.push({
+        id: `debe-${empresa.id}`,
+        tipo: "debe",
+        titulo: debe ? `${empresa.nombre} debe ${pesos(debe)}` : `${empresa.nombre} vencida`,
+        detalle: [
+          cuenta.diasDeAtraso
+            ? `${enDias(cuenta.diasDeAtraso)} de atraso`
+            : "Vence hoy",
+          cuenta.debeSuspenderse
+            ? "se suspende en la próxima revisión"
+            : cuenta.suspendeEl
+              ? `se suspende el ${diaAR(cuenta.suspendeEl, false)}`
+              : null,
+        ].filter(Boolean).join(" · "),
+        accion: "Cobrar",
+        href: `${ficha}?tab=plan`,
+        empresaIds: [empresa.id],
+        grave: true,
+        urgencia: -cuenta.diasDeAtraso,
+      });
+    } else if (
+      cuenta &&
+      (cuenta.estado === "PRUEBA" || cuenta.estado === "AL_DIA") &&
+      cuenta.diasParaVencer !== null &&
+      cuenta.diasParaVencer <= VENCE_PRONTO_DIAS &&
+      // Con el débito confirmado se cobra solo: no hay nada que hacer.
+      cuenta.debito?.estado !== "authorized"
+    ) {
+      const importe = cuenta.proximaFactura?.importe ?? cuenta.importePeriodo;
+      alertas.push({
+        id: `vence-pronto-${empresa.id}`,
+        tipo: "vence-pronto",
+        titulo: cuenta.estado === "PRUEBA"
+          ? `La prueba de ${empresa.nombre} termina ${cuandoVence(cuenta.diasParaVencer)}`
+          : `${empresa.nombre} vence ${cuandoVence(cuenta.diasParaVencer)}`,
+        detalle: [
+          importe ? `${cuenta.estado === "PRUEBA" ? "Primera factura" : "Factura"} ${pesos(importe)}` : null,
+          cuenta.debito?.estado === "paused" ? "débito pausado" : "sin débito automático",
+        ].filter(Boolean).join(" · "),
+        accion: "Ver",
+        href: `${ficha}?tab=plan`,
+        empresaIds: [empresa.id],
+        grave: false,
+        urgencia: cuenta.diasParaVencer,
+      });
+    } else if (cuenta?.debito?.estado === "paused" && cuenta.estado !== "BAJA" && cuenta.estado !== "BONIFICADA") {
+      alertas.push({
+        id: `debito-pausado-${empresa.id}`,
+        tipo: "debito-pausado",
+        titulo: `${empresa.nombre}: débito automático pausado`,
+        detalle: cuenta.proximoVencimiento
+          ? `La factura del ${diaAR(cuenta.proximoVencimiento, false)} no se va a cobrar sola`
+          : "Las próximas facturas no se van a cobrar solas",
+        accion: "Ver",
+        href: `${ficha}?tab=plan`,
+        empresaIds: [empresa.id],
+        grave: false,
+      });
+    }
 
     if (!empresa.playas.length) {
       alertas.push({
@@ -141,7 +234,9 @@ export function alertasDePlataforma(
     });
   }
 
-  return alertas.sort((a, b) => ORDEN[a.tipo] - ORDEN[b.tipo]);
+  return alertas.sort(
+    (a, b) => ORDEN[a.tipo] - ORDEN[b.tipo] || (a.urgencia ?? 0) - (b.urgencia ?? 0),
+  );
 }
 
 export function empresasConAlertas(alertas: Alerta[]) {
