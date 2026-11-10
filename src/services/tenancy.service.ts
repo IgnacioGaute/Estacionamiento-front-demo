@@ -8,6 +8,7 @@ import {
   PlayaResumen,
   ResumenEliminacion,
   ConsumoPatentes,
+  DatosEmpresa,
 } from "@/types/tenancy.type";
 
 import type { Modalidad } from "@/lib/modalidad";
@@ -47,6 +48,8 @@ export async function createEmpresa(
   nombre: string,
   // Días de prueba gratis desde hoy; sin esto la empresa queda sin plan ni vencimiento.
   diasPrueba?: number,
+  // CUIT, contacto y ciudad, si se cargaron en el alta.
+  datos: DatosEmpresa = {},
 ): Promise<EmpresaConDetalle> {
   const response = await fetch(`${BASE_URL}/tenancy/empresas`, {
     method: "POST",
@@ -54,7 +57,7 @@ export async function createEmpresa(
       ...(await getAuthHeaders()),
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ nombre, ...(diasPrueba ? { diasPrueba } : {}) }),
+    body: JSON.stringify({ ...datos, nombre, ...(diasPrueba ? { diasPrueba } : {}) }),
   });
   if (!response.ok)
     throw new Error(await leerError(response, "No se pudo crear la empresa."));
@@ -63,7 +66,7 @@ export async function createEmpresa(
 
 export async function updateEmpresa(
   id: string,
-  cambios: { nombre?: string; estado?: string; motivo?: string },
+  cambios: DatosEmpresa & { nombre?: string; estado?: string; motivo?: string },
 ): Promise<EmpresaConDetalle> {
   const response = await fetch(`${BASE_URL}/tenancy/empresas/${id}`, {
     method: "PATCH",
@@ -93,7 +96,7 @@ export async function deleteEmpresa(id: string): Promise<void> {
 
 export async function createPlaya(
   empresaId: string,
-  datos: { nombre: string; direccion?: string },
+  datos: { nombre: string; direccion?: string; capacidad?: number | null },
 ): Promise<PlayaResumen> {
   const response = await fetch(
     `${BASE_URL}/tenancy/empresas/${empresaId}/playas`,
@@ -180,7 +183,7 @@ export async function cambiarModalidad(playaId: string, modalidad: Modalidad): P
 }
 export const updatePlaya = (
   id: string,
-  datos: { nombre?: string; direccion?: string; modulos?: { inquilinos?: boolean } },
+  datos: { nombre?: string; direccion?: string; capacidad?: number | null; modulos?: { inquilinos?: boolean } },
 ) => modificar(`playas/${id}`, "PATCH", datos);
 export const saveUsuarioEmpresa = (
   empresaId: string,

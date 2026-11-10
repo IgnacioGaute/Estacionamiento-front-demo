@@ -16,10 +16,36 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  CondicionIva,
+  DatosEmpresa,
   EmpresaConDetalle,
   PlayaResumen,
   UsuarioDeEmpresa,
 } from "@/types/tenancy.type";
+import {
+  CONDICIONES_IVA,
+  PROVINCIAS,
+  cuitValido,
+  formatoCuit,
+  soloNumeros,
+} from "@/components/plataforma/datos-empresa";
+
+const SELECT = "h-10 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-50";
+
+// Lo que se manda: sin espacios de más, vacío es «sin cargar» (null) y el CUIT con los números solos.
+function datosLimpios(d: Record<keyof DatosEmpresa, string>): DatosEmpresa {
+  const texto = (v: string) => v.trim() || null;
+  return {
+    razonSocial: texto(d.razonSocial),
+    cuit: soloNumeros(d.cuit) || null,
+    condicionIva: (d.condicionIva || null) as CondicionIva | null,
+    contactoNombre: texto(d.contactoNombre),
+    contactoEmail: texto(d.contactoEmail),
+    contactoTelefono: texto(d.contactoTelefono),
+    ciudad: texto(d.ciudad),
+    provincia: texto(d.provincia),
+  };
+}
 import {
   asignarPlayasAction,
   createEmpresaAction,
@@ -55,6 +81,24 @@ export function EditorDialog({
   const [direccion, setDireccion] = useState(
     editor.tipo === "playa" ? (editor.playa?.direccion ?? "") : "",
   );
+  const [capacidad, setCapacidad] = useState(
+    editor.tipo === "playa" && editor.playa?.capacidad ? String(editor.playa.capacidad) : "",
+  );
+  const base = editor.tipo === "empresa" ? editor.empresa : undefined;
+  const [datos, setDatos] = useState<Record<keyof DatosEmpresa, string>>({
+    razonSocial: base?.razonSocial ?? "",
+    cuit: formatoCuit(base?.cuit),
+    condicionIva: base?.condicionIva ?? "",
+    contactoNombre: base?.contactoNombre ?? "",
+    contactoEmail: base?.contactoEmail ?? "",
+    contactoTelefono: base?.contactoTelefono ?? "",
+    ciudad: base?.ciudad ?? "",
+    provincia: base?.provincia ?? "",
+  });
+  const dato = (campo: keyof DatosEmpresa) => (valor: string) => setDatos((d) => ({ ...d, [campo]: valor }));
+  // El aviso del CUIT espera a que termine de escribirlo: marcarlo en rojo con el primer número asusta.
+  const [cuitTocado, setCuitTocado] = useState(false);
+  const cuitMal = !!datos.cuit.trim() && !cuitValido(soloNumeros(datos.cuit));
   const [firstName, setFirstName] = useState(usuario?.firstName ?? "");
   const [lastName, setLastName] = useState(usuario?.lastName ?? "");
   const [email, setEmail] = useState(usuario?.email ?? "");
@@ -78,25 +122,39 @@ export function EditorDialog({
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
     if (pending) return;
+    if (editor.tipo === "empresa" && cuitMal) {
+      setCuitTocado(true);
+      setError("Revisá el CUIT: los 11 números no coinciden con el dígito verificador.");
+      return;
+    }
     setPending(true);
     setError("");
     try {
       let r: { error?: string };
+      const lugares = capacidad.trim() ? Number(capacidad) : null;
       if (editor.tipo === "empresa")
         r = editor.empresa
           ? await updateEmpresaAction(editor.empresa.id, {
               nombre: nombre.trim(),
+              ...datosLimpios(datos),
             })
-          : await createEmpresaAction(nombre.trim(), conPrueba ? diasPrueba : undefined);
+          : await createEmpresaAction(
+              nombre.trim(),
+              conPrueba ? diasPrueba : undefined,
+              // En el alta solo viaja lo cargado.
+              Object.fromEntries(Object.entries(datosLimpios(datos)).filter(([, v]) => v !== null)),
+            );
       else if (editor.tipo === "playa")
         r = editor.playa
           ? await updatePlayaAction(editor.playa.id, {
               nombre: nombre.trim(),
               direccion: direccion.trim(),
+              capacidad: lugares,
             })
           : await createPlayaAction(editor.empresa.id, {
               nombre: nombre.trim(),
               direccion: direccion.trim(),
+              capacidad: lugares,
             });
       else if (editor.tipo === "accesos")
         r = await asignarPlayasAction(editor.usuario.id, playaIds);
@@ -145,6 +203,81 @@ export function EditorDialog({
         autoComplete={type === "password" ? "new-password" : "off"}
         disabled={pending}
       />
+    </div>
+  );
+  // CUIT, condición frente al IVA, contacto y lugar: lo que hace falta para cobrarle y escribirle.
+  const camposDatos = (
+    <div className="space-y-4">
+      {campo("razonSocial", "Razón social", datos.razonSocial, dato("razonSocial"), "text", false)}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="cuit">CUIT</Label>
+          <Input
+            id="cuit"
+            inputMode="numeric"
+            placeholder="30-71234567-1"
+            value={datos.cuit}
+            onChange={(e) => dato("cuit")(e.target.value)}
+            onBlur={() => setCuitTocado(true)}
+            aria-invalid={cuitTocado && cuitMal}
+            aria-describedby={cuitTocado && cuitMal ? "cuit-error" : undefined}
+            maxLength={13}
+            autoComplete="off"
+            disabled={pending}
+          />
+          {cuitTocado && cuitMal && (
+            <p id="cuit-error" className="text-xs text-destructive">
+              No coincide el dígito verificador: revisá los 11 números.
+            </p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="condicionIva">Condición frente al IVA</Label>
+          <select
+            id="condicionIva"
+            className={SELECT}
+            value={datos.condicionIva}
+            onChange={(e) => dato("condicionIva")(e.target.value)}
+            disabled={pending}
+          >
+            <option value="">Sin cargar</option>
+            {Object.entries(CONDICIONES_IVA).map(([id, label]) => (
+              <option key={id} value={id}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {campo("contactoNombre", "Persona de contacto", datos.contactoNombre, dato("contactoNombre"), "text", false)}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {campo("contactoEmail", "Email", datos.contactoEmail, dato("contactoEmail"), "email", false)}
+        {campo("contactoTelefono", "WhatsApp", datos.contactoTelefono, dato("contactoTelefono"), "tel", false)}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {campo("ciudad", "Ciudad", datos.ciudad, dato("ciudad"), "text", false)}
+        <div className="space-y-1.5">
+          <Label htmlFor="provincia">Provincia</Label>
+          <select
+            id="provincia"
+            className={SELECT}
+            value={datos.provincia}
+            onChange={(e) => dato("provincia")(e.target.value)}
+            disabled={pending}
+          >
+            <option value="">Sin cargar</option>
+            {/* Una provincia escrita a mano antes de la lista se conserva. */}
+            {datos.provincia && !PROVINCIAS.includes(datos.provincia) && (
+              <option value={datos.provincia}>{datos.provincia}</option>
+            )}
+            {PROVINCIAS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
     </div>
   );
   return (
@@ -198,6 +331,23 @@ export function EditorDialog({
               </p>
             </div>
           )}
+          {editor.tipo === "empresa" &&
+            (editor.empresa ? (
+              <fieldset className="space-y-4 border-t border-border pt-4">
+                <legend className="float-left mb-3 w-full text-sm font-semibold">
+                  Para cobrarle y contactarla
+                </legend>
+                {camposDatos}
+              </fieldset>
+            ) : (
+              // En el alta va plegado: lo único necesario es el nombre.
+              <details className="group rounded-lg border border-border p-3">
+                <summary className="cursor-pointer text-sm font-medium">
+                  CUIT y contacto (opcional)
+                </summary>
+                <div className="pt-4">{camposDatos}</div>
+              </details>
+            ))}
           {editor.tipo === "playa" &&
             campo(
               "direccion",
@@ -207,6 +357,27 @@ export function EditorDialog({
               "text",
               false,
             )}
+          {editor.tipo === "playa" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="capacidad">Capacidad (opcional)</Label>
+              <Input
+                id="capacidad"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={100000}
+                step={1}
+                placeholder="Ej.: 40"
+                value={capacidad}
+                onChange={(e) => setCapacidad(e.target.value)}
+                aria-describedby="capacidad-ayuda"
+                disabled={pending}
+              />
+              <p id="capacidad-ayuda" className="text-xs text-muted-foreground">
+                Cuántos vehículos entran a la vez. Con esto la ficha muestra la ocupación.
+              </p>
+            </div>
+          )}
           {editor.tipo === "usuario" && (
             <>
               <div className="grid gap-4 sm:grid-cols-2">

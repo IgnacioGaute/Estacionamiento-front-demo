@@ -24,6 +24,7 @@ import {
   cambiarModalidad,
 } from "@/services/tenancy.service";
 import type { Modalidad } from "@/lib/modalidad";
+import type { DatosEmpresa } from "@/types/tenancy.type";
 
 const mensaje = (error: unknown, porDefecto: string) =>
   error instanceof Error ? error.message : porDefecto;
@@ -36,9 +37,9 @@ export async function getEmpresasAction() {
   }
 }
 
-export async function createEmpresaAction(nombre: string, diasPrueba?: number) {
+export async function createEmpresaAction(nombre: string, diasPrueba?: number, datos: DatosEmpresa = {}) {
   try {
-    return { empresa: await createEmpresa(nombre, diasPrueba) };
+    return { empresa: await createEmpresa(nombre, diasPrueba, datos) };
   } catch (error) {
     return { error: mensaje(error, "No se pudo crear la empresa.") };
   }
@@ -46,7 +47,7 @@ export async function createEmpresaAction(nombre: string, diasPrueba?: number) {
 
 export async function updateEmpresaAction(
   id: string,
-  cambios: { nombre?: string; estado?: string; motivo?: string },
+  cambios: DatosEmpresa & { nombre?: string; estado?: string; motivo?: string },
 ) {
   try {
     return { empresa: await updateEmpresa(id, cambios) };
@@ -66,7 +67,7 @@ export async function deleteEmpresaAction(id: string) {
 
 export async function createPlayaAction(
   empresaId: string,
-  datos: { nombre: string; direccion?: string },
+  datos: { nombre: string; direccion?: string; capacidad?: number | null },
 ) {
   try {
     return { playa: await createPlaya(empresaId, datos) };
@@ -98,7 +99,7 @@ export async function asignarPlayasAction(
 
 export async function updatePlayaAction(
   id: string,
-  datos: { nombre?: string; direccion?: string; modulos?: { inquilinos?: boolean } },
+  datos: { nombre?: string; direccion?: string; capacidad?: number | null; modulos?: { inquilinos?: boolean } },
 ) {
   try {
     await updatePlaya(id, datos);

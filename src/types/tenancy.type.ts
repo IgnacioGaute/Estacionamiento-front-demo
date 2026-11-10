@@ -10,6 +10,23 @@ export type PlayaResumen = {
   modulos?: { inquilinos?: boolean };
   // Con cobro o gratuita (solo la cambia el super admin, con su propio diálogo).
   modalidad?: Modalidad;
+  // Cuántos vehículos entran a la vez. Sin cargar no se puede mostrar la ocupación.
+  capacidad?: number | null;
+};
+
+export type CondicionIva = 'RESPONSABLE_INSCRIPTO' | 'MONOTRIBUTO' | 'EXENTO' | 'CONSUMIDOR_FINAL';
+
+// Datos para cobrarle y contactarla. Opcionales: las empresas de antes no los tienen. El CUIT
+// viaja con los 11 números solos.
+export type DatosEmpresa = {
+  razonSocial?: string | null;
+  cuit?: string | null;
+  condicionIva?: CondicionIva | null;
+  contactoNombre?: string | null;
+  contactoEmail?: string | null;
+  contactoTelefono?: string | null;
+  ciudad?: string | null;
+  provincia?: string | null;
 };
 
 // Reconocimiento de patentes de una playa: su cuenta de Plate Recognizer. El token nunca llega
@@ -36,9 +53,12 @@ export type UsuarioDeEmpresa = {
   role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
   // A qué playas de su empresa tiene acceso. Vacío = todavía no se le asignó ninguna.
   playaIds: string[];
+  // La última vez que usó el sistema, con precisión de 10 minutos. Null: no entró desde que se
+  // empezó a registrar.
+  lastAccessAt?: string | null;
 };
 
-export type EmpresaConDetalle = {
+export type EmpresaConDetalle = DatosEmpresa & {
   id: string;
   nombre: string;
   estado: 'ACTIVA' | 'SUSPENDIDA' | 'BAJA';

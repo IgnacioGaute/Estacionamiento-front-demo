@@ -17,9 +17,13 @@ import {
   Check,
   CreditCard,
   Lock,
+  Mail,
   MapPin,
+  MessageCircle,
+  Navigation,
   Pencil,
   Plus,
+  Receipt,
   UserPlus,
   UserX,
   Users,
@@ -86,7 +90,14 @@ import { PatentesPlayas } from "./patentes-playas";
 import { CambioModalidad, ModalidadPlayaDialog } from "./modalidad-playa-dialog";
 import { esGratuita, NOMBRE_MODALIDAD } from "@/lib/modalidad";
 import { Segmento } from "@/components/ui/segmento";
-import { EstadoCuentaPill, MEDIOS_PAGO, diaAR, hoyAR, sufijoPeriodo, textoVencimiento } from "@/components/plataforma/cuenta";
+import { EstadoCuentaPill, MEDIOS_PAGO, cuentaDebe, diaAR, hoyAR, sufijoPeriodo, textoVencimiento } from "@/components/plataforma/cuenta";
+import {
+  CONDICIONES_IVA,
+  datosFaltantes,
+  enlaceWhatsApp,
+  formatoCuit,
+  lugarDe,
+} from "@/components/plataforma/datos-empresa";
 
 type Tab = "resumen" | "plan" | "playas" | "usuarios" | "actividad";
 const TABS: Tab[] = ["resumen", "plan", "playas", "usuarios", "actividad"];
@@ -130,6 +141,8 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
   const [cambiandoModulo, setCambiandoModulo] = useState<string | null>(null);
   // La modalidad (Con cobro / Gratuito) se cambia con su diálogo: revisa pendientes antes.
   const [cambioModalidad, setCambioModalidad] = useState<CambioModalidad | null>(null);
+  // «Registrar pago» del encabezado: lleva a la solapa Plan con el diálogo del pago abierto.
+  const [pedirPago, setPedirPago] = useState(false);
 
   const refrescar = useCallback(async () => {
     const [e, m, a, d, el] = await Promise.all([
@@ -236,6 +249,18 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
   const digitales = playas.filter((p) => p.m?.comprobantes?.whatsapp || p.m?.comprobantes?.qr);
 
   const cuenta = empresa.suscripcion ?? null;
+  const debe = cuentaDebe(cuenta);
+  function registrarPago() {
+    setPedirPago(true);
+    setTab("plan");
+  }
+  // Por qué se la suspendió a mano: el motivo de la última suspensión de la actividad.
+  const motivoSuspension = (() => {
+    const motivo = actividad.find((a) => a.accion === "EMPRESA_SUSPENDIDA")?.detalle?.motivo;
+    return typeof motivo === "string" && motivo !== "FALTA_DE_PAGO" ? motivo : null;
+  })();
+  const faltan = datosFaltantes(empresa);
+  const whatsapp = enlaceWhatsApp(empresa.contactoTelefono);
   const planDe = (playaId: string) => cuenta?.planes.find((l) => l.playaId === playaId) ?? null;
   const playasSinPlan = playas.filter((p) => !planDe(p.id));
 
@@ -411,12 +436,14 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                 <h1 className="break-words text-[22px] font-semibold leading-tight tracking-[-0.02em]">
                   {empresa.nombre}
                 </h1>
-                <EstadoEmpresa estado={empresa.estado} />
-                {/* Suspendida o de baja ya lo dice el estado de la empresa: no se repite. */}
-                {cuenta && empresa.estado === "ACTIVA" && (
+                {/* Un solo estado: el de la cuenta ya dice suspendida o de baja (sale de la empresa).
+                    Antes iban dos pastillas, «Activa» y «Vencida», que se leían como contradicción. */}
+                {cuenta ? (
                   <button type="button" onClick={() => setTab("plan")} title="Ver el plan">
                     <EstadoCuentaPill cuenta={cuenta} />
                   </button>
+                ) : (
+                  <EstadoEmpresa estado={empresa.estado} />
                 )}
                 {mp?.estado === "ACTIVA" && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7E86F0]/[0.14] px-2.5 py-1 text-xs font-bold text-[#A9AFFF]">
@@ -432,10 +459,21 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                 )}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-x-[18px] gap-y-1.5 text-[13px] text-muted-foreground">
+                {empresa.cuit && (
+                  <span className="font-mono text-[12.5px] tabular-nums" title={empresa.razonSocial ?? undefined}>
+                    CUIT {formatoCuit(empresa.cuit)}
+                  </span>
+                )}
                 <span className="flex items-center gap-[7px]">
                   <CalendarDays aria-hidden className="size-3.5" />
                   Alta {cuenta ? diaAR(cuenta.alta) : fechaCorta(empresa.createdAt)}
                 </span>
+                {lugarDe(empresa) && (
+                  <span className="flex items-center gap-[7px]">
+                    <Navigation aria-hidden className="size-3.5" />
+                    {lugarDe(empresa)}
+                  </span>
+                )}
                 <span className={`flex items-center gap-[7px] ${minutosUltima !== null && minutosUltima <= 15 ? "text-foreground" : ""}`}>
                   {minutosUltima !== null && minutosUltima <= 15 && <PuntoVivo className="size-[7px]" />}
                   {ultimaOperacion ? `Última operación ${haceCuanto(ultimaOperacion)}` : "Todavía sin operación"}
@@ -470,18 +508,29 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
               <MapPin className="size-[15px]" />
               Agregar playa
             </button>
-            <button type="button" className={botonPrimario} onClick={() => setEditor({ tipo: "usuario", empresa })}>
+            {/* Si debe, lo principal es cobrarle: el amarillo va ahí y no en agregar un usuario. */}
+            <button
+              type="button"
+              className={debe ? botonSecundario : botonPrimario}
+              onClick={() => setEditor({ tipo: "usuario", empresa })}
+            >
               <UserPlus className="size-[15px]" />
               Agregar usuario
             </button>
+            {debe && (
+              <button type="button" className={botonPrimario} onClick={registrarPago}>
+                <Receipt className="size-[15px]" />
+                Registrar pago
+              </button>
+            )}
           </div>
         </div>
       </section>
 
-      {/* La cuenta vencida o suspendida va arriba de todo: es lo primero que hay que resolver. */}
+      {/* La cuenta vencida o suspendida va arriba de todo: es lo primero que hay que resolver.
+          Sin role="alert": está desde que carga la página, no es un aviso que aparece. */}
       {cuenta && (cuenta.estado === "VENCIDA" || cuenta.estado === "SUSPENDIDA") && (
         <div
-          role="alert"
           className={`flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3 ${
             cuenta.estado === "SUSPENDIDA" ? "border-[#5A2A22] bg-[#1F1210]" : "border-[#5A4220] bg-[#1E170C]"
           }`}
@@ -492,9 +541,19 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
           />
           <p className="m-0 min-w-0 flex-[1_1_320px] text-[13px]">
             <span className="font-semibold">
-              {cuenta.estado === "SUSPENDIDA" ? "Cuenta suspendida." : "Cuenta vencida."}
+              {cuenta.estado === "SUSPENDIDA"
+                ? cuenta.motivoSuspension === "FALTA_DE_PAGO"
+                  ? "Suspendida por falta de pago."
+                  : "Suspendida a mano."
+                : "Cuenta vencida."}
+              {debe && cuenta.facturaPendiente ? ` Debe ${plata(cuenta.facturaPendiente.importe)}.` : ""}
             </span>{" "}
-            <span className="text-[#D2C3A6]">{textoVencimiento(cuenta)}</span>
+            <span className="text-[#D2C3A6]">
+              {cuenta.motivoSuspension === "MANUAL" && motivoSuspension
+                ? `Motivo: «${motivoSuspension}».`
+                : `${textoVencimiento(cuenta)}.`}
+              {cuenta.estado === "VENCIDA" && " Al suspenderse solo pueden registrar salidas y cerrar el turno."}
+            </span>
           </p>
           <button type="button" onClick={() => setTab("plan")} className="text-[13px] font-medium text-gm-yellow hover:text-[#FFD84D]">
             Ver plan y facturas
@@ -699,7 +758,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                             </div>
                           </div>
                           <EstadoPlaya conTarifas={p.m?.tieneTarifas !== false} />
-                          <span className="font-mono text-base font-medium">{p.m?.estadiasAbiertas ?? 0}</span>
+                          <Ocupacion adentro={p.m?.estadiasAbiertas ?? 0} capacidad={p.capacidad} />
                           <span className="font-mono text-base font-medium">{p.m?.turnosAbiertos ?? 0}</span>
                           <div className="flex items-center gap-2.5">
                             <div className="h-2 flex-1 rounded-full bg-[#221F1A]">
@@ -794,6 +853,73 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                   </dl>
                 </Tarjeta>
               )}
+              {/* A quién cobrarle y cómo escribirle, al lado de lo que debe. */}
+              <Tarjeta>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="m-0 text-[14px] font-semibold">Contacto y facturación</h2>
+                  <button
+                    type="button"
+                    onClick={() => setEditor({ tipo: "empresa", empresa })}
+                    className="text-[12.5px] font-medium text-gm-yellow hover:text-[#FFD84D]"
+                  >
+                    {faltan.length === 4 ? "Cargar" : "Editar"}
+                  </button>
+                </div>
+                <dl className="m-0 mt-3.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-[13px]">
+                  <dt className="text-muted-foreground">Razón social</dt>
+                  <dd className="m-0 truncate text-right">{empresa.razonSocial || <SinCargar />}</dd>
+                  <dt className="text-muted-foreground">CUIT</dt>
+                  <dd className={`m-0 text-right ${empresa.cuit ? "font-mono tabular-nums" : ""}`}>
+                    {empresa.cuit ? formatoCuit(empresa.cuit) : <SinCargar />}
+                  </dd>
+                  <dt className="text-muted-foreground">Condición IVA</dt>
+                  <dd className="m-0 text-right">
+                    {empresa.condicionIva ? CONDICIONES_IVA[empresa.condicionIva] : <SinCargar />}
+                  </dd>
+                  <dt className="text-muted-foreground">Contacto</dt>
+                  <dd className="m-0 truncate text-right">{empresa.contactoNombre || <SinCargar />}</dd>
+                  <dt className="text-muted-foreground">Email</dt>
+                  <dd className="m-0 truncate text-right">
+                    {empresa.contactoEmail ? (
+                      <a href={`mailto:${empresa.contactoEmail}`} className="underline-offset-2 hover:text-gm-yellow hover:underline">
+                        {empresa.contactoEmail}
+                      </a>
+                    ) : (
+                      <SinCargar />
+                    )}
+                  </dd>
+                  <dt className="text-muted-foreground">WhatsApp</dt>
+                  <dd className={`m-0 text-right ${empresa.contactoTelefono ? "font-mono tabular-nums" : ""}`}>
+                    {empresa.contactoTelefono || <SinCargar />}
+                  </dd>
+                </dl>
+                {(whatsapp || empresa.contactoEmail) && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {whatsapp && (
+                      <a
+                        href={whatsapp}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={`${botonSecundario} flex-1 justify-center`}
+                      >
+                        <MessageCircle aria-hidden className="size-[15px]" />
+                        Escribir por WhatsApp
+                      </a>
+                    )}
+                    {empresa.contactoEmail && (
+                      <a href={`mailto:${empresa.contactoEmail}`} className={`${botonSecundario} flex-1 justify-center`}>
+                        <Mail aria-hidden className="size-[15px]" />
+                        Mandar email
+                      </a>
+                    )}
+                  </div>
+                )}
+                {faltan.length > 0 && faltan.length < 4 && (
+                  <p className="mt-3 text-[12px]" style={{ color: EJE }}>
+                    Falta {faltan.join(", ")}.
+                  </p>
+                )}
+              </Tarjeta>
             <Tarjeta>
               <div className="flex items-center gap-3.5">
                 <div className="relative size-16 shrink-0">
@@ -986,7 +1112,9 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                       <span role="cell">
                         <EstadoPlaya conTarifas={p.m?.tieneTarifas !== false} />
                       </span>
-                      <span role="cell" className="font-semibold">{p.m?.estadiasAbiertas ?? 0}</span>
+                      <span role="cell">
+                        <Ocupacion adentro={p.m?.estadiasAbiertas ?? 0} capacidad={p.capacidad} />
+                      </span>
                       <span role="cell" className="font-semibold">{p.m?.turnosAbiertos ?? 0}</span>
                       <span role="cell" className="font-semibold">
                         {operadores.filter((u) => u.playaIds.includes(p.id)).length}
@@ -1121,15 +1249,16 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <div role="table" aria-label="Usuarios de la empresa" className="min-w-[900px]">
+              <div role="table" aria-label="Usuarios de la empresa" className="min-w-[1020px]">
                 <div
                   role="row"
-                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_290px] items-center gap-3 bg-[#12110E] px-5 text-[12px] font-medium"
+                  className="grid h-[42px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_120px_290px] items-center gap-3 bg-[#12110E] px-5 text-[12px] font-medium"
                   style={{ color: EJE }}
                 >
                   <span role="columnheader">Usuario</span>
                   <span role="columnheader">Rol</span>
                   <span role="columnheader">Playas</span>
+                  <span role="columnheader">Último acceso</span>
                   <span role="columnheader" className="sr-only">
                     Acciones
                   </span>
@@ -1141,7 +1270,7 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                     <div
                       key={u.id}
                       role="row"
-                      className="grid min-h-[62px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_290px] items-center gap-3 border-t border-[#211F1B] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#1B1915]"
+                      className="grid min-h-[62px] grid-cols-[minmax(0,1fr)_130px_minmax(0,1fr)_120px_290px] items-center gap-3 border-t border-[#211F1B] px-5 py-2 text-[13.5px] transition-colors hover:bg-[#1B1915]"
                     >
                       <span role="cell" className="flex min-w-0 items-center gap-3">
                         <span
@@ -1190,6 +1319,15 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
                           </span>
                         )}
                       </span>
+                      {/* Se registra desde noviembre de 2026: antes de su primer uso no hay dato. */}
+                      <span
+                        role="cell"
+                        className="text-[12.5px]"
+                        style={u.lastAccessAt ? undefined : { color: EJE }}
+                        title={u.lastAccessAt ? new Date(u.lastAccessAt).toLocaleString("es-AR") : undefined}
+                      >
+                        {u.lastAccessAt ? haceCuanto(u.lastAccessAt) : "Sin registro"}
+                      </span>
                       <span role="cell" className="flex justify-end gap-1.5">
                         <button
                           type="button"
@@ -1236,7 +1374,14 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
         </section>
       )}
 
-      {tab === "plan" && <PlanDeEmpresa empresa={empresa} alCambiar={() => void refrescar()} />}
+      {tab === "plan" && (
+        <PlanDeEmpresa
+          empresa={empresa}
+          alCambiar={() => void refrescar()}
+          abrirPago={pedirPago}
+          pagoAbierto={() => setPedirPago(false)}
+        />
+      )}
 
       {tab === "actividad" && <ActividadDeEmpresa actividad={actividad} desdeQue={visto} />}
 
@@ -1343,6 +1488,26 @@ export function EmpresaDetalle({ empresaId }: { empresaId: string }) {
         }}
       />
     </div>
+  );
+}
+
+function SinCargar() {
+  return <span style={{ color: EJE }}>Sin cargar</span>;
+}
+
+// Vehículos adentro, contra la capacidad cuando está cargada. Desde el 90 % se marca: la playa
+// está por llenarse.
+function Ocupacion({ adentro, capacidad }: { adentro: number; capacidad?: number | null }) {
+  const llena = !!capacidad && adentro / capacidad >= 0.9;
+  return (
+    <span
+      className="font-mono text-base font-medium tabular-nums"
+      style={llena ? { color: "#F0A43A" } : undefined}
+      title={capacidad ? `${adentro} de ${capacidad} lugares ocupados` : "Capacidad sin cargar"}
+    >
+      {adentro}
+      {capacidad ? <span className="text-[12px] font-normal" style={{ color: llena ? undefined : EJE }}>/{capacidad}</span> : null}
+    </span>
   );
 }
 

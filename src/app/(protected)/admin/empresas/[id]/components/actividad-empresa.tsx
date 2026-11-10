@@ -291,6 +291,16 @@ const CAMPOS: Record<string, string> = {
   aliasSaldo: "la comisión de las transferencias al alias",
   aliasDebito: "la comisión del alias con débito",
   aliasCredito: "la comisión del alias con crédito",
+  razonSocial: "la razón social",
+  cuit: "el CUIT",
+  condicionIva: "la condición frente al IVA",
+  contactoNombre: "el contacto",
+  contactoEmail: "el email de contacto",
+  contactoTelefono: "el WhatsApp de contacto",
+  ciudad: "la ciudad",
+  provincia: "la provincia",
+  capacidad: "la capacidad",
+  direccion: "la dirección",
 };
 
 // Los valores fijos del backend, dichos como se dicen en la pantalla de tarifas.

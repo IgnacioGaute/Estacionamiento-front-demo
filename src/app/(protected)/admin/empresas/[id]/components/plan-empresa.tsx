@@ -108,15 +108,26 @@ const enDias = (n: number) => (n === 1 ? "1 día" : `${n} días`);
 export function PlanDeEmpresa({
   empresa,
   alCambiar,
+  abrirPago = false,
+  pagoAbierto,
 }: {
   empresa: EmpresaConDetalle;
   alCambiar: () => void;
+  // «Registrar pago» del encabezado de la ficha: abre el diálogo apenas carga el plan.
+  abrirPago?: boolean;
+  pagoAbierto?: () => void;
 }) {
   const [detalle, setDetalle] = useState<DetalleSuscripcion | null>(null);
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoPago[]>([]);
   const [error, setError] = useState("");
   const [accion, setAccion] = useState<Accion | null>(null);
+
+  useEffect(() => {
+    if (!abrirPago || !detalle) return;
+    setAccion({ tipo: "pago" });
+    pagoAbierto?.();
+  }, [abrirPago, detalle, pagoAbierto]);
 
   const cargar = useCallback(async () => {
     const [d, p, pe] = await Promise.all([getSuscripcionAction(empresa.id), getPlanesAction(), getPeriodosAction()]);
