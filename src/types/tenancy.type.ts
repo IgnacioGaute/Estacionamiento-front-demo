@@ -12,6 +12,8 @@ export type PlayaResumen = {
   modalidad?: Modalidad;
   // Cuántos vehículos entran a la vez. Sin cargar no se puede mostrar la ocupación.
   capacidad?: number | null;
+  // Pico de vehículos a la vez en los últimos 30 días (solo en el listado del super admin).
+  pico30?: number;
 };
 
 export type CondicionIva = 'RESPONSABLE_INSCRIPTO' | 'MONOTRIBUTO' | 'EXENTO' | 'CONSUMIDOR_FINAL';

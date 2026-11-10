@@ -198,6 +198,22 @@ export type PagoPlataforma = {
   estado: 'PAGADA' | 'ANULADA';
 };
 
+// Una factura de cualquier empresa en la vista de cobros del mes. Vence el día que empieza su
+// período (`desde`); `diasDeAtraso` solo en las pendientes ya vencidas.
+export type FacturaDelMes = {
+  id: string;
+  empresaId: string;
+  empresa: string;
+  importe: number;
+  meses: number;
+  estado: 'PENDIENTE' | 'PAGADA' | 'ANULADA';
+  medio: MedioPagoSaas | null;
+  desde: string;
+  hasta: string;
+  pagadaEl: string | null;
+  diasDeAtraso: number;
+};
+
 // El QR para pagar el plan: lo que se muestra mientras se espera el pago.
 export type QrDelPlan = {
   ordenId: string;

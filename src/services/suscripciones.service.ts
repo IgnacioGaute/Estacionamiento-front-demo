@@ -9,6 +9,7 @@ import {
   MedioPagoSaas,
   MiPlan,
   PagoPlataforma,
+  FacturaDelMes,
   PeriodoPago,
   Plan,
 } from '@/types/suscripcion.type';
@@ -61,6 +62,13 @@ export const getPagosPlataforma = (desde: string, hasta: string) =>
   pedir<PagoPlataforma[]>(
     `/tenancy/suscripciones/pagos?desde=${desde}&hasta=${hasta}`,
     'No se pudieron cargar los pagos.',
+  );
+
+// Las facturas de todas las empresas que vencen en el mes («2026-10»).
+export const getFacturasDelMes = (mes: string) =>
+  pedir<FacturaDelMes[]>(
+    `/tenancy/suscripciones/facturas?mes=${mes}`,
+    'No se pudieron cargar las facturas del mes.',
   );
 
 export type ResultadoRevision = {

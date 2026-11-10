@@ -71,6 +71,7 @@ import {
   empresasConAlertas,
 } from "@/components/plataforma/alertas";
 import { Editor, EditorDialog } from "./editor-dialog";
+import { formatoCuit, soloNumeros } from "@/components/plataforma/datos-empresa";
 import {
   EstadoCuentaPill,
   cuentaConAlerta,
@@ -111,6 +112,9 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
         : "todas",
   );
   const [orden, setOrden] = useState<Orden>("cobrado");
+  // Filtros del lienzo: por plan y por período de pago. «todos» no filtra.
+  const [planFiltro, setPlanFiltro] = useState("todos");
+  const [periodoFiltro, setPeriodoFiltro] = useState("todos");
   const [pagina, setPagina] = useState(1);
   const [editor, setEditor] = useState<Editor | null>(null);
 
@@ -194,6 +198,11 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
       .pop() ?? null;
 
   const texto = busqueda.toLowerCase().trim();
+  // El CUIT se busca con o sin guiones: «30-7123» y «307123» encuentran lo mismo.
+  const textoCuit = soloNumeros(texto);
+  const planesDe = (e: EmpresaConDetalle) => (e.suscripcion?.planes ?? []).map((l) => l.plan);
+  const opcionesPlan = [...new Set(empresas.flatMap(planesDe))].sort();
+  const opcionesPeriodo = [...new Set(empresas.map((e) => e.suscripcion?.periodo.nombre).filter((p): p is string => !!p))];
   const filtradas = empresas
     .filter((e) =>
       filtro === "activas"
@@ -206,14 +215,21 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
               ? cuentaDebe(e.suscripcion)
               : true,
     )
+    .filter((e) => planFiltro === "todos" || planesDe(e).includes(planFiltro))
+    .filter((e) => periodoFiltro === "todos" || e.suscripcion?.periodo.nombre === periodoFiltro)
     .filter(
       (e) =>
         !texto ||
+        (textoCuit.length >= 3 && !!e.cuit?.includes(textoCuit)) ||
         [
           e.nombre,
+          e.razonSocial,
+          e.contactoNombre,
+          e.contactoEmail,
           ...e.playas.map((p) => p.nombre),
           ...e.usuarios.map((u) => `${u.firstName} ${u.lastName} ${u.email} ${u.username}`),
         ]
+          .filter(Boolean)
           .join(" ")
           .toLowerCase()
           .includes(texto),
@@ -509,7 +525,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
           <Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           <input
             aria-label="Filtrar empresas"
-            placeholder="Filtrar por empresa, playa o usuario"
+            placeholder="Empresa, CUIT, playa o usuario"
             value={busqueda}
             onChange={(e) => {
               setBusqueda(e.target.value);
@@ -536,6 +552,30 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
           />
         </div>
         <div className="flex-1" />
+        {opcionesPlan.length > 1 && (
+          <Selector
+            etiqueta="PLAN"
+            ariaLabel="Filtrar por plan"
+            valor={planFiltro}
+            opciones={[{ id: "todos", label: "Todos" }, ...opcionesPlan.map((p) => ({ id: p, label: p }))]}
+            onChange={(id) => {
+              setPlanFiltro(id);
+              setPagina(1);
+            }}
+          />
+        )}
+        {opcionesPeriodo.length > 1 && (
+          <Selector
+            etiqueta="PERÍODO"
+            ariaLabel="Filtrar por período de pago"
+            valor={periodoFiltro}
+            opciones={[{ id: "todos", label: "Todos" }, ...opcionesPeriodo.map((p) => ({ id: p, label: p }))]}
+            onChange={(id) => {
+              setPeriodoFiltro(id);
+              setPagina(1);
+            }}
+          />
+        )}
         <Selector
           etiqueta="ORDENAR"
           ariaLabel="Ordenar"
@@ -566,19 +606,21 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
 
       <section className="overflow-hidden rounded-xl border border-[#26231E] bg-[#161411]">
         <div className="overflow-x-auto">
-          <div role="table" aria-label="Empresas" className="min-w-[1290px]">
+          <div role="table" aria-label="Empresas" className="min-w-[1400px]">
             <div
               role="row"
-              className="grid h-11 grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center bg-[#12110E] pl-5 pr-4 text-[12px] font-medium"
+              className="grid h-11 grid-cols-[minmax(0,1fr)_150px_200px_90px_130px_104px_190px_132px_112px_48px] items-center bg-[#12110E] pl-5 pr-4 text-[12px] font-medium"
               style={{ color: EJE }}
             >
               <span role="columnheader">Empresa</span>
               <span role="columnheader">Estado</span>
               <span role="columnheader">Plan</span>
               <span role="columnheader">Playas</span>
+              <span role="columnheader" title="El máximo de vehículos a la vez en 30 días, contra el límite del plan">
+                Pico · 30 d
+              </span>
               <span role="columnheader">Usuarios</span>
               <span role="columnheader">Recaudado 30 d</span>
-              <span role="columnheader">Vs. anterior</span>
               <span role="columnheader">Última operación</span>
               <span role="columnheader">MercadoPago</span>
               <span role="columnheader" className="sr-only">
@@ -610,7 +652,7 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                   key={e.id}
                   role="row"
                   data-tour={i === 0 ? "empresas-ficha" : undefined}
-                  className="grid h-16 grid-cols-[minmax(0,1fr)_116px_210px_104px_112px_176px_100px_132px_112px_48px] items-center border-t border-[#211F1B] pl-5 pr-4 text-[13.5px] transition-colors hover:bg-[#1B1915]"
+                  className="grid h-16 grid-cols-[minmax(0,1fr)_150px_200px_90px_130px_104px_190px_132px_112px_48px] items-center border-t border-[#211F1B] pl-5 pr-4 text-[13.5px] transition-colors hover:bg-[#1B1915]"
                 >
                   <span role="cell" className="flex min-w-0 items-center gap-3">
                     <Avatar texto={iniciales(e.nombre)} fondo={colorAvatar(e.id)} />
@@ -624,13 +666,19 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                       >
                         {e.nombre}
                       </Link>
-                      <span className="text-xs" style={{ color: EJE }}>
-                        Alta {mesAnio(e.createdAt)}
+                      {/* Con CUIT se reconoce entre varias «Estacionamiento …»; sin él, el alta. */}
+                      <span className={e.cuit ? "font-mono text-[11.5px] tabular-nums" : "text-xs"} style={{ color: EJE }}>
+                        {e.cuit ? formatoCuit(e.cuit) : `Alta ${mesAnio(e.createdAt)}`}
                       </span>
                     </span>
                   </span>
                   <span role="cell" className="flex items-center gap-1.5">
-                    <EstadoEmpresa estado={e.estado} />
+                    {/* Un solo estado: el de la cuenta ya dice suspendida o de baja. */}
+                    {e.suscripcion ? (
+                      <EstadoCuentaPill cuenta={e.suscripcion} className="px-2 py-0.5 text-[11px]" />
+                    ) : (
+                      <EstadoEmpresa estado={e.estado} />
+                    )}
                     {alertasEmpresa.length > 0 && (
                       <span title={alertasEmpresa.map((a) => a.titulo).join("\n")} className="flex">
                         <AlertTriangle
@@ -654,12 +702,14 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                             <span className="font-normal text-muted-foreground"> · {corto(e.suscripcion.mensual)}</span>
                           )}
                         </span>
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <EstadoCuentaPill cuenta={e.suscripcion} className="px-2 py-0.5 text-[10.5px]" />
+                        {/* El período y cuándo es el próximo cobro: lo que el estado no dice. */}
+                        <span className="truncate text-[11.5px]" style={{ color: EJE }}>
+                          {e.suscripcion.periodo.nombre}
                           {e.suscripcion.proximoVencimiento &&
                             ["PRUEBA", "AL_DIA"].includes(e.suscripcion.estado) && (
-                              <span className="truncate text-[11px]" style={{ color: cuentaConAlerta(e.suscripcion) ? "#F2725B" : EJE }}>
-                                {e.suscripcion.estado === "PRUEBA" ? "factura" : "vence"} {diaAR(e.suscripcion.proximoVencimiento, false)}
+                              <span style={{ color: cuentaConAlerta(e.suscripcion) ? "#F2725B" : undefined }}>
+                                {" · "}
+                                {e.suscripcion.estado === "PRUEBA" ? "factura" : "cobra"} {diaAR(e.suscripcion.proximoVencimiento, false)}
                               </span>
                             )}
                         </span>
@@ -684,6 +734,9 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                       })}
                     </span>
                   </span>
+                  <span role="cell">
+                    <PicoDeUso empresa={e} />
+                  </span>
                   <span role="cell" className="flex flex-col gap-[3px]">
                     <span className="font-mono font-medium">{e.usuarios.length}</span>
                     <span className="text-[11.5px]" style={{ color: sinPlaya ? "#F2725B" : EJE }}>
@@ -692,8 +745,12 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                         : `${adminsEmpresa} admin · ${e.usuarios.length - adminsEmpresa} oper.`}
                     </span>
                   </span>
+                  {/* La variación va con su cifra: en columna aparte se leía suelta. */}
                   <span role="cell" className="flex items-center gap-3">
-                    <span className="w-[84px] font-mono text-[13px] font-medium tabular-nums">{corto(cobro?.cobrado ?? 0)}</span>
+                    <span className="flex w-[84px] flex-col gap-[3px]">
+                      <span className="font-mono text-[13px] font-medium tabular-nums">{corto(cobro?.cobrado ?? 0)}</span>
+                      <Variacion valor={cambio} decimales={0} />
+                    </span>
                     <Chispa
                       valores={tendencia}
                       ancho={64}
@@ -701,9 +758,6 @@ export function EmpresasPanel({ tour }: { tour?: ReactNode }) {
                       relleno={false}
                       color={cambio === null ? "#3A342B" : cambio >= 0 ? CREMA : "#F2725B"}
                     />
-                  </span>
-                  <span role="cell">
-                    <Variacion valor={cambio} decimales={0} />
                   </span>
                   <span
                     role="cell"
@@ -852,6 +906,45 @@ function BarraEstado({
         <span className="h-1.5 flex-1 bg-[#24221E]" />
       )}
     </div>
+  );
+}
+
+// El pico de vehículos a la vez en 30 días contra el límite del plan, de la playa más cargada.
+// Desde el 90 % se marca: está por necesitar un plan más grande. Sin límite (plan grande o sin
+// plan), solo el pico.
+function PicoDeUso({ empresa }: { empresa: EmpresaConDetalle }) {
+  if (!empresa.playas.length) return <span style={{ color: EJE }}>—</span>;
+  const lineas = empresa.suscripcion?.planes ?? [];
+  const playas = empresa.playas.map((p) => {
+    const limite = lineas.find((l) => l.playaId === p.id)?.maxActivos ?? null;
+    return { pico: p.pico30 ?? 0, limite, uso: limite ? (p.pico30 ?? 0) / limite : -1 };
+  });
+  const peor = playas.reduce((a, b) => (b.uso > a.uso || (b.uso === a.uso && b.pico > a.pico) ? b : a));
+  if (!peor.limite)
+    return (
+      <span className="text-[12.5px] text-[#C9BFB1]">
+        <span className="font-mono tabular-nums">{peor.pico}</span> <span style={{ color: EJE }}>a la vez</span>
+      </span>
+    );
+  const cerca = peor.uso >= 0.9;
+  return (
+    <span
+      className="flex flex-col gap-[5px]"
+      title={`${peor.pico} de ${peor.limite} vehículos a la vez${empresa.playas.length > 1 ? " (la playa más cargada)" : ""}`}
+    >
+      <span className="text-[12.5px]" style={{ color: cerca ? "#F0A43A" : "#C9BFB1" }}>
+        <span className="font-mono tabular-nums">{peor.pico}</span>
+        <span style={{ color: EJE }}>
+          {" "}de <span className="font-mono tabular-nums">{peor.limite}</span>
+        </span>
+      </span>
+      <span className="h-[5px] w-[96px] overflow-hidden rounded-full bg-[#221F1A]">
+        <span
+          className="block h-full rounded-full"
+          style={{ width: `${Math.min(100, Math.max(2, peor.uso * 100))}%`, background: cerca ? "#F0A43A" : CREMA }}
+        />
+      </span>
+    </span>
   );
 }
 

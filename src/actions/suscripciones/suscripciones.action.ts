@@ -23,6 +23,7 @@ import {
   crearCajaQrPlataformaConUbicacion,
   verificarPagos,
   getPagosPlataforma,
+  getFacturasDelMes,
   getPeriodos,
   getPlanes,
   getSuscripcion,
@@ -60,6 +61,9 @@ export const editarPeriodoAction = async (
 
 export const getPagosPlataformaAction = async (desde: string, hasta: string) =>
   intentar(() => getPagosPlataforma(desde, hasta), 'No se pudieron cargar los pagos.');
+
+export const getFacturasDelMesAction = async (mes: string) =>
+  intentar(() => getFacturasDelMes(mes), 'No se pudieron cargar las facturas del mes.');
 
 export const revisarVencimientosAction = async () =>
   intentar(revisarVencimientos, 'No se pudo revisar los vencimientos.');

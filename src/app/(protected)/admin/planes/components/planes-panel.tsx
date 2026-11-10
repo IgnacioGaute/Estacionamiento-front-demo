@@ -10,6 +10,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { RevisarVencimientos } from "./revisar-vencimientos";
+import { FacturasDelMes } from "./facturas-del-mes";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { EmpresaConDetalle } from "@/types/tenancy.type";
@@ -361,6 +362,14 @@ export function PlanesPanel() {
           </div>
         </div>
       </section>
+
+      <FacturasDelMes
+        mesActual={mesActual}
+        debito={{
+          activos: pagan.filter((c) => c.cuenta.debito?.estado === "authorized").length,
+          total: pagan.length,
+        }}
+      />
 
       <ListaDePrecios planes={planes} periodos={periodos} alGuardarPlanes={setPlanes} alGuardarPeriodos={setPeriodos} />
 
