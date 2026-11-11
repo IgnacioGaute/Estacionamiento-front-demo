@@ -182,6 +182,9 @@ test('buscar escaneando: además de las que coinciden muestra las patentes parec
   await waitFor(() => expect(getCloseSummaryAction).toHaveBeenCalledWith('par'));
   // Cobrar la parecida de lo que leyó el escáner es corregir la lectura.
   expect(marcarOrigenSalidaAction).toHaveBeenCalledWith('par', 'CORREGIDA');
+  // Elegirla abre «Corregir» con la patente escrita, para confirmarla antes de cobrar.
+  expect(await screen.findByLabelText('Patente')).toHaveValue('SO128AA');
+  expect(screen.getByRole('button', { name: 'Corregir' })).toBeEnabled();
 });
 
 test('anota cómo se abrió el cobro: el que lo abre lo indica; si no, es a mano', async () => {

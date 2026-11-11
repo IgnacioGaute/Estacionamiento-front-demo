@@ -13,12 +13,18 @@ import type { ResumenSalida } from '@/services/tickets.service';
 import { isBarcodeOrigin } from '@/utils/ticket-registration.utils';
 import { sanitizePlateInput } from '@/utils/plate.utils';
 
-export function EditarDatosEstadia({ summary, onCorregido }: { summary: Pick<ResumenSalida, 'registration'>; onCorregido: (summary: ResumenSalida) => void }) {
+export function EditarDatosEstadia({ summary, onCorregido, propuesta }: {
+  summary: Pick<ResumenSalida, 'registration'>;
+  onCorregido: (summary: ResumenSalida) => void;
+  // Se llegó eligiendo una patente parecida: abre ya con la patente escrita, para confirmarla.
+  propuesta?: string | null;
+}) {
   const r = summary.registration;
   const tarjeta = isBarcodeOrigin(r);
   const tipoActual = r.vehicleType ?? r.ticket?.vehicleType ?? 'AUTO';
-  const [abierto, setAbierto] = useState(false);
-  const [patente, setPatente] = useState('');
+  const proponer = !tarjeta && !!propuesta && sanitizePlateInput(propuesta) !== sanitizePlateInput(r.licensePlateOriginal ?? '');
+  const [abierto, setAbierto] = useState(proponer);
+  const [patente, setPatente] = useState(proponer ? propuesta! : '');
   const [tipo, setTipo] = useState(tipoActual);
   const [tipoValido, setTipoValido] = useState(true);
   const [enviando, setEnviando] = useState(false);
@@ -72,6 +78,12 @@ export function EditarDatosEstadia({ summary, onCorregido }: { summary: Pick<Res
           <label htmlFor="editar-patente" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Patente</label>
           <input id="editar-patente" value={patente} onChange={(e) => setPatente(e.target.value.toUpperCase())} disabled={enviando} autoComplete="off"
             className="gm-mono h-11 w-full rounded-xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 px-3 text-base font-bold uppercase outline-none transition-colors focus:border-gm-yellow" />
+          {proponer && (
+            <p className="text-xs leading-snug text-muted-foreground">
+              Entró como <span className="gm-mono font-semibold text-foreground">{r.licensePlateOriginal}</span>. Si es este auto,
+              corregí la patente; si no, cancelá y se cobra como está.
+            </p>
+          )}
         </div>
       )}
       <div className="space-y-1.5">
@@ -88,7 +100,7 @@ export function EditarDatosEstadia({ summary, onCorregido }: { summary: Pick<Res
         <button type="submit" disabled={!listo}
           className={cn('min-h-11 rounded-xl text-[13px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
             listo ? 'bg-gm-yellow text-gm-ink hover:bg-gm-yellow-deep' : 'bg-gm-surface-3 text-muted-foreground')}>
-          {enviando ? 'Guardando…' : 'Guardar'}
+          {enviando ? 'Guardando…' : proponer ? 'Corregir' : 'Guardar'}
         </button>
       </div>
     </form>

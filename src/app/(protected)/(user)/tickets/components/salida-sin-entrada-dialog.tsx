@@ -120,12 +120,15 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
   ];
   const hayParecidas = parecidas.length > 0;
   const patenteDe = (r: TicketRegistration) => r.licensePlateOriginal || 'Sin patente';
+  // Por defecto, la parecida sigue en la playa: es lo más común y lo que no borra nada. «No está»
+  // hay que elegirlo a propósito.
+  const respuestaDe = (id: string) => respuestas[id] ?? 'SIGUE';
   const responder = (id: string, respuesta: 'SIGUE' | 'NO_ESTA') => {
     setRespuestas((actual) => ({ ...actual, [id]: respuesta }));
     // Si vuelve a estar en la playa, no se borra.
     if (respuesta === 'SIGUE') setEliminar((actual) => actual.filter((x) => x !== id));
   };
-  const todasContestadas = parecidas.every((r) => respuestas[r.id]);
+  const todasContestadas = parecidas.every((r) => respuestaDe(r.id));
   const listo = !!plate && vehiculoValido && minutos !== null && !pending && candidatas !== null && todasContestadas;
 
   const confirmar = () => {
@@ -136,7 +139,7 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
       // cobros), no se sigue: lo ya eliminado queda en la Actividad.
       for (const id of eliminar) {
         const r = parecidas.find((p) => p.id === id);
-        if (!r || respuestas[id] !== 'NO_ESTA') continue;
+        if (!r || respuestaDe(id) !== 'NO_ESTA') continue;
         const borrada = await eliminarEstadiaAction(id);
         if (borrada.error) { setError(`${patenteDe(r)}: ${borrada.error}`); return; }
         toast.success(`Entrada de ${patenteDe(r)} eliminada.`);
@@ -189,7 +192,7 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
               </p>
               <ul className="space-y-1.5">
                 {parecidas.map((r) => {
-                  const respuesta = respuestas[r.id];
+                  const respuesta = respuestaDe(r.id);
                   return (
                     <li key={r.id} className="space-y-2 rounded-xl border border-gm-line-strong bg-gm-surface-2 p-2.5">
                       <div className="flex flex-wrap items-center gap-2.5">

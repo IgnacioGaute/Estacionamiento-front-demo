@@ -41,3 +41,26 @@ test('sin cambios no se puede guardar', async () => {
   await screen.findByRole('radio', { name: 'Auto' });
   expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
 });
+
+test('elegida desde una patente parecida: abre con la escrita y se confirma con «Corregir»', async () => {
+  jest.mocked(corregirDatosEstadiaAction).mockResolvedValue({ summary: summary() });
+  const onCorregido = jest.fn();
+  render(<EditarDatosEstadia summary={summary()} onCorregido={onCorregido} propuesta="AB123CB" />);
+  expect(screen.getByLabelText('Patente')).toHaveValue('AB123CB');
+  expect(screen.getByText(/Entró como/)).toHaveTextContent('AB123CD');
+  fireEvent.click(screen.getByRole('button', { name: 'Corregir' }));
+  await waitFor(() => expect(corregirDatosEstadiaAction).toHaveBeenCalledWith('reg', { licensePlate: 'AB123CB' }));
+  expect(onCorregido).toHaveBeenCalled();
+});
+
+test('cancelar la corrección propuesta deja la patente como entró', () => {
+  render(<EditarDatosEstadia summary={summary()} onCorregido={jest.fn()} propuesta="AB123CB" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+  expect(screen.getByRole('button', { name: /Corregir patente o tipo/ })).toBeInTheDocument();
+  expect(corregirDatosEstadiaAction).not.toHaveBeenCalled();
+});
+
+test('si la propuesta es igual a la patente de la entrada, no abre nada', () => {
+  render(<EditarDatosEstadia summary={summary()} onCorregido={jest.fn()} propuesta="AB123CD" />);
+  expect(screen.queryByLabelText('Patente')).not.toBeInTheDocument();
+});

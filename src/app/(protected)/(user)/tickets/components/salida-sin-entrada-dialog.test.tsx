@@ -59,7 +59,7 @@ test('en la última tarifa se suman las horas extra', async () => {
 
 const adentro = (id: string, plate: string) => ({ id, licensePlateOriginal: plate, parecida: true }) as never;
 
-test('por cada parecida se contesta si sigue en la playa; sin contestar todas no se registra y no se cobra ninguna', async () => {
+test('por cada parecida se contesta si sigue en la playa; por defecto sigue y no se cobra ninguna', async () => {
   jest.mocked(useCurrentRole).mockReturnValue('ADMIN' as never);
   jest.mocked(searchActiveRegistrationsAction).mockResolvedValue([adentro('hc', 'AD920HC'), adentro('hv', 'AD920HV')]);
   jest.mocked(eliminarEstadiaAction).mockResolvedValue({ ok: true });
@@ -68,9 +68,11 @@ test('por cada parecida se contesta si sigue en la playa; sin contestar todas no
   expect(await screen.findByText('Hay 2 patentes parecidas en la playa')).toBeInTheDocument();
   fireEvent.click(await screen.findByRole('radio', { name: /Hasta 1 hora/ }));
   const registrar = screen.getByRole('button', { name: /Registrar y cobrar/ });
-  // Una sigue y la otra no: hasta contestar las dos no se habilita.
-  fireEvent.click(within(screen.getByRole('radiogroup', { name: '¿AD920HC sigue en la playa?' })).getByRole('radio', { name: 'Sigue en la playa' }));
-  expect(registrar).toBeDisabled();
+  // Por defecto las dos siguen en la playa: se puede registrar sin tocar nada y no se borra ninguna.
+  for (const patente of ['AD920HC', 'AD920HV'])
+    expect(within(screen.getByRole('radiogroup', { name: `¿${patente} sigue en la playa?` })).getByRole('radio', { name: 'Sigue en la playa' })).toHaveAttribute('aria-checked', 'true');
+  await waitFor(() => expect(registrar).toBeEnabled());
+  expect(screen.queryByRole('checkbox', { name: /Eliminar la entrada/ })).not.toBeInTheDocument();
   fireEvent.click(within(screen.getByRole('radiogroup', { name: '¿AD920HV sigue en la playa?' })).getByRole('radio', { name: 'No está' }));
   // El borrado aparece solo para la que no está.
   expect(screen.getAllByRole('checkbox', { name: /Eliminar la entrada/ })).toHaveLength(1);

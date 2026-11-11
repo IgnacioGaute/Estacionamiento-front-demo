@@ -49,6 +49,7 @@ import { cuandoEntro, formatEstadia as formatElapsed } from '@/utils/estadia';
 import { CorregirEntrada, MINUTOS_PARA_PREGUNTAR } from './corregir-entrada';
 import { pagoParcialEfectivoAction } from '@/actions/tickets/pago-parcial.action';
 import { EditarDatosEstadia } from './editar-datos-estadia';
+import { sanitizePlateInput } from '@/utils/plate.utils';
 import { EliminarEstadia } from './eliminar-estadia';
 import { PlateCameraScanButton } from './plate-camera-scan-button';
 import { estadiasLargas, useConfirmadas } from './estadias-largas';
@@ -136,8 +137,11 @@ function ResumenEstadia({
   onCorregido,
   onEliminada,
   onSeFueAntes,
+  patentePropuesta,
 }: {
   summary: CloseSummary;
+  // Se eligió una patente parecida: «Corregir» abre con la que se escribió.
+  patentePropuesta?: string | null;
   // Solo cuando se puede corregir la entrada (no mientras se espera un QR o una transferencia).
   onCorregido?: (summary: ResumenSalida) => void;
   onEliminada?: () => void;
@@ -184,7 +188,7 @@ function ResumenEstadia({
             que se abre (formulario o confirmación) se marca con data-abierto y ocupa la fila: el resto
             se esconde por CSS, sin estado compartido que pueda quedar desfasado si uno se desmonta. */}
         <div className="mt-1 flex flex-wrap items-center justify-end gap-x-1 [&:has(>[data-abierto])>:not([data-abierto])]:hidden">
-          {onCorregido && <EditarDatosEstadia key={summary.registration.id} summary={summary} onCorregido={onCorregido} />}
+          {onCorregido && <EditarDatosEstadia key={summary.registration.id} summary={summary} onCorregido={onCorregido} propuesta={patentePropuesta} />}
           {onSeFueAntes && (
             <button type="button" onClick={onSeFueAntes} aria-label="Se fue antes: registrar la salida con la tarifa que le correspondía"
               className="group inline-flex h-11 shrink-0 items-center rounded-full focus-visible:outline-none">
@@ -256,9 +260,11 @@ function SalidaGratuita({
   onCorregido,
   onEliminada,
   onRegistrar,
+  patentePropuesta,
 }: {
   summary: SalidaGratuitaSummary;
   isPending: boolean;
+  patentePropuesta?: string | null;
   onCorregido: (summary: ResumenSalida) => void;
   onEliminada: () => void;
   onRegistrar: () => void;
@@ -287,7 +293,7 @@ function SalidaGratuita({
           <DatosClienteEstadia r={r} />
           <CorregirEntrada summary={summary} onCorregido={onCorregido} />
           <div className="mt-1 flex flex-wrap items-center justify-end gap-x-1 [&:has(>[data-abierto])>:not([data-abierto])]:hidden">
-            <EditarDatosEstadia key={r.id} summary={summary} onCorregido={onCorregido} />
+            <EditarDatosEstadia key={r.id} summary={summary} onCorregido={onCorregido} propuesta={patentePropuesta} />
             <EliminarEstadia summary={summary} onEliminada={onEliminada} />
           </div>
           <div className="my-3 h-px bg-border" />
@@ -341,6 +347,8 @@ export function CloseTicketPanel({
   const [query, setQuery] = useState('');
   // Lo buscado lo escribió el escáner de patentes: la estadía que se elija salió por escáner.
   const [busquedaEscaneada, setBusquedaEscaneada] = useState(false);
+  // La patente escrita cuando se eligió una parecida: se propone para corregir la de la entrada.
+  const [patentePropuesta, setPatentePropuesta] = useState<string | null>(null);
   const [results, setResults] = useState<TicketRegistration[]>([]);
   const { confirmada, confirmar } = useConfirmadas();
   const [summary, setSummary] = useState<CloseSummary | null>(null);
@@ -420,6 +428,7 @@ export function CloseTicketPanel({
     searchRequest.current++;
     setQuery('');
     setBusquedaEscaneada(false);
+    setPatentePropuesta(null);
     setResults([]);
     setSummary(null);
     setGratuita(null);
@@ -566,6 +575,10 @@ export function CloseTicketPanel({
   // el escáner, una parecida es una lectura corregida; buscada a mano, es a mano.
   const abrirEstadia = (r: TicketRegistration, desdeBusqueda = true) => {
     void marcarOrigenSalidaAction(r.id, desdeBusqueda && busquedaEscaneada ? (r.parecida ? 'CORREGIDA' : 'ESCANER') : 'MANUAL');
+    // Elegir una parecida es decir «es este auto, la entrada se cargó mal»: el cobro abre «Corregir»
+    // con la patente que se escribió, para confirmarla. Cancelando se cobra como estaba.
+    const buscada = sanitizePlateInput(query);
+    setPatentePropuesta(desdeBusqueda && r.parecida && buscada ? buscada : null);
     loadSummary(r.id);
   };
 
@@ -834,6 +847,7 @@ export function CloseTicketPanel({
             summary={gratuita}
             isPending={isPending}
             onCorregido={aplicarResumen}
+            patentePropuesta={patentePropuesta}
             onEliminada={() => { toast.success('Estadía eliminada'); onOpenChange(false); onSuccess?.(); }}
             onRegistrar={registrarSalidaGratuita}
           />
@@ -919,7 +933,7 @@ export function CloseTicketPanel({
                   <div className="min-w-0 space-y-0.5">
                     <p className="text-[14px] font-semibold text-gm-atencion">{parecidas.length === 1 ? 'Hay una patente parecida' : `Hay ${parecidas.length} patentes parecidas`}</p>
                     <p className="text-[13px] leading-snug text-gm-texto-2">
-                      Revisá si escribiste bien <span className="gm-mono font-semibold">{query.toUpperCase().replace(/[^A-Z0-9]/g, '')}</span> o si al entrar se cargó mal. Si es el mismo auto, tocalo para cobrarlo.
+                      Revisá si escribiste bien <span className="gm-mono font-semibold">{query.toUpperCase().replace(/[^A-Z0-9]/g, '')}</span> o si al entrar se cargó mal. Si es el mismo auto, tocalo: se abre para corregir la patente y cobrarlo.
                     </p>
                   </div>
                 </div>
@@ -962,6 +976,7 @@ export function CloseTicketPanel({
                   calculoAbierto={verCalculo}
                   onVerCalculo={() => setVerCalculo((v) => !v)}
                   onCorregido={enEspera || pagoConSalida ? undefined : aplicarResumen}
+                  patentePropuesta={patentePropuesta}
                   onEliminada={!enEspera && !pagoConSalida && !paymentMethod && !showDiscount ? () => {
                     toast.success('Estadía eliminada');
                     onOpenChange(false);
