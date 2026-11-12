@@ -2,7 +2,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { writeFileSync } from 'node:fs';
 import { CloseTicketPanel } from './close-ticket-panel';
-import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
+import { consultarSalidaAction, getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
+import { toast } from '@/lib/toast';
 import { discountRegistrationAction } from '@/actions/tickets/discount-registration.action';
 import { closeRegistrationAction } from '@/actions/tickets/close-registration.action';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
@@ -21,7 +22,7 @@ const mockRol = { actual: 'USER' as string | undefined };
 jest.mock('@/hooks/auth/use-current-role', () => ({ useCurrentRole: () => mockRol.actual }));
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn() }));
-jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn() }));
+jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn(), consultarSalidaAction: jest.fn() }));
 jest.mock('@/actions/tickets/discount-registration.action', () => ({ discountRegistrationAction: jest.fn() }));
 jest.mock('@/actions/tickets/corregir-entrada.action', () => ({ corregirEntradaAction: jest.fn() }));
 jest.mock('@/actions/tickets/corregir-datos.action', () => ({ corregirDatosEstadiaAction: jest.fn() }));
@@ -276,4 +277,71 @@ test('tarifa anterior: si pagó tarde, el descuento deja el precio del escalón 
   expect(screen.getByLabelText('Motivo del descuento')).toHaveValue('Se cobra la tarifa anterior (Hasta 1 hora): demoró en pagar');
   fireEvent.click(screen.getByRole('button', { name: /Aplicar descuento/ }));
   await waitFor(() => expect(discountRegistrationAction).toHaveBeenCalledWith('reg', { monto: 3500, total: true, motivo: 'Se cobra la tarifa anterior (Hasta 1 hora): demoró en pagar', expectedPrice: 7000, expectedCollected: 0 }));
+});
+
+// Un cobro cuya respuesta no llegó y el operador lo repite: la salida ya estaba registrada.
+async function cobrarPorTransferencia(props: { onOpenChange?: jest.Mock; onSalidaRegistrada?: jest.Mock } = {}) {
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={props.onOpenChange ?? jest.fn()} onSalidaRegistrada={props.onSalidaRegistrada} />);
+  const transferencia = await screen.findByRole('button', { name: /^Transferencia/ });
+  await waitFor(() => expect(transferencia).toBeEnabled());
+  fireEvent.click(transferencia);
+  fireEvent.click(screen.getByRole('button', { name: /Cobrar y registrar salida/ }));
+}
+
+test('si el servidor dice que la salida ya estaba registrada, no es un error: cierra y la saca de la lista', async () => {
+  jest.mocked(closeRegistrationAction).mockResolvedValue({ error: { code: 'ESTADIA_CERRADA', message: 'Esta estadía ya tiene la salida registrada.' } });
+  const onOpenChange = jest.fn();
+  const onSalidaRegistrada = jest.fn();
+  await cobrarPorTransferencia({ onOpenChange, onSalidaRegistrada });
+  await waitFor(() => expect(onSalidaRegistrada).toHaveBeenCalledWith('reg'));
+  expect(onOpenChange).toHaveBeenCalledWith(false);
+  expect(toast.success).toHaveBeenCalledWith('Esta salida ya estaba registrada. No se cobró de nuevo.');
+  expect(toast.error).not.toHaveBeenCalled();
+  expect(closeRegistrationAction).toHaveBeenCalledTimes(1);
+});
+
+test('cobro sin respuesta: consulta el estado y, si ya salió, lo da por registrado sin repetirlo', async () => {
+  jest.mocked(closeRegistrationAction).mockResolvedValue({ error: { code: 'SERVER_ERROR', message: 'Error inesperado en el servidor.' } });
+  jest.mocked(consultarSalidaAction).mockResolvedValue({ estado: 'cerrada' });
+  const onSalidaRegistrada = jest.fn();
+  await cobrarPorTransferencia({ onSalidaRegistrada });
+  await waitFor(() => expect(onSalidaRegistrada).toHaveBeenCalledWith('reg'));
+  expect(toast.success).toHaveBeenCalledWith('La salida quedó registrada. No hace falta cobrar de nuevo.');
+  expect(toast.error).not.toHaveBeenCalled();
+  expect(closeRegistrationAction).toHaveBeenCalledTimes(1);
+});
+
+test('cobro con error y la estadía sigue abierta: muestra el error real y el resumen actualizado', async () => {
+  jest.mocked(closeRegistrationAction).mockResolvedValue({ error: { code: 'PRECIO_CAMBIO', message: 'Cambió el importe. Revisalo antes de cobrar.' } });
+  jest.mocked(consultarSalidaAction).mockResolvedValue({ estado: 'abierta', resumen: summary(1500) });
+  const onSalidaRegistrada = jest.fn();
+  await cobrarPorTransferencia({ onSalidaRegistrada });
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Cambió el importe. Revisalo antes de cobrar.'));
+  expect(onSalidaRegistrada).not.toHaveBeenCalled();
+  expect(await screen.findAllByText(/1\.500/)).not.toHaveLength(0);
+});
+
+test('si no se puede saber si salió, lo dice sin afirmar que el cobro falló', async () => {
+  jest.mocked(closeRegistrationAction).mockResolvedValue({ error: { code: 'SERVER_ERROR', message: 'Error inesperado en el servidor.' } });
+  jest.mocked(consultarSalidaAction).mockResolvedValue({ estado: 'desconocido' });
+  await cobrarPorTransferencia();
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/^No pudimos confirmar si la salida se registró.*no se cobra dos veces/)));
+});
+
+test('cobro exitoso: avisa la salida para sacarla de la lista en el momento', async () => {
+  const onSalidaRegistrada = jest.fn();
+  await cobrarPorTransferencia({ onSalidaRegistrada });
+  await waitFor(() => expect(onSalidaRegistrada).toHaveBeenCalledWith('reg'));
+});
+
+test('abrir un vehículo que ya salió: lo informa y lo saca de la lista en vez de «No se pudo cargar»', async () => {
+  jest.mocked(getCloseSummaryAction).mockResolvedValue(null);
+  jest.mocked(consultarSalidaAction).mockResolvedValue({ estado: 'cerrada' });
+  const onOpenChange = jest.fn();
+  const onSalidaRegistrada = jest.fn();
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={onOpenChange} onSalidaRegistrada={onSalidaRegistrada} />);
+  await waitFor(() => expect(onSalidaRegistrada).toHaveBeenCalledWith('reg'));
+  expect(toast.success).toHaveBeenCalledWith('Este vehículo ya tiene la salida registrada.');
+  expect(onOpenChange).toHaveBeenCalledWith(false);
+  expect(toast.error).not.toHaveBeenCalled();
 });

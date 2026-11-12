@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CloseTicketPanel } from './close-ticket-panel';
-import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
+import { consultarSalidaAction, getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
 import { closeRegistrationAction } from '@/actions/tickets/close-registration.action';
 import { registrarSalidaGratuitaAction } from '@/actions/tickets/registrar-salida-gratuita.action';
 import { toast } from '@/lib/toast';
@@ -15,7 +15,7 @@ jest.mock('./turno-bar', () => ({ TurnoBar: () => null }));
 jest.mock('@/hooks/auth/use-current-role', () => ({ useCurrentRole: () => 'USER' }));
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn().mockResolvedValue([]) }));
-jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn() }));
+jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn(), consultarSalidaAction: jest.fn() }));
 jest.mock('@/actions/tickets/registrar-salida-gratuita.action', () => ({ registrarSalidaGratuitaAction: jest.fn() }));
 jest.mock('@/actions/tickets/origen-salida.action', () => ({ marcarOrigenSalidaAction: jest.fn() }));
 jest.mock('@/actions/tickets/discount-registration.action', () => ({ discountRegistrationAction: jest.fn() }));
@@ -75,10 +75,12 @@ test('una estadía gratuita sale sin importes, medios de pago ni descuentos', as
 
 test('si la salida falla se avisa y se vuelve a cargar la estadía, sin cerrar', async () => {
   jest.mocked(registrarSalidaGratuitaAction).mockResolvedValue({ error: 'Esta estadía ingresó con cobro: registrá la salida desde Cobrar salida.', code: 'ESTADIA_CON_COBRO' });
+  jest.mocked(consultarSalidaAction).mockResolvedValue({ estado: 'abierta', resumen: gratuita() });
   const onOpenChange = jest.fn();
   render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={onOpenChange} />);
   fireEvent.click(await screen.findByRole('button', { name: /Registrar salida/ }));
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('ingresó con cobro')));
-  expect(getCloseSummaryAction).toHaveBeenCalledTimes(2);
+  // Antes de decir nada se mira el estado real: sigue abierta, así que el error es real.
+  expect(consultarSalidaAction).toHaveBeenCalledWith('reg');
   expect(onOpenChange).not.toHaveBeenCalledWith(false);
 });

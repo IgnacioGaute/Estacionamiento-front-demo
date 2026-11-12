@@ -514,6 +514,28 @@ export type CloseSummary = {
 export type SalidaGratuitaSummary = { registration: TicketRegistration; modalidad: 'GRATUITO'; elapsedMinutes: number };
 export type ResumenSalida = CloseSummary | SalidaGratuitaSummary;
 
+export type EstadoSalida = { estado: 'abierta'; resumen: ResumenSalida } | { estado: 'cerrada' } | { estado: 'desconocido' };
+
+/**
+ * Como getCloseSummary, pero distingue una estadía que ya salió (`ESTADIA_CERRADA`) de una consulta
+ * que falló. Después de un cobro con error o sin respuesta es lo que decide si la salida quedó
+ * registrada (no se cobra de nuevo) o si todavía hay que cobrarla.
+ */
+export const consultarSalida = async (id: string): Promise<EstadoSalida> => {
+  try {
+    const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/close-summary`, {
+      cache: 'no-store',
+      headers: await getAuthHeaders(),
+    });
+    const data = await response.json().catch(() => null);
+    if (response.ok && data) return { estado: 'abierta', resumen: data as ResumenSalida };
+    if (data?.code === 'ESTADIA_CERRADA') return { estado: 'cerrada' };
+    return { estado: 'desconocido' };
+  } catch {
+    return { estado: 'desconocido' };
+  }
+};
+
 export const getCloseSummary = async (id: string, authToken?: string) => {
   try {
     const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/close-summary`, {

@@ -26,7 +26,7 @@ import { toast } from '@/lib/toast';
 import { AlertTriangle, Barcode, ChevronDown, ChevronRight, BadgePercent, CircleX, LogOut, Timer, Wallet } from 'lucide-react';
 import { OrigenRegistro, TicketRegistration } from '@/types/ticket-registration.type';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
-import { getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
+import { consultarSalidaAction, getCloseSummaryAction } from '@/actions/tickets/get-close-summary.action';
 import { closeRegistrationAction } from '@/actions/tickets/close-registration.action';
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import { CobroMercadoPago } from '@/types/mercadopago.type';
@@ -320,6 +320,7 @@ export function CloseTicketPanel({
   open,
   onOpenChange,
   onSuccess,
+  onSalidaRegistrada,
   initialRegistrationId,
   barcodeTicketsEnabled = true,
   onAdvance,
@@ -327,6 +328,9 @@ export function CloseTicketPanel({
   origen,
 }: {
   open: boolean;
+  // La salida de esa estadía quedó registrada (este cobro, uno cuya respuesta se perdió u otro
+  // equipo): la lista la saca enseguida, sin esperar la actualización ni el aviso en vivo.
+  onSalidaRegistrada?: (registrationId: string) => void;
   barcodeTicketsEnabled?: boolean;
   // Registrar un anticipo o avisar la duración en vez de cobrar ahora: cierra el cobro y lo abre el
   // que usa el panel (el inicio, con su diálogo de anticipos).
@@ -402,6 +406,7 @@ export function CloseTicketPanel({
     if (!pago) return;
     setPagoConSalida(null);
     setReceiptId(pago.registrationId);
+    onSalidaRegistrada?.(pago.registrationId);
     onOpenChange(false);
     onSuccess?.();
   };
@@ -507,9 +512,7 @@ export function CloseTicketPanel({
     startTransition(async () => {
       const r = await pagoParcialEfectivoAction(id, { importe: efectivo, expectedPrice: summary.previewBracket.price, expectedCollected: summary.totalCollectedSoFar });
       if (r.error || !r.summary) {
-        toast.error(r.error ?? 'No se pudo cobrar el efectivo.');
-        const refreshed = await getCloseSummaryAction(id);
-        if (refreshed) aplicarResumen(refreshed);
+        await resolverTrasError(id, r.error ?? 'No se pudo cobrar el efectivo.');
         return;
       }
       setSummary(r.summary);
@@ -550,6 +553,40 @@ export function CloseTicketPanel({
     setEfectivoHibrido('');
   }, [summary?.saldoACobrar]);
 
+  // La salida ya está registrada: se cierra el cobro y el vehículo sale de la lista. Nunca se
+  // presenta como un error, que lleva a cobrar otra vez.
+  const salidaYaRegistrada = (id: string, mensaje = 'Esta salida ya estaba registrada. No se cobró de nuevo.') => {
+    toast.success(mensaje);
+    onSalidaRegistrada?.(id);
+    onOpenChange(false);
+    onSuccess?.();
+  };
+
+  const estadoDeSalida = async (id: string) => {
+    try {
+      return (await consultarSalidaAction(id)) ?? { estado: 'desconocido' as const };
+    } catch {
+      return { estado: 'desconocido' as const };
+    }
+  };
+
+  // Después de un cobro o una salida con error (o sin respuesta) se mira el estado real antes de
+  // decir nada: si ya salió, se cobró (la respuesta se perdió) y no hay que repetirlo; si sigue
+  // abierta, el error es real y se muestra con el resumen actualizado.
+  const resolverTrasError = async (id: string, mensaje: string) => {
+    const estado = await estadoDeSalida(id);
+    if (estado.estado === 'cerrada') {
+      salidaYaRegistrada(id, 'La salida quedó registrada. No hace falta cobrar de nuevo.');
+      return;
+    }
+    if (estado.estado === 'abierta') {
+      toast.error(mensaje);
+      aplicarResumen(estado.resumen);
+      return;
+    }
+    toast.error('No pudimos confirmar si la salida se registró. Revisá la conexión y probá de nuevo: si ya se había registrado, no se cobra dos veces.');
+  };
+
   const loadSummary = (id: string) => {
     const request = ++summaryRequest.current;
     startTransition(async () => {
@@ -557,7 +594,11 @@ export function CloseTicketPanel({
       if (request !== summaryRequest.current) return;
       setAbriendoDirecto(false);
       if (!data) {
-        toast.error('No se pudo cargar la estadía.');
+        // Puede ser un vehículo que ya salió y la lista todavía no se enteró.
+        const estado = await estadoDeSalida(id);
+        if (request !== summaryRequest.current) return;
+        if (estado.estado === 'cerrada') salidaYaRegistrada(id, 'Este vehículo ya tiene la salida registrada.');
+        else toast.error('No se pudo cargar la estadía.');
         return;
       }
       aplicarResumen(data);
@@ -603,9 +644,7 @@ export function CloseTicketPanel({
       const result = await discountRegistrationAction(summary.registration.id, { monto: discount, total: true,
         motivo: discountReason, expectedPrice: summary.previewBracket.price, expectedCollected: summary.totalCollectedSoFar });
       if (result.error || !result.summary) {
-        toast.error(result.error ?? 'No se pudo aplicar el descuento.');
-        const refreshed = await getCloseSummaryAction(summary.registration.id);
-        if (refreshed) aplicarResumen(refreshed);
+        await resolverTrasError(summary.registration.id, result.error ?? 'No se pudo aplicar el descuento.');
         return;
       }
       setSummary(result.summary);
@@ -625,15 +664,20 @@ export function CloseTicketPanel({
         metodo,
         pagos,
       });
+      const id = summary.registration.id;
       if (!data || 'error' in data) {
-        const errorMessage = typeof data?.error === 'string' ? data.error : data?.error?.message;
-        toast.error(errorMessage ?? 'Error desconocido');
-        const refreshed = await getCloseSummaryAction(summary.registration.id);
-        if (refreshed) aplicarResumen(refreshed);
         setPaymentMethod(null);
+        const error = data && typeof data.error === 'object' ? data.error : null;
+        if (error?.code === 'ESTADIA_CERRADA') {
+          salidaYaRegistrada(id);
+          return;
+        }
+        const errorMessage = typeof data?.error === 'string' ? data.error : data?.error?.message;
+        await resolverTrasError(id, errorMessage ?? 'Error desconocido');
       } else {
         toast.success('Salida registrada exitosamente');
         if (data.registrationId) setReceiptId(data.registrationId);
+        onSalidaRegistrada?.(data.registrationId ?? id);
         onOpenChange(false);
         onSuccess?.();
       }
@@ -648,14 +692,12 @@ export function CloseTicketPanel({
     startTransition(async () => {
       const r = await registrarSalidaGratuitaAction(id);
       if (r.error) {
-        toast.error(r.error);
-        const refreshed = await getCloseSummaryAction(id);
-        if (refreshed) aplicarResumen(refreshed);
-        else { onOpenChange(false); onSuccess?.(); }
+        await resolverTrasError(id, r.error);
         return;
       }
       toast.success('Salida registrada');
       setReceiptId(id);
+      onSalidaRegistrada?.(id);
       onOpenChange(false);
       onSuccess?.();
     });
@@ -1227,7 +1269,7 @@ export function CloseTicketPanel({
       registration={summary?.registration ?? null}
       open={seFueAntesAbierto}
       onOpenChange={setSeFueAntesAbierto}
-      onRegistrada={() => { onOpenChange(false); onSuccess?.(); }}
+      onRegistrada={() => { if (summary) onSalidaRegistrada?.(summary.registration.id); onOpenChange(false); onSuccess?.(); }}
     />
     <ParkingReceiptDelivery registrationId={receiptId} kind="EXIT" onDismiss={() => setReceiptId(null)} />
     </>

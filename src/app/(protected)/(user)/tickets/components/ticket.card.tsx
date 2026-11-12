@@ -42,7 +42,7 @@ import { useResincronizar } from "@/hooks/use-resincronizar";
 import { useForegroundPoll } from '@/hooks/use-foreground-poll';
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { tramoDe } from "@/utils/estadia";
-import { isBarcodeOrigin, isOverdue, mergeServerSnapshot, minutesSinceEntry, upsertRegistration } from "@/utils/ticket-registration.utils";
+import { isBarcodeOrigin, isOverdue, marcarSalidaLocal, mergeServerSnapshot, minutesSinceEntry, upsertRegistration } from "@/utils/ticket-registration.utils";
 import { estadiaLargaActiva as isDayRegistrationActive, estadiaLargaVencida as isDayRegistrationOverdue } from "@/utils/estadia-larga";
 import { AvisoEstadiasLargas, EncabezadoVista, estaAdentro, estadiasLargas, FichasEnElPlayon, HORAS_ESTADIA_LARGA, InicioHero, MostradorDock, normalizar, TodosLosVehiculos, VehiculoFila, type FiltroVehiculos } from "./inicio";
 import { useConfirmadas } from "./estadias-largas";
@@ -815,6 +815,7 @@ export default function CardTicket({
           if (!open) setClosePanelTargetId(null);
         }}
         onSuccess={() => router.refresh()}
+        onSalidaRegistrada={(id) => setRegistrations((prev) => marcarSalidaLocal(prev, id))}
         onSalidaSinEntrada={(plate, parecida, escaneada) => { setClosePanelOpen(false); setClosePanelTargetId(null); setParecidaSinEntrada(parecida ?? null); setOrigenSinEntrada(escaneada ? 'ESCANER' : 'MANUAL'); setSalidaSinEntrada(plate); }}
       />
 

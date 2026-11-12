@@ -7,7 +7,7 @@ import { disponibilidadAliasAction } from '@/actions/mercadopago/verificacion-al
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 
 jest.mock('@/actions/tickets/salida-anterior.action', () => ({ opcionesSalidaAnteriorAction: jest.fn(), registrarSalidaAnteriorAction: jest.fn() }));
-jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn() }));
+jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummaryAction: jest.fn(), consultarSalidaAction: jest.fn() }));
 jest.mock('@/actions/tickets/pago-parcial.action', () => ({ pagoParcialEfectivoAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/mercadopago.action', () => ({ crearCobroMercadoPagoAction: jest.fn(), consultarCobroMercadoPagoAction: jest.fn(), cancelarCobroMercadoPagoAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/verificacion-alias.action', () => ({

@@ -52,6 +52,22 @@ export function upsertRegistration(
   return next;
 }
 
+// El servidor confirmó la salida (o dijo que ya estaba registrada): se marca acá en el momento,
+// sin esperar el aviso en vivo ni la actualización, que pueden no llegar con mala señal. Lleva un
+// `updatedAt` apenas más nuevo que el que tenía, así cualquier versión real del servidor la
+// reemplaza (con la hora exacta de salida), pero una foto vieja no la vuelve a poner adentro.
+export function marcarSalidaLocal(list: TicketRegistration[], id: string, ahora = new Date()): TicketRegistration[] {
+  return list.map((r) => {
+    if (r.id !== id || r.departureTime || r.departureDay) return r;
+    return {
+      ...r,
+      departureDay: dayjs(ahora).tz(TZ).format('YYYY-MM-DD'),
+      departureTime: dayjs(ahora).tz(TZ).format('HH:mm:ss'),
+      updatedAt: new Date(new Date(r.updatedAt).getTime() + 1),
+    };
+  });
+}
+
 // Junta la lista que acaba de traer el servidor con la local. El servidor devuelve los vehículos
 // adentro más el último movimiento de la playa, así que manda sobre quién está adentro: un
 // vehículo que acá figura adentro y allá no, salió o se eliminó mientras se perdían avisos. De lo
