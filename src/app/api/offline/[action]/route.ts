@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { getAuthHeaders } from '@/lib/auth';
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 export const dynamic = 'force-dynamic';
 export async function POST(request: Request, context: { params: Promise<{ action: string }> }) {
   const session = await auth();

@@ -25,7 +25,11 @@ jest.mock('@/actions/tickets/get-close-summary.action', () => ({ getCloseSummary
 jest.mock('@/actions/tickets/discount-registration.action', () => ({ discountRegistrationAction: jest.fn() }));
 jest.mock('@/actions/tickets/corregir-entrada.action', () => ({ corregirEntradaAction: jest.fn() }));
 jest.mock('@/actions/tickets/corregir-datos.action', () => ({ corregirDatosEstadiaAction: jest.fn() }));
-jest.mock('@/actions/tickets/vehicle-types.action', () => ({ getVehicleTypesAction: jest.fn().mockResolvedValue([]) }));
+jest.mock('@/actions/tickets/vehicle-types.action', () => {
+  // La interfaz usa cargarTiposDeVehiculoAction ({ tipos } o { error, fallo }); se arma sobre el mock de siempre.
+  const getVehicleTypesAction = jest.fn().mockResolvedValue([]);
+  return { getVehicleTypesAction, cargarTiposDeVehiculoAction: () => getVehicleTypesAction().then((tipos: unknown) => ({ tipos }), () => ({ error: 'No pudimos cargar los tipos de vehículo.', fallo: { categoria: 'servidor', transitorio: true, reintentarEnMs: null } })) };
+});
 jest.mock('@/actions/tickets/close-registration.action', () => ({ closeRegistrationAction: jest.fn() }));
 jest.mock('@/actions/tickets/registrar-salida-gratuita.action', () => ({ registrarSalidaGratuitaAction: jest.fn() }));
 jest.mock('@/actions/tickets/origen-salida.action', () => ({ marcarOrigenSalidaAction: jest.fn() }));

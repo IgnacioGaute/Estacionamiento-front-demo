@@ -7,7 +7,11 @@ import type { CloseSummary } from '@/services/tickets.service';
 
 jest.mock('next/navigation', () => ({ usePathname: () => '/tickets' }));
 jest.mock('@/actions/tickets/corregir-datos.action', () => ({ corregirDatosEstadiaAction: jest.fn() }));
-jest.mock('@/actions/tickets/vehicle-types.action', () => ({ getVehicleTypesAction: jest.fn() }));
+jest.mock('@/actions/tickets/vehicle-types.action', () => {
+  // La interfaz usa cargarTiposDeVehiculoAction ({ tipos } o { error, fallo }); se arma sobre el mock de siempre.
+  const getVehicleTypesAction = jest.fn();
+  return { getVehicleTypesAction, cargarTiposDeVehiculoAction: () => getVehicleTypesAction().then((tipos: unknown) => ({ tipos }), () => ({ error: 'No pudimos cargar los tipos de vehículo.', fallo: { categoria: 'servidor', transitorio: true, reintentarEnMs: null } })) };
+});
 const summary = (vehicleType = 'AUTO', price = 1000) => ({ registration: { id: 'reg', vehicleType, entryMode: 'PLATE', licensePlateOriginal: 'AB123CD' }, previewBracket: { price } } as unknown as CloseSummary);
 beforeEach(() => {
   jest.clearAllMocks();

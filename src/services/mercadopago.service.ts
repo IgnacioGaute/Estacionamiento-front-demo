@@ -1,5 +1,6 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
+import { leerRespuesta } from '@/lib/fallos-backend';
 import {
   CajaConUbicacion,
   CajasQr,
@@ -122,11 +123,8 @@ export async function consultarCobroMercadoPago(
     headers: await getAuthHeaders(),
     cache: 'no-store',
   });
-  if (!response.ok)
-    throw new Error(
-      await leerError(response, 'No se pudo consultar el estado del pago.'),
-    );
-  return response.json();
+  // Con categoría: la pantalla del QR distingue «no se pudo consultar» de un rechazo.
+  return leerRespuesta<CobroMercadoPago>(response, 'GET /mercadopago/cobros/:id', 'No se pudo consultar el estado del pago.');
 }
 
 export async function cancelarCobroMercadoPago(
@@ -137,9 +135,7 @@ export async function cancelarCobroMercadoPago(
     headers: await getAuthHeaders(),
     cache: 'no-store',
   });
-  if (!response.ok)
-    throw new Error(await leerError(response, 'No se pudo cancelar el cobro.'));
-  return response.json();
+  return leerRespuesta<CobroMercadoPago>(response, 'DELETE /mercadopago/cobros/:id', 'No se pudo cancelar el cobro.');
 }
 
 export async function desconectarMercadoPago(): Promise<EstadoMercadoPago> {

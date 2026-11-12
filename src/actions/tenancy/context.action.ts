@@ -6,6 +6,7 @@ import { revalidateTag } from "next/cache";
 import { PLATFORM_SELECTION } from '@/lib/access-scope';
 import type { SituacionCuenta } from "@/types/suscripcion.type";
 import type { Modalidad } from "@/lib/modalidad";
+import { FalloBackend, leerRespuesta, registrarFallo } from "@/lib/fallos-backend";
 export type OperationalContext = {
   role?: "USER" | "ADMIN" | "SUPER_ADMIN";
   empresa: { id: string; nombre: string } | null;
@@ -26,9 +27,14 @@ export type OperationalContext = {
   // Estado de la cuenta con la plataforma (prueba, vencida, suspendida), para los avisos.
   cuenta?: SituacionCuenta | null;
 };
+// Lanza FalloBackend con la categoría: autenticacion (401, la cuenta ya no vale), permiso (403,
+// sin empresa activa) o una transitoria (red, timeout, 429, 5xx, respuesta inválida). Una
+// consulta fallida nunca se devuelve como una lista vacía: eso diría «sin asignación».
 export async function getOperationalContext(): Promise<OperationalContext> {
   const session = await auth();
-  if (!session?.token) throw new Error("Iniciá sesión para continuar.");
+  if (!session?.token) throw new FalloBackend("Iniciá sesión para continuar.", { categoria: "autenticacion" });
+  if (session.validacionPendiente)
+    throw new FalloBackend("No pudimos validar tu sesión.", { categoria: "transporte" });
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}/tenant/context`,
     {
@@ -36,15 +42,22 @@ export async function getOperationalContext(): Promise<OperationalContext> {
       cache: "no-store",
     },
   );
-  if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.message || "No se pudo cargar tu empresa.");
+  const context = await leerRespuesta<OperationalContext>(response, "GET /tenant/context", "No pudimos cargar tu empresa y tus playas.");
+  if (!context || !Array.isArray(context.playas)) {
+    registrarFallo({ operacion: "GET /tenant/context", categoria: "respuesta-invalida", estado: response.status });
+    throw new FalloBackend("No pudimos cargar tu empresa y tus playas.", { categoria: "respuesta-invalida" });
   }
-  return response.json();
+  return context;
 }
 export async function selectPlayaAction(playaId: string) {
   const session = await auth();
-  const context = await getOperationalContext();
+  let context: OperationalContext;
+  try {
+    context = await getOperationalContext();
+  } catch {
+    // Sin el contexto no se puede validar la elección: no se guarda nada.
+    return { error: "No pudimos comprobar tus playas. Revisá la conexión y probá de nuevo." };
+  }
   if (context.role === "USER")
     return { error: "La playa la asigna el administrador." };
   if (!context.playas.some((p) => p.id === playaId))
@@ -81,6 +94,7 @@ export async function operatorPlayaAction(
 }> {
   const session = await auth();
   if (!session?.token) return { error: "Iniciá sesión para continuar." };
+  if (session.validacionPendiente) return { error: "No pudimos validar tu sesión. Reintentá en unos segundos." };
   try {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/tenant/operators/${encodeURIComponent(userId)}/playa`,
@@ -106,7 +120,7 @@ export async function operatorPlayaAction(
 
 export async function operatorAssignmentsAction(): Promise<Record<string, { id: string; nombre: string } | null> | null> {
   const session = await auth();
-  if (!session?.token) return null;
+  if (!session?.token || session.validacionPendiente) return null;
   try {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tenant/operators/assignments`, {
       headers: { Authorization: `Bearer ${session.token}` },

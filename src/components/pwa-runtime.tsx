@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { setInstallPrompt, type InstallPrompt } from '@/lib/pwa-install';
 import { WifiOff } from 'lucide-react';
-import { VERSION_APP, recargarUnaVez } from '@/lib/version-app';
+import { VERSION_APP, esDeOtraVersion, recargarUnaVez } from '@/lib/version-app';
+import { avisarVersionNueva } from '@/lib/aviso-version';
 
 export function PwaRuntime() {
   const [offline, setOffline] = useState(false);
@@ -33,12 +34,19 @@ export function PwaRuntime() {
     // cada 5 minutos. Ahí sí se cuida no cortar un trabajo: solo recarga si no hay un diálogo
     // abierto ni un campo en uso; si no, espera a la consulta siguiente.
     let ultimaConsulta = 0;
+    // Con un diálogo abierto (un cobro esperando la transferencia, una entrada a medio cargar) o un
+    // campo en uso, nunca se recarga sola: se avisa y la persona elige cuándo.
     const trabajando = () => {
       const activo = document.activeElement;
       return !!document.querySelector('[role="dialog"], [role="alertdialog"]')
         || activo instanceof HTMLInputElement || activo instanceof HTMLTextAreaElement || activo instanceof HTMLSelectElement;
     };
-    const revisarVersion = async (cuidarTrabajo: boolean) => {
+    const versionNueva = (accionRechazada: boolean) => {
+      // Sin nada a medio hacer, recarga sola (una vez por minuto como mucho: sin bucles).
+      if (!accionRechazada && !trabajando() && recargarUnaVez()) return;
+      avisarVersionNueva(accionRechazada);
+    };
+    const revisarVersion = async () => {
       if (document.visibilityState !== 'visible' || !navigator.onLine) return;
       if (Date.now() - ultimaConsulta < 60_000) return;
       ultimaConsulta = Date.now();
@@ -46,13 +54,28 @@ export function PwaRuntime() {
         const respuesta = await fetch('/api/version', { cache: 'no-store' });
         if (!respuesta.ok) return;
         const { version } = (await respuesta.json()) as { version?: string };
-        if (version && version !== VERSION_APP && !(cuidarTrabajo && trabajando())) recargarUnaVez();
+        if (version && version !== VERSION_APP) versionNueva(false);
       } catch {
         // Sin respuesta no se sabe nada: se sigue con la página como está.
       }
     };
-    const alVolver = () => void revisarVersion(false);
-    const periodica = window.setInterval(() => void revisarVersion(true), 5 * 60_000);
+    const alVolver = () => void revisarVersion();
+    const periodica = window.setInterval(() => void revisarVersion(), 5 * 60_000);
+    // Una acción de servidor de otra versión: Next contesta con este encabezado y la acción NO se
+    // ejecutó. Muchos formularios atrapan el error y muestran un aviso genérico («No se pudo
+    // guardar»), así que nunca llega a la pantalla de error: se detecta acá, para todos.
+    const fetchOriginal = window.fetch;
+    // Con bind: fetch llamado sin `this` falla en algunos navegadores (Illegal invocation).
+    const llamar = fetchOriginal.bind(window);
+    const fetchObservado: typeof window.fetch = async (...args) => {
+      const respuesta = await llamar(...args);
+      if (respuesta.headers.get('x-nextjs-action-not-found') === '1') versionNueva(true);
+      return respuesta;
+    };
+    window.fetch = fetchObservado;
+    // Un módulo de la versión anterior que ya no existe, pedido desde un manejador (no un render).
+    const rechazoSinAtender = (event: PromiseRejectionEvent) => { if (esDeOtraVersion(event.reason)) versionNueva(true); };
+    window.addEventListener('unhandledrejection', rechazoSinAtender);
     document.addEventListener('visibilitychange', alVolver);
     window.addEventListener('pageshow', alVolver);
     window.addEventListener('online', alVolver);
@@ -61,7 +84,7 @@ export function PwaRuntime() {
         // Preparation checks registration separately and reports failure to the user.
       });
     }
-    return () => { window.clearInterval(periodica); document.removeEventListener('visibilitychange', alVolver); window.removeEventListener('pageshow', alVolver); window.removeEventListener('online', alVolver); window.removeEventListener('online', update); window.removeEventListener('offline', update); window.removeEventListener('beforeinstallprompt', install); window.removeEventListener('appinstalled', installed); };
+    return () => { if (window.fetch === fetchObservado) window.fetch = fetchOriginal; window.removeEventListener('unhandledrejection', rechazoSinAtender); window.clearInterval(periodica); document.removeEventListener('visibilitychange', alVolver); window.removeEventListener('pageshow', alVolver); window.removeEventListener('online', alVolver); window.removeEventListener('online', update); window.removeEventListener('offline', update); window.removeEventListener('beforeinstallprompt', install); window.removeEventListener('appinstalled', installed); };
   }, []);
   if (!offline) return null;
   // Sin red es la salida principal: en el color de aviso y con 44 px para el pulgar. Antes era una

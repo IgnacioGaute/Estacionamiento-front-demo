@@ -73,6 +73,41 @@ sockets necesitan la URL pública. Sin `API_INTERNAL_URL`, las consultas siguen 
 pública. El cambio de destino conserva autorización y playa, fuerza `no-store` y no agrega
 reintentos automáticos a escrituras ni consultas de sesión.
 
+### Fallos del backend: diagnóstico y recuperación
+
+`tenantFetch` agrega `X-Request-Id` a cada pedido del servidor a la API (el backend lo devuelve y lo
+registra en sus 5xx), corta las lecturas a los 20 s y registra con `[fallo-backend]` los fallos de
+transporte, timeout, 429, 5xx, 401 y 403: operación con ruta sanitizada, estado, duración, versión,
+`x-request-id`, `x-railway-request-id`, `retry-after` y `content-type`. Nunca cabeceras de
+autorización, cookies ni cuerpos. El mismo fallo se registra una vez por minuto con la cantidad de
+repeticiones. `leerRespuesta` (src/lib/fallos-backend.ts) lee respuestas sin suponer JSON y lanza
+`FalloBackend` con la categoría: transitorias (`transporte`, `tiempo`, `limite`, `servidor`,
+`respuesta-invalida`) frente a `autenticacion`, `permiso` y `negocio`.
+
+Sesión: si la consulta de la cuenta falla por red, timeout, 429, 5xx o respuesta inválida, el
+callback `jwt` conserva el token marcado `validacionPendiente` (NextAuth borra la cookie si el
+callback devuelve null o lanza). Esa sesión no habilita operar: `getAuthHeaders` y el contexto
+operativo la rechazan y `(protected)/layout` muestra «No pudimos validar tu sesión» con reintento.
+La firma y el vencimiento del token se verifican antes de consultar la red; un 401/403/404 o un
+cambio de `authVersion` cierran la sesión. Pasadas 12 horas sin poder validarla, también.
+
+### Despliegue en Railway
+
+Front: Build Command `pnpm build`; Start Command `pnpm exec next start --hostname 0.0.0.0`
+(`pnpm start` también arranca sin volver a compilar). Healthcheck Path `/api/salud`.
+Back: Healthcheck Path `/salud` (responde 503 si la base no contesta). No poner
+`/api/salud?backend=1` como healthcheck del front: un backend caído impediría desplegarlo.
+
+Después de cada despliegue, la prueba de humo (solo lecturas, nunca registra operaciones):
+
+```
+HUMO_FRONT=https://<front> HUMO_API=https://<back> HUMO_VERSION=<sha> node scripts/humo-despliegue.mjs
+```
+
+Con `HUMO_USUARIO`/`HUMO_CLAVE` de una cuenta de operador o administrador de playa (y
+`HUMO_PLAYA_ID` si tiene varias) también prueba autenticación, empresa y playas y la apertura de
+Tickets. Las credenciales se pasan por variables de entorno, nunca en el repositorio.
+
 ### Tooling
 
 `.agents/skills/react-doctor/` (mirrored in `.kiro/`) documents `npx react-doctor`; `.github/workflows/

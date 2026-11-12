@@ -27,13 +27,30 @@ test('el rechazo de credenciales sigue devolviendo null', async () => {
 
 test('un error de red en login no se presenta como contraseña incorrecta', async () => {
   const error = new TypeError('fetch failed');
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
   mockFetch.mockRejectedValue(error);
-  await expect(loginUser({ identifier: 'test-user', password: 'password-test' }, 'test-internal')).rejects.toBe(error);
+  // Rechaza (no devuelve null = credenciales incorrectas). Con la URL de la API configurada,
+  // tenantFetch lo envuelve en un FalloBackend de transporte (ver tenant-fetch.test.ts).
+  await expect(loginUser({ identifier: 'test-user', password: 'password-test' }, 'test-internal')).rejects.toThrow();
 });
 
-test.each([401, 404, 429, 502])('una cuenta que no se puede validar no habilita sesión (%s)', async status => {
+test.each([401, 403, 404])('una cuenta rechazada por el backend (%s) devuelve null: la sesión se cierra', async status => {
   mockFetch.mockResolvedValue(new Response('error', { status }));
   expect(await getUserById('test-user', 'test-internal')).toBeNull();
+});
+
+// Una falla transitoria lanza: el callback jwt la distingue de una cuenta revocada y no habilita
+// la sesión, pero tampoco la destruye (ver auth.test.ts).
+test.each([429, 502, 503])('una cuenta que no se puede validar por un %s lanza en vez de parecer revocada', async status => {
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  mockFetch.mockResolvedValue(new Response('rate limited', { status }));
+  await expect(getUserById('test-user', 'test-internal')).rejects.toBeInstanceOf(AuthBackendError);
+});
+
+test('sin conexión la validación de la cuenta lanza', async () => {
+  jest.spyOn(console, 'warn').mockImplementation(() => {});
+  mockFetch.mockRejectedValue(new TypeError('fetch failed'));
+  await expect(getUserById('test-user', 'test-internal')).rejects.toThrow();
 });
 
 test('login y sesión conservan el usuario devuelto por el backend', async () => {

@@ -15,7 +15,11 @@ const tenant = { playaId: 'playa', cobroHabilitado: true };
 jest.mock('@/components/tenant-provider', () => ({ useTenant: () => tenant }));
 jest.mock('@/components/parking-receipt-delivery', () => ({ ParkingReceiptDelivery: () => null }));
 jest.mock('@/actions/tickets/get-frequent-customers.action', () => ({ getFrequentCustomersAction: jest.fn() }));
-jest.mock('@/actions/tickets/vehicle-types.action', () => ({ getVehicleTypesAction: jest.fn() }));
+jest.mock('@/actions/tickets/vehicle-types.action', () => {
+  // La interfaz usa cargarTiposDeVehiculoAction ({ tipos } o { error, fallo }); se arma sobre el mock de siempre.
+  const getVehicleTypesAction = jest.fn();
+  return { getVehicleTypesAction, cargarTiposDeVehiculoAction: () => getVehicleTypesAction().then((tipos: unknown) => ({ tipos }), () => ({ error: 'No pudimos cargar los tipos de vehículo.', fallo: { categoria: 'servidor', transitorio: true, reintentarEnMs: null } })) };
+});
 jest.mock('@/actions/tickets/create-registration-by-plate.action', () => ({ createRegistrationByPlateAction: jest.fn() }));
 jest.mock('@/services/scanner.service', () => ({ startScanner: jest.fn() }));
 jest.mock('@/actions/tickets/detect-vehicle-type.action', () => ({ detectVehicleTypeAction: jest.fn() }));

@@ -1,4 +1,5 @@
 'use server';
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { newPasswordSchema, NewPasswordSchemaType } from '@/schemas/auth/new-password.schema';
 
 export async function newPasswordAction(values: NewPasswordSchemaType, token: string | null) {

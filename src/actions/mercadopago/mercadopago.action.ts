@@ -15,7 +15,8 @@ import {
   getProvinciasQr,
   iniciarConexionMercadoPago,
 } from '@/services/mercadopago.service';
-import type { DireccionCaja } from '@/types/mercadopago.type';
+import type { CobroMercadoPago, DireccionCaja } from '@/types/mercadopago.type';
+import { mensajeDeFallo, serializarFallo, type FalloSerializado } from '@/lib/fallos-backend';
 
 const mensaje = (error: unknown, porDefecto: string) =>
   error instanceof Error ? error.message : porDefecto;
@@ -66,21 +67,24 @@ export async function crearCobroMercadoPagoAction(
   }
 }
 
-export async function consultarCobroMercadoPagoAction(id: string) {
+type ResultadoCobro = { cobro: CobroMercadoPago; error?: undefined; fallo?: undefined } | { cobro?: undefined; error: string; fallo?: FalloSerializado };
+
+export async function consultarCobroMercadoPagoAction(id: string): Promise<ResultadoCobro> {
   try {
     return { cobro: await consultarCobroMercadoPago(id) };
   } catch (error) {
     return {
-      error: mensaje(error, 'No se pudo consultar el estado del pago.'),
+      error: mensajeDeFallo(error, 'No se pudo consultar el estado del pago.'),
+      fallo: serializarFallo(error),
     };
   }
 }
 
-export async function cancelarCobroMercadoPagoAction(id: string) {
+export async function cancelarCobroMercadoPagoAction(id: string): Promise<ResultadoCobro> {
   try {
     return { cobro: await cancelarCobroMercadoPago(id) };
   } catch (error) {
-    return { error: mensaje(error, 'No se pudo cancelar el cobro.') };
+    return { error: mensajeDeFallo(error, 'No se pudo cancelar el cobro.'), fallo: serializarFallo(error) };
   }
 }
 

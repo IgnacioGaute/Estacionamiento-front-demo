@@ -13,7 +13,11 @@ jest.mock('@/actions/tickets/create-registration-by-plate.action', () => ({ crea
 jest.mock('@/actions/tickets/corregir-entrada.action', () => ({ corregirEntradaAction: jest.fn() }));
 jest.mock('@/actions/tickets/eliminar-estadia.action', () => ({ eliminarEstadiaAction: jest.fn() }));
 jest.mock('@/actions/tickets/salida-anterior.action', () => ({ tarifasSinEntradaAction: jest.fn() }));
-jest.mock('@/actions/tickets/vehicle-types.action', () => ({ getVehicleTypesAction: jest.fn() }));
+jest.mock('@/actions/tickets/vehicle-types.action', () => {
+  // La interfaz usa cargarTiposDeVehiculoAction ({ tipos } o { error, fallo }); se arma sobre el mock de siempre.
+  const getVehicleTypesAction = jest.fn();
+  return { getVehicleTypesAction, cargarTiposDeVehiculoAction: () => getVehicleTypesAction().then((tipos: unknown) => ({ tipos }), () => ({ error: 'No pudimos cargar los tipos de vehículo.', fallo: { categoria: 'servidor', transitorio: true, reintentarEnMs: null } })) };
+});
 jest.mock('@/hooks/auth/use-current-role', () => ({ useCurrentRole: jest.fn() }));
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn() }));
 jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));

@@ -6,7 +6,7 @@
     "test:agents": "node --test .claude/hooks/config.test.cjs .claude/hooks/project-hooks.test.cjs",
     "dev": "next dev",
     "build": "next build",
-    "start": "next build && next start",
+    "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit --incremental false",
     "test": "jest",

@@ -1,4 +1,5 @@
 import type { User } from '@/types/user.type';
+import { registrarFallo } from './fallos-backend';
 
 export class AuthBackendError extends Error {
   constructor(readonly details: Record<string, string | number | null>) {
@@ -24,8 +25,12 @@ export async function readAuthResponse(response: Response, operation: 'login' | 
   try {
     data = await response.json();
   } catch {
+    data = null as unknown as User;
+  }
+  if (!data || typeof data.id !== 'string' || !data.id) {
+    // Un 200 que no es la cuenta (página del proxy, JSON ajeno): tenantFetch no lo ve, se registra acá.
+    registrarFallo({ operacion: `auth ${operation}`, categoria: 'respuesta-invalida', estado: response.status, contentType: details.contentType, railwayRequestId: details.requestId });
     throw new AuthBackendError(details);
   }
-  if (!data || typeof data.id !== 'string' || !data.id) throw new AuthBackendError(details);
   return data;
 }

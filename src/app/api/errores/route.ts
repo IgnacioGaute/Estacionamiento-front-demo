@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { auth } from '@/auth';
+import { esDeOtraVersion } from '@/lib/version-app';
 
 // Los errores que llegan a la pantalla «La aplicación tuvo un error». En el celular la consola
 // del navegador no se ve, así que la propia pantalla los manda acá y quedan en los logs del
@@ -11,6 +12,7 @@ import { auth } from '@/auth';
 export const dynamic = 'force-dynamic';
 
 const texto = (valor: unknown, max: number) => (typeof valor === 'string' ? valor.slice(0, max) : undefined);
+const recientes = new Map<string, number>();
 
 export async function POST(request: Request) {
   let datos: Record<string, unknown> = {};
@@ -19,16 +21,26 @@ export async function POST(request: Request) {
   } catch {
     return new NextResponse(null, { status: 204 });
   }
+  const nombre = texto(datos.nombre, 100);
+  const mensaje = texto(datos.mensaje, 1000);
+  const ruta = texto(datos.ruta, 300);
+  // El mismo error repetido (una pantalla que se reintenta) queda una vez por minuto.
+  const clave = `${nombre}|${mensaje?.slice(0, 120)}|${ruta}`;
+  if (Date.now() - (recientes.get(clave) ?? 0) < 60_000) return new NextResponse(null, { status: 204 });
+  if (recientes.size > 200) recientes.clear();
+  recientes.set(clave, Date.now());
   const session = await auth().catch(() => null);
   const playa = (await cookies()).get('parking-playa')?.value?.split(':')[1];
   console.error(
     '[error-cliente]',
     JSON.stringify({
       cuando: new Date().toISOString(),
-      usuario: session?.user?.email ?? null,
+      // El id alcanza para correlacionar; el email es un dato personal que no hace falta acá.
+      usuario: session?.user?.id ?? null,
       rol: session?.user?.role ?? null,
       playa: playa ?? null,
-      ruta: texto(datos.ruta, 300),
+      categoria: datos.categoria === 'version' ? 'version' : esDeOtraVersion(`${nombre} ${mensaje}`) ? 'version' : 'cliente',
+      ruta,
       version: texto(datos.version, 60),
       nombre: texto(datos.nombre, 100),
       mensaje: texto(datos.mensaje, 1000),

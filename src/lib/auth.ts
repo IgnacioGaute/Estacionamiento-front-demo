@@ -2,6 +2,7 @@
 import { cookies } from 'next/headers';
 import { PLATFORM_SELECTION } from './access-scope';
 import { auth } from '@/auth';
+import { FalloBackend } from './fallos-backend';
 
 /**
  * Retrieves the current token from the session. Server side only.
@@ -36,6 +37,9 @@ export const currentRole = async () => {
  */
 export const getAuthHeaders = async (authToken?: string): Promise<Record<string, string>> => {
   const session = authToken ? null : await auth();
+  // Sin poder confirmar que la cuenta sigue vigente no se opera: ni lecturas ni escrituras.
+  if (session?.validacionPendiente)
+    throw new FalloBackend('No pudimos validar tu sesión. Reintentá en unos segundos.', { categoria: 'transporte' });
   const token = authToken || session?.token;
   const selection = (await cookies()).get('parking-playa')?.value;
   let userId = session?.user.id;

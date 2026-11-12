@@ -10,7 +10,7 @@ import { User } from '@/types/user.type';
 import { revalidateTag } from 'next/cache';
 import { getCacheTag } from './cache-tags';
 import { getAuthHeaders } from '@/lib/auth';
-import { AuthBackendError, readAuthResponse } from '@/lib/auth-response';
+import { readAuthResponse } from '@/lib/auth-response';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -37,16 +37,18 @@ export const getUsers = async (authToken?: string) => {
   }
 };
 
+/**
+ * La cuenta vigente según el backend. null = rechazo definitivo (no existe, revocada). Un fallo
+ * de red, timeout, 429, 5xx o respuesta inválida LANZA: no se sabe nada de la cuenta, y quien
+ * llama (el callback jwt de NextAuth) no debe confundirlo con una cuenta revocada.
+ */
 export const getUserById = async (id: string, authToken?: string) => {
-  try {
-    const response = await fetch(`${BASE_URL}/users/${id}`, {
-      headers: await getAuthHeaders(authToken),
-    });
-    return await readAuthResponse(response, 'session');
-  } catch (error) {
-    console.error('No se pudo validar la sesión', error instanceof AuthBackendError ? error.details : error);
-    return null;
-  }
+  // Sin try/catch: tenantFetch y readAuthResponse ya registran el fallo (una vez por minuto, no en
+  // cada render) y el error tiene que llegar a quien decide.
+  const response = await fetch(`${BASE_URL}/users/${encodeURIComponent(id)}`, {
+    headers: await getAuthHeaders(authToken),
+  });
+  return readAuthResponse(response, 'session');
 };
 
 export const getUserByEmail = async (email: string, authToken?: string) => {

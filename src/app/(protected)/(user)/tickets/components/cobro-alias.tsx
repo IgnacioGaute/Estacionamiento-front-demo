@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { CobroAlias, OpcionTransferencia } from '@/types/verificacion-alias.type';
 import { ConfirmacionDePago } from './pago-recibido';
+import { AvisoConsultaFallida, UltimaConsulta, useConsultaDePago, type ResultadoConsultaPago } from './estado-consulta-pago';
 import {
   ampliarCobroAliasAction,
   asignarTransferenciaAliasAction,
@@ -38,7 +39,7 @@ const ZONA = 'America/Argentina/Buenos_Aires';
 const abiertos = ['ESPERANDO', 'REVISION'];
 
 const horaCorta = (iso: string | null | undefined) =>
-  iso ? new Date(iso).toLocaleTimeString('es-AR', { timeZone: ZONA, hour: '2-digit', minute: '2-digit' }) : '—';
+  iso ? new Date(iso).toLocaleTimeString('es-AR', { timeZone: ZONA, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) : '—';
 
 // Los últimos dígitos alcanzan para distinguir dos operaciones en pantalla.
 const operacionCorta = (id: string) => (id.length > 6 ? `…${id.slice(-6)}` : id);
@@ -160,14 +161,20 @@ export function CobroAliasPanel({
     }
   }, []);
 
-  const consultar = useCallback(async () => {
+  const consultarUnaVez = useCallback(async (): Promise<ResultadoConsultaPago> => {
     const r = await consultarCobroAliasAction(cobro.id);
-    if (r.datos) actualizar(r.datos);
+    if (!r.datos) return { ok: false, error: r.error, fallo: r.fallo };
+    actualizar(r.datos);
+    return { ok: true };
   }, [cobro.id, actualizar]);
 
   // Mientras espera, se consulta solo. Lo que pasa entre consultas lo decide el backend, que es
-  // quien recupera el estado real si se cierra la pantalla o se corta la conexión.
-  useForegroundPoll(() => void consultar(), SEGUNDOS_ENTRE_CONSULTAS * 1000, { enabled: abierto, immediate: false });
+  // quien recupera el estado real si se cierra la pantalla o se corta la conexión. Si la consulta
+  // falla se dice («no pudimos consultar»), con la hora de la última buena, y se reintenta.
+  const { consultar, consultando, consultandoLento, ultimaOkEl, fallo: falloConsulta } = useConsultaDePago(consultarUnaVez, {
+    activo: abierto,
+    cadaMs: SEGUNDOS_ENTRE_CONSULTAS * 1000,
+  });
 
   // Si la opción elegida desapareció (la usó otra caja, o llegó otro auto del mismo importe y ya
   // no se puede ofrecer), se deselecciona.
@@ -181,8 +188,9 @@ export function CobroAliasPanel({
     const r = await asignarTransferenciaAliasAction(cobro.id, elegida);
     setOcupado(false);
     if (r.error) {
-      toast.error(r.error);
-      await consultar();
+      // Sin respuesta no se sabe si se registró: se consulta el estado, nunca se repite solo.
+      toast.error(r.fallo?.transitorio ? 'No pudimos confirmar si se registró. Revisamos el estado del cobro antes de seguir.' : r.error);
+      await consultar(true);
       return;
     }
     if (r.datos) actualizar(r.datos);
@@ -192,15 +200,22 @@ export function CobroAliasPanel({
     setOcupado(true);
     const r = await ampliarCobroAliasAction(cobro.id);
     setOcupado(false);
-    if (r.error) toast.error(r.error);
-    else if (r.datos) actualizar(r.datos);
+    if (r.error) {
+      toast.error(r.error);
+      if (r.fallo?.transitorio) await consultar(true);
+    } else if (r.datos) actualizar(r.datos);
   };
 
   const cancelar = async () => {
     setOcupado(true);
     const r = await cancelarCobroAliasAction(cobro.id);
     setOcupado(false);
-    if (r.error || !r.datos) { toast.error(r.error ?? 'No se pudo cancelar el cobro.'); return; }
+    if (r.error || !r.datos) {
+      // Pudo haberse cancelado o confirmado igual: se consulta el estado real antes de seguir.
+      toast.error(r.fallo?.transitorio ? 'No pudimos confirmar la cancelación. Revisamos el estado del cobro.' : r.error ?? 'No se pudo cancelar el cobro.');
+      await consultar(true);
+      return;
+    }
     if (r.datos.estado === 'CONFIRMADO' || r.datos.estado === 'PAGADO_OTRO_MEDIO') actualizar(r.datos);
     else if (['CANCELADO', 'VENCIDO'].includes(r.datos.estado)) onCancelado();
   };
@@ -284,6 +299,10 @@ export function CobroAliasPanel({
         </div>
       )}
 
+      {falloConsulta && (
+        <AvisoConsultaFallida fallo={falloConsulta} ultimaOkEl={ultimaOkEl} consultando={consultando} onReintentar={() => void consultar(true)} />
+      )}
+
       {fallo ? (
         <div role="alert" className="flex gap-2.5 rounded-2xl border border-gm-orange/40 bg-gm-orange/10 p-3.5 text-sm">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-gm-orange" aria-hidden />
@@ -291,7 +310,7 @@ export function CobroAliasPanel({
             <p className="font-semibold">No se pudo consultar MercadoPago</p>
             <p className="text-muted-foreground">{fallo.error} Esto no quiere decir que no pagó. Se sigue reintentando.</p>
           </div>
-          <button type="button" aria-label="Consultar de nuevo" disabled={ocupado} onClick={() => void consultar()} className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground hover:text-foreground">
+          <button type="button" aria-label="Consultar de nuevo" disabled={ocupado || consultando} onClick={() => void consultar(true)} className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground hover:text-foreground">
             <RefreshCw className="size-4" aria-hidden />
           </button>
         </div>
@@ -324,7 +343,7 @@ export function CobroAliasPanel({
             </p>
           )}
         </>
-      ) : (
+      ) : falloConsulta ? null : (
         <div role="status" className="flex items-center gap-3.5 rounded-2xl border border-border bg-gm-surface-2/60 px-4 py-3">
           <span className="relative grid size-3 shrink-0" aria-hidden>
             <span className="absolute inset-0 animate-ping rounded-full bg-gm-yellow/70" />
@@ -335,6 +354,7 @@ export function CobroAliasPanel({
             <span className="block text-[13px] leading-snug text-muted-foreground">
               Desde las {horaCorta(cobro.buscarDesde)}. Si llega una sola de {formatImporte(cobro.importe)}, {cobro.tipo === 'INQUILINO' ? 'el pago se registra solo.' : cobro.anticipo ? 'el anticipo se registra solo.' : 'la salida se registra sola.'}
             </span>
+            <UltimaConsulta ultimaOkEl={ultimaOkEl} consultandoLento={consultandoLento} />
           </span>
           <span className="gm-mono text-[15px] font-semibold text-muted-foreground">{transcurrido}</span>
         </div>

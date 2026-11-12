@@ -21,13 +21,14 @@ import {
   consultarCobroMercadoPagoAction,
 } from '@/actions/mercadopago/mercadopago.action';
 import { ConfirmacionDePago } from './pago-recibido';
+import { AvisoConsultaFallida, UltimaConsulta, useConsultaDePago, type ResultadoConsultaPago } from './estado-consulta-pago';
 import { toast } from '@/lib/toast';
 
 const SEGUNDOS_ENTRE_CONSULTAS = 4;
 
 const horaCorta = (iso: string | null) =>
   iso
-    ? new Date(iso).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit' })
+    ? new Date(iso).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
     : null;
 
 /** Un QR pagado que registró la salida: la misma confirmación que la transferencia al alias. */
@@ -72,20 +73,25 @@ export function CobroQrMercadoPago({
 
   const pendiente = cobro.estado === 'PENDIENTE';
 
-  const consultar = useCallback(async () => {
+  const consultarUnaVez = useCallback(async (): Promise<ResultadoConsultaPago> => {
     const r = await consultarCobroMercadoPagoAction(cobro.id);
-    if (r.error || !r.cobro) return;
+    if (r.error || !r.cobro) return { ok: false, error: r.error, fallo: r.fallo };
     setCobro(r.cobro);
     if (r.cobro.estado === 'ACREDITADO' && !yaAviso.current) {
       yaAviso.current = true;
       onAcreditado(r.cobro);
     }
+    return { ok: true };
   }, [cobro.id, onAcreditado]);
 
   // La cuenta regresiva corre cada segundo; la consulta a MercadoPago, cada pocos.
   useForegroundPoll(() => setRestante(cuentaRegresiva(cobro.expiraEl)), 1000, { enabled: pendiente, onlineOnly: false });
   // También al volver de bloquear el teléfono, incluso si el QR venció mientras pagaba.
-  useForegroundPoll(() => void consultar(), SEGUNDOS_ENTRE_CONSULTAS * 1000, { enabled: pendiente, immediate: false });
+  // Si la consulta falla, se dice («no pudimos consultar») con la hora de la última buena.
+  const { consultar, consultando, consultandoLento, ultimaOkEl, fallo: falloConsulta } = useConsultaDePago(consultarUnaVez, {
+    activo: pendiente,
+    cadaMs: SEGUNDOS_ENTRE_CONSULTAS * 1000,
+  });
 
   // Queda en el lugar donde estaba el QR cuando el pago no terminó la operación: quedó un saldo
   // (la tarifa subió mientras pagaba) o es el pago de un inquilino. Si registró la salida, la
@@ -122,12 +128,16 @@ export function CobroQrMercadoPago({
         </p>
       </div>
 
+      {falloConsulta && (
+        <AvisoConsultaFallida fallo={falloConsulta} ultimaOkEl={ultimaOkEl} consultando={consultando} onReintentar={() => void consultar(true)} />
+      )}
+
       {vencido ? (
         <p role="alert" className="rounded-2xl border border-gm-orange/40 bg-gm-orange/10 p-3.5 text-[14px] leading-relaxed">
           El código venció. Cancelalo y generá uno nuevo con el importe actualizado. Si el cliente
           igual llega a pagarlo, esa plata se descuenta del total.
         </p>
-      ) : (
+      ) : falloConsulta ? null : (
         <div role="status" className="flex items-center gap-3.5 rounded-2xl border border-gm-yellow/40 bg-gm-yellow/[0.07] px-4 py-3">
           <span className="relative grid size-3 shrink-0" aria-hidden>
             <span className="absolute inset-0 animate-ping rounded-full bg-gm-yellow/70" />
@@ -136,6 +146,7 @@ export function CobroQrMercadoPago({
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-semibold">Esperando el pago</span>
             <span className="block text-[13px] text-muted-foreground">Se acredita solo. El importe vale por</span>
+            <UltimaConsulta ultimaOkEl={ultimaOkEl} consultandoLento={consultandoLento} />
           </span>
           <span className="gm-mono text-[15px] font-semibold text-muted-foreground">{restante.texto}</span>
         </div>
@@ -148,7 +159,12 @@ export function CobroQrMercadoPago({
             setCancelando(true);
             const r = await cancelarCobroMercadoPagoAction(cobro.id);
             setCancelando(false);
-            if (r.error || !r.cobro) { toast.error(r.error ?? 'No se pudo cancelar el QR.'); return; }
+            if (r.error || !r.cobro) {
+              // Sin respuesta no se sabe si se canceló (o si el cliente pagó justo): se consulta.
+              toast.error(r.fallo?.transitorio ? 'No pudimos confirmar la cancelación. Revisamos el estado del pago.' : r.error ?? 'No se pudo cancelar el QR.');
+              await consultar(true);
+              return;
+            }
             setCobro(r.cobro);
             if (r.cobro.estado === 'ACREDITADO') {
               if (!yaAviso.current) { yaAviso.current = true; onAcreditado(r.cobro); }

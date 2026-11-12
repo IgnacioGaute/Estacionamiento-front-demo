@@ -41,7 +41,12 @@ Las rutas de autenticación y contingencia tienen tratamientos explícitos; no i
   an HS256 access token (via `jose`) carrying `{ id, authVersion }`; identity, role and profile never come from a
   client-side `session.update`. A mismatch in `id` or `authVersion` (bumped by the backend on password change)
   returns `null`, which kills the session instead of silently renewing it. `session.token` is what services send
-  as the bearer token.
+  as the bearer token. Si la consulta de la cuenta falla de forma transitoria (red, timeout, 429, 5xx, respuesta
+  inválida), el token vuelve marcado `validacionPendiente`: NextAuth no borra la cookie, pero `getAuthHeaders`,
+  `getOperationalContext` y `(protected)/layout` no habilitan operar hasta validarla (máximo 12 horas).
+- Empresa y playas: `getOperationalContext` lanza `FalloBackend` (401 sesión inválida, 403 sin empresa activa,
+  transitorias). El layout muestra `EstadoDeAcceso` con Reintentar; una consulta fallida nunca se convierte
+  en una lista vacía ni en «Asignación pendiente».
 - `src/lib/auth.ts` — server-only `currentUser()`, `currentRole()`, `currentToken()`, `getAuthHeaders(token?)`.
 - `src/lib/auth-response.ts` distingue los rechazos de acceso de fallos HTTP o respuestas inválidas del
   proxy. La indisponibilidad del login no se presenta como contraseña incorrecta; una sesión que no puede

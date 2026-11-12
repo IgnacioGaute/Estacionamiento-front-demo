@@ -13,13 +13,16 @@ import {
   editarAdicionalDeEmpresa,
   iniciarCobroAlias,
 } from '@/services/verificacion-alias.service';
+import { mensajeDeFallo, serializarFallo, type FalloSerializado } from '@/lib/fallos-backend';
 
-// Cada acción devuelve { datos } o { error }, como el resto de las acciones de MercadoPago.
-async function intentar<T>(hacer: () => Promise<T>) {
+// Cada acción devuelve { datos } o { error, fallo }, como el resto de las acciones de MercadoPago.
+// fallo dice si fue de comunicación (el resultado de una escritura queda desconocido: se consulta
+// el estado antes de repetir) o un rechazo del backend.
+async function intentar<T>(hacer: () => Promise<T>): Promise<{ datos: T; error?: undefined; fallo?: undefined } | { datos?: undefined; error: string; fallo?: FalloSerializado }> {
   try {
     return { datos: await hacer() };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : 'No se pudo completar el pedido.' };
+    return { error: mensajeDeFallo(error, 'No se pudo completar el pedido.'), fallo: serializarFallo(error) };
   }
 }
 

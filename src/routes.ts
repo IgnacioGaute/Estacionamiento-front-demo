@@ -36,6 +36,7 @@ export const apiAuthPrefix = '/api/auth';
 export const publicApiRoutes = [
   '/api/version', // La consulta una página vieja (quizá con la sesión vencida) para saber si recargar.
   '/api/errores', // La pantalla de error informa qué falló (también con la sesión vencida).
+  '/api/salud', // Healthcheck de Railway y pruebas de humo: sin sesión ni datos.
 ];
 
 /**

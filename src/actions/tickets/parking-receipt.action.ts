@@ -1,6 +1,7 @@
 'use server';
 
 import { getAuthHeaders } from '@/lib/auth';
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { revalidatePath } from 'next/cache';
 import { getTicketSchedule } from '@/services/tickets.service';
 import type { IssuedParkingReceipt, ReceiptDeliverySettings } from '@/types/parking-receipt.type';

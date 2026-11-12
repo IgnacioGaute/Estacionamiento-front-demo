@@ -1,4 +1,6 @@
 import { getAuthHeaders } from '@/lib/auth';
+// Red privada en el servidor, mismo cuerpo y cabeceras; el stream vuelve tal cual.
+import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 
 // El navegador no tiene el token de sesión: las llamadas al backend salen del
 // servidor. Para poder mostrar la respuesta a medida que se genera, esta ruta
