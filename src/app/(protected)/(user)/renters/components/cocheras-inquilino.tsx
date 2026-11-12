@@ -1,6 +1,6 @@
 'use client';
 
-// Las cocheras de un inquilino: número y precio mensual, nada más. El abono mensual es la suma
+// Las cocheras de un inquilino: número y patente (los dos opcionales) y precio mensual. El abono mensual es la suma
 // de los precios. No hay «propietario»: eso es de Particulares, que alquilan la cochera de un
 // dueño real. Un precio cambiado rige desde el próximo abono (los cargos hechos no se tocan).
 
@@ -12,7 +12,7 @@ import { plata } from '@/components/plataforma/formato';
 import { CampoImporte } from './cuenta/campo-importe';
 import { leerImporte } from './cuenta/util';
 
-type Cochera = { id?: string; garageNumber?: string; amount?: number };
+type Cochera = { id?: string; garageNumber?: string; licensePlate?: string; amount?: number };
 
 // El importe se escribe como texto (con o sin puntos de miles) y al formulario llega el número;
 // si el texto no es un importe válido llega 0 (el campo ya muestra por qué) y al confirmar se marca.
@@ -61,7 +61,11 @@ export function validarCocheras(form: UseFormReturn<any>): boolean {
 
 // Lo que se manda al servidor: sin `owner`, así la cochera queda con el precio escrito.
 export const cocherasParaGuardar = (cocheras: Cochera[] | undefined) =>
-  (cocheras ?? []).map((c) => ({ garageNumber: c.garageNumber?.trim() ?? '', amount: c.amount }));
+  (cocheras ?? []).map((c) => ({
+    garageNumber: c.garageNumber?.trim() ?? '',
+    licensePlate: c.licensePlate?.replace(/[\s-]/g, '').toUpperCase() ?? '',
+    amount: c.amount,
+  }));
 
 export function CocherasInquilino({
   form,
@@ -93,7 +97,9 @@ export function CocherasInquilino({
               name={`parkingRenters.${index}.garageNumber`}
               render={({ field }) => (
                 <FormItem className="space-y-1.5">
-                  <FormLabel>N° de cochera</FormLabel>
+                  <FormLabel>
+                    N° de cochera <span className="font-normal text-muted-foreground">· opcional</span>
+                  </FormLabel>
                   <FormControl>
                     <Input
                       disabled={isPending}
@@ -109,9 +115,33 @@ export function CocherasInquilino({
             />
             <FormField
               control={form.control}
-              name={`parkingRenters.${index}.amount`}
+              name={`parkingRenters.${index}.licensePlate`}
               render={({ field }) => (
                 <FormItem className="space-y-1.5">
+                  <FormLabel>
+                    Patente <span className="font-normal text-muted-foreground">· opcional</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      disabled={isPending}
+                      placeholder="AB123CD"
+                      maxLength={10}
+                      autoCapitalize="characters"
+                      autoComplete="off"
+                      className="gm-mono h-11 uppercase tracking-[0.05em]"
+                      {...field}
+                      value={field.value ?? ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={`parkingRenters.${index}.amount`}
+              render={({ field }) => (
+                <FormItem className="space-y-1.5 sm:col-span-2">
                   <FormLabel>Precio mensual</FormLabel>
                   <PrecioCochera
                     ariaLabel={`Precio mensual de la cochera ${index + 1}`}

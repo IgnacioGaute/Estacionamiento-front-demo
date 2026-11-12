@@ -46,6 +46,8 @@ export function UpdateRenterDialog({
         customer.parkingRenters?.map((vr) => ({
           id: vr.id ?? '',
           garageNumber: vr.garageNumber ?? '',
+          // Sin esto, editar al inquilino borraba la patente: el servidor recrea las cocheras.
+          licensePlate: vr.licensePlate ?? '',
           amount: vr.amount ?? 0,
         })) ?? [],
     },
@@ -64,6 +66,7 @@ export function UpdateRenterDialog({
         ...current,
         ...Array.from({ length: n - current.length }, () => ({
           garageNumber: '',
+          licensePlate: '',
           amount: 0,
         })),
       ]);

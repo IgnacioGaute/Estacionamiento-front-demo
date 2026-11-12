@@ -52,6 +52,7 @@ export function CreateRenterDialog({ onCreado }: { onCreado?: () => void }) {
         ...current,
         ...Array.from({ length: n - current.length }, () => ({
           garageNumber: '',
+          licensePlate: '',
           amount: 0,
         })),
       ]);

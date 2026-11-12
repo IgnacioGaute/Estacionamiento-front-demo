@@ -205,14 +205,24 @@ function CajasSettings({ multiple }: { multiple: boolean }) {
 }
 function CajaRow({ caja, onUpdated }: { caja: Caja; onUpdated: () => Promise<void> }) {
   const [name, setName] = useState(caja.nombre);
-  const [reserve, setReserve] = useState(String(caja.fondoObjetivo ?? 15000));
+  // Fondo protegido apagado = fondo 0: no hay fondo sugerido y el sueldo solo exige que alcance el
+  // efectivo. Al volver a prenderlo se propone el último importe (o el de siempre, $15.000).
+  const guardado = caja.fondoObjetivo ?? 15000;
+  const [reserve, setReserve] = useState(String(guardado || 15000));
+  const [protegido, setProtegido] = useState(guardado > 0);
   const [pending, startTransition] = useTransition();
-  useEffect(() => { setName(caja.nombre); setReserve(String(caja.fondoObjetivo ?? 15000)); }, [caja.nombre, caja.fondoObjetivo]);
-  const save = (activa = caja.activa) => startTransition(async () => { const result = await saveCajaAction({ nombre: name, activa, fondoObjetivo: Number(reserve) }, caja.id); if (result.error) { toast.error(result.error); return; } await onUpdated(); toast.success('Caja actualizada'); });
+  useEffect(() => { setName(caja.nombre); setReserve(String(guardado || 15000)); setProtegido(guardado > 0); }, [caja.nombre, guardado]);
+  const fondo = protegido ? Number(reserve) : 0;
+  const save = (activa = caja.activa) => startTransition(async () => { const result = await saveCajaAction({ nombre: name, activa, fondoObjetivo: fondo }, caja.id); if (result.error) { toast.error(result.error); return; } await onUpdated(); toast.success('Caja actualizada'); });
   return <form className="flex flex-wrap items-end gap-3 rounded-xl border border-border p-3" onSubmit={e => { e.preventDefault(); save(); }}>
     <div className="min-w-0 w-full flex-none space-y-1.5 sm:w-auto sm:flex-1"><Label htmlFor={'caja-' + caja.id}>{caja.principal ? 'Caja principal · disponible en modo simple' : 'Nombre de la caja'}</Label><Input id={'caja-' + caja.id} value={name} maxLength={80} onChange={e => setName(e.target.value)} disabled={pending} required /></div>
-    <div className="space-y-1.5"><Label htmlFor={'reserve-' + caja.id}>Fondo objetivo protegido</Label><Input id={'reserve-' + caja.id} type="number" min={0} max={100000000} step={1} required value={reserve} onChange={e => setReserve(e.target.value)} disabled={pending} /></div>
-    <Button size="sm" variant="outline" disabled={pending || !name.trim() || (name === caja.nombre && Number(reserve) === (caja.fondoObjetivo ?? 15000))}>Guardar caja</Button>
+    <div className="space-y-1.5">
+      <div className="flex min-h-5 items-center justify-between gap-3"><Label htmlFor={'protect-' + caja.id}>Fondo objetivo protegido</Label><Switch id={'protect-' + caja.id} checked={protegido} onCheckedChange={setProtegido} disabled={pending} /></div>
+      {protegido
+        ? <Input id={'reserve-' + caja.id} aria-label="Importe del fondo protegido" type="number" min={1} max={100000000} step={1} required value={reserve} onChange={e => setReserve(e.target.value)} disabled={pending} />
+        : <p className="flex h-11 items-center text-sm text-muted-foreground sm:h-10">Sin fondo: no se reserva efectivo</p>}
+    </div>
+    <Button size="sm" variant="outline" disabled={pending || !name.trim() || (name === caja.nombre && fondo === guardado)}>Guardar caja</Button>
     {!caja.principal && <Button type="button" variant="ghost" size="sm" onClick={() => save(!caja.activa)} disabled={pending}>{caja.activa ? 'Desactivar' : 'Activar'}</Button>}
     {!caja.activa && <span className="text-xs text-muted-foreground">Desactivada</span>}
   </form>;

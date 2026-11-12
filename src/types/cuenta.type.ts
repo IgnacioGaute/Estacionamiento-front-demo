@@ -132,7 +132,7 @@ export type EstadoCuenta = {
     alta: string;
     baja: string | null;
     abono: number;
-    cocheras: { numero: string | null; duenio: string | null; importe: number }[];
+    cocheras: { numero: string | null; patente?: string | null; duenio: string | null; importe: number }[];
   };
   saldo: number;
   vencido: number;

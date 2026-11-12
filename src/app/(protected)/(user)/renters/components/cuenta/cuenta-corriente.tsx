@@ -249,6 +249,7 @@ export function CuentaCorriente({
                   {c.cocheras.map((x, i) => (
                     <span key={i} className="rounded-full border border-border px-2.5 py-0.5 text-[12px] text-gm-texto-2">
                       {x.numero ? `Cochera ${x.numero}` : 'Cochera'}
+                      {x.patente ? <span className="gm-mono"> · {x.patente}</span> : null}
                       {x.duenio ? ` · ${x.duenio}` : ''} · {plata(x.importe)}
                       {c.baja ? ' (liberada)' : ''}
                     </span>

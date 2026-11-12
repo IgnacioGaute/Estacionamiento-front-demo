@@ -86,6 +86,30 @@ test('explica entradas separadas y cajón compartido, y permite agregar una caja
   await waitFor(() => expect(saveCajaAction).toHaveBeenCalledWith({ nombre: 'Salida norte' }));
 });
 
+test('el fondo protegido de una caja se puede apagar: se guarda en $0', async () => {
+  jest.mocked(saveCajaAction).mockResolvedValue({ caja: { ...cajas[0], fondoObjetivo: 0 } });
+  render(<OperationSettings shiftsEnabled />);
+  const proteger = await screen.findByRole('switch', { name: 'Fondo objetivo protegido' });
+  expect(proteger).toBeChecked();
+  expect(screen.getByLabelText('Importe del fondo protegido')).toHaveValue(15000);
+  fireEvent.click(proteger);
+  expect(screen.queryByLabelText('Importe del fondo protegido')).not.toBeInTheDocument();
+  expect(screen.getByText('Sin fondo: no se reserva efectivo')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar caja' }));
+  await waitFor(() => expect(saveCajaAction).toHaveBeenCalledWith({ nombre: 'Caja principal', activa: true, fondoObjetivo: 0 }, 'principal'));
+});
+
+test('una caja sin fondo protegido aparece apagada y al prenderla propone $15.000', async () => {
+  jest.mocked(getCashConfigurationAction).mockResolvedValue({ configuration: { cajas: [{ ...cajas[0], fondoObjetivo: 0 }], usuarios, hayTurnosAbiertos: false } });
+  render(<OperationSettings shiftsEnabled />);
+  const proteger = await screen.findByRole('switch', { name: 'Fondo objetivo protegido' });
+  expect(proteger).not.toBeChecked();
+  expect(screen.getByRole('button', { name: 'Guardar caja' })).toBeDisabled();
+  fireEvent.click(proteger);
+  expect(screen.getByLabelText('Importe del fondo protegido')).toHaveValue(15000);
+  expect(screen.getByRole('button', { name: 'Guardar caja' })).toBeEnabled();
+});
+
 test('el sueldo se guarda desde su sección', async () => {
   render(<OperationSettings shiftsEnabled />);
   expect(screen.queryByRole('button', { name: /^Guardar sueldo/ })).not.toBeInTheDocument();

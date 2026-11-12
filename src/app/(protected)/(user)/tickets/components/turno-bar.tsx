@@ -253,8 +253,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             </Paso>
             <Paso numero={2} listo={handoverValid} ultimo>
               <CashAmountField id="cash-for-next" label="¿Cuánto dejás en caja para el próximo turno?" labelClassName="min-w-[min(100%,14rem)] text-[13px] normal-case tracking-normal text-foreground" value={forNext} onChange={setCashForNext} disabled={pending || !amountValid(counted)} max={amountValid(counted) ? afterSalary : undefined} editLabel="Cambiar importe"
-                shortcuts={[{ label: 'Usar sugerido · ' + money(reserve), amount: reserve, disabled: reserve > afterSalary }, { label: 'Cambiar importe', edit: true }, { label: 'Dejar todo · ' + money(afterSalary), amount: afterSalary }]}
-                description={amountValid(counted) ? `El fondo sugerido de ${money(reserve)} es una referencia. Podés dejar más, menos o $0. El cambio vale solo para este cierre.` : 'Primero indicá cuánto contaste; después elegí cuánto dejás para el próximo turno.'} />
+                shortcuts={[...(reserve > 0 ? [{ label: 'Usar sugerido · ' + money(reserve), amount: reserve, disabled: reserve > afterSalary }] : []), { label: 'Cambiar importe', edit: true }, { label: 'Dejar todo · ' + money(afterSalary), amount: afterSalary }]}
+                description={!amountValid(counted) ? 'Primero indicá cuánto contaste; después elegí cuánto dejás para el próximo turno.' : reserve > 0 ? `El fondo sugerido de ${money(reserve)} es una referencia. Podés dejar más, menos o $0. El cambio vale solo para este cierre.` : 'Esta caja no tiene fondo protegido. Dejá lo que necesite el próximo turno, o $0.'} />
               {amountValid(counted) && amountValid(forNext) && Number(forNext) > afterSalary && <p role="alert" className="mt-2 text-sm text-destructive">No podés dejar más de {money(afterSalary)}: es el efectivo disponible después del sueldo.</p>}
               {amountValid(counted) && <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2 rounded-xl bg-gm-surface-2 px-3.5 py-3 text-sm" aria-live="polite">
                 <span className="text-muted-foreground">Retirás de recaudación (sin sueldo)</span>
@@ -266,7 +266,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           {salaryExpected > 0 && <div className="flex gap-3 rounded-2xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-4 text-sm">
             <Banknote className="mt-0.5 size-4 shrink-0 text-gm-atencion" aria-hidden />
             <div className="min-w-0">
-              <p>Sueldo previsto: <strong className="tabular-nums">{money(salaryExpected)}</strong> · Fondo de referencia: <span className="tabular-nums">{money(reserve)}</span></p>
+              <p>Sueldo previsto: <strong className="tabular-nums">{money(salaryExpected)}</strong>{reserve > 0 && <> · Fondo de referencia: <span className="tabular-nums">{money(reserve)}</span></>}</p>
               {arqueo && !amountValid(counted) ? <p className="mt-1 text-muted-foreground">Contá el efectivo para comprobar si alcanza.</p> : salaryAlcanza > 0 ? <>
                 <div role="group" aria-label="Sueldo en este cierre" className="mt-2.5 grid grid-cols-2 overflow-hidden rounded-xl border border-gm-line-strong">
                   {[{ retirar: true, titulo: 'Retirar sueldo', detalle: money(salaryAlcanza) }, { retirar: false, titulo: 'No retirarlo', detalle: 'Queda en la caja' }].map(op => {
@@ -367,7 +367,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
               <div className="grid grid-cols-2 divide-x divide-gm-line">
                 {/* En la primera apertura no hay cierre anterior: se muestra el fondo configurado para la
                     caja (Configuración › Turnos de caja) en vez de «Efectivo inicial $0». */}
-                <div className="p-4"><p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wallet className="size-3.5 shrink-0" aria-hidden />{hasPrior ? 'Efectivo que dejó' : 'Fondo sugerido'}</p><p className="mt-2 font-display text-[28px] font-bold leading-none tracking-tight tabular-nums">{money(hasPrior ? openingExpected : reserve)}</p></div>
+                <div className="p-4"><p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wallet className="size-3.5 shrink-0" aria-hidden />{hasPrior ? 'Efectivo que dejó' : reserve > 0 ? 'Fondo sugerido' : 'Sin fondo fijo'}</p><p className="mt-2 font-display text-[28px] font-bold leading-none tracking-tight tabular-nums">{money(hasPrior ? openingExpected : reserve)}</p></div>
                 <div className="p-4"><p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Car className="size-3.5 shrink-0" aria-hidden />{handover?.vehiculosDejados != null ? 'Vehículos que dejó dentro' : 'Vehículos dentro ahora'}</p>{(() => { const v = handover?.vehiculosDejados ?? handover?.vehiculosActivos; return v == null ? <p className="mt-2 text-sm font-semibold text-muted-foreground">No informado</p> : <p className="mt-2 font-display text-[28px] font-bold leading-none tabular-nums">{v}</p>; })()}</div>
               </div>
               {handover?.vehiculosDejados != null && handover.vehiculosActivos !== handover.vehiculosDejados && <p className="border-t border-gm-line px-4 py-2 text-[11px] text-muted-foreground">Ahora hay {handover.vehiculosActivos} vehículos dentro.</p>}

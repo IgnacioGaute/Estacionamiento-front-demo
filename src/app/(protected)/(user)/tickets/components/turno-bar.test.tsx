@@ -341,6 +341,22 @@ test.each([{ counted: 105000, salary: 25000, withdrawn: 65000 }, { counted: 2300
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: salary, efectivoParaSiguiente: 15000 })));
 });
 
+test('sin fondo protegido no sugiere fondo y propone dejar $0', async () => {
+  const active = { ...shift(), efectivoDisponible: 30000, fondoObjetivo: 0, sueldoPrevisto: 25000 };
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(active) });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
+  await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  await contar(30000);
+  expect(screen.queryByRole('button', { name: /^Usar sugerido/ })).toBeNull();
+  expect(screen.queryByText(/Fondo de referencia/)).toBeNull();
+  expect(screen.getByText(/no tiene fondo protegido/)).toBeInTheDocument();
+  expect(screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?')).toHaveValue(0);
+  const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
+  await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: 25000, efectivoParaSiguiente: 0 })));
+});
+
 test('al confirmar el arqueo queda un resumen del cierre hasta tocar «Listo»', async () => {
   jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift()) });
   jest.mocked(closeTurnoAction).mockResolvedValue({ turno: { alertaSueldo: null } } as never);
