@@ -576,7 +576,8 @@ html:has(body[data-scroll-locked]) {
   line-height: 1.5;
   cursor: grab;
   user-select: none;
-  /* Entra subiendo desde abajo en 400ms; la opacidad llega antes (400 × .6). */
+  /* Entra desde su borde (abajo en la computadora, arriba en el celular) en 400ms; la opacidad
+     llega antes (400 × .6). */
   transition: transform 400ms var(--st-ease), opacity 240ms ease,
               height 400ms var(--st-ease), box-shadow 200ms;
 }

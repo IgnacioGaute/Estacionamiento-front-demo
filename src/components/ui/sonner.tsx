@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { Toaster as Sonner } from 'sonner';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
@@ -13,8 +14,9 @@ type ToasterProps = React.ComponentProps<typeof Sonner>;
  * de `globals.css`, sección "AVISOS (toast)". Las medidas y las curvas son las del componente
  * original, no una aproximación.
  *
- * Abajo a la derecha con 32px de margen; en pantallas de menos de 600px sonner pasa solo a
- * 16px y el aviso ocupa el ancho disponible.
+ * En la computadora, abajo a la derecha con 32px de margen. En celular y tablet van arriba: abajo
+ * están la barra de Entrada/Salida y el pie de las hojas («Listo», «Cobrar»), justo lo que se toca
+ * después de registrar, y un aviso ahí lo tapaba. En menos de 600px el aviso ocupa el ancho.
  */
 
 // 18px, el tamaño del original. Van con `currentColor` para tomar el color de cada tipo.
@@ -63,22 +65,27 @@ const ICONOS = {
   ),
 };
 
-// En la configuración inicial el pie fijo tiene los botones del recorrido: los avisos van por encima
-// para no tapar «Continuar» mientras se ven.
+// En la configuración inicial el pie fijo tiene los botones del recorrido: en la computadora los
+// avisos van por encima para no tapar «Continuar» mientras se ven.
 const PIE_ASISTENTE = 96;
+
+// El mismo corte que esconde la barra del mostrador (`lg:hidden` en MostradorDock).
+const PANTALLA_TACTIL = '(max-width: 1023.98px)';
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const enAsistente = usePathname()?.startsWith('/configuracion-inicial') ?? false;
+  const arriba = useMediaQuery(PANTALLA_TACTIL) ?? false;
   return (
     <Sonner
       theme="dark"
       className="toaster group"
-      position="bottom-right"
-      offset={enAsistente ? { top: 32, right: 32, left: 32, bottom: 32 + PIE_ASISTENTE } : 32}
-      // El margen de abajo suma la zona segura del iPhone para no quedar bajo la barra.
-      mobileOffset={{ top: 16, right: 16, left: 16, bottom: `calc(${16 + (enAsistente ? PIE_ASISTENTE + 40 : 0)}px + env(safe-area-inset-bottom))` }}
-      // Se descarta arrastrando hacia abajo, que es el gesto natural con el pulgar.
-      swipeDirections={['bottom']}
+      position={arriba ? 'top-center' : 'bottom-right'}
+      offset={arriba ? { top: 'calc(16px + env(safe-area-inset-top))', right: 16, left: 16, bottom: 16 }
+        : enAsistente ? { top: 32, right: 32, left: 32, bottom: 32 + PIE_ASISTENTE } : 32}
+      // Arriba suma la zona segura del iPhone (la muesca o la isla) para no quedar debajo.
+      mobileOffset={{ top: 'calc(12px + env(safe-area-inset-top))', right: 12, left: 12, bottom: 16 }}
+      // Se descarta arrastrándolo hacia el borde del que salió.
+      swipeDirections={arriba ? ['top'] : ['bottom']}
       expand
       gap={10}
       duration={4000}
