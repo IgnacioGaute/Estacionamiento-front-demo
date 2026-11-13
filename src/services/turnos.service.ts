@@ -1,7 +1,7 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from "@/lib/auth";
 import { OpenTurnoSchemaType, CloseTurnoSchemaType } from "@/schemas/turno.schema";
-import { CashContext, EstadiaAbiertaTurno, Turno } from "@/types/turno.type";
+import { CashContext, ConciliacionCaja, EstadiaAbiertaTurno, Turno } from "@/types/turno.type";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -119,6 +119,17 @@ export const getEstadiasAbiertasTurno = async (id: string, todas = false, authTo
     const response = await fetch(`${BASE_URL}/turnos/${id}/estadias-abiertas${todas ? "?todas=true" : ""}`, { headers: await getAuthHeaders(authToken), cache: 'no-store' });
     if (!response.ok) return null;
     return (await response.json()) as EstadiaAbiertaTurno[];
+  } catch {
+    return null;
+  }
+};
+
+// Cómo se llega al efectivo esperado: la pide el cierre después de cargar el conteo (arqueo ciego).
+export const getConciliacion = async (id: string, authToken?: string): Promise<ConciliacionCaja | null> => {
+  try {
+    const response = await fetch(`${BASE_URL}/turnos/${encodeURIComponent(id)}/conciliacion`, { headers: await getAuthHeaders(authToken), cache: 'no-store' });
+    if (!response.ok) return null;
+    return (await response.json()) as ConciliacionCaja | null;
   } catch {
     return null;
   }

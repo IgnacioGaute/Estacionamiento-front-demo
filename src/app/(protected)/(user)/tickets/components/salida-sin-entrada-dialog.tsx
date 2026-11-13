@@ -35,6 +35,8 @@ import { corregirEntradaAction } from '@/actions/tickets/corregir-entrada.action
 import { eliminarEstadiaAction } from '@/actions/tickets/eliminar-estadia.action';
 import { tarifasSinEntradaAction } from '@/actions/tickets/salida-anterior.action';
 import { searchActiveRegistrationsAction } from '@/actions/tickets/search-active-registrations.action';
+import { getPlateStatusAction } from '@/actions/tickets/get-plate-status.action';
+import { comoSalio, type SalidaReciente } from '@/types/plate-status.type';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 import type { TarifasSinEntrada } from '@/services/tickets.service';
 import { formatEstadia } from '@/utils/estadia';
@@ -71,6 +73,8 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
   const [candidatas, setCandidatas] = useState<TicketRegistration[] | null>(null);
   const [respuestas, setRespuestas] = useState<Record<string, 'SIGUE' | 'NO_ESTA'>>({});
   const [eliminar, setEliminar] = useState<string[]>([]);
+  // No está adentro porque salió hace poco: cobrarla de nuevo sería un segundo cobro (MLT748).
+  const [salidaReciente, setSalidaReciente] = useState<SalidaReciente | null>(null);
 
   useEffect(() => {
     if (!plate) return;
@@ -81,10 +85,15 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
     setEliminar([]);
     setError('');
     setCandidatas(null);
+    setSalidaReciente(null);
     let vigente = true;
     void searchActiveRegistrationsAction(plate)
       .then((r) => { if (vigente) setCandidatas(Array.isArray(r) ? r : []); })
       .catch(() => { if (vigente) setCandidatas([]); });
+    // Si la consulta falla no se traba el cobro: el aviso es una ayuda.
+    void getPlateStatusAction(plate)
+      .then((r) => { if (vigente) setSalidaReciente(r.data?.salidaReciente ?? null); })
+      .catch(() => {});
     return () => { vigente = false; };
   }, [plate]);
 
@@ -178,6 +187,7 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
               <span className="flex min-w-0 items-center gap-2.5"><PlateChip plate={plate ?? '—'} size="sm" /><span className="text-[14px] font-semibold text-gm-aviso">no está adentro</span></span>
             </p>
             <p className="text-[13px] leading-relaxed text-gm-texto-2">Elegí la tarifa que le corresponde: se registra la entrada con ese tiempo y se cobra ahora, con cualquier medio. Queda anotado en la Actividad con tu usuario.</p>
+            {salidaReciente && <p className="rounded-xl border border-gm-atencion/50 bg-gm-atencion/[0.08] p-3 text-[13px] leading-relaxed"><strong className="text-gm-atencion">Esta patente salió hace poco.</strong> {comoSalio(salidaReciente)} Si es el mismo auto, no lo cobres de nuevo.</p>}
           </div>
 
           {/* Antes de registrar un auto nuevo hay que revisar las parecidas que figuran adentro: por

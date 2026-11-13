@@ -108,6 +108,7 @@ export function TariffSummary({ plan, vehicles }: { plan: TariffPlan; vehicles: 
         {(night || crossing === 'SPLIT') && <p>{crossingNames[crossing]}.</p>}
         {crossing === 'SPLIT' && <p className="text-gm-atencion">Cada tramo cuenta sus propios períodos, aun cuando el precio de día y noche sea igual.</p>}
         {(method === 'CUSTOM' || method === 'STARTED') && <p>Tolerancia: <strong>{plan.schedule.graceMinutes} min</strong> antes de pasar al siguiente período o duración.</p>}
+        {plan.schedule.graceMinutes > 0 && (plan.schedule.sinCobroEnTolerancia ?? true) && <p>Si se va antes de los <strong>{plan.schedule.graceMinutes} min</strong>, no se cobra.</p>}
       </div>
     </>}
   </section>;

@@ -204,3 +204,17 @@ test('si la parecida es otro auto, la entrada se registra igual', async () => {
   fireEvent.click(esOtro);
   await waitFor(() => expect(createRegistrationByPlateAction).toHaveBeenCalledWith(expect.objectContaining({ licensePlate: 'AB123CD' })), { timeout: 4000 });
 });
+
+test('si la patente salió hace poco, avisa cómo salió antes de registrar otra entrada', async () => {
+  jest.mocked(getPlateStatusAction).mockResolvedValue({ data: { plate: 'MLT748', hourly: [], daily: [], similares: [], salidaReciente: { id: 'salio', hora: '13:38', cobrado: 0, descuento: 3500, motivoDescuento: 'Poco tiempo' } } });
+  const input = await open();
+  fireEvent.change(input, { target: { value: 'MLT748' } });
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Registrar entrada/ }));
+  // Con toda la suite en paralelo la consulta tarda más que el segundo por defecto.
+  expect(await screen.findByText('MLT748 salió hace poco', undefined, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getByText(/Salió a las 13:38, sin cobro \(descuento «Poco tiempo»\)\./)).toBeInTheDocument();
+  expect(createRegistrationByPlateAction).not.toHaveBeenCalled();
+  // Hasta que termina la transición el botón dice «Registrando…».
+  fireEvent.click(await screen.findByRole('button', { name: /^Es una entrada nueva/ }, { timeout: 5000 }));
+  await waitFor(() => expect(createRegistrationByPlateAction).toHaveBeenCalledWith(expect.objectContaining({ licensePlate: 'MLT748' })), { timeout: 5000 });
+});

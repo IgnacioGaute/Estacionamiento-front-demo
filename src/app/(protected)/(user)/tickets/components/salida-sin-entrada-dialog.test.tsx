@@ -20,6 +20,7 @@ jest.mock('@/actions/tickets/vehicle-types.action', () => {
 });
 jest.mock('@/hooks/auth/use-current-role', () => ({ useCurrentRole: jest.fn() }));
 jest.mock('@/actions/tickets/search-active-registrations.action', () => ({ searchActiveRegistrationsAction: jest.fn() }));
+jest.mock('@/actions/tickets/get-plate-status.action', () => ({ getPlateStatusAction: jest.fn().mockResolvedValue({ data: { plate: '', hourly: [], daily: [] } }) }));
 jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 
 beforeEach(() => {

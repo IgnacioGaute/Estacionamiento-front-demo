@@ -15,6 +15,8 @@ export type TariffDraft = {
     dayStartHour: number;
     dayEndHour: number;
     graceMinutes: number;
+    // El auto que se va antes de la tolerancia no paga. Ausente en un backend anterior: activo.
+    sinCobroEnTolerancia?: boolean;
     pricingDayTypeBasis: 'ENTRY' | 'EXIT';
     pricingOptions: PricingOptions;
   };

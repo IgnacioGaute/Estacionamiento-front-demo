@@ -166,6 +166,14 @@ export function TariffEditor({ draft, onChange, vehicles, step, onStepChange, ca
           </>}
           <label className="block max-w-xl space-y-2 text-sm"><span className="block font-medium">Tolerancia entre duraciones</span><div className="relative max-w-[200px]"><Input aria-label="Tolerancia en minutos" className="h-11 rounded-xl pr-16" type="number" min={0} max={5256000} step={1} value={num(draft.schedule.graceMinutes)} onChange={event => updateSchedule({ graceMinutes: parse(event.target.value) })} /><span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">minutos</span></div>
             <span className="block text-xs text-muted-foreground">{method === 'STARTED' ? 'No hace gratis el primer período. Permite pasarse estos minutos antes de cobrar el siguiente; como máximo se aplica un minuto menos que el período.' : 'Permite pasarse unos minutos de una duración antes de avanzar al siguiente precio. Probá las duraciones límite en el simulador.'}</span></label>
+          {/* El auto que llega y se va antes de la tolerancia (entró por error, dio la vuelta) no paga. */}
+          <div className="flex max-w-xl items-start justify-between gap-4 rounded-2xl border border-gm-line bg-gm-surface-2 p-4">
+            <div className="min-w-0 text-sm">
+              <label htmlFor="tariff-sin-cobro-tolerancia" className="font-semibold">No cobrar si se va antes de la tolerancia</label>
+              <p className="mt-0.5 text-muted-foreground">{(draft.schedule.graceMinutes ?? 0) > 0 ? `Si el auto se va antes de los ${draft.schedule.graceMinutes} minutos, la salida queda sin cobro.` : 'Con tolerancia en 0 no tiene efecto.'}</p>
+            </div>
+            <Switch id="tariff-sin-cobro-tolerancia" checked={draft.schedule.sinCobroEnTolerancia ?? true} onCheckedChange={value => updateSchedule({ sinCobroEnTolerancia: value })} />
+          </div>
           {notice}
         </section>
       </Step>,

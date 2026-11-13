@@ -45,10 +45,10 @@ cobra y registra la salida (`POST …/salida-anterior`).
 Turnos y cajas: la UI usa el contexto de caja del backend y soporta cajas físicas y turnos
 compartidos mediante CashSession. Revisar src/types/turno.type.ts y docs/caja-turnos.md del backend
 antes de modificar aperturas/cierres; los turnos legacy conservan su circuito histórico.
-Al abrir una caja, el efectivo recibido empieza vacío: el operador debe elegir un importe o
-escribirlo, incluso si recibe cero. Se vuelve a pedir al reabrir el diálogo o cambiar de caja.
+Al abrir una caja, el efectivo recibido empieza vacío: el operador debe escribir lo contado,
+o elegir explícitamente cero. No se ofrece copiar el saldo anterior. Se vuelve a pedir al reabrir el diálogo o cambiar de caja.
 Un importe distinto al cierre anterior exige motivo. Unirse a una caja ya abierta no vuelve a
-declarar el fondo compartido. En la primera apertura de una caja (sin cierre anterior) se ofrece
+declarar el fondo compartido. En la primera apertura de una caja (sin cierre anterior) se muestra como referencia
 «Fondo sugerido · $X» con el `fondoObjetivo` de la caja y la tarjeta muestra ese fondo, no «$0».
 En el arqueo final, «¿Cuánto dejás en caja para el próximo turno?» es el importe editable. El fondo
 objetivo es una sugerencia: se puede dejar más, menos o cero, hasta el efectivo contado después del
@@ -56,6 +56,14 @@ sueldo. «Usar sugerido» repone la referencia y «Dejar todo» conserva todo el
 El retiro de recaudación se calcula aparte del sueldo. Corregir el conteo conserva la elección del
 operador; si ya no alcanza, debe corregirla antes de confirmar. El contrato sigue enviando
 `efectivoParaSiguiente`; el backend valida y registra el mismo cierre de caja.
+Los conteos son ciegos hasta «Comparar con lo esperado» (apertura: «Comparar con lo que dejó»); la tarjeta
+del turno anterior muestra «Se muestra después de contar». El cierre envía `primerConteo` (el primer
+importe comparado). La conciliación (`getConciliacionAction`) se pide recién al comparar e incluye
+«Para revisar» y los conteos de relevo. Sumarse a una caja abierta o dejarla mientras otros siguen pide
+un conteo de relevo (`ConteoRelevo` en turno-bar.tsx). El super admin no abre turnos de caja.
+Al registrar una entrada, si la patente salió hace menos de 30 minutos (`salidaReciente` del estado de
+patente) se avisa cómo salió antes de seguir; la salida sin entrada muestra el mismo aviso.
+El conteo incluye sueldo y recaudación antes de separarlos; excluye retiros ya realizados.
 El conteo es ciego: «¿Cuánto efectivo contaste?» empieza vacío, la única opción rápida es «No hay
 efectivo» y el esperado («Esperado por el sistema») y la diferencia aparecen recién con el importe
 cargado. Antes el primer atajo era «Conté todo · $esperado» y el camino corto era no contar. En Mi
