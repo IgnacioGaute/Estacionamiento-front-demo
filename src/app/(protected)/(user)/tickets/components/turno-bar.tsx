@@ -275,7 +275,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           {cierreListo.alerta && <p role="alert" className="rounded-xl border border-gm-atencion/40 bg-gm-atencion/10 p-3 text-sm text-gm-atencion">{cierreListo.alerta}</p>}
           <p className="text-center text-xs text-muted-foreground">Retirá de la caja {cierreListo.sueldo > 0 ? 'el sueldo y ' : ''}la recaudación. El cierre quedó en el historial de turnos.</p>
         </ActionDialogBody>
-          <ActionDialogFooter>
+          <ActionDialogFooter ocultarConTeclado>
             <ActionDialogPrimaryButton onClick={() => { setCierreListo(null); setOpen(false); }}>Listo</ActionDialogPrimaryButton>
           </ActionDialogFooter>
         </> : !context ? <ActionDialogBody className="[&>*]:shrink-0">
@@ -366,7 +366,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           {forzando && <div className="space-y-1.5 rounded-2xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-4"><Label htmlFor="forced-reason">¿Por qué cerrás el turno de otra persona?</Label><Input id="forced-reason" maxLength={255} value={forcedReason} onChange={e => setForcedReason(e.target.value)} disabled={pending} required placeholder="Ej.: se retiró sin cerrar su turno" /><p className="text-[11px] text-muted-foreground">Queda en el historial junto a tu nombre.</p></div>}
           {enlaceHistorial}
         </ActionDialogBody>
-          <ActionDialogFooter>
+          <ActionDialogFooter ocultarConTeclado>
             <ActionDialogPrimaryButton type="submit" disabled={pending || !closingValid} detail={pending ? undefined : faltaParaCerrar}>{pending ? 'Cerrando…' : arqueo ? 'Confirmar cierre de turno y caja' : 'Confirmar cierre de turno'}</ActionDialogPrimaryButton>
           </ActionDialogFooter>
         </form> : <><ActionDialogBody className="[&>*]:shrink-0">
@@ -397,7 +397,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           <p className="text-center text-xs text-muted-foreground">{arqueo ? 'Al terminar, vas a contar y cerrar esta caja.' : 'Compartís esta caja con otros operadores. Podés cerrar sólo tu turno; el último cuenta el efectivo.'}</p>
           {enlaceHistorial}
         </ActionDialogBody>
-          <ActionDialogFooter>
+          <ActionDialogFooter ocultarConTeclado>
             <ActionDialogPrimaryButton disabled={pending || !canClose} onClick={() => setClosing(true)}>{arqueo ? 'Cerrar mi turno y contar la caja' : 'Cerrar sólo mi turno'}</ActionDialogPrimaryButton>
           </ActionDialogFooter>
         </> : <form onSubmit={e => { e.preventDefault(); submitOpen(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-5 [&>*]:shrink-0">
@@ -450,7 +450,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           </>}
           {enlaceHistorial}
         </ActionDialogBody>
-          <ActionDialogFooter>
+          <ActionDialogFooter ocultarConTeclado>
             <ActionDialogPrimaryButton type="submit" disabled={pending || !openingValid} detail={esSuperAdmin ? undefined : faltaParaAbrir}>{pending ? 'Abriendo…' : caja?.session ? 'Abrir mi turno en esta caja' : 'Abrir caja y mi turno'}</ActionDialogPrimaryButton>
           </ActionDialogFooter>
         </form>}

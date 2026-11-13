@@ -4,6 +4,13 @@ import { Check, Pencil, Plus } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
+// En el celular, al abrirse el teclado el campo puede quedar fuera de lo visible: se centra cuando
+// el teclado terminó de subir.
+function centrarEnCelular(el: HTMLElement | null) {
+  if (!el || typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 639px)').matches) return;
+  window.setTimeout(() => el.scrollIntoView?.({ block: 'center', behavior: 'smooth' }), 300);
+}
+
 export const cashMoney = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
 const miles = (n: number) => new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(n);
 type Shortcut = { label: string; disabled?: boolean } & ({ amount: number } | { edit: true });
@@ -40,7 +47,7 @@ export function CashAmountField({ id, label, value, onChange, disabled, max, pla
       <div onClick={() => inputRef.current?.focus()} className={cn('flex cursor-text items-baseline gap-2', compact ? 'px-3 py-1.5' : 'px-4 pb-3 pt-3.5')}>
         <span aria-hidden className="font-display text-2xl font-bold text-muted-foreground">$</span>
         <span className="relative min-w-0 flex-1">
-          <input ref={inputRef} id={id} type="number" inputMode="numeric" min="0" step="1" max={max} required value={value} onChange={e => onChange(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} disabled={disabled} placeholder={placeholder ?? 'Otro importe'} aria-describedby={description ? id + '-help' : undefined}
+          <input ref={inputRef} id={id} type="number" inputMode="numeric" min="0" step="1" max={max} required value={value} onChange={e => onChange(e.target.value)} onFocus={() => { setFocused(true); centrarEnCelular(inputRef.current); }} onBlur={() => setFocused(false)} disabled={disabled} placeholder={placeholder ?? 'Otro importe'} aria-describedby={description ? id + '-help' : undefined}
             className={cn('h-10 w-full bg-transparent font-display text-[34px] font-bold leading-none tracking-tight tabular-nums outline-none placeholder:font-sans placeholder:text-[15px] placeholder:font-medium placeholder:tracking-normal placeholder:text-muted-foreground/70 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none', formateado && 'text-transparent')} />
           {formateado && <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 flex items-center font-display text-[34px] font-bold leading-none tracking-tight tabular-nums">{miles(numero)}</span>}
         </span>

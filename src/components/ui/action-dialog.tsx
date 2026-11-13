@@ -26,7 +26,8 @@ const MEDIA_HOJA = "(max-width: 639px)"
 const CLASES_HOJA = "fixed z-50 flex flex-col overflow-hidden border-gm-line-strong bg-card text-card-foreground shadow-[0_-20px_60px_-12px_rgba(0,0,0,0.6)] outline-none inset-x-0 bottom-0 max-h-[calc(100dvh-0.5rem)] rounded-t-[22px] border-t sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[min(90dvh,860px)] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[22px] sm:border sm:shadow-[0_30px_80px_-12px_rgba(0,0,0,0.7)]"
 const CLASES_CUERPO = "flex min-h-0 min-w-0 flex-auto flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-4 pt-1 [overflow-wrap:anywhere] short:gap-2.5 short:pb-3 sm:px-6"
 
-type AreaVisible = { bottom: number; height: number }
+// `teclado`: el visual viewport es bastante más bajo que la pantalla (el teclado está abierto).
+type AreaVisible = { bottom: number; height: number; teclado: boolean }
 
 // Lo que realmente se ve, no el layout viewport. En iOS el teclado achica el visual viewport sin
 // mover los `position: fixed`: con `bottom: 0` el pie quedaría debajo del teclado, tapado. Acá la
@@ -45,7 +46,7 @@ function useAreaVisible(): AreaVisible | null {
         return
       }
       const layout = document.documentElement.clientHeight
-      setArea({ bottom: Math.max(0, layout - (vv.offsetTop + vv.height)), height: vv.height })
+      setArea({ bottom: Math.max(0, layout - (vv.offsetTop + vv.height)), height: vv.height, teclado: layout - vv.height > 150 })
     }
     update()
     media.addEventListener("change", update)
@@ -66,6 +67,7 @@ function useAreaVisible(): AreaVisible | null {
 const PieContext = React.createContext<{
   pie: HTMLElement | null
   setPie: (node: HTMLElement | null) => void
+  teclado: boolean
 } | null>(null)
 
 const ActionDialogContent = React.forwardRef<
@@ -103,7 +105,7 @@ const ActionDialogContent = React.forwardRef<
         {...props}
       >
         <div className="gm-stripes h-[5px] w-full shrink-0" aria-hidden />
-        <PieContext.Provider value={{ pie, setPie }}>{children}</PieContext.Provider>
+        <PieContext.Provider value={{ pie, setPie, teclado: area?.teclado ?? false }}>{children}</PieContext.Provider>
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
   )
@@ -168,13 +170,17 @@ ActionDialogBody.displayName = "ActionDialogBody"
 
 // Vacío (sin botones propios ni de un panel) no ocupa lugar. En computadora los botones van en fila
 // y el principal ocupa el ancho que queda, alineado con el contenido.
-function ActionDialogFooter({ className, children }: { className?: string; children?: React.ReactNode }) {
+// `ocultarConTeclado`: en el celular, mientras se escribe un importe el pie se esconde. Con el
+// teclado abierto la hoja queda sobre el teclado y el botón fijo ocupaba casi todo lo visible: el
+// campo, «Comparar» y el motivo no se veían y el botón confundía. Al cerrar el teclado vuelve.
+function ActionDialogFooter({ className, children, ocultarConTeclado }: { className?: string; children?: React.ReactNode; ocultarConTeclado?: boolean }) {
   const contexto = React.useContext(PieContext)
   return (
     <div
       ref={contexto?.setPie}
       className={cn(
         "flex shrink-0 flex-col gap-2 border-t border-border bg-card px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] empty:hidden short:pt-2.5 sm:flex-row sm:items-center sm:gap-3 sm:px-6 sm:pb-4",
+        ocultarConTeclado && contexto?.teclado && "hidden",
         className
       )}
     >
