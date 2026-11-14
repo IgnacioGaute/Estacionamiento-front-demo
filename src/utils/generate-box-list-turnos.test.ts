@@ -6,6 +6,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import generateBoxList from './generate-box-list';
 import type { BoxList } from '@/types/box-list.type';
 jest.mock('sonner', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+jest.mock('@/actions/turnos/control-mercadopago.action', () => ({ getControlMercadoPagoAction: jest.fn() }));
 
 test('planilla imprime los resúmenes y las alertas sin recortar textos largos', async () => {
   const draw = jest.spyOn(PDFPage.prototype, 'drawText');

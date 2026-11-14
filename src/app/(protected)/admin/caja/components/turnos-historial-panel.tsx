@@ -23,7 +23,7 @@ const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', '
 const date = (s: string) => dayjs(s).tz(TZ).format('DD/MM/YY · HH:mm');
 const hora = (s: string) => dayjs(s).tz(TZ).format('HH:mm');
 
-function CorteDiario({ turno }: { turno: Turno }) {
+function CorteDiario({ turno, mercadoPago }: { turno: Turno; mercadoPago: boolean }) {
   return <details className="group rounded-xl border border-dashed border-gm-line">
     <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-4 py-2.5 text-xs text-muted-foreground transition-colors hover:bg-gm-surface-3/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gm-yellow [&::-webkit-details-marker]:hidden">
       <span className="font-semibold text-foreground">{operator(turno.usuarioApertura)}</span>
@@ -31,7 +31,7 @@ function CorteDiario({ turno }: { turno: Turno }) {
       {turno.resumen && <span>Cobró <span className="font-semibold tabular-nums text-foreground">{money(turno.resumen.efectivoCobrado)}</span> en efectivo</span>}
       <span className="ml-auto inline-flex items-center gap-1">Sigue en la próxima planilla<ChevronDown className="size-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden /></span>
     </summary>
-    <div className="border-t border-dashed border-gm-line px-4 py-3 text-sm"><TurnoResumenPanel turno={turno} /></div>
+    <div className="border-t border-dashed border-gm-line px-4 py-3 text-sm"><TurnoResumenPanel turno={turno} mercadoPagoDisponible={mercadoPago} /></div>
   </details>;
 }
 // Mientras carga, filas con la forma de los turnos en vez del ícono grande: junto con el de las
@@ -85,6 +85,8 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
   const [pending, setPending] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  // La empresa tiene Mercado Pago conectado con las condiciones que permiten consultar turnos cerrados.
+  const [mercadoPago, setMercadoPago] = useState(false);
 
   useEffect(() => {
     let current = true;
@@ -95,6 +97,7 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
       if (!current) return;
       setTurnos(result.result?.data ?? []);
       setTotal(result.result?.meta.totalItems ?? 0);
+      setMercadoPago(!!result.result?.summary.mercadoPago);
       setError(result.error ?? '');
     }).finally(() => { if (current) setPending(false); });
     return () => { current = false; };
@@ -128,7 +131,7 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
             : <div className="space-y-6">
               {grupos.map(grupo => <div key={grupo.dia} className="space-y-2">
                 <p className="px-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground first-letter:uppercase">{grupo.dia}</p>
-                <div className="space-y-2">{grupo.turnos.map(turno => <ShiftCard key={turno.id} turno={turno} />)}</div>
+                <div className="space-y-2">{grupo.turnos.map(turno => <ShiftCard key={turno.id} turno={turno} mercadoPago={mercadoPago} />)}</div>
               </div>)}
               <CompactPagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} />
             </div>}
@@ -136,10 +139,10 @@ export function TurnosHistorialPanel({ revision = 0 }: { revision?: number } = {
   </section>;
 }
 
-function ShiftCard({ turno }: { turno: Turno }) {
+function ShiftCard({ turno, mercadoPago }: { turno: Turno; mercadoPago: boolean }) {
   // El corte de las 00:00 no es un cierre: es la misma jornada que sigue en la planilla de otro día.
   // Como tarjeta completa llenaba el historial y escondía los cierres reales; va como fila compacta.
-  if (turno.cierreAutomatico) return <CorteDiario turno={turno} />;
+  if (turno.cierreAutomatico) return <CorteDiario turno={turno} mercadoPago={mercadoPago} />;
   const individual = !!turno.cashSessionId && !turno.cierreCaja;
   const difference = turno.diferencia;
   const status = turno.cierreAutomatico ? 'Corte de las 00:00' : individual ? 'Turno finalizado · La caja sigue abierta' : difference == null ? 'Efectivo no contado' : difference === 0 ? 'Caja correcta' : difference > 0 ? `Faltaron ${money(difference)}` : `Sobraron ${money(-difference)}`;
@@ -175,7 +178,7 @@ function ShiftCard({ turno }: { turno: Turno }) {
         {!turno.resumen && <Amount label="Efectivo retirado" value={turno.efectivoRetirado} />}
       </dl>}
       {!!turno.cashSession?.diferenciaApertura && <p className="rounded-xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-3 text-xs text-gm-atencion">Diferencia al recibir esta caja: {money(turno.cashSession.diferenciaApertura)} · {turno.cashSession.motivoApertura}</p>}
-      <TurnoResumenPanel turno={turno} />
+      <TurnoResumenPanel turno={turno} mercadoPagoDisponible={mercadoPago} />
       {turno.observaciones && <p className="whitespace-pre-wrap break-words rounded-xl bg-gm-surface-3/60 p-3 text-xs"><strong>Nota:</strong> {turno.observaciones}</p>}
       {turno.cierreForzado && <p className="break-words rounded-xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-3 text-xs text-gm-atencion"><strong>Cierre por administrador:</strong> {turno.motivoCierreForzado || 'Sin motivo registrado'}</p>}
     </div>

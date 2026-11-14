@@ -7,6 +7,7 @@ import type { BoxList, BoxListResponse, TurnoDelDia } from '@/types/box-list.typ
 
 jest.mock('next-auth/react', () => ({ useSession: () => ({ data: { token: 'test', user: { email: 'test@example.test' } } }) }));
 jest.mock('@/services/box-lists.service', () => ({ findBoxByDate: jest.fn() }));
+jest.mock('@/actions/turnos/control-mercadopago.action', () => ({ getControlMercadoPagoAction: jest.fn() }));
 jest.mock('@/actions/turnos/shifts-enabled.action', () => ({ getShiftsEnabledAction: async () => true }));
 jest.mock('@/utils/generate-box-list', () => ({ __esModule: true, default: jest.fn() }));
 

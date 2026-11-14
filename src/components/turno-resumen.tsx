@@ -3,10 +3,12 @@ import { ArrowRight, Car } from 'lucide-react';
 import { Turno } from '@/types/turno.type';
 import { cn } from '@/lib/utils';
 import { Etiqueta, money } from '@/components/turno-ui';
+import { ControlMercadoPagoHistorial } from '@/components/control-mercadopago';
 
 // Lo mismo se lee en «Mi turno», en el historial y en la planilla: primero cómo se cobró, después
 // qué salió de la caja, cuántos vehículos pasaron y qué quedó para el siguiente.
-export function TurnoResumenPanel({ turno }: { turno: Turno }) {
+// `mercadoPagoDisponible`: el historial puede consultar Mercado Pago para un turno cerrado sin control.
+export function TurnoResumenPanel({ turno, mercadoPagoDisponible = false }: { turno: Turno; mercadoPagoDisponible?: boolean }) {
   const r = turno.resumen;
   if (!r) return null;
   const retiros = [['Gastos', r.gastosEfectivo], ['Sueldo', r.sueldoRetirado], ['Recaudación', r.retirosRecaudacion]] as const;
@@ -54,6 +56,7 @@ export function TurnoResumenPanel({ turno }: { turno: Turno }) {
         : !abierto && <p className="px-4 py-3 text-xs text-muted-foreground">{turno.cierreAutomatico ? 'Corte de las 00:00. La caja continúa abierta.' : 'La caja sigue abierta con otros operadores.'}</p>}
     </div>
 
+    {!abierto && <ControlMercadoPagoHistorial turno={turno} disponible={mercadoPagoDisponible} />}
     {turno.alertaSueldo && <p role="alert" className="rounded-xl border border-gm-atencion/40 bg-gm-atencion/5 p-3 text-xs text-gm-atencion">{turno.alertaSueldo}</p>}
     {r.movimientos.length > 0 && <details className="group text-xs">
       <summary className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground">Ver movimientos de caja</summary>

@@ -18,9 +18,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ActionDialog, ActionDialogBody, ActionDialogContent, ActionDialogFooter, ActionDialogHeader, ActionDialogPrimaryButton } from '@/components/ui/action-dialog';
 import { TurnoCargando } from './cargando';
-import { CashContext, ConciliacionCaja, EstadiaAbiertaTurno } from '@/types/turno.type';
+import { CashContext, ConciliacionCaja, ControlMercadoPago, EstadiaAbiertaTurno } from '@/types/turno.type';
 import { getEstadiasAbiertasTurnoAction } from '@/actions/turnos/estadias-abiertas.action';
 import { getConciliacionAction } from '@/actions/turnos/conciliacion.action';
+import { getControlMercadoPagoAction } from '@/actions/turnos/control-mercadopago.action';
 import { paraRepasar, RepasoEstadias } from './repaso-estadias';
 import { useConfirmadas } from './estadias-largas';
 import { getCashContextAction } from '@/actions/turnos/cash-context.action';
@@ -60,6 +61,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const [conteoVisto, setConteoVisto] = useState(false);
   const [primerConteo, setPrimerConteo] = useState<number | null>(null);
   const [conciliacion, setConciliacion] = useState<ConciliacionCaja | null | undefined>(undefined);
+  const [controlMp, setControlMp] = useState<ControlMercadoPago | null>(null);
   const [recibidoVisto, setRecibidoVisto] = useState(false);
   // Conteo de relevo en caja compartida: al sumarse o al dejarla mientras otros siguen.
   const [relevo, setRelevo] = useState('');
@@ -118,6 +120,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     setPrimerConteo(previo => previo ?? Number(counted));
     // El detalle se pide recién ahora: no viaja con el contexto, que llega antes de contar.
     void getConciliacionAction(active.id).then(r => setConciliacion(r ?? null), () => setConciliacion(null));
+    // Lo que entró a Mercado Pago en el turno: ayuda a explicar una diferencia (no la frena).
+    void getControlMercadoPagoAction(active.id).then(r => setControlMp(r && 'control' in r ? r.control : null), () => setControlMp(null));
   };
   const compararRecibido = () => { if (amountValid(received)) setRecibidoVisto(true); };
 
@@ -234,7 +238,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     : undefined;
   const reiniciarConteos = () => { setRecibidoVisto(false); setRelevo(''); setRelevoVisto(false); setMotivoRelevo(''); };
   const abrir = () => { setCierreListo(null); setClosing(!!turnoId); setReceived(''); setAdded('0'); setOpeningReason(''); setCounted(''); setCashForNext(null); setNotes(''); setForcedReason(''); setRetirarSueldo(true);
-    setConteoVisto(false); setPrimerConteo(null); setConciliacion(undefined); reiniciarConteos(); setOpen(true); startTransition(() => refresh(true)); };
+    setConteoVisto(false); setPrimerConteo(null); setConciliacion(undefined); setControlMp(null); reiniciarConteos(); setOpen(true); startTransition(() => refresh(true)); };
   const enlaceHistorial = esAdmin && <Link href="/admin/caja/turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja/turnos'), 200); }} className="mx-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow"><History className="size-3.5" aria-hidden />Ver turnos e historial</Link>;
   return <>
     {variant === 'pill' ? (
@@ -305,7 +309,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
               {!conteoVisto && amountValid(counted) && <BotonComparar onClick={compararConteo} disabled={pending}>Comparar con lo esperado</BotonComparar>}
               {arqueo && conteoVisto && amountValid(counted) && closingDifference === 0 && <Coincide esperado={expected} />}
               {conDiferencia && <MotivoDiferencia diferencia={closingDifference} value={notes} onChange={setNotes} disabled={pending} />}
-              {conteoVisto && amountValid(counted) && <ConciliacionCajaPanel detalle={conciliacion} />}
+              {conteoVisto && amountValid(counted) && <ConciliacionCajaPanel detalle={conciliacion} mercadoPago={controlMp} />}
             </Paso>
             {paso1Listo && <Paso numero={2} listo={handoverValid} ultimo>
               <CashAmountField id="cash-for-next" label="¿Cuánto dejás en caja para el próximo turno?" labelClassName="min-w-[min(100%,14rem)] text-[13px] normal-case tracking-normal text-foreground" value={forNext} onChange={setCashForNext} disabled={pending || !amountValid(counted) || !conteoVisto} max={amountValid(counted) ? afterSalary : undefined} editLabel="Cambiar importe"
