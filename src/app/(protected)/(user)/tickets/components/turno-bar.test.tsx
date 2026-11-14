@@ -20,7 +20,6 @@ jest.mock('@/actions/turnos/cajas.action', () => ({ addCashMovementAction: jest.
 jest.mock('@/lib/toast', () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock('@/actions/turnos/estadias-abiertas.action', () => ({ getEstadiasAbiertasTurnoAction: jest.fn().mockResolvedValue([]) }));
 jest.mock('@/actions/turnos/conciliacion.action', () => ({ getConciliacionAction: jest.fn().mockResolvedValue(null) }));
-jest.mock('@/actions/turnos/control-mercadopago.action', () => ({ getControlMercadoPagoAction: jest.fn().mockResolvedValue({ control: null }) }));
 // Con la suite completa corriendo en paralelo, recargar la caja puede tardar más de 1 s.
 configure({ asyncUtilTimeout: 4000 });
 const user = { id: 'yo', email: 'yo@test', firstName: 'Ana', lastName: 'López', role: 'ADMIN' };

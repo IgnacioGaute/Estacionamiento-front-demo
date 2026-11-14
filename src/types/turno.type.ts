@@ -36,18 +36,7 @@ export type Turno = {
   cashSession?: CashSession | null;
   cierreCaja?: boolean;
   estado: 'ABIERTO' | 'CERRADO';
-  // Lo que entró a Mercado Pago en el horario del turno contra lo registrado, guardado al cerrar.
-  controlMercadoPago?: ControlMercadoPago | null;
 };
-
-// Solo totales (ver src/mercadopago/control-turno.ts en el backend). diferencia > 0: entró más a
-// Mercado Pago de lo registrado (un pago por transferencia cargado como efectivo, por ejemplo).
-export type ControlMercadoPago =
-  | { estado: 'OK'; consultadoEl: string; desde: string; hasta: string;
-      mercadoPago: { total: number; transferencias: number; qr: number; otros: number; cantidad: number };
-      sistema: { total: number; alias: number; qr: number; transferencias: number };
-      diferencia: number; variasPlayas: boolean }
-  | { estado: 'ERROR'; consultadoEl: string; desde: string; hasta: string; message: string };
 
 export type ConteoRelevoCaja = { id: string; momento: 'INGRESO' | 'SALIDA'; contado: number; esperado: number; diferencia: number; motivo: string | null; operador: string; fecha: string };
 export type EstadiaParaRevisar = { id: string; patente: string; motivo: 'DESCUENTO_TOTAL' | 'COBRO_SIN_TIEMPO' | 'REINGRESO'; detalle: string; salida: string };

@@ -1,7 +1,7 @@
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from "@/lib/auth";
 import { OpenTurnoSchemaType, CloseTurnoSchemaType } from "@/schemas/turno.schema";
-import { CashContext, ConciliacionCaja, ControlMercadoPago, EstadiaAbiertaTurno, Turno } from "@/types/turno.type";
+import { CashContext, ConciliacionCaja, EstadiaAbiertaTurno, Turno } from "@/types/turno.type";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -73,7 +73,7 @@ export async function getCashContext(): Promise<CashContext> {
   if (!response.ok) throw new Error(data.message || 'No se pudo consultar la caja.');
   return data;
 }
-export async function getTurnos(filtros: { desde?: string; hasta?: string; usuarioId?: string; estado?: 'ABIERTO' | 'CERRADO'; fechaPor?: 'APERTURA' | 'CIERRE'; page?: number; limit?: number; soloDiferencias?: boolean } = {}): Promise<{ data: Turno[]; meta: { totalItems: number }; summary: { total: number; diferencias: number; sinConteo: number; mercadoPago?: boolean } }> {
+export async function getTurnos(filtros: { desde?: string; hasta?: string; usuarioId?: string; estado?: 'ABIERTO' | 'CERRADO'; fechaPor?: 'APERTURA' | 'CIERRE'; page?: number; limit?: number; soloDiferencias?: boolean } = {}): Promise<{ data: Turno[]; meta: { totalItems: number }; summary: { total: number; diferencias: number; sinConteo: number } }> {
   const params = new URLSearchParams({ page: String(filtros.page ?? 1), limit: String(filtros.limit ?? 5), soloDiferencias: String(filtros.soloDiferencias ?? false) });
   if (filtros.estado) params.set('estado', filtros.estado);
   if (filtros.fechaPor) params.set('fechaPor', filtros.fechaPor);
@@ -125,18 +125,6 @@ export const getEstadiasAbiertasTurno = async (id: string, todas = false, authTo
 };
 
 // Cómo se llega al efectivo esperado: la pide el cierre después de cargar el conteo (arqueo ciego).
-// control null: la empresa no tiene Mercado Pago conectado con las condiciones vigentes.
-export const getControlMercadoPago = async (id: string, authToken?: string): Promise<{ control: ControlMercadoPago | null } | { error: string }> => {
-  try {
-    const response = await fetch(`${BASE_URL}/mercadopago/turnos/${encodeURIComponent(id)}/control`, { headers: await getAuthHeaders(authToken), cache: 'no-store' });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) return { error: typeof data?.message === 'string' ? data.message : 'No se pudo consultar Mercado Pago.' };
-    return { control: (data as { control: ControlMercadoPago | null } | null)?.control ?? null };
-  } catch {
-    return { error: 'No se pudo consultar Mercado Pago.' };
-  }
-};
-
 export const getConciliacion = async (id: string, authToken?: string): Promise<ConciliacionCaja | null> => {
   try {
     const response = await fetch(`${BASE_URL}/turnos/${encodeURIComponent(id)}/conciliacion`, { headers: await getAuthHeaders(authToken), cache: 'no-store' });

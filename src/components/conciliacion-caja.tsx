@@ -1,6 +1,5 @@
-import { ConciliacionCaja, ControlMercadoPago, EstadiaParaRevisar } from '@/types/turno.type';
+import { ConciliacionCaja, EstadiaParaRevisar } from '@/types/turno.type';
 import { cashMoney } from './cash-amount-field';
-import { ControlMercadoPagoPanel } from './control-mercadopago';
 
 const hora = (fecha: string) => new Date(fecha).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'short' });
 
@@ -12,15 +11,12 @@ const TITULOS: Record<EstadiaParaRevisar['motivo'], string> = {
 
 // `detalle`: undefined mientras se pide (se pide recién después de cargar el conteo), null si no se
 // pudo traer. El cierre no depende de esto: es una ayuda para explicar una diferencia.
-// `mercadoPago`: lo que entró a la cuenta en el horario del turno contra lo registrado (null o
-// ausente: la empresa no tiene Mercado Pago conectado con las condiciones vigentes).
-export function ConciliacionCajaPanel({ detalle, mercadoPago }: { detalle?: ConciliacionCaja | null; mercadoPago?: ControlMercadoPago | null }) {
+export function ConciliacionCajaPanel({ detalle }: { detalle?: ConciliacionCaja | null }) {
   if (detalle === undefined) return <p className="mt-3 text-xs text-muted-foreground" aria-live="polite">Buscando cómo se calcula el efectivo…</p>;
   if (!detalle) return null;
   const conteos = detalle.conteos ?? [];
   const paraRevisar = detalle.paraRevisar ?? [];
   return <div className="mt-3 space-y-3">
-    {mercadoPago && <ControlMercadoPagoPanel control={mercadoPago} />}
     {paraRevisar.length > 0 && <section aria-labelledby="para-revisar" className="rounded-2xl border border-gm-aviso/30 bg-gm-aviso/[0.05] p-3.5">
       <h4 id="para-revisar" className="text-sm font-semibold">Para revisar antes de explicar la diferencia</h4>
       <p className="mt-0.5 text-xs text-muted-foreground">No son errores: son los casos que más seguido explican un faltante.</p>
