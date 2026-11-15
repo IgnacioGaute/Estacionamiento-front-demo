@@ -40,7 +40,10 @@ export type Turno = {
 
 export type ConteoRelevoCaja = { id: string; momento: 'INGRESO' | 'SALIDA'; contado: number; esperado: number; diferencia: number; motivo: string | null; operador: string; fecha: string };
 export type EstadiaParaRevisar = { id: string; patente: string; motivo: 'DESCUENTO_TOTAL' | 'COBRO_SIN_TIEMPO' | 'REINGRESO'; detalle: string; salida: string };
-export type ConciliacionCaja = { fondoInicial: number; ingresos: number; egresos: number; esperado: number; movimientos: { id: string; amount: number; concepto: string; operador: string; fecha: string }[]; conteos?: ConteoRelevoCaja[]; paraRevisar?: EstadiaParaRevisar[] };
+// Cobros digitales que nadie comprobó contra Mercado Pago: «Transferencia» cargada a mano, o una
+// transferencia al alias que el operador eligió entre varias posibles.
+export type CobroSinVerificar = { id: string; tipo: 'TRANSFERENCIA' | 'ALIAS_ELEGIDA'; importe: number; hora: string; concepto: string; operador: string };
+export type ConciliacionCaja = { fondoInicial: number; ingresos: number; egresos: number; esperado: number; movimientos: { id: string; amount: number; concepto: string; operador: string; fecha: string }[]; conteos?: ConteoRelevoCaja[]; paraRevisar?: EstadiaParaRevisar[]; sinVerificar?: CobroSinVerificar[] };
 export type OpenTurno = Turno & { efectivoDisponible: number; fondoObjetivo?: number; sueldoSugerido?: number; efectivoOperado?: number; usuariosEnCaja?: number; requiereArqueo?: boolean };
 export type Caja = { id: string; nombre: string; principal: boolean; activa: boolean; fondoObjetivo?: number };
 export type CashSession = { id: string; fondoInicial: number; fondoEsperado: number; cambioAgregado: number; diferenciaApertura: number; motivoApertura: string | null; fechaApertura: string; fechaCierre: string | null; efectivoParaSiguiente: number | null; efectivoContado: number | null; efectivoTeorico: number | null; diferencia: number | null; estado: 'ABIERTO' | 'CERRADO' };

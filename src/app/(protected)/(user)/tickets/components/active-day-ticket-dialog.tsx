@@ -24,7 +24,7 @@ import { PaymentMethodChoices, MedioCobro } from './payment-method-choices';
 import { CobroQrMercadoPago, PagoQrRecibido } from './cobro-qr-mercadopago';
 import { CobroAliasPanel, PagoRecibido } from './cobro-alias';
 import { CobroMercadoPago } from '@/types/mercadopago.type';
-import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
+import { CobroAlias, DisponibilidadAlias, transferenciaManualPermitida } from '@/types/verificacion-alias.type';
 import { cobroAliasDeEstadiaAction, disponibilidadAliasAction, iniciarCobroAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 
@@ -205,7 +205,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
               <div className="flex min-w-0 flex-col gap-4 short:gap-3">
                 {pagoConSalida ? (pagoConSalida.medio === 'QR' ? <PagoQrRecibido cobro={pagoConSalida.cobro} onCerrar={terminar} /> : <PagoRecibido cobro={pagoConSalida.cobro} onCerrar={terminar} />) : cobroAlias ? <CobroAliasPanel key={cobroAlias.id} cobro={cobroAlias} onTerminado={terminadoAlias} onCancelado={() => setCobroAlias(null)} /> : cobroQr ? <CobroQrMercadoPago cobro={cobroQr} onAcreditado={acreditadoQr} onCancelar={() => setCobroQr(null)} /> : !pagado && !registration.retired ? <fieldset className="min-w-0 space-y-2">
                   <legend className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">¿Cómo paga?</legend>
-                  <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} />
+                  <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManualPermitida(alias)} />
                   {medio === 'TRANSFER' && <p className="text-xs text-muted-foreground">Confirmá solo si ya viste la transferencia acreditada en la cuenta.</p>}
                 </fieldset> : null}
                 <details open={pagado || registration.retired || escritorio ? true : undefined} className="group">

@@ -28,7 +28,7 @@ import { updateTicketRegistrationForDayStatusAction } from '@/actions/tickets/up
 import { cancelarCobroMercadoPagoAction, crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
 import { cancelarCobroAliasAction, disponibilidadAliasAction, iniciarCobroAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
 import { CobroMercadoPago } from '@/types/mercadopago.type';
-import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
+import { CobroAlias, DisponibilidadAlias, transferenciaManualPermitida } from '@/types/verificacion-alias.type';
 import { sanitizePlateInput } from '@/utils/plate.utils';
 import { PlateCameraScanButton } from '../components/plate-camera-scan-button';
 import { MedioCobro, PaymentMethodChoices } from '../components/payment-method-choices';
@@ -308,7 +308,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
                       <CheckCircle2 className="size-4 shrink-0 text-gm-ok" aria-hidden />
                       La estadía ya quedó registrada, sin cobrar.
                     </p>
-                    <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} />
+                    <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManualPermitida(alias)} />
                   </fieldset>
                 )}
               </ActionDialogBody>
@@ -425,7 +425,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
                   </div>
                   {isPaid && (
                     <div role="group" aria-label="Medio de pago">
-                      <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} />
+                      <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManualPermitida(alias)} />
                       {medio === 'TRANSFER' && <p className="mt-2 text-xs text-muted-foreground">Confirmá solo si ya viste la transferencia acreditada en la cuenta.</p>}
                     </div>
                   )}

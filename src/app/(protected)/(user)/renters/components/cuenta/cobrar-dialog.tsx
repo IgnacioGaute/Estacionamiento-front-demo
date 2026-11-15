@@ -24,7 +24,7 @@ import { CobroMercadoPago } from '@/types/mercadopago.type';
 import { CobroQrMercadoPago } from '@/app/(protected)/(user)/tickets/components/cobro-qr-mercadopago';
 import { CobroAliasPanel } from '@/app/(protected)/(user)/tickets/components/cobro-alias';
 import { cobroAliasDeEstadiaAction, disponibilidadAliasAction, iniciarCobroAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
-import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
+import { CobroAlias, DisponibilidadAlias, transferenciaManualPermitida } from '@/types/verificacion-alias.type';
 import { CampoImporte } from './campo-importe';
 import { EntregaRecibo } from './entrega-recibo';
 import { colorSaldo, fechaAR, leerImporte, nuevoId, simularImputacion, textoSaldo } from './util';
@@ -67,7 +67,8 @@ export function CobrarDialog({
   const [elegidos, setElegidos] = useState<string[]>([]);
   const [texto, setTexto] = useState('');
   const [editandoTotal, setEditandoTotal] = useState(false);
-  const [modo, setModo] = useState<Modo>('CASH');
+  // Sin medio elegido de entrada, como en la salida: un efectivo preseleccionado se confirma sin mirar.
+  const [modo, setModo] = useState<Modo | null>(null);
   const [efectivoTexto, setEfectivoTexto] = useState('');
   const [nota, setNota] = useState('');
   const [conNota, setConNota] = useState(false);
@@ -91,7 +92,7 @@ export function CobrarDialog({
     setError('');
     setNota('');
     setConNota(false);
-    setModo('CASH');
+    setModo(null);
     setEfectivoTexto('');
     setEditandoTotal(false);
     setSolicitud(nuevoId());
@@ -159,7 +160,7 @@ export function CobrarDialog({
             : null;
 
   const pagos: { metodo: 'CASH' | 'TRANSFER'; importe: number }[] =
-    !total || modo === 'QR' || modo === 'ALIAS'
+    !total || !modo || modo === 'QR' || modo === 'ALIAS'
     ? []
     : modo === 'AMBOS'
       ? [
@@ -169,7 +170,13 @@ export function CobrarDialog({
       : [{ metodo: modo, importe: total }];
 
   const saldoNuevo = saldo - total;
-  const medioDisponible = modo === 'QR' ? !!disponibilidad?.qrDisponible : modo === 'ALIAS' ? !!disponibilidad?.disponible : true;
+  // Con el alias activo, el operador no tiene «Transferencia» sin verificar (ni la parte transferida de «Efectivo + transferencia»).
+  const transferenciaManual = transferenciaManualPermitida(disponibilidad);
+  const medioDisponible = !modo ? false
+    : modo === 'QR' ? !!disponibilidad?.qrDisponible
+    : modo === 'ALIAS' ? !!disponibilidad?.disponible
+    : modo === 'TRANSFER' || modo === 'AMBOS' ? transferenciaManual
+    : true;
   const listo = total > 0 && medioDisponible && !lecturaTotal.error && !errorReparto && !enviando && !cargando && !error;
 
   async function confirmar() {
@@ -240,7 +247,7 @@ export function CobrarDialog({
   }
   const esperandoQr = cobroQr?.estado === 'PENDIENTE';
   const esperandoAlias = !!cobroAlias && ['ESPERANDO', 'REVISION'].includes(cobroAlias.estado);
-  const modos = MODOS.filter(m => m.id === 'QR' ? disponibilidad?.qrDisponible : m.id === 'ALIAS' ? disponibilidad?.disponible : true);
+  const modos = MODOS.filter(m => m.id === 'QR' ? disponibilidad?.qrDisponible : m.id === 'ALIAS' ? disponibilidad?.disponible : m.id === 'TRANSFER' || m.id === 'AMBOS' ? transferenciaManual : true);
 
   const playa = context.playas.find((p) => p.id === playaId)?.nombre;
   const comoPaga =
@@ -514,7 +521,9 @@ export function CobrarDialog({
           ) : (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <p className="min-w-0 flex-1 text-sm leading-snug" role="status">
-                {total > 0 && !lecturaTotal.error ? (
+                {total > 0 && !lecturaTotal.error && !modo ? (
+                  <span className="text-muted-foreground">Elegí cómo paga.</span>
+                ) : total > 0 && !lecturaTotal.error ? (
                   <>
                     <strong>
                       Recibís {plata(total)} {comoPaga}.
@@ -532,11 +541,17 @@ export function CobrarDialog({
                 <ActionDialogPrimaryButton
                   disabled={!listo}
                   onClick={() => void confirmar()}
-                  detail={modo !== 'QR' && modo !== 'ALIAS' && total ? plata(total) : undefined}
+                  detail={modo && modo !== 'QR' && modo !== 'ALIAS' && total ? plata(total) : undefined}
                 >
                   <span className="flex items-center justify-center gap-2">
                   {enviando ? <LatticeLoader compact label="Procesando…" showTimer={false} cellSize={4} gap={1} /> : modo === 'QR' && <QrCode className="size-4" />}
-                  {modo === 'QR' ? 'Generar QR' : modo === 'ALIAS' ? 'Esperar transferencia' : 'Cobrar'}
+                  {/* El medio en el mismo botón: se ve qué se confirma. */}
+                  {!modo ? 'Elegí cómo paga'
+                    : modo === 'QR' ? 'Generar QR'
+                    : modo === 'ALIAS' ? 'Esperar transferencia'
+                    : modo === 'CASH' ? 'Cobrar en efectivo'
+                    : modo === 'TRANSFER' ? 'Registrar transferencia'
+                    : 'Cobrar'}
                   </span>
                 </ActionDialogPrimaryButton>
               </div>

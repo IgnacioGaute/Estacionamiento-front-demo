@@ -32,7 +32,7 @@ import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.a
 import { CobroMercadoPago } from '@/types/mercadopago.type';
 import { CobroQrMercadoPago, PagoQrRecibido } from './cobro-qr-mercadopago';
 import { CobroAliasPanel, PagoRecibido } from './cobro-alias';
-import { CobroAlias, DisponibilidadAlias } from '@/types/verificacion-alias.type';
+import { CobroAlias, DisponibilidadAlias, transferenciaManualPermitida } from '@/types/verificacion-alias.type';
 import {
   cobroAliasDeEstadiaAction,
   disponibilidadAliasAction,
@@ -425,7 +425,7 @@ export function CloseTicketPanel({
     setPagaCon(null);
     setOtroImporte('');
     setEfectivoHibrido('');
-    setRestoPor('TRANSFER');
+    setRestoPor(transferenciaManualPermitida(alias) ? 'TRANSFER' : 'ALIAS');
   };
 
   const resetAll = () => {
@@ -534,7 +534,10 @@ export function CloseTicketPanel({
       return;
     }
     resetAll();
-    void disponibilidadAliasAction().then((r) => setAlias(r.datos ?? null));
+    void disponibilidadAliasAction().then((r) => {
+      setAlias(r.datos ?? null);
+      if (!transferenciaManualPermitida(r.datos)) setRestoPor('ALIAS');
+    });
     if (initialRegistrationId) {
       setAbriendoDirecto(true);
       void marcarOrigenSalidaAction(initialRegistrationId, origen ?? 'MANUAL');
@@ -753,8 +756,10 @@ export function CloseTicketPanel({
   const vuelto = recibido !== null ? calcularVuelto(saldo, recibido) : null;
   const efectivoParte = efectivoHibrido ? Number(efectivoHibrido) : 0;
   const restoParte = Math.max(0, saldo - efectivoParte);
+  // Con el alias activo, el operador no tiene «Transferencia» sin verificar (tampoco para el resto).
+  const transferenciaManual = transferenciaManualPermitida(alias);
   const restoMedios: { id: typeof restoPor; texto: string; detalle: string }[] = [
-    { id: 'TRANSFER', texto: 'Transferencia', detalle: 'por transferencia' },
+    ...(transferenciaManual ? [{ id: 'TRANSFER' as const, texto: 'Transferencia', detalle: 'por transferencia' }] : []),
     { id: 'QR', texto: 'QR', detalle: 'por QR' },
     ...(alias?.disponible ? [{ id: 'ALIAS' as const, texto: 'Al alias', detalle: 'al alias' }] : []),
   ];
@@ -1144,7 +1149,7 @@ export function CloseTicketPanel({
                               {descuentoActual ? 'Cambiar descuento' : 'Descuento'}
                             </button>
                           </div>
-                          <PaymentMethodChoices compact hibrido value={paymentMethod} onChange={setPaymentMethod} disabled={isPending} aliasDisponible={!!alias?.disponible} />
+                          <PaymentMethodChoices compact hibrido value={paymentMethod} onChange={setPaymentMethod} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManual} />
                         </fieldset>
 
                         {paymentMethod === 'AMBOS' ? (

@@ -23,3 +23,23 @@ test('mientras se pide avisa que está buscando; si no se pudo, no muestra nada'
   rerender(<ConciliacionCajaPanel detalle={null} />);
   expect(container).toBeEmptyDOMElement();
 });
+
+test('lista los cobros digitales sin verificar con su total', () => {
+  render(<ConciliacionCajaPanel detalle={{
+    fondoInicial: 0, ingresos: 0, egresos: 0, esperado: 0, movimientos: [],
+    sinVerificar: [
+      { id: '1', tipo: 'TRANSFERENCIA', importe: 18000, hora: '18:40', concepto: 'AB123CD', operador: 'Brian' },
+      { id: '2', tipo: 'ALIAS_ELEGIDA', importe: 3500, hora: '19:05', concepto: 'Pago de inquilino', operador: 'Brian' },
+    ],
+  }} />);
+  const lista = screen.getByRole('region', { name: /Cobros digitales sin verificar/ });
+  expect(lista).toHaveTextContent('21.500');
+  expect(lista).toHaveTextContent('18:40 · AB123CD');
+  expect(lista).toHaveTextContent('Transferencia cargada a mano · Brian');
+  expect(lista).toHaveTextContent('Alias elegido entre varias · Brian');
+});
+
+test('sin cobros sin verificar no agrega nada', () => {
+  render(<ConciliacionCajaPanel detalle={{ fondoInicial: 0, ingresos: 0, egresos: 0, esperado: 0, movimientos: [], sinVerificar: [] }} />);
+  expect(screen.queryByText('Cobros digitales sin verificar')).not.toBeInTheDocument();
+});

@@ -26,7 +26,7 @@ import { disponibilidadAliasAction, iniciarCobroAliasAction } from '@/actions/me
 import type { TicketPriceBracket } from '@/types/ticket-price-bracket.type';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 import type { CobroMercadoPago } from '@/types/mercadopago.type';
-import type { CobroAlias } from '@/types/verificacion-alias.type';
+import { transferenciaManualPermitida, type CobroAlias } from '@/types/verificacion-alias.type';
 import { formatMinutesLabel } from '@/utils/ticket-price-bracket.utils';
 import { PaymentMethodChoices, type MedioCobro } from './payment-method-choices';
 import { CobroQrMercadoPago } from './cobro-qr-mercadopago';
@@ -62,6 +62,7 @@ export function AdvancePaymentDialog({
   const [lastName, setLastName] = useState('');
   const [verApellido, setVerApellido] = useState(false);
   const [aliasDisponible, setAliasDisponible] = useState(false);
+  const [transferenciaManual, setTransferenciaManual] = useState(true);
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
   const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
 
@@ -101,7 +102,10 @@ export function AdvancePaymentDialog({
     setVerApellido(!!existingRegistration?.lastNameCustomer);
     setCobroQr(null);
     setCobroAlias(null);
-    void disponibilidadAliasAction().then((r) => setAliasDisponible(!!r.datos?.disponible));
+    void disponibilidadAliasAction().then((r) => {
+      setAliasDisponible(!!r.datos?.disponible);
+      setTransferenciaManual(transferenciaManualPermitida(r.datos));
+    });
     // Se precarga una sola vez por apertura; cambiar de opción no debe reiniciar la elección.
   }, [open, existingRegistration?.id]);
 
@@ -245,7 +249,7 @@ export function AdvancePaymentDialog({
               {selectedChoice && preview && !exceedsTariff && dueNow! > 0 && (
                 <section aria-labelledby="anticipo-medio" className="space-y-2">
                   <h3 id="anticipo-medio" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">¿Cómo paga?</h3>
-                  <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={aliasDisponible} />
+                  <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={aliasDisponible} transferenciaManual={transferenciaManual} />
                 </section>
               )}
 

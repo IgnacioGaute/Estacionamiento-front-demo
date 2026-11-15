@@ -36,7 +36,7 @@ import { disponibilidadAliasAction, iniciarCobroAliasAction } from '@/actions/me
 import type { OpcionesSalidaAnterior, OpcionSalidaAnterior } from '@/services/tickets.service';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 import type { CobroMercadoPago } from '@/types/mercadopago.type';
-import type { CobroAlias } from '@/types/verificacion-alias.type';
+import { transferenciaManualPermitida, type CobroAlias } from '@/types/verificacion-alias.type';
 import { cuandoEntro, formatEstadia } from '@/utils/estadia';
 import { PaymentMethodChoices, type MedioSalida } from './payment-method-choices';
 import { CobroQrMercadoPago } from './cobro-qr-mercadopago';
@@ -65,6 +65,8 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
   const [efectivoHibrido, setEfectivoHibrido] = useState('');
   const [restoPor, setRestoPor] = useState<Resto>('TRANSFER');
   const [aliasDisponible, setAliasDisponible] = useState(false);
+  // Con el alias activo, el operador no tiene «Transferencia» sin verificar.
+  const [transferenciaManual, setTransferenciaManual] = useState(true);
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
   const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -92,7 +94,12 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
     setDatos(null); setElegida(null); setCada(0); setMedio(null); setDevolucion(null); setEfectivoHibrido('');
     setRestoPor('TRANSFER'); setCobroQr(null); setCobroAlias(null); setError('');
     void cargar(id);
-    void disponibilidadAliasAction().then((r) => setAliasDisponible(!!r.datos?.disponible));
+    void disponibilidadAliasAction().then((r) => {
+      setAliasDisponible(!!r.datos?.disponible);
+      const manual = transferenciaManualPermitida(r.datos);
+      setTransferenciaManual(manual);
+      if (!manual) setRestoPor('ALIAS');
+    });
   }, [open, id, cargar]);
 
   if (!registration) return null;
@@ -113,7 +120,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
   const efectivoParte = efectivoHibrido ? Number(efectivoHibrido) : 0;
   const errorHibrido = medio !== 'AMBOS' ? null : !efectivoParte ? 'Ingresá cuánto entrega en efectivo.' : efectivoParte >= saldo ? 'El efectivo cubre todo: elegí «Efectivo».' : null;
   const restoMedios: { id: Resto; texto: string }[] = [
-    { id: 'TRANSFER', texto: 'Transferencia' },
+    ...(transferenciaManual ? [{ id: 'TRANSFER' as const, texto: 'Transferencia' }] : []),
     { id: 'QR', texto: 'QR' },
     ...(aliasDisponible ? [{ id: 'ALIAS' as const, texto: 'Al alias' }] : []),
   ];
@@ -267,7 +274,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
           {opcion && saldo > 0 && !esperando && (
             <div role="group" aria-labelledby="se-fue-medio" className="space-y-2">
               <p id="se-fue-medio" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">¿Cómo paga?</p>
-              <PaymentMethodChoices compact hibrido value={medio} onChange={(m) => { setMedio(m); setError(''); }} disabled={enviando} aliasDisponible={aliasDisponible} />
+              <PaymentMethodChoices compact hibrido value={medio} onChange={(m) => { setMedio(m); setError(''); }} disabled={enviando} aliasDisponible={aliasDisponible} transferenciaManual={transferenciaManual} />
               {medio === 'AMBOS' && (
                 <div className="space-y-2.5 rounded-2xl border border-border bg-gm-surface-2/50 p-3">
                   <CashAmountField compact id="se-fue-efectivo" label="En efectivo" value={efectivoHibrido} onChange={setEfectivoHibrido} disabled={enviando} max={saldo} />

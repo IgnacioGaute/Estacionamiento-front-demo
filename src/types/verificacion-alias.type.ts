@@ -65,9 +65,15 @@ export type CobroAlias = {
   anteriores?: OpcionTransferencia[];
 };
 
-export type DisponibilidadAlias = { qrDisponible?: boolean } & (
+// transferenciaManual: false cuando la playa tiene el alias activo y quien cobra es operador: las
+// transferencias se cobran «Al alias» y la «Transferencia» sin verificar queda para la
+// administración (el backend la rechaza con TRANSFERENCIA_CON_ALIAS).
+export type DisponibilidadAlias = { qrDisponible?: boolean; transferenciaManual?: boolean } & (
   | { disponible: true; alias: string }
   | { disponible: false; code: string; motivo: string });
+
+// Mientras no se sabe (o con un backend anterior), se ofrece: el backend decide al guardar.
+export const transferenciaManualPermitida = (d?: DisponibilidadAlias | null) => d?.transferenciaManual !== false;
 
 // Configuración → MercadoPago (administrador).
 export type ConfiguracionAlias = {

@@ -14,13 +14,15 @@ const medios = [
   { id: 'AMBOS', titulo: 'Efectivo y otro medio', ayuda: 'Una parte en efectivo', Icon: Split, verificado: false },
 ] as const;
 
-type Props = { aliasDisponible: boolean; disabled?: boolean; compact?: boolean } & (
+// transferenciaManual: con el alias activo, el operador no tiene «Transferencia» (nadie la
+// verifica): el que transfiere lo hace al alias y se detecta solo.
+type Props = { aliasDisponible: boolean; transferenciaManual?: boolean; disabled?: boolean; compact?: boolean } & (
   | { hibrido?: false; value: MedioCobro | null; onChange: (medio: MedioCobro) => void }
   | { hibrido: true; value: MedioSalida | null; onChange: (medio: MedioSalida) => void }
 );
 
-export function PaymentMethodChoices({ value, onChange, aliasDisponible, disabled, hibrido, compact }: Props) {
-  const disponibles = medios.filter(m => (m.id !== 'ALIAS' || aliasDisponible) && (m.id !== 'AMBOS' || hibrido));
+export function PaymentMethodChoices({ value, onChange, aliasDisponible, transferenciaManual = true, disabled, hibrido, compact }: Props) {
+  const disponibles = medios.filter(m => (m.id !== 'ALIAS' || aliasDisponible) && (m.id !== 'TRANSFER' || transferenciaManual) && (m.id !== 'AMBOS' || hibrido));
   const elegir = onChange as (medio: MedioSalida) => void;
   return <div className="grid grid-cols-2 gap-2.5 short:gap-2">
     {disponibles.map(({ id, titulo, ayuda, Icon, verificado }, index) => {

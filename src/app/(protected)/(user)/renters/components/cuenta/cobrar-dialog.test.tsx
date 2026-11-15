@@ -98,3 +98,21 @@ test('recupera un alias pendiente y conserva la espera si cancelar falla', async
   expect(screen.queryByRole('radio', { name: 'Efectivo' })).not.toBeInTheDocument();
   expect(alias.cobroAliasDeEstadiaAction).toHaveBeenCalledWith('cliente', 'INQUILINO');
 });
+test('arranca sin medio elegido y el botón dice cuál se confirma', async () => {
+  jest.mocked(registrarPagoAction).mockResolvedValue({ data: recibo });
+  abrir();
+  const efectivo = await screen.findByRole('radio', { name: 'Efectivo' });
+  expect(screen.getAllByRole('radio').some((r) => r.getAttribute('aria-checked') === 'true')).toBe(false);
+  expect(screen.getByRole('button', { name: /Elegí cómo paga/ })).toBeDisabled();
+  fireEvent.click(efectivo);
+  fireEvent.click(screen.getByRole('button', { name: /Cobrar en efectivo/ }));
+  await waitFor(() => expect(registrarPagoAction).toHaveBeenCalledWith('cliente', expect.objectContaining({ pagos: [{ metodo: 'CASH', importe: 1000 }] })));
+});
+test('con el alias activo, el operador no tiene «Transferencia» ni «Efectivo + transferencia»', async () => {
+  jest.mocked(alias.disponibilidadAliasAction).mockResolvedValue({ datos: { disponible: true, qrDisponible: true, alias: 'playa.fixture', transferenciaManual: false } });
+  abrir();
+  await screen.findByRole('radio', { name: 'Al alias de MP' });
+  expect(screen.queryByRole('radio', { name: 'Transferencia' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('radio', { name: 'Efectivo + transferencia' })).not.toBeInTheDocument();
+  expect(screen.getAllByRole('radio').map((r) => r.textContent)).toEqual(['Efectivo', 'QR / celular', 'Al alias de MP']);
+});

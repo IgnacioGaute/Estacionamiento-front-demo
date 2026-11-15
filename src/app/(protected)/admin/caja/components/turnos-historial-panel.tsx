@@ -1,5 +1,6 @@
 'use client';
 import { TurnoResumenPanel } from '@/components/turno-resumen';
+import { CobrosSinVerificarHistorial } from '@/components/cobros-sin-verificar-historial';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { useEffect, useState } from 'react';
@@ -176,6 +177,7 @@ function ShiftCard({ turno }: { turno: Turno }) {
       </dl>}
       {!!turno.cashSession?.diferenciaApertura && <p className="rounded-xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-3 text-xs text-gm-atencion">Diferencia al recibir esta caja: {money(turno.cashSession.diferenciaApertura)} · {turno.cashSession.motivoApertura}</p>}
       <TurnoResumenPanel turno={turno} />
+      {turno.estado === 'CERRADO' && <CobrosSinVerificarHistorial turnoId={turno.id} />}
       {turno.observaciones && <p className="whitespace-pre-wrap break-words rounded-xl bg-gm-surface-3/60 p-3 text-xs"><strong>Nota:</strong> {turno.observaciones}</p>}
       {turno.cierreForzado && <p className="break-words rounded-xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-3 text-xs text-gm-atencion"><strong>Cierre por administrador:</strong> {turno.motivoCierreForzado || 'Sin motivo registrado'}</p>}
     </div>

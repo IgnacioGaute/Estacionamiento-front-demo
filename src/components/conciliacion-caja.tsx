@@ -1,5 +1,33 @@
-import { ConciliacionCaja, EstadiaParaRevisar } from '@/types/turno.type';
+import { CobroSinVerificar, ConciliacionCaja, EstadiaParaRevisar } from '@/types/turno.type';
 import { cashMoney } from './cash-amount-field';
+
+const QUE_ES: Record<CobroSinVerificar['tipo'], string> = {
+  TRANSFERENCIA: 'Transferencia cargada a mano',
+  ALIAS_ELEGIDA: 'Alias elegido entre varias',
+};
+
+// Los cobros digitales que dependen de lo que dijo el operador. Un pago en efectivo cargado como
+// transferencia deja la caja cuadrada sin la plata: se controlan uno por uno en Mercado Pago.
+export function CobrosSinVerificar({ cobros }: { cobros: CobroSinVerificar[] }) {
+  if (!cobros.length) return null;
+  const total = cobros.reduce((s, c) => s + c.importe, 0);
+  return <section aria-labelledby="sin-verificar" className="rounded-2xl border border-gm-aviso/30 bg-gm-aviso/[0.05] p-3.5">
+    <h4 id="sin-verificar" className="flex items-baseline justify-between gap-3 text-sm font-semibold">
+      <span>Cobros digitales sin verificar</span>
+      <span className="shrink-0 tabular-nums">{cashMoney(total)}</span>
+    </h4>
+    <p className="mt-0.5 text-xs text-muted-foreground">Fijate que cada uno esté en Mercado Pago o en el banco a esa hora.</p>
+    <ul className="mt-2 divide-y divide-gm-line text-sm">
+      {cobros.map(c => <li key={c.tipo + c.id} className="flex items-start justify-between gap-3 py-2">
+        <div className="min-w-0">
+          <p><span className="gm-mono font-semibold">{c.hora}</span> · {c.concepto}</p>
+          <p className="text-xs text-muted-foreground">{QUE_ES[c.tipo]} · {c.operador}</p>
+        </div>
+        <span className="shrink-0 font-semibold tabular-nums">{cashMoney(c.importe)}</span>
+      </li>)}
+    </ul>
+  </section>;
+}
 
 const hora = (fecha: string) => new Date(fecha).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'short' });
 
@@ -17,6 +45,7 @@ export function ConciliacionCajaPanel({ detalle }: { detalle?: ConciliacionCaja 
   const conteos = detalle.conteos ?? [];
   const paraRevisar = detalle.paraRevisar ?? [];
   return <div className="mt-3 space-y-3">
+    <CobrosSinVerificar cobros={detalle.sinVerificar ?? []} />
     {paraRevisar.length > 0 && <section aria-labelledby="para-revisar" className="rounded-2xl border border-gm-aviso/30 bg-gm-aviso/[0.05] p-3.5">
       <h4 id="para-revisar" className="text-sm font-semibold">Para revisar antes de explicar la diferencia</h4>
       <p className="mt-0.5 text-xs text-muted-foreground">No son errores: son los casos que más seguido explican un faltante.</p>
