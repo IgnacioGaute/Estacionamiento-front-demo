@@ -1174,14 +1174,15 @@ export default async function generateBoxList(boxList: BoxList, userName: string
       ensureSpace(240, false)
       yPosition -= 12
       summaryLine(`RESUMEN DE TURNO - ${t.nombre} - ${t.caja?.nombre ?? 'Caja anterior'}`, true)
-      summaryLine(`${t.fechaOperativa ?? ''} | ${t.cierreAutomatico ? 'Corte de las 00:00 - La caja sigue abierta' : t.estado === 'ABIERTO' ? 'En curso' : 'Cerrado'}`)
+      summaryLine(`${t.fechaOperativa ?? ''} | ${t.cierreAutomatico ? (t.cierreCaja ? 'Corte de las 00:00 - Caja cerrada sin contar' : 'Corte de las 00:00 - La caja sigue abierta') : t.estado === 'ABIERTO' ? 'En curso' : 'Cerrado'}`)
       summaryLine(`Efectivo: ${summaryMoney(r.efectivoCobrado)} | Mercado Pago: ${summaryMoney(r.mercadoPagoAlias + r.mercadoPagoQr)} | Transferencias: ${summaryMoney(r.transferencias)}`, true)
       summaryLine(`MP Alias: ${summaryMoney(r.mercadoPagoAlias)} | MP QR: ${summaryMoney(r.mercadoPagoQr)}`)
       summaryLine(`Retirado de caja: ${summaryMoney(r.totalRetirado)} | Gastos: ${summaryMoney(r.gastosEfectivo)} | Sueldo: ${summaryMoney(r.sueldoRetirado)} | Recaudación: ${summaryMoney(r.retirosRecaudacion)}`)
       summaryLine(`Vehículos recibidos: ${r.vehiculosInicio ?? 'No informado'} | Salidas: ${r.salidas ?? 'No informado'} | Quedan dentro: ${r.vehiculosFin ?? 'Al cerrar'}`)
       if (r.efectivoParaSiguiente != null) summaryLine(`Deja al siguiente: ${summaryMoney(r.efectivoParaSiguiente)}`, true)
       else if (t.estado === 'CERRADO') summaryLine('La caja sigue abierta.')
-      if (t.cierreCaja) summaryLine(`Cierre de caja: esperado ${summaryMoney(t.efectivoTeorico)} | contado ${summaryMoney(t.efectivoContado)} | diferencia ${summaryMoney(t.diferencia)}`)
+      if (t.cierreCaja && t.cierreAutomatico) summaryLine(`Cierre automático a las 00:00: esperado ${summaryMoney(t.efectivoTeorico)} | sin contar`)
+      else if (t.cierreCaja) summaryLine(`Cierre de caja: esperado ${summaryMoney(t.efectivoTeorico)} | contado ${summaryMoney(t.efectivoContado)} | diferencia ${summaryMoney(t.diferencia)}`)
       if (t.alertaSueldo) summaryLine(t.alertaSueldo, true)
       summaryLine('Digitales antes de comisiones. Vehículos dentro: total de la playa.')
     }

@@ -43,7 +43,7 @@ test('tocar cualquier parte de un aviso pendiente lo marca como leído al instan
   render(<AvisosBody inicial={lista()} />);
   const pendiente = tarjeta('Mañana revisamos las luces de la entrada.');
   expect(pendiente).toHaveAttribute('data-pendiente');
-  expect(within(screen.getByRole('radiogroup', { name: 'Estado de lectura' })).getByRole('radio', { name: /Sin leer\s*2/ })).toBeInTheDocument();
+  expect(within(screen.getByRole('radiogroup', { name: 'Estado de lectura' })).getByRole('radio', { name: /Para revisar\s*2/ })).toBeInTheDocument();
 
   // Los avisos automáticos muestran su origen y contexto, y no se editan desde acá.
   const automatico = tarjeta('Se perdió plata. Revisar los cobros del turno.');
@@ -59,7 +59,7 @@ test('tocar cualquier parte de un aviso pendiente lo marca como leído al instan
   fireEvent.click(within(pendiente).getByText('Andrés Gaute'));
   expect(pendiente).not.toHaveAttribute('data-pendiente');
   await waitFor(() => expect(readNoteAction).toHaveBeenCalledWith('equipo'));
-  expect(within(screen.getByRole('radiogroup', { name: 'Estado de lectura' })).getByRole('radio', { name: /Sin leer\s*1/ })).toBeInTheDocument();
+  expect(within(screen.getByRole('radiogroup', { name: 'Estado de lectura' })).getByRole('radio', { name: /Para revisar\s*1/ })).toBeInTheDocument();
 
   // Con teclado: Enter sobre el aviso enfocado.
   fireEvent.keyDown(automatico, { key: 'Enter' });
@@ -78,7 +78,7 @@ test('si no se puede guardar la lectura, el aviso vuelve a quedar pendiente y se
 
 test('los filtros piden al backend y «Marcar todo como leído» recarga la lista', async () => {
   render(<AvisosBody inicial={lista()} />);
-  fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Estado de lectura' })).getByRole('radio', { name: /Sin leer/ }));
+  fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Estado de lectura' })).getByRole('radio', { name: /Para revisar/ }));
   await waitFor(() => expect(listNotesAction).toHaveBeenLastCalledWith(1, '', expect.objectContaining({ estado: 'SIN_LEER' })));
   fireEvent.change(screen.getByLabelText('Origen'), { target: { value: 'VEHICULOS' } });
   await waitFor(() => expect(listNotesAction).toHaveBeenLastCalledWith(1, '', expect.objectContaining({ estado: 'SIN_LEER', origen: 'VEHICULOS' })));
@@ -96,4 +96,31 @@ test('los filtros piden al backend y «Marcar todo como leído» recarga la list
   fireEvent.click(await screen.findByRole('button', { name: /Marcar todo como leído/ }));
   await waitFor(() => expect(readAllNotesAction).toHaveBeenCalled());
   await waitFor(() => expect(jest.mocked(listNotesAction).mock.calls.length).toBeGreaterThan(llamadas));
+});
+
+test('el número es lo para revisar y explica qué cuenta; ya no hay filtro «Leídos»', () => {
+  render(<AvisosBody inicial={lista()} />);
+  const resumen = screen.getByRole('region', { name: 'Resumen' });
+  expect(resumen).toHaveTextContent('2 para revisar');
+  expect(resumen).toHaveTextContent(/últimos 7 días/);
+  expect(screen.getByRole('region', { name: 'Para revisar' })).toBeInTheDocument();
+  expect(within(screen.getByRole('radiogroup', { name: 'Estado de lectura' })).queryByRole('radio', { name: /Leídos/ })).not.toBeInTheDocument();
+});
+
+test('los avisos de una misma persona en un día van juntos y plegados; uno solo va suelto', () => {
+  const franco = { id: 'franco', firstName: 'Franco', lastName: 'Pizarro' };
+  const del = (id: string, origin: string, hora: string) => ({ id, sourceKey: 'movimiento:' + id, sourceType: 'TICKET', origin, description: 'Detalle ' + id, user: franco, date: '2026-10-11', createdAt: new Date('2026-10-11T' + hora + ':00Z'), paraRevisar: false });
+  const datos = [
+    del('d1', 'Descuento de vehículo', '15:00'), { ...avisos[1], id: 'suelto', date: '2026-10-11', createdAt: new Date('2026-10-11T14:30:00Z') },
+    del('d2', 'Descuento de vehículo', '14:00'), del('c1', 'Cierre de turno', '13:00'),
+  ] as unknown as Note[];
+  render(<AvisosBody inicial={lista({ data: datos, pendientes: [], conteos: { todos: 4, sinLeer: 0, leidos: 4 }, resumen: { total: 4, sinLeer: 0, hoy: 0 } })} />);
+  const grupo = screen.getByText('3 avisos').closest('details')!;
+  expect(grupo).not.toHaveAttribute('open');
+  expect(within(grupo).getByText('Franco Pizarro')).toBeInTheDocument();
+  expect(within(grupo).getByText('2 Descuento de vehículo · 1 Cierre de turno')).toBeInTheDocument();
+  expect(within(grupo).getAllByRole('article', { hidden: true })).toHaveLength(3);
+  // El de otra persona queda suelto, fuera del grupo.
+  expect(tarjeta('Mañana revisamos las luces de la entrada.').closest('details')).toBeNull();
+  expect(screen.getByRole('region', { name: 'Resumen' })).toHaveTextContent('Estás al día');
 });

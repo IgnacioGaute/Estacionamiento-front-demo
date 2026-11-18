@@ -12,7 +12,7 @@ export default async function TurnosConfigPage() {
   return <>
     <EncabezadoSeccion title="Turnos de caja" description="Cada operador abre su turno y la caja cierra con sus totales. Elegí cómo trabajan con el dinero." />
     {schedule
-      ? <OperationSettings sueldoAutomatico={schedule.sueldoAutomatico} sueldosPorUsuario={schedule.sueldosPorUsuario} shiftsEnabled={schedule.shiftsEnabled ?? false} multipleShiftsEnabled={schedule.multipleShiftsEnabled ?? false} />
+      ? <OperationSettings sueldoAutomatico={schedule.sueldoAutomatico} sueldosPorUsuario={schedule.sueldosPorUsuario} shiftsEnabled={schedule.shiftsEnabled ?? false} multipleShiftsEnabled={schedule.multipleShiftsEnabled ?? false} continuarTurnoMedianoche={schedule.continuarTurnoMedianoche ?? true} />
       : <p role="alert" className="rounded-xl border border-destructive p-4">No se pudo cargar la configuración. Recargá la página antes de modificarla.</p>}
   </>;
 }

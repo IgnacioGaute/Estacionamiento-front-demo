@@ -419,15 +419,16 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             <section aria-label="Lo que recibís del turno anterior" className="overflow-hidden rounded-2xl border border-gm-line bg-gm-surface-2/50">
               <div className="flex items-start justify-between gap-3 border-b border-gm-line px-4 py-3">
                 <div className="min-w-0">
-                  <Etiqueta>{hasPrior ? 'Último turno · dejó la caja' : 'Primera apertura de esta caja'}</Etiqueta>
-                  {hasPrior && <p className="mt-1.5 text-sm font-semibold">{handover?.operador ?? 'Responsable no informado'}</p>}
+                  {/* Cerrada por el sistema a las 00:00: nadie la contó, lo que «dejó» es lo esperado. */}
+                  <Etiqueta>{!hasPrior ? 'Primera apertura de esta caja' : handover?.cierreAutomatico ? 'Cerrada a las 00:00 sin contar' : 'Último turno · dejó la caja'}</Etiqueta>
+                  {hasPrior && <p className="mt-1.5 text-sm font-semibold">{handover?.cierreAutomatico ? (handover.operador ? 'Turno de ' + handover.operador : 'Cierre automático') : handover?.operador ?? 'Responsable no informado'}</p>}
                 </div>
                 {hasPrior && handover?.fechaCierre && <span className="gm-mono shrink-0 pt-0.5 text-[11px] text-muted-foreground">{date(handover.fechaCierre)}</span>}
               </div>
               <div className="grid grid-cols-2 divide-x divide-gm-line">
                 {/* En la primera apertura no hay cierre anterior: se muestra el fondo configurado para la
                     caja (Configuración › Turnos de caja) en vez de «Efectivo inicial $0». */}
-                <div className="p-4"><p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wallet className="size-3.5 shrink-0" aria-hidden />{hasPrior ? 'Efectivo que dejó' : reserve > 0 ? 'Fondo sugerido' : 'Sin fondo fijo'}</p>{/* Lo que dejó el turno anterior se ve después de comparar: si no, se copiaba sin contar. */}
+                <div className="p-4"><p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Wallet className="size-3.5 shrink-0" aria-hidden />{hasPrior ? (handover?.cierreAutomatico ? 'Efectivo esperado' : 'Efectivo que dejó') : reserve > 0 ? 'Fondo sugerido' : 'Sin fondo fijo'}</p>{/* Lo que dejó el turno anterior se ve después de comparar: si no, se copiaba sin contar. */}
                   {hasPrior && !recibidoVisto ? <p className="mt-2 text-sm font-semibold text-muted-foreground">Se muestra después de contar</p> : <p className="mt-2 font-display text-[28px] font-bold leading-none tracking-tight tabular-nums">{money(hasPrior ? openingExpected : reserve)}</p>}</div>
                 <div className="p-4"><p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Car className="size-3.5 shrink-0" aria-hidden />{handover?.vehiculosDejados != null ? 'Vehículos que dejó dentro' : 'Vehículos dentro ahora'}</p>{(() => { const v = handover?.vehiculosDejados ?? handover?.vehiculosActivos; return v == null ? <p className="mt-2 text-sm font-semibold text-muted-foreground">No informado</p> : <p className="mt-2 font-display text-[28px] font-bold leading-none tabular-nums">{v}</p>; })()}</div>
               </div>

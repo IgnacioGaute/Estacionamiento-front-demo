@@ -4,6 +4,7 @@ import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import { getAuthHeaders } from '@/lib/auth';
 import {
   CuentaMostrador,
+  Deudores,
   EstadoCuenta,
   ListadoAnulaciones,
   MetodoCobro,
@@ -48,6 +49,11 @@ async function pedir<T>(ruta: string, cuerpo?: unknown): Promise<Resultado<T>> {
 
 export async function getResumenCuentasAction() {
   return pedir<ResumenCuentas>('resumen');
+}
+
+// Para el contador del menú (solo administración).
+export async function getDeudoresAction() {
+  return pedir<Deudores>('deudores');
 }
 
 export async function getEstadoCuentaAction(customerId: string) {

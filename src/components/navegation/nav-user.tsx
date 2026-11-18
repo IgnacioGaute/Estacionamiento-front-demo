@@ -13,6 +13,7 @@ import {
   Banknote,
   Plus,
   TicketIcon,
+  TriangleAlert,
   Users,
 } from 'lucide-react';
 
@@ -33,6 +34,8 @@ import { User } from 'next-auth';
 import { BoxListDialog } from '../box-list-dialog';
 import { CreateOtherPaymentDialog } from '@/app/(protected)/admin/other-payments/components/create-other-payment-dialog';
 import { useNotifications } from '@/hooks/use-notification';
+import { useDeudores } from '@/hooks/use-deudores';
+import { corto } from '@/components/plataforma/formato';
 import { cn } from '@/lib/utils';
 import { InstallAppMenuItem } from './install-app-menu-item';
 import { HojaDeRama, Rama as RamaMenu } from './branched-menu';
@@ -75,7 +78,13 @@ export function OperationalNavUser({
   const unreadCount = notas.unreadIds.length;
   const hasNewNoteAlert = unreadCount > 0;
   const counter = unreadCount > 99 ? '99+' : String(unreadCount);
-  const alertLabel = `Tenés ${unreadCount} ${unreadCount === 1 ? 'aviso' : 'avisos'} sin leer`;
+  const alertLabel = `Tenés ${unreadCount} ${unreadCount === 1 ? 'aviso' : 'avisos'} para revisar`;
+  // Aparte de los avisos y en rojo: inquilinos con deuda vencida (solo administración). No se marca
+  // como leído; baja cuando pagan.
+  const deudores = useDeudores();
+  const hayDeudores = !!deudores && deudores.cantidad > 0;
+  const contadorDeudores = deudores && deudores.cantidad > 99 ? '99+' : String(deudores?.cantidad ?? 0);
+  const deudoresLabel = hayDeudores ? `${deudores.cantidad} ${deudores.cantidad === 1 ? 'inquilino' : 'inquilinos'} con deuda vencida` : '';
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const esAdmin = userNav.role === 'ADMIN' || userNav.role === 'SUPER_ADMIN';
@@ -133,7 +142,7 @@ export function OperationalNavUser({
         <DropdownMenuTrigger asChild>
           {/* En la barra: avatar, nombre y rol (en el celular, solo el avatar). */}
           <button
-            aria-label={`Tu cuenta y el menú: ${userNav.name.trim() || 'Usuario'}${hasNewNoteAlert ? `. ${alertLabel}` : ''}`}
+            aria-label={`Tu cuenta y el menú: ${userNav.name.trim() || 'Usuario'}${hasNewNoteAlert ? `. ${alertLabel}` : ''}${hayDeudores ? `. ${deudoresLabel}` : ''}`}
             className={cn(
               'group flex h-11 shrink-0 items-center gap-2.5 rounded-[14px] p-1 text-left text-sm transition-colors duration-200 lg:pr-3',
               'hover:bg-white/[0.05]',
@@ -148,8 +157,13 @@ export function OperationalNavUser({
                   <rol.Icono className="size-5" strokeWidth={2.2} aria-hidden />
                 </AvatarFallback>
               </Avatar>
+              {/* Dos números que no se confunden: arriba, en amarillo, los avisos para revisar; abajo,
+                  en rojo, los inquilinos con deuda vencida. */}
               {hasNewNoteAlert && (
-                <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C93630] px-1 text-[11px] font-bold leading-none text-white ring-[3px] ring-gm-hondo">{counter}</span>
+                <span aria-hidden className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gm-yellow px-1 text-[11px] font-bold leading-none text-gm-ink ring-[3px] ring-gm-hondo">{counter}</span>
+              )}
+              {hayDeudores && (
+                <span aria-hidden className="absolute -bottom-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C93630] px-1 text-[11px] font-bold leading-none text-white ring-[3px] ring-gm-hondo">{contadorDeudores}</span>
               )}
             </span>
 
@@ -200,7 +214,22 @@ export function OperationalNavUser({
             <Link href="/notes" aria-current={pathname === '/notes' ? 'page' : undefined} aria-label={`Avisos. ${alertLabel}`}>
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-gm-yellow/15 text-gm-yellow"><Bell className="size-4" aria-hidden /></span>
               <span className="min-w-0 flex-1 text-[14px] font-semibold">Avisos</span>
-              <span aria-hidden className="shrink-0 rounded-md bg-gm-yellow px-2 py-1 text-[11px] font-bold leading-none text-gm-ink">{counter} sin leer</span>
+              <span aria-hidden className="shrink-0 rounded-md bg-gm-yellow px-2 py-1 text-[11px] font-bold leading-none text-gm-ink">{counter} para revisar</span>
+            </Link>
+          </DropdownMenuItem>}
+
+          {/* Debajo de Avisos y en rojo: lleva a la tabla filtrada por deuda vencida, la más vieja primero. */}
+          {hayDeudores && <DropdownMenuItem asChild onSelect={() => setIsOpen(false)} className={cn(
+            'mb-2 min-h-12 cursor-pointer gap-3 rounded-xl border border-[#C93630]/45 bg-[#C93630]/[0.1] px-3 py-2 text-foreground focus:bg-[#C93630]/20',
+            !hasNewNoteAlert && 'mt-2',
+          )}>
+            <Link href="/renters?filtro=vencido" aria-label={`Inquilinos. ${deudoresLabel}: ${corto(deudores.total)} vencido${deudores.masDe60 ? `, ${deudores.masDe60} hace más de 60 días` : ''}`}>
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#C93630]/20 text-[#F0716B]"><TriangleAlert className="size-4" aria-hidden /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-semibold leading-tight">Deudas</span>
+                <span className="block truncate text-[11px] text-muted-foreground">{corto(deudores.total)} vencido</span>
+              </span>
+              <span aria-hidden className="shrink-0 rounded-md bg-[#C93630] px-2 py-1 text-[11px] font-bold leading-none text-white">{contadorDeudores} {deudores.cantidad === 1 ? 'debe' : 'deben'}</span>
             </Link>
           </DropdownMenuItem>}
 

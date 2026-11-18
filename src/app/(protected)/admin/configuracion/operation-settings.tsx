@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Barcode, Wallet, Users, Plus } from 'lucide-react';
+import { Barcode, Wallet, Users, Plus, MoonStar } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ type ScheduleChange = Parameters<typeof updateTicketScheduleAction>[0];
 // Turnos de caja en 4 pasos. Sólo activar es obligatorio: modo, cajas y sueldo se pueden dejar como
 // están. Cada paso guarda lo suyo al continuar, así un cambio no queda esperando al final. Con los
 // turnos ya activos al abrir no hay recorrido: las cuatro partes a la vista, cada una con su guardar.
-export function OperationSettings(props: { shiftsEnabled: boolean; multipleShiftsEnabled?: boolean; sueldoAutomatico?: boolean; sueldosPorUsuario?: { usuarioId: string; importe: number }[]; enConfiguracionInicial?: boolean }) {
+export function OperationSettings(props: { shiftsEnabled: boolean; multipleShiftsEnabled?: boolean; continuarTurnoMedianoche?: boolean; sueldoAutomatico?: boolean; sueldosPorUsuario?: { usuarioId: string; importe: number }[]; enConfiguracionInicial?: boolean }) {
   const [salaryEnabled, setSalaryEnabled] = useState(props.sueldoAutomatico ?? false);
   const [salaries, setSalaries] = useState<Record<string, string>>(() => Object.fromEntries((props.sueldosPorUsuario ?? []).map(s => [s.usuarioId, String(s.importe)])));
   const [salaryUsers, setSalaryUsers] = useState<{ id: string; firstName: string; lastName: string; username: string }[]>([]);
@@ -29,6 +29,9 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
   const [savedShifts, setSavedShifts] = useState(props.shiftsEnabled);
   const [multiple, setMultiple] = useState(props.multipleShiftsEnabled ?? false);
   const [savedMultiple, setSavedMultiple] = useState(props.multipleShiftsEnabled ?? false);
+  // A las 00:00 el turno sigue en la planilla nueva (por defecto) o se cierran turno y caja sin contar.
+  const [medianoche, setMedianoche] = useState(props.continuarTurnoMedianoche ?? true);
+  const [savedMedianoche, setSavedMedianoche] = useState(props.continuarTurnoMedianoche ?? true);
   const [step, setStep] = useState(1);
   const [editando] = useState(props.shiftsEnabled);
   // Pasos ya recorridos. Si los turnos estaban activos al abrir, modo, cajas y sueldo ya tienen un
@@ -43,9 +46,10 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
   useEffect(() => {
     setShifts(props.shiftsEnabled); setSavedShifts(props.shiftsEnabled);
     setMultiple(props.multipleShiftsEnabled ?? false); setSavedMultiple(props.multipleShiftsEnabled ?? false);
+    setMedianoche(props.continuarTurnoMedianoche ?? true); setSavedMedianoche(props.continuarTurnoMedianoche ?? true);
     setSalaryEnabled(props.sueldoAutomatico ?? false);
     setSalaries(Object.fromEntries((JSON.parse(sueldosGuardados) as { usuarioId: string; importe: number }[]).map(s => [s.usuarioId, String(s.importe)])));
-  }, [props.shiftsEnabled, props.multipleShiftsEnabled, props.sueldoAutomatico, sueldosGuardados]);
+  }, [props.shiftsEnabled, props.multipleShiftsEnabled, props.continuarTurnoMedianoche, props.sueldoAutomatico, sueldosGuardados]);
   const loadSalaryUsers = async () => {
     setSalaryLoading(true);
     const result = await getCashConfigurationAction();
@@ -72,7 +76,7 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
       if (shifts !== savedShifts) { event.preventDefault(); save({ shiftsEnabled: true }, () => { setSavedShifts(true); setStep(2); }, 'Turnos de caja activados'); }
       return;
     }
-    if (step === 2 && multiple !== savedMultiple) { event.preventDefault(); save({ multipleShiftsEnabled: multiple }, () => { setSavedMultiple(multiple); setStep(3); }); }
+    if (step === 2 && modoCambiado) { event.preventDefault(); guardarModo(() => setStep(3)); }
   };
   const finish = () => {
     if (!salaryChanged) {
@@ -83,6 +87,11 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
     if (!salaryValid) return;
     save({ sueldoAutomatico: salaryEnabled, sueldosPorUsuario: selectedSalaries }, () => undefined);
   };
+  // Modo y medianoche se guardan juntos: el modo solo viaja si cambió, porque cambiarlo exige no
+  // tener turnos abiertos y la medianoche se puede cambiar en cualquier momento.
+  const modoCambiado = multiple !== savedMultiple || medianoche !== savedMedianoche;
+  const guardarModo = (done: () => void = () => undefined) => save({ ...(multiple !== savedMultiple ? { multipleShiftsEnabled: multiple } : {}), ...(medianoche !== savedMedianoche ? { continuarTurnoMedianoche: medianoche } : {}) },
+    () => { setSavedMultiple(multiple); setSavedMedianoche(medianoche); done(); });
   const sections = editando && savedShifts;
   const guardarAca = (texto: string, onClick: () => void, deshabilitado = false) => <div className="flex justify-end"><Button type="button" onClick={onClick} disabled={pending || deshabilitado}>{pending ? 'Guardando…' : texto}</Button></div>;
   const steps = [
@@ -105,7 +114,11 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
         </div>
         <div className="grid gap-3 rounded-2xl border border-gm-yellow/25 bg-gm-yellow/5 p-4 text-sm md:grid-cols-3"><Example title="Una caja, relevos" text="Dejá turnos múltiples apagado. Cuando uno cierra, el siguiente recibe el último saldo de esa caja." /><Example title="Varias entradas, distintos cajones" text="Activá turnos múltiples y agregá una caja por cada cajón. Cada caja tiene su fondo y arqueo." /><Example title="Dos personas, un mismo cajón" text="Activá turnos múltiples y usen la misma caja. Cada uno tiene su turno; el último cuenta el efectivo de todos." /></div>
         <p className="text-xs text-muted-foreground">Para cambiar de modo, primero cerrá todos los turnos abiertos.</p>
-        {sections && multiple !== savedMultiple && guardarAca('Guardar modo', () => save({ multipleShiftsEnabled: multiple }, () => setSavedMultiple(multiple)))}
+        <div className="rounded-2xl border border-gm-line bg-gm-surface-2 p-4">
+          <div className="flex items-start gap-3"><MoonStar className="mt-0.5 size-5 shrink-0 text-gm-yellow" /><div className="min-w-0 flex-1"><label htmlFor="midnight-shifts" className="font-semibold">Seguir el turno después de las 00:00</label><p className="mt-1 text-sm text-muted-foreground">A medianoche se cierra el turno y se abre otro igual, sin cerrar la caja: el operador sigue trabajando en la planilla del día nuevo.</p></div><Switch id="midnight-shifts" checked={medianoche} onCheckedChange={setMedianoche} disabled={pending} /></div>
+          <p className="mt-3 text-xs text-muted-foreground">{medianoche ? 'Activado: el turno y la caja siguen abiertos después de las 00:00.' : 'Apagado: a las 00:00 se cierran el turno y la caja sin contar el efectivo, y no se abre otro turno ni se retira sueldo. El próximo operador abre su turno contando lo que hay en la caja.'}</p>
+        </div>
+        {sections && modoCambiado && guardarAca('Guardar modo', () => guardarModo())}
       </section>
     </Step>,
     <Step key="cajas">

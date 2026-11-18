@@ -10,6 +10,8 @@ export type Note = {
     sourceType?: string | null;
     sourceId?: string | null;
     context?: string | null;
+    // Para revisar: puede quedar pendiente. Los informativos solo se consultan.
+    paraRevisar?: boolean;
     date: string | null;
     hours: string | null;
     user: User | null;

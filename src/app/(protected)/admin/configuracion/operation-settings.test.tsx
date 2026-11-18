@@ -167,6 +167,29 @@ test('editando, el modo se guarda desde su sección', async () => {
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ multipleShiftsEnabled: true }));
 });
 
+test('seguir el turno después de las 00:00 viene activado; apagarlo explica el cierre y guarda solo eso', async () => {
+  render(<OperationSettings shiftsEnabled />);
+  const medianoche = screen.getByRole('switch', { name: 'Seguir el turno después de las 00:00' });
+  expect(medianoche).toBeChecked();
+  fireEvent.click(medianoche);
+  expect(screen.getByText(/a las 00:00 se cierran el turno y la caja sin contar/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /^Guardar modo/ }));
+  // No manda el modo (cambiarlo exige no tener turnos abiertos): solo la medianoche.
+  await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ continuarTurnoMedianoche: false }));
+});
+
+test('con la medianoche apagada, la muestra apagada y al continuar en el recorrido la guarda', async () => {
+  render(<OperationSettings shiftsEnabled={false} continuarTurnoMedianoche={false} />);
+  fireEvent.click(screen.getByRole('switch', { name: 'Activar turnos de caja' }));
+  await continuar();
+  const medianoche = await screen.findByRole('switch', { name: 'Seguir el turno después de las 00:00' });
+  expect(medianoche).not.toBeChecked();
+  await waitFor(() => expect(medianoche).toBeEnabled());
+  fireEvent.click(medianoche);
+  await continuar();
+  await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ continuarTurnoMedianoche: true }));
+});
+
 test('sin turnos, los pasos siguientes explican qué falta', () => {
   render(<OperationSettings shiftsEnabled={false} />);
   expect(screen.getByRole('button', { name: 'Paso 2: Modo · Requiere turnos' })).toBeDisabled();

@@ -13,8 +13,11 @@ import { PageHeader } from '@/components/page-header';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { AlertTriangle, Ban, CalendarPlus, ChevronRight, Search, Wallet } from 'lucide-react';
+import { AlertTriangle, Ban, CalendarPlus, ChevronRight, MessageCircle, Search, Wallet } from 'lucide-react';
+import { useTenant } from '@/components/tenant-provider';
+import { EVENTO_CUENTAS_CAMBIARON } from '@/hooks/use-deudores';
 import { getResumenCuentasAction } from '@/actions/cuentas/cuentas.action';
 import { InquilinoResumen, ResumenCuentas, Tramo } from '@/types/cuenta.type';
 import { Avatar, Leyenda, Rotulo, Segmentos, Selector, Tarjeta } from '@/components/plataforma/mono';
@@ -33,6 +36,31 @@ const OTROS = 'otros';
 
 // Hay inquilinos viejos cargados sin nombre: que la fila no quede en blanco.
 const nombreDe = (i: InquilinoResumen) => `${i.apellido ?? ''} ${i.nombre ?? ''}`.trim() || 'Sin nombre';
+
+// El recordatorio de pago: corto y amable, con lo vencido y desde cuándo. Lo envía la persona desde
+// su WhatsApp (no hay envío automático).
+export const mensajeRecordatorio = (i: InquilinoResumen, playa?: string) =>
+  [
+    `Hola${i.nombre?.trim() ? ` ${i.nombre.trim()}` : ''}, te escribimos${playa ? ` de ${playa}` : ''}.`,
+    `Tenés un saldo vencido de ${plata(i.vencido)}${i.vencidoDesde ? ` desde el ${fechaAR(i.vencidoDesde)}` : ''}.`,
+    'Podés pagarlo en la playa. Si ya lo pagaste, avisanos así lo registramos. ¡Gracias!',
+  ].join(' ');
+
+function Recordar({ i, playa, className }: { i: InquilinoResumen; playa?: string; className: string }) {
+  if (!(i.vencido > 0) || !i.whatsapp) return null;
+  return (
+    <a
+      href={`https://wa.me/${i.whatsapp}?text=${encodeURIComponent(mensajeRecordatorio(i, playa))}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Recordar el pago por WhatsApp a ${nombreDe(i)}`}
+      title="Recordar el pago por WhatsApp"
+      className={className}
+    >
+      <MessageCircle className="size-4 text-gm-ok" aria-hidden />
+    </a>
+  );
+}
 
 function PastillaSaldo({ i }: { i: InquilinoResumen }) {
   return (
@@ -72,6 +100,16 @@ export function InquilinosPanel() {
   const [viendo, setViendo] = useState<InquilinoResumen | null>(null);
   const [cargandoAbonos, setCargandoAbonos] = useState(false);
   const [viendoAnulaciones, setViendoAnulaciones] = useState(false);
+  const { context, playaId } = useTenant();
+  const playa = context?.playas.find((p) => p.id === playaId)?.nombre;
+  // Desde «Deudas de inquilinos» del menú: la tabla abre filtrada, con la deuda más vieja primero.
+  const filtroPedido = useSearchParams()?.get('filtro');
+  useEffect(() => {
+    if (filtroPedido === 'vencido') {
+      setFiltro('vencido');
+      setOrden('vencido');
+    }
+  }, [filtroPedido]);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -82,6 +120,11 @@ export function InquilinosPanel() {
       setError(null);
     } else setError({ mensaje: r.error ?? 'No se pudo cargar la sección.', code: r.code });
   }, []);
+  // Después de cobrar o cargar abonos, el contador rojo del menú también se actualiza.
+  const recargar = useCallback(() => {
+    void cargar();
+    window.dispatchEvent(new Event(EVENTO_CUENTAS_CAMBIARON));
+  }, [cargar]);
 
   useEffect(() => {
     void cargar();
@@ -344,10 +387,10 @@ export function InquilinosPanel() {
       <section className="overflow-hidden rounded-[22px] border border-border bg-gm-surface">
         {/* En el teléfono la tabla no entra: se muestra como tarjetas (abajo). */}
         <div className="hidden overflow-x-auto md:block">
-          <div role="table" aria-label="Inquilinos" className="min-w-[860px]">
+          <div role="table" aria-label="Inquilinos" className="min-w-[904px]">
             <div
               role="row"
-              className="grid h-11 grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center bg-background px-5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground"
+              className="grid h-11 grid-cols-[minmax(0,1fr)_150px_140px_210px_244px] items-center bg-background px-5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground"
             >
               <span role="columnheader">Inquilino</span>
               <span role="columnheader">Cochera</span>
@@ -361,7 +404,7 @@ export function InquilinosPanel() {
               <div
                 key={i.id}
                 role="row"
-                className="grid min-h-[68px] grid-cols-[minmax(0,1fr)_150px_140px_210px_200px] items-center border-t border-gm-line px-5 py-2 text-[14px] transition-colors hover:bg-muted"
+                className="grid min-h-[68px] grid-cols-[minmax(0,1fr)_150px_140px_210px_244px] items-center border-t border-gm-line px-5 py-2 text-[14px] transition-colors hover:bg-muted"
               >
                 <span role="cell" className="flex min-w-0 items-center gap-3">
                   <Avatar texto={iniciales(nombreDe(i))} fondo={colorAvatar(i.id)} />
@@ -395,6 +438,7 @@ export function InquilinosPanel() {
                   <PastillaSaldo i={i} />
                 </span>
                 <span role="cell" className="flex justify-end gap-2">
+                  <Recordar i={i} playa={playa} className="grid size-9 shrink-0 place-items-center rounded-[10px] border border-border hover:bg-gm-surface-2" />
                   <button
                     type="button"
                     onClick={() => setCobrando(i)}
@@ -460,6 +504,7 @@ export function InquilinosPanel() {
                 </span>
               </div>
               <div className="flex gap-2">
+                <Recordar i={i} playa={playa} className="grid size-10 shrink-0 place-items-center rounded-[10px] border border-border hover:bg-gm-surface-2" />
                 <button
                   type="button"
                   onClick={() => setCobrando(i)}
@@ -530,11 +575,11 @@ export function InquilinosPanel() {
           nombre={`${cobrando.nombre} ${cobrando.apellido}`}
           open={!!cobrando}
           onOpenChange={(v) => !v && setCobrando(null)}
-          onCobrado={() => void cargar()}
+          onCobrado={recargar}
         />
       )}
       {esAdmin && <AnulacionesDialog open={viendoAnulaciones} onOpenChange={setViendoAnulaciones} />}
-      {esAdmin && <CargarAbonosDialog open={cargandoAbonos} onOpenChange={setCargandoAbonos} onCargado={() => void cargar()} />}
+      {esAdmin && <CargarAbonosDialog open={cargandoAbonos} onOpenChange={setCargandoAbonos} onCargado={recargar} />}
     </div>
   );
 }

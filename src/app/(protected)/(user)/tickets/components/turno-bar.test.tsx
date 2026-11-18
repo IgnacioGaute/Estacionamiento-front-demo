@@ -80,6 +80,22 @@ test('exige confirmar el fondo del último cierre antes de abrir la caja', async
   await waitFor(() => expect(openTurnoAction).toHaveBeenCalledWith(expect.objectContaining({ fondoInicial: 40000, sesionAnteriorId: 'cierre-de-luis', cajaId: 'principal' })));
 });
 
+test('caja cerrada por el sistema a las 00:00: dice que nadie la contó y compara con lo esperado', async () => {
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: { ...context(), cajas: [{ ...caja, traspaso: { ...caja.traspaso!, cierreAutomatico: true } } as CajaContext] } });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Abrir mi turno' }));
+  const input = await screen.findByLabelText('Efectivo que recibís');
+  await waitFor(() => expect(input).toBeEnabled());
+  const region = screen.getByRole('region', { name: 'Lo que recibís del turno anterior' });
+  expect(region).toHaveTextContent('Cerrada a las 00:00 sin contar');
+  expect(region).toHaveTextContent('Turno de Luis Pérez');
+  expect(region).toHaveTextContent('Efectivo esperado');
+  expect(region).not.toHaveTextContent('dejó la caja');
+  fireEvent.change(input, { target: { value: '39000' } });
+  compararRecibido();
+  expect(await screen.findByText('Motivo de la diferencia al recibir')).toBeInTheDocument();
+});
+
 test('en la primera apertura el fondo sugerido es referencia y exige escribir lo recibido', async () => {
   jest.mocked(getCashContextAction).mockResolvedValue({ context: { ...context(), cajas: [{ ...caja, pending: null, fondoObjetivo: 20000, efectivoDisponible: 0 } as CajaContext] } });
   render(<TurnoBar />);

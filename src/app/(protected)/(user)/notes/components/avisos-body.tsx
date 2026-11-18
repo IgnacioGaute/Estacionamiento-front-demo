@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from 'react';
 import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
-import { CalendarDays, Car, CheckCheck, Inbox, MessageSquare, RotateCcw, Search, SlidersHorizontal, Users, Wallet, type LucideIcon } from 'lucide-react';
+import { CalendarDays, Car, CheckCheck, ChevronDown, Inbox, MessageSquare, RotateCcw, Search, SlidersHorizontal, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FilasAvisosCargando } from './cargando';
 import { AppDatePicker } from '@/components/app-date-picker';
@@ -20,7 +20,7 @@ import { UpdateNoteDialog } from './update-note-dialog';
 import { DeleteNoteDialog } from './delete-note-dialog';
 import { Cargando, Hueso } from '@/components/esqueletos';
 
-const POR_PAGINA = 20; // El mismo límite que pide getNotes (AVISOS_POR_PAGINA).
+const POR_PAGINA = 50; // El mismo límite que pide getNotes (AVISOS_POR_PAGINA).
 const ZONA = 'America/Argentina/Buenos_Aires';
 const diaAR = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: ZONA, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 const horaAR = (d: Date) => new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
@@ -38,6 +38,26 @@ const origenDe = (n: Note): Exclude<OrigenAviso, 'TODOS'> =>
   !n.sourceKey ? 'EQUIPO' : n.sourceType === 'TICKET' ? 'VEHICULOS' : n.sourceType === 'CAJA' || n.sourceType === 'TURNO' ? 'CAJA' : 'CLIENTES';
 
 const SIN_FILTROS: Required<FiltrosAvisos> = { estado: 'TODOS', origen: 'TODOS', desde: '', hasta: '', autor: '' };
+// Igual que DIAS_PENDIENTE en el backend: lo para revisar deja de contar después de una semana.
+const DIAS_PENDIENTE = 7;
+
+// Dentro de un día, los avisos de una misma persona van juntos y plegados: un turno con diez descuentos
+// era diez filas iguales. Uno solo se muestra suelto. Se ordenan por el aviso más reciente de cada uno.
+type Bloque = { clave: string; avisos: Note[] };
+const porPersona = (lista: Note[]): Bloque[] => {
+  const bloques = new Map<string, Note[]>();
+  for (const n of lista) {
+    const clave = n.user?.id ?? (n.sourceKey ? 'sin-autor' : 'equipo');
+    bloques.set(clave, [...(bloques.get(clave) ?? []), n]);
+  }
+  return [...bloques].map(([clave, avisos]) => ({ clave, avisos }));
+};
+// «3 Descuento de vehículo · 1 Cierre de turno»: de qué se trata sin abrirlo.
+const resumenOrigenes = (lista: Note[]) => {
+  const cuenta = new Map<string, number>();
+  for (const n of lista) { const o = n.origin || ORIGENES[origenDe(n)].label; cuenta.set(o, (cuenta.get(o) ?? 0) + 1); }
+  return [...cuenta].sort((a, b) => b[1] - a[1]).map(([o, c]) => `${c} ${o}`).join(' · ');
+};
 
 export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
   const { data: session } = useSession();
@@ -143,7 +163,7 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
     const clave = datos?.pendientes.includes(n.id) ? 'pendientes' : n.date ?? diaAR(new Date(n.createdAt));
     const ultimo = grupos[grupos.length - 1];
     if (ultimo?.clave === clave) ultimo.avisos.push(n);
-    else grupos.push({ clave, titulo: clave === 'pendientes' ? 'Sin leer' : tituloDia(clave), avisos: [n] });
+    else grupos.push({ clave, titulo: clave === 'pendientes' ? 'Para revisar' : tituloDia(clave), avisos: [n] });
   }
   const origenes = (Object.keys(ORIGENES) as (keyof typeof ORIGENES)[]).filter((o) => cobroHabilitado || o === 'EQUIPO' || o === 'VEHICULOS');
   const autor = (n: Note) => n.user?.id && n.user.id === yo ? 'Vos'
@@ -161,9 +181,11 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
           sin motivo. El amarillo queda solo cuando hay algo pendiente. */}
       <section aria-label="Resumen" className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-muted-foreground">
         {datos ? <>
-          <span className={cn('font-semibold', sinLeer > 0 ? 'text-gm-yellow' : 'text-foreground')}>{sinLeer > 0 ? `${sinLeer} sin leer` : 'Estás al día'}</span>
+          <span className={cn('font-semibold', sinLeer > 0 ? 'text-gm-yellow' : 'text-foreground')}>{sinLeer > 0 ? `${sinLeer} para revisar` : 'Estás al día'}</span>
           <span aria-hidden>·</span><span>{datos.resumen.hoy} {datos.resumen.hoy === 1 ? 'publicado' : 'publicados'} hoy</span>
           <span aria-hidden>·</span><span>{datos.resumen.total} en la cartelera</span>
+          {/* Por qué un descuento con motivo no suma: lo dice una vez, no en cada aviso. */}
+          <span className="basis-full text-xs">Quedan para revisar las diferencias de caja, los cierres de administración, las correcciones y los mensajes del equipo de los últimos {DIAS_PENDIENTE} días. El resto queda acá para consultar.</span>
         </> : <Cargando texto="Cargando resumen…" className="contents"><Hueso className="h-4 w-80 max-w-full" /></Cargando>}
       </section>
 
@@ -175,8 +197,7 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
             onChange={(estado) => cambiar({ estado })}
             opciones={[
               { id: 'TODOS', label: 'Todos', cantidad: conteos?.todos },
-              { id: 'SIN_LEER', label: 'Sin leer', cantidad: conteos?.sinLeer },
-              { id: 'LEIDOS', label: 'Leídos', cantidad: conteos?.leidos },
+              { id: 'SIN_LEER', label: 'Para revisar', cantidad: conteos?.sinLeer },
             ]}
           />
           <button type="button" onClick={() => setMasFiltros((v) => !v)} aria-expanded={extrasVisibles} aria-controls="avisos-periodo avisos-filtros-extra"
@@ -235,45 +256,19 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
                 <h3 className={cn('border-t border-gm-line bg-background px-[18px] py-2 text-[11px] font-bold uppercase tracking-[0.12em] first-letter:uppercase',
                   g.clave === 'pendientes' ? 'text-gm-yellow' : 'text-muted-foreground')}>{g.titulo}</h3>
                 <ul>
-                  {g.avisos.map((n) => {
-                    const nuevo = pendiente(n);
-                    const { Icono, label } = ORIGENES[origenDe(n)];
-                    return (
-                      <li key={n.id}>
-                        <article
-                          data-pendiente={nuevo || undefined}
-                          tabIndex={nuevo ? 0 : undefined}
-                          onClick={() => void leer(n)}
-                          onKeyDown={(e) => teclado(e, n)}
-                          className={cn('relative flex gap-3 border-t border-gm-line px-[18px] py-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow',
-                            nuevo ? 'cursor-pointer bg-gm-yellow/[0.05] hover:bg-gm-yellow/[0.09]' : 'hover:bg-gm-surface-2')}>
-                          {nuevo && <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-gm-yellow" />}
-                          <span aria-hidden className={cn('grid size-10 shrink-0 place-items-center rounded-[12px]', nuevo ? 'bg-gm-yellow/15 text-gm-yellow' : 'bg-gm-surface-3 text-gm-texto-2')}>
-                            <Icono className="size-[18px]" />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                              <span className={cn('text-[14px]', nuevo ? 'font-bold' : 'font-semibold')}>{autor(n)}</span>
-                              <span className="inline-flex h-[22px] items-center rounded-full bg-gm-surface-3 px-2 text-[12px] font-semibold text-gm-texto-2">{n.origin || label}</span>
-                              {nuevo && <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-gm-yellow">Nuevo<span className="sr-only"> · tocá para marcarlo como leído</span></span>}
-                              <time dateTime={new Date(n.createdAt).toISOString()} className="gm-mono ml-auto text-xs text-muted-foreground">
-                                {g.clave === 'pendientes' ? `${fechaCorta(n.date ?? diaAR(new Date(n.createdAt)))} · ` : ''}{horaAR(new Date(n.createdAt))}
-                              </time>
-                            </div>
-                            {n.context && <p className="gm-mono mt-0.5 break-words text-xs text-muted-foreground">{n.context}</p>}
-                            <p className={cn('mt-2 whitespace-pre-wrap break-words text-[14px] leading-relaxed', nuevo ? 'text-foreground' : 'text-gm-texto-2')}>{n.description}</p>
-                          </div>
-                          {/* Editar o borrar no cuenta como leer: los clics y teclas del diálogo no suben a la tarjeta. */}
-                          {!n.sourceKey && (
-                            <div className="-mr-2 -mt-1 flex shrink-0 items-start" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                              <UpdateNoteDialog note={n} />
-                              <DeleteNoteDialog note={n} />
-                            </div>
-                          )}
-                        </article>
-                      </li>
-                    );
-                  })}
+                  {(g.clave === 'pendientes' ? g.avisos.map((n) => ({ clave: n.id, avisos: [n] })) : porPersona(g.avisos)).map((b) => b.avisos.length === 1 ? aviso(b.avisos[0], g.clave) : (
+                    <li key={g.clave + b.clave}>
+                      <details className="group/persona border-t border-gm-line">
+                        <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-[18px] py-3 transition-colors hover:bg-gm-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow [&::-webkit-details-marker]:hidden">
+                          <span className="text-[14px] font-semibold">{autor(b.avisos[0])}</span>
+                          <span className="inline-flex h-[22px] items-center rounded-full bg-gm-surface-3 px-2 text-[12px] font-semibold text-gm-texto-2">{b.avisos.length} avisos</span>
+                          <span className="min-w-0 basis-full text-xs text-muted-foreground sm:basis-auto sm:flex-1">{resumenOrigenes(b.avisos)}</span>
+                          <ChevronDown aria-hidden className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform group-open/persona:rotate-180" />
+                        </summary>
+                        <ul className="bg-gm-surface-2/40">{b.avisos.map((n) => aviso(n, g.clave, true))}</ul>
+                      </details>
+                    </li>
+                  ))}
                 </ul>
               </section>
             ))}
@@ -283,4 +278,45 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
       </section>
     </div>
   );
+
+  // Una tarjeta de aviso: suelta o dentro del grupo de una persona.
+  function aviso(n: Note, clave: string, enGrupo = false) {
+    const nuevo = pendiente(n);
+    const { Icono, label } = ORIGENES[origenDe(n)];
+    return (
+      <li key={n.id}>
+        <article
+          data-pendiente={nuevo || undefined}
+          tabIndex={nuevo ? 0 : undefined}
+          onClick={() => void leer(n)}
+          onKeyDown={(e) => teclado(e, n)}
+          className={cn('relative flex gap-3 border-t border-gm-line px-[18px] py-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow',
+            nuevo ? 'cursor-pointer bg-gm-yellow/[0.05] hover:bg-gm-yellow/[0.09]' : 'hover:bg-gm-surface-2')}>
+          {nuevo && <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-gm-yellow" />}
+          <span aria-hidden className={cn('grid size-10 shrink-0 place-items-center rounded-[12px]', nuevo ? 'bg-gm-yellow/15 text-gm-yellow' : 'bg-gm-surface-3 text-gm-texto-2')}>
+            <Icono className="size-[18px]" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {!enGrupo && <span className={cn('text-[14px]', nuevo ? 'font-bold' : 'font-semibold')}>{autor(n)}</span>}
+              <span className="inline-flex h-[22px] items-center rounded-full bg-gm-surface-3 px-2 text-[12px] font-semibold text-gm-texto-2">{n.origin || label}</span>
+              {nuevo && <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-gm-yellow">Nuevo<span className="sr-only"> · tocá para marcarlo como leído</span></span>}
+              <time dateTime={new Date(n.createdAt).toISOString()} className="gm-mono ml-auto text-xs text-muted-foreground">
+                {clave === 'pendientes' ? `${fechaCorta(n.date ?? diaAR(new Date(n.createdAt)))} · ` : ''}{horaAR(new Date(n.createdAt))}
+              </time>
+            </div>
+            {n.context && <p className="gm-mono mt-0.5 break-words text-xs text-muted-foreground">{n.context}</p>}
+            <p className={cn('mt-2 whitespace-pre-wrap break-words text-[14px] leading-relaxed', nuevo ? 'text-foreground' : 'text-gm-texto-2')}>{n.description}</p>
+          </div>
+          {/* Editar o borrar no cuenta como leer: los clics y teclas del diálogo no suben a la tarjeta. */}
+          {!n.sourceKey && (
+            <div className="-mr-2 -mt-1 flex shrink-0 items-start" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+              <UpdateNoteDialog note={n} />
+              <DeleteNoteDialog note={n} />
+            </div>
+          )}
+        </article>
+      </li>
+    );
+  }
 }

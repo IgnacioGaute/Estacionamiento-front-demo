@@ -20,6 +20,8 @@ export type InquilinoResumen = {
   nombre: string;
   apellido: string;
   telefono: string | null;
+  // El teléfono listo para WhatsApp (con 549 si era un celular argentino); null si no sirve.
+  whatsapp?: string | null;
   cocheras: string[];
   patentes: string[];
   abono: number;
@@ -34,6 +36,9 @@ export type InquilinoResumen = {
   cargosPendientes: number;
   ultimoPago: { fecha: string; importe: number } | null;
 };
+
+// El contador rojo del menú: inquilinos con deuda vencida. null con la sección apagada.
+export type Deudores = { cantidad: number; total: number; masDe60: number } | null;
 
 export type ResumenCuentas = {
   // null para el operador: los números de la playa son de la administración.

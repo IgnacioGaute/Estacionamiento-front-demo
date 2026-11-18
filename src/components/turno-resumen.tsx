@@ -51,7 +51,7 @@ export function TurnoResumenPanel({ turno }: { turno: Turno }) {
         </div>
         {fondoInicialCaja != null && <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Fondo inicial de caja: {money(fondoInicialCaja)}. Lo que queda no se incluye en lo retirado.</p>}
       </div>
-        : !abierto && <p className="px-4 py-3 text-xs text-muted-foreground">{turno.cierreAutomatico ? 'Corte de las 00:00. La caja continúa abierta.' : 'La caja sigue abierta con otros operadores.'}</p>}
+        : !abierto && <p className="px-4 py-3 text-xs text-muted-foreground">{turno.cierreAutomatico ? (turno.cierreCaja ? 'Corte de las 00:00. La caja se cerró sin contar.' : 'Corte de las 00:00. La caja continúa abierta.') : 'La caja sigue abierta con otros operadores.'}</p>}
     </div>
 
     {turno.alertaSueldo && <p role="alert" className="rounded-xl border border-gm-atencion/40 bg-gm-atencion/5 p-3 text-xs text-gm-atencion">{turno.alertaSueldo}</p>}

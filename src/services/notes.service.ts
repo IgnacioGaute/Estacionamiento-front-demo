@@ -10,7 +10,7 @@ import { revalidateTag } from "next/cache";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 
-export const AVISOS_POR_PAGINA = 20;
+export const AVISOS_POR_PAGINA = 50;
 
 export const getNotes = async (authToken?: string, page = 1, search = '', filtros: FiltrosAvisos = {}) => {
     try {

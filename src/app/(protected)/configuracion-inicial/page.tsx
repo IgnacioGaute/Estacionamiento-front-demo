@@ -67,7 +67,7 @@ export default async function ConfiguracionInicialPage() {
         tarifas: <Suspense fallback={<TarifasPantallaCargando />}><TariffsBody initialPlan={plan ?? null} loadError={tarifa.error} passPrices={precioPases} enConfiguracionInicial /></Suspense>,
         pases: <PasesConfiguracion precios={precioPases} />,
         turnos: schedule
-          ? <OperationSettings sueldoAutomatico={schedule.sueldoAutomatico} sueldosPorUsuario={schedule.sueldosPorUsuario} shiftsEnabled={schedule.shiftsEnabled ?? false} multipleShiftsEnabled={schedule.multipleShiftsEnabled ?? false} enConfiguracionInicial />
+          ? <OperationSettings sueldoAutomatico={schedule.sueldoAutomatico} sueldosPorUsuario={schedule.sueldosPorUsuario} shiftsEnabled={schedule.shiftsEnabled ?? false} multipleShiftsEnabled={schedule.multipleShiftsEnabled ?? false} continuarTurnoMedianoche={schedule.continuarTurnoMedianoche ?? true} enConfiguracionInicial />
           : aviso('No se pudo cargar la configuración de turnos. Podés omitir este paso y hacerlo después.'),
         mercadopago: mercadoPago.error || !mercadoPago.estado
           ? aviso(mercadoPago.error ?? 'No se pudo consultar la cuenta de MercadoPago. Podés omitir este paso y hacerlo después.')

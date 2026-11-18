@@ -30,7 +30,8 @@ function CorteDiario({ turno }: { turno: Turno }) {
       <span className="font-semibold text-foreground">{operator(turno.usuarioApertura)}</span>
       <span>Corte de jornada · {turno.caja?.nombre ?? 'Caja del esquema anterior'} · <span className="gm-mono">{rango(turno.fechaApertura, turno.fechaCierre)}</span></span>
       {turno.resumen && <span>Cobró <span className="font-semibold tabular-nums text-foreground">{money(turno.resumen.efectivoCobrado)}</span> en efectivo</span>}
-      <span className="ml-auto inline-flex items-center gap-1">Sigue en la próxima planilla<ChevronDown className="size-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden /></span>
+      {/* Con la continuación apagada, el corte cierra la caja: no sigue en la próxima planilla. */}
+      <span className="ml-auto inline-flex items-center gap-1">{turno.cierreCaja ? 'Caja cerrada a las 00:00 sin contar' : 'Sigue en la próxima planilla'}<ChevronDown className="size-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden /></span>
     </summary>
     <div className="border-t border-dashed border-gm-line px-4 py-3 text-sm"><TurnoResumenPanel turno={turno} /></div>
   </details>;
