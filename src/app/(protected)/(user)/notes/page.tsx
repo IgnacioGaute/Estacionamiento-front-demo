@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-import { AvisosBody } from './components/avisos-body';
+import { AvisosPestanas } from './components/avisos-pestanas';
 import { CreateNoteDialog } from './components/create-note-dialog';
 import { getNotes } from '@/services/notes.service';
 import { PageHeader } from '@/components/page-header';
@@ -42,7 +42,7 @@ export default async function NotePage() {
         description="Lo que el equipo tiene que saber: avisos propios y los que deja la operación."
         actions={<><PageTour steps={TOUR_STEPS} /><span data-tour="avisos-crear"><CreateNoteDialog /></span></>}
       />
-      <AvisosBody inicial={inicial} />
+      <AvisosPestanas inicial={inicial} />
     </div>
   );
 }

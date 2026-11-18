@@ -9,6 +9,17 @@ export function fechaAR(fecha: string | null | undefined) {
   return d && m && a ? `${d}/${m}/${a}` : '—';
 }
 
+// El recordatorio de pago por WhatsApp: corto y amable, con lo vencido y desde cuándo. Lo envía la
+// persona desde su teléfono (no hay envío automático). Lo usan la tabla y Avisos → Inquilinos.
+export const mensajeRecordatorio = (i: { nombre: string | null; vencido: number; vencidoDesde: string | null }, playa?: string) =>
+  [
+    `Hola${i.nombre?.trim() ? ` ${i.nombre.trim()}` : ''}, te escribimos${playa ? ` de ${playa}` : ''}.`,
+    `Tenés un saldo vencido de ${plata(i.vencido)}${i.vencidoDesde ? ` desde el ${fechaAR(i.vencidoDesde)}` : ''}.`,
+    'Podés pagarlo en la playa. Si ya lo pagaste, avisanos así lo registramos. ¡Gracias!',
+  ].join(' ');
+
+export const enlaceRecordatorio = (whatsapp: string, mensaje: string) => `https://wa.me/${whatsapp}?text=${encodeURIComponent(mensaje)}`;
+
 // Un instante (createdAt) se muestra en el día de Argentina: cortar el ISO en UTC daría el día
 // siguiente para todo lo cargado después de las 21.
 export function diaDeInstanteAR(instante: string | null | undefined) {

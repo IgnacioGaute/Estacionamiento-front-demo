@@ -5,7 +5,8 @@ import { readAllNotesAction, readNoteAction } from '@/actions/notes/note-read.ac
 import type { ListaAvisos, Note } from '@/types/note.type';
 import { AvisosBody } from './avisos-body';
 
-jest.mock('next-auth/react', () => ({ useSession: () => ({ data: { user: { id: 'yo', role: 'USER' } } }) }));
+const sesion = { role: 'USER' };
+jest.mock('next-auth/react', () => ({ useSession: () => ({ data: { user: { id: 'yo', role: sesion.role } } }) }));
 jest.mock('@/components/tenant-provider', () => ({ useTenant: () => ({ cobroHabilitado: true }) }));
 jest.mock('@/actions/notes/list-notes.action', () => ({ listNotesAction: jest.fn() }));
 jest.mock('@/actions/notes/note-read.action', () => ({ readNoteAction: jest.fn(), readAllNotesAction: jest.fn() }));
@@ -123,4 +124,30 @@ test('los avisos de una misma persona en un día van juntos y plegados; uno solo
   // El de otra persona queda suelto, fuera del grupo.
   expect(tarjeta('Mañana revisamos las luces de la entrada.').closest('details')).toBeNull();
   expect(screen.getByRole('region', { name: 'Resumen' })).toHaveTextContent('Estás al día');
+});
+
+test('cada aviso automático dice qué pasó y qué es el texto; los del equipo no', () => {
+  render(<AvisosBody inicial={lista()} />);
+  const cierre = tarjeta('Se perdió plata. Revisar los cobros del turno.');
+  expect(within(cierre).getByText('Cerró su turno con una diferencia de caja, un conteo corregido o por administración.')).toBeInTheDocument();
+  expect(within(cierre).getByText('Explicación:')).toBeInTheDocument();
+  const comentario = tarjeta('Llamar antes de renovar el abono.');
+  expect(within(comentario).getByText('Dejó un comentario en la ficha del inquilino.')).toBeInTheDocument();
+  expect(within(comentario).getByText('Comentario:')).toBeInTheDocument();
+  const equipo = tarjeta('Mañana revisamos las luces de la entrada.');
+  expect(within(equipo).queryByText(/:$/)).toBeNull();
+  // El operador no entra a la cuenta ni al historial de turnos: sin «Ver».
+  expect(screen.queryByRole('link', { name: /Ver/ })).toBeNull();
+});
+
+test('para la administración, «Ver» lleva al inquilino o a los turnos', () => {
+  sesion.role = 'ADMIN';
+  try {
+    const informativo = { id: 'info', sourceKey: 'cierre:ok', sourceType: 'TURNO', sourceId: 't1', origin: 'Cierre de turno', description: 'Todo bien.', user: null, date: '2026-10-12', createdAt: new Date('2026-10-12T10:00:00Z'), paraRevisar: false } as unknown as Note;
+    const inquilino = { ...avisos[3], sourceId: 'c9' } as Note;
+    render(<AvisosBody inicial={lista({ data: [informativo, inquilino], pendientes: [] })} />);
+    expect(within(tarjeta('Todo bien.')).getByText('Cerró su turno con la caja correcta y dejó una nota.')).toBeInTheDocument();
+    expect(within(tarjeta('Todo bien.')).getByRole('link', { name: /Ver turnos/ })).toHaveAttribute('href', '/admin/caja/turnos');
+    expect(within(tarjeta('Llamar antes de renovar el abono.')).getByRole('link', { name: /Ver inquilino/ })).toHaveAttribute('href', '/renters/c9');
+  } finally { sesion.role = 'USER'; }
 });

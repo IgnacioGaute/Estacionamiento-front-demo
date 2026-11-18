@@ -79,12 +79,13 @@ export function OperationalNavUser({
   const hasNewNoteAlert = unreadCount > 0;
   const counter = unreadCount > 99 ? '99+' : String(unreadCount);
   const alertLabel = `Tenés ${unreadCount} ${unreadCount === 1 ? 'aviso' : 'avisos'} para revisar`;
-  // Aparte de los avisos y en rojo: inquilinos con deuda vencida (solo administración). No se marca
-  // como leído; baja cuando pagan.
+  // Aparte de los avisos y en rojo: deudas de inquilinos que esta persona todavía no vio (solo
+  // administración). Abrir Avisos → Inquilinos las da por vistas y el número desaparece.
   const deudores = useDeudores();
-  const hayDeudores = !!deudores && deudores.cantidad > 0;
-  const contadorDeudores = deudores && deudores.cantidad > 99 ? '99+' : String(deudores?.cantidad ?? 0);
-  const deudoresLabel = hayDeudores ? `${deudores.cantidad} ${deudores.cantidad === 1 ? 'inquilino' : 'inquilinos'} con deuda vencida` : '';
+  const nuevas = deudores?.nuevos ?? 0;
+  const hayDeudores = nuevas > 0;
+  const contadorDeudores = nuevas > 99 ? '99+' : String(nuevas);
+  const deudoresLabel = hayDeudores ? `${nuevas} ${nuevas === 1 ? 'deuda nueva' : 'deudas nuevas'} de inquilinos` : '';
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const esAdmin = userNav.role === 'ADMIN' || userNav.role === 'SUPER_ADMIN';
@@ -218,18 +219,18 @@ export function OperationalNavUser({
             </Link>
           </DropdownMenuItem>}
 
-          {/* Debajo de Avisos y en rojo: lleva a la tabla filtrada por deuda vencida, la más vieja primero. */}
-          {hayDeudores && <DropdownMenuItem asChild onSelect={() => setIsOpen(false)} className={cn(
+          {/* Debajo de Avisos y en rojo: lleva a Avisos → Inquilinos, que las da por vistas. */}
+          {hayDeudores && deudores && <DropdownMenuItem asChild onSelect={() => setIsOpen(false)} className={cn(
             'mb-2 min-h-12 cursor-pointer gap-3 rounded-xl border border-[#C93630]/45 bg-[#C93630]/[0.1] px-3 py-2 text-foreground focus:bg-[#C93630]/20',
             !hasNewNoteAlert && 'mt-2',
           )}>
-            <Link href="/renters?filtro=vencido" aria-label={`Inquilinos. ${deudoresLabel}: ${corto(deudores.total)} vencido${deudores.masDe60 ? `, ${deudores.masDe60} hace más de 60 días` : ''}`}>
+            <Link href="/notes?tab=inquilinos" aria-label={`Deudas. ${deudoresLabel}: ${corto(deudores.total)} vencido en total${deudores.masDe60 ? `, ${deudores.masDe60} hace más de 60 días` : ''}`}>
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#C93630]/20 text-[#F0716B]"><TriangleAlert className="size-4" aria-hidden /></span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[14px] font-semibold leading-tight">Deudas</span>
                 <span className="block truncate text-[11px] text-muted-foreground">{corto(deudores.total)} vencido</span>
               </span>
-              <span aria-hidden className="shrink-0 rounded-md bg-[#C93630] px-2 py-1 text-[11px] font-bold leading-none text-white">{contadorDeudores} {deudores.cantidad === 1 ? 'debe' : 'deben'}</span>
+              <span aria-hidden className="shrink-0 rounded-md bg-[#C93630] px-2 py-1 text-[11px] font-bold leading-none text-white">{contadorDeudores} {nuevas === 1 ? 'nueva' : 'nuevas'}</span>
             </Link>
           </DropdownMenuItem>}
 

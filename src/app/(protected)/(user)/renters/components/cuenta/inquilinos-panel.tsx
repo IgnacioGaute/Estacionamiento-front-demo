@@ -27,7 +27,7 @@ import { CobrarDialog } from './cobrar-dialog';
 import { CuentaMostradorDialog } from './cuenta-mostrador';
 import { CargarAbonosDialog } from './acciones';
 import { AnulacionesDialog } from './anulaciones';
-import { TRAMOS, fechaAR, mesActual, nombreMes } from './util';
+import { TRAMOS, enlaceRecordatorio, fechaAR, mensajeRecordatorio, mesActual, nombreMes } from './util';
 
 type Filtro = 'todos' | 'pendiente' | 'vencido' | 'al_dia' | 'a_favor' | 'bajas';
 type Orden = 'saldo' | 'vencido' | 'nombre';
@@ -37,20 +37,11 @@ const OTROS = 'otros';
 // Hay inquilinos viejos cargados sin nombre: que la fila no quede en blanco.
 const nombreDe = (i: InquilinoResumen) => `${i.apellido ?? ''} ${i.nombre ?? ''}`.trim() || 'Sin nombre';
 
-// El recordatorio de pago: corto y amable, con lo vencido y desde cuándo. Lo envía la persona desde
-// su WhatsApp (no hay envío automático).
-export const mensajeRecordatorio = (i: InquilinoResumen, playa?: string) =>
-  [
-    `Hola${i.nombre?.trim() ? ` ${i.nombre.trim()}` : ''}, te escribimos${playa ? ` de ${playa}` : ''}.`,
-    `Tenés un saldo vencido de ${plata(i.vencido)}${i.vencidoDesde ? ` desde el ${fechaAR(i.vencidoDesde)}` : ''}.`,
-    'Podés pagarlo en la playa. Si ya lo pagaste, avisanos así lo registramos. ¡Gracias!',
-  ].join(' ');
-
 function Recordar({ i, playa, className }: { i: InquilinoResumen; playa?: string; className: string }) {
   if (!(i.vencido > 0) || !i.whatsapp) return null;
   return (
     <a
-      href={`https://wa.me/${i.whatsapp}?text=${encodeURIComponent(mensajeRecordatorio(i, playa))}`}
+      href={enlaceRecordatorio(i.whatsapp, mensajeRecordatorio(i, playa))}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`Recordar el pago por WhatsApp a ${nombreDe(i)}`}

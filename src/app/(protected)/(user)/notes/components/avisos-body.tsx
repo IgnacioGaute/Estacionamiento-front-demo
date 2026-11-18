@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useTransition, type KeyboardEvent } from 'react';
 import { useSession } from 'next-auth/react';
 import dayjs from 'dayjs';
-import { CalendarDays, Car, CheckCheck, ChevronDown, Inbox, MessageSquare, RotateCcw, Search, SlidersHorizontal, Users, Wallet, type LucideIcon } from 'lucide-react';
+import Link from 'next/link';
+import { CalendarDays, Car, CheckCheck, ChevronDown, ChevronRight, Inbox, MessageSquare, RotateCcw, Search, SlidersHorizontal, Users, Wallet, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FilasAvisosCargando } from './cargando';
 import { AppDatePicker } from '@/components/app-date-picker';
@@ -41,6 +42,46 @@ const SIN_FILTROS: Required<FiltrosAvisos> = { estado: 'TODOS', origen: 'TODOS',
 // Igual que DIAS_PENDIENTE en el backend: lo para revisar deja de contar después de una semana.
 const DIAS_PENDIENTE = 7;
 
+// Qué pasó, en una frase, para cada aviso automático: antes solo se veía la nota («demoró en pagar»)
+// y no se sabía de qué operación era. `etiqueta` dice qué es el texto que dejó la persona. Los del
+// equipo no llevan frase: el mensaje es el aviso.
+type Explicacion = { que: string; etiqueta: string };
+const QUE_ES: Record<string, Explicacion | ((n: Note) => Explicacion)> = {
+  'Descuento de vehículo': { que: 'Hizo un descuento o una cortesía al cobrar un vehículo.', etiqueta: 'Motivo' },
+  'Corrección de cobro': { que: 'Corrigió lo cobrado de un vehículo.', etiqueta: 'Motivo' },
+  'Entrada con patente ya activa': { que: 'Registró la entrada de una patente que ya figuraba adentro.', etiqueta: 'Motivo' },
+  'Cierre de turno': (n) => n.paraRevisar === false
+    ? { que: 'Cerró su turno con la caja correcta y dejó una nota.', etiqueta: 'Nota' }
+    : { que: 'Cerró su turno con una diferencia de caja, un conteo corregido o por administración.', etiqueta: 'Explicación' },
+  'Apertura de caja': (n) => n.paraRevisar === false
+    ? { que: 'Abrió la caja y dejó una nota.', etiqueta: 'Nota' }
+    : { que: 'Abrió la caja y lo que recibió no coincidió con lo que dejó el turno anterior.', etiqueta: 'Motivo' },
+  'Conteo de relevo': { que: 'Contó la caja en un cambio de operador y no coincidió con lo esperado.', etiqueta: 'Detalle' },
+  'Retiro de caja': { que: 'Retiró efectivo de la caja.', etiqueta: 'Motivo' },
+  'Aporte de caja': { que: 'Agregó efectivo a la caja.', etiqueta: 'Motivo' },
+  'Operación sin conexión': { que: 'Hizo una operación sin conexión que se registró después, al volver la señal.', etiqueta: 'Operación' },
+  'Cobro a inquilino': { que: 'Cobró a un inquilino y dejó una nota.', etiqueta: 'Nota' },
+  'Saldo inicial de inquilino': { que: 'Cargó la deuda o el saldo a favor con que empezó un inquilino.', etiqueta: 'Nota' },
+  'Recargo de cuenta': { que: 'Agregó un recargo a la cuenta de un inquilino.', etiqueta: 'Motivo' },
+  'Bonificación de cuenta': { que: 'Bonificó parte de lo que debía un inquilino.', etiqueta: 'Motivo' },
+  'Anulación de cuenta': { que: 'Anuló un movimiento de la cuenta de un inquilino.', etiqueta: 'Motivo' },
+  'Devolución a inquilino': { que: 'Le devolvió dinero a un inquilino.', etiqueta: 'Motivo' },
+};
+const explicacion = (n: Note): Explicacion | null => {
+  if (!n.sourceKey) return null;
+  if (n.origin?.startsWith('Comentario de ')) return { que: `Dejó un comentario en la ficha del ${n.origin.slice('Comentario de '.length)}.`, etiqueta: 'Comentario' };
+  const e = n.origin ? QUE_ES[n.origin] : undefined;
+  return typeof e === 'function' ? e(n) : e ?? { que: '', etiqueta: 'Nota' };
+};
+// Adónde ir para verlo, si hay una pantalla: la cuenta del inquilino o el historial de turnos (solo
+// administración; el operador no entra a esas pantallas).
+const destino = (n: Note, esAdmin: boolean): { href: string; label: string } | null => {
+  if (!esAdmin || !n.sourceKey || !n.sourceId) return null;
+  if (n.sourceType === 'CUENTA' || n.sourceType === 'RENTER') return { href: `/renters/${n.sourceId}`, label: 'Ver inquilino' };
+  if (n.sourceType === 'TURNO' || n.sourceType === 'CAJA') return { href: '/admin/caja/turnos', label: 'Ver turnos' };
+  return null;
+};
+
 // Dentro de un día, los avisos de una misma persona van juntos y plegados: un turno con diez descuentos
 // era diez filas iguales. Uno solo se muestra suelto. Se ordenan por el aviso más reciente de cada uno.
 type Bloque = { clave: string; avisos: Note[] };
@@ -63,6 +104,7 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
   const { data: session } = useSession();
   const { cobroHabilitado } = useTenant();
   const yo = session?.user?.id;
+  const esAdmin = session?.user?.role === 'ADMIN' || session?.user?.role === 'SUPER_ADMIN';
   const [filtros, setFiltros] = useState(SIN_FILTROS);
   const [masFiltros, setMasFiltros] = useState(false);
   const [busqueda, setBusqueda] = useState('');
@@ -283,6 +325,8 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
   function aviso(n: Note, clave: string, enGrupo = false) {
     const nuevo = pendiente(n);
     const { Icono, label } = ORIGENES[origenDe(n)];
+    const que = explicacion(n);
+    const ver = destino(n, esAdmin);
     return (
       <li key={n.id}>
         <article
@@ -305,8 +349,18 @@ export function AvisosBody({ inicial }: { inicial: ListaAvisos | null }) {
                 {clave === 'pendientes' ? `${fechaCorta(n.date ?? diaAR(new Date(n.createdAt)))} · ` : ''}{horaAR(new Date(n.createdAt))}
               </time>
             </div>
+            {que?.que && <p className="mt-1 text-[13px] font-medium text-foreground">{que.que}</p>}
             {n.context && <p className="gm-mono mt-0.5 break-words text-xs text-muted-foreground">{n.context}</p>}
-            <p className={cn('mt-2 whitespace-pre-wrap break-words text-[14px] leading-relaxed', nuevo ? 'text-foreground' : 'text-gm-texto-2')}>{n.description}</p>
+            <p className={cn('mt-2 whitespace-pre-wrap break-words text-[14px] leading-relaxed', nuevo ? 'text-foreground' : 'text-gm-texto-2')}>
+              {que && <span className="mr-1.5 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{que.etiqueta}:</span>}
+              {n.description}
+            </p>
+            {ver && (
+              <Link href={ver.href} className="mt-2 inline-flex h-8 items-center gap-1 rounded-[10px] border border-border px-2.5 text-[12px] font-semibold text-foreground hover:bg-gm-surface-2">
+                {ver.label}
+                <ChevronRight className="size-3.5" aria-hidden />
+              </Link>
+            )}
           </div>
           {/* Editar o borrar no cuenta como leer: los clics y teclas del diálogo no suben a la tarjeta. */}
           {!n.sourceKey && (

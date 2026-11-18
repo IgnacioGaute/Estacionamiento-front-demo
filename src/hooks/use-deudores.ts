@@ -9,14 +9,21 @@ import { useForegroundPoll } from './use-foreground-poll';
 // Después de un cobro o de cargar abonos la tabla lo avisa y el contador del menú se actualiza.
 export const EVENTO_CUENTAS_CAMBIARON = 'cuentas-cambiaron';
 
-// Inquilinos con deuda vencida, para el contador rojo del menú: aparte de los avisos, no se marca
-// como leído y baja cuando pagan. Solo administración y con la sección de inquilinos prendida.
+// Inquilinos con deuda vencida, para Avisos → Inquilinos y el número rojo del menú, aparte de los
+// avisos. El número son los que esta persona no vio: abrir la pestaña los marca solos. Solo
+// administración y con la sección de inquilinos prendida.
 // Si falla (sin red, empresa suspendida) no muestra nada: no es motivo para un error en pantalla.
-export function useDeudores() {
+// Quién tiene deudas de inquilinos en Avisos: la administración, con la sección prendida.
+export function useDeudasHabilitadas() {
   const { playaId, inquilinosEnabled } = useTenant();
   const { data: session } = useSession();
   const rol = session?.user?.role;
-  const habilitado = !!playaId && !!inquilinosEnabled && (rol === 'ADMIN' || rol === 'SUPER_ADMIN');
+  return !!playaId && !!inquilinosEnabled && (rol === 'ADMIN' || rol === 'SUPER_ADMIN');
+}
+
+export function useDeudores() {
+  const { playaId } = useTenant();
+  const habilitado = useDeudasHabilitadas();
   const [deudores, setDeudores] = useState<Deudores>(null);
   const actualizar = useCallback(() => {
     if (!habilitado) return;

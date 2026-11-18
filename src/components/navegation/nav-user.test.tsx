@@ -105,26 +105,29 @@ test('el menú de plataforma permite cambiar de playa y cerrar sesión sin monta
   expect(signOut).toHaveBeenCalledTimes(1);
 });
 
-test('los deudores tienen su propio número en rojo, debajo de los avisos, y llevan a la tabla filtrada', async () => {
-  jest.mocked(useDeudores).mockReturnValue({ cantidad: 4, total: 185000, masDe60: 1 });
+test('las deudas nuevas tienen su propio número en rojo, debajo de los avisos, y llevan a Avisos → Inquilinos', async () => {
+  jest.mocked(useDeudores).mockReturnValue({ cantidad: 6, total: 185000, masDe60: 1, nuevos: 4, deudores: [] });
   try {
     render(<OperationalNavUser userNav={userNav} notas={{ unreadIds: ['uno', 'dos'], loaded: true }} />);
-    expect(screen.getByRole('button', { name: /Tenés 2 avisos para revisar\. 4 inquilinos con deuda vencida/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Tenés 2 avisos para revisar\. 4 deudas nuevas de inquilinos/ })).toBeInTheDocument();
     open();
     const avisos = await screen.findByRole('menuitem', { name: /Avisos. Tenés 2 avisos para revisar/ });
-    const deudas = screen.getByRole('menuitem', { name: /Inquilinos. 4 inquilinos con deuda vencida/ });
-    expect(deudas).toHaveAttribute('href', '/renters?filtro=vencido');
-    expect(deudas).toHaveTextContent('4 deben');
+    const deudas = screen.getByRole('menuitem', { name: /Deudas. 4 deudas nuevas de inquilinos/ });
+    expect(deudas).toHaveAttribute('href', '/notes?tab=inquilinos');
+    expect(deudas).toHaveTextContent('4 nuevas');
     expect(deudas).toHaveAccessibleName(/1 hace más de 60 días/);
     // Debajo del de avisos.
     expect(avisos.compareDocumentPosition(deudas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   } finally { jest.mocked(useDeudores).mockReturnValue(null); }
 });
 
-test('sin deudores no hay número rojo ni acceso de deudas', async () => {
+test('vistas todas (o sin deudores) no hay número rojo ni acceso de deudas', async () => {
+  // Siguen debiendo, pero esta persona ya las vio en Avisos → Inquilinos.
+  jest.mocked(useDeudores).mockReturnValue({ cantidad: 6, total: 185000, masDe60: 1, nuevos: 0, deudores: [] });
   render(<OperationalNavUser userNav={userNav} notas={{ unreadIds: [], loaded: true }} />);
   expect(screen.getByRole('button', { name: /Tu cuenta y el menú/ })).not.toHaveAccessibleName(/deuda/);
   open();
   await screen.findAllByRole('menuitem', { name: 'Operación' });
-  expect(document.querySelector('a[href="/renters?filtro=vencido"]')).toBeNull();
+  expect(document.querySelector('a[href="/notes?tab=inquilinos"]')).toBeNull();
+  jest.mocked(useDeudores).mockReturnValue(null);
 });

@@ -2,7 +2,8 @@
 import { render, screen, within } from '@testing-library/react';
 import { getResumenCuentasAction } from '@/actions/cuentas/cuentas.action';
 import type { InquilinoResumen, ResumenCuentas } from '@/types/cuenta.type';
-import { InquilinosPanel, mensajeRecordatorio } from './inquilinos-panel';
+import { InquilinosPanel } from './inquilinos-panel';
+import { mensajeRecordatorio } from './util';
 
 const params = { filtro: 'vencido' as string | null };
 jest.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams(params.filtro ? `filtro=${params.filtro}` : '') }));

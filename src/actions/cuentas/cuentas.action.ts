@@ -51,9 +51,14 @@ export async function getResumenCuentasAction() {
   return pedir<ResumenCuentas>('resumen');
 }
 
-// Para el contador del menú (solo administración).
+// Avisos → Inquilinos y el número rojo del menú (solo administración).
 export async function getDeudoresAction() {
   return pedir<Deudores>('deudores');
+}
+
+// Abrir la pestaña las marca como vistas para quien la abre.
+export async function marcarDeudasVistasAction() {
+  return pedir<Deudores>('deudores/vistos', {});
 }
 
 export async function getEstadoCuentaAction(customerId: string) {

@@ -37,8 +37,21 @@ export type InquilinoResumen = {
   ultimoPago: { fecha: string; importe: number } | null;
 };
 
-// El contador rojo del menú: inquilinos con deuda vencida. null con la sección apagada.
-export type Deudores = { cantidad: number; total: number; masDe60: number } | null;
+// Un inquilino con deuda vencida, en Avisos → Inquilinos. `nuevo`: esta persona todavía no lo vio.
+export type DeudorAviso = {
+  id: string;
+  nombre: string | null;
+  apellido: string | null;
+  whatsapp: string | null;
+  baja: boolean;
+  vencido: number;
+  vencidoDesde: string;
+  tramo: Tramo;
+  nuevo: boolean;
+};
+// Avisos → Inquilinos y el número rojo del menú (`nuevos`: los que esta persona no vio). null con la
+// sección apagada.
+export type Deudores = { cantidad: number; total: number; masDe60: number; nuevos: number; deudores: DeudorAviso[] } | null;
 
 export type ResumenCuentas = {
   // null para el operador: los números de la playa son de la administración.
