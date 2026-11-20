@@ -42,6 +42,14 @@ export type ConteoRelevoCaja = { id: string; momento: 'INGRESO' | 'SALIDA'; cont
 export type EstadiaParaRevisar = { id: string; patente: string; motivo: 'DESCUENTO_TOTAL' | 'COBRO_SIN_TIEMPO' | 'REINGRESO'; detalle: string; salida: string };
 // Cobros digitales que nadie comprobó contra Mercado Pago: «Transferencia» cargada a mano, o una
 // transferencia al alias que el operador eligió entre varias posibles.
+// Los cobros en efectivo que recibió un turno, para el historial (GET /turnos/:id/cobros-efectivo).
+// Cada fila es una operación, no un vehículo: un vehículo puede tener anticipo y saldo. `importe` con
+// signo (las devoluciones restan). `sinDetalle`: una entrada de la caja de la que no se sabe la
+// operación (un pase marcado como pagado después o eliminado, un ajuste a mano).
+export type ConceptoCobroEfectivo = 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'DEVOLUCION' | 'PAGO_INQUILINO' | 'DEVOLUCION_INQUILINO'
+  | 'ANULACION_INQUILINO' | 'ESTADIA_PERIODO' | 'DEVOLUCION_ANTICIPO' | 'AJUSTE_CAJA' | 'COBRO';
+export type CobroEfectivo = { id: string; fecha: string; concepto: ConceptoCobroEfectivo; identificacion: string | null; importe: number; sinDetalle: boolean; periodo?: string | null; anula?: 'PAGO' | 'DEVOLUCION' | null };
+export type CobrosEfectivoTurno = { cobros: CobroEfectivo[]; cantidad: number; ingresos: number; egresos: number; total: number; sinDetalle: number };
 export type CobroSinVerificar = { id: string; tipo: 'TRANSFERENCIA' | 'ALIAS_ELEGIDA'; importe: number; hora: string; concepto: string; operador: string };
 export type ConciliacionCaja = { fondoInicial: number; ingresos: number; egresos: number; esperado: number; movimientos: { id: string; amount: number; concepto: string; operador: string; fecha: string }[]; conteos?: ConteoRelevoCaja[]; paraRevisar?: EstadiaParaRevisar[]; sinVerificar?: CobroSinVerificar[] };
 export type OpenTurno = Turno & { efectivoDisponible: number; fondoObjetivo?: number; sueldoSugerido?: number; efectivoOperado?: number; usuariosEnCaja?: number; requiereArqueo?: boolean };

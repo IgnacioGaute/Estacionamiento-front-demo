@@ -1,6 +1,7 @@
 'use client';
 import { TurnoResumenPanel } from '@/components/turno-resumen';
 import { CobrosSinVerificarHistorial } from '@/components/cobros-sin-verificar-historial';
+import { CobrosEfectivoHistorial } from '@/components/cobros-efectivo-historial';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { useEffect, useState } from 'react';
@@ -33,7 +34,7 @@ function CorteDiario({ turno }: { turno: Turno }) {
       {/* Con la continuación apagada, el corte cierra la caja: no sigue en la próxima planilla. */}
       <span className="ml-auto inline-flex items-center gap-1">{turno.cierreCaja ? 'Caja cerrada a las 00:00 sin contar' : 'Sigue en la próxima planilla'}<ChevronDown className="size-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden /></span>
     </summary>
-    <div className="border-t border-dashed border-gm-line px-4 py-3 text-sm"><TurnoResumenPanel turno={turno} /></div>
+    <div className="space-y-3 border-t border-dashed border-gm-line px-4 py-3 text-sm"><TurnoResumenPanel turno={turno} /><CobrosEfectivoHistorial turnoId={turno.id} resumen={turno.resumen} /></div>
   </details>;
 }
 // Mientras carga, filas con la forma de los turnos en vez del ícono grande: junto con el de las
@@ -178,6 +179,7 @@ function ShiftCard({ turno }: { turno: Turno }) {
       </dl>}
       {!!turno.cashSession?.diferenciaApertura && <p className="rounded-xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-3 text-xs text-gm-atencion">Diferencia al recibir esta caja: {money(turno.cashSession.diferenciaApertura)} · {turno.cashSession.motivoApertura}</p>}
       <TurnoResumenPanel turno={turno} />
+      <CobrosEfectivoHistorial turnoId={turno.id} resumen={turno.resumen} />
       {turno.estado === 'CERRADO' && <CobrosSinVerificarHistorial turnoId={turno.id} />}
       {turno.observaciones && <p className="whitespace-pre-wrap break-words rounded-xl bg-gm-surface-3/60 p-3 text-xs"><strong>Nota:</strong> {turno.observaciones}</p>}
       {turno.cierreForzado && <p className="break-words rounded-xl border border-gm-atencion/30 bg-gm-atencion/[0.05] p-3 text-xs text-gm-atencion"><strong>Cierre por administrador:</strong> {turno.motivoCierreForzado || 'Sin motivo registrado'}</p>}
