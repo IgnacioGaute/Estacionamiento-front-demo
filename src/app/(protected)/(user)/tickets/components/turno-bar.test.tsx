@@ -664,6 +664,36 @@ test('arqueo: la conciliación se pide recién al comparar y se envía el primer
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith('yo-turno', expect.objectContaining({ efectivoContado: 900, primerConteo: 800 })));
 });
 
+test('un doble clic en «Comparar» no cierra la caja: primero se ve cuánto se deja y el sueldo', async () => {
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift()) });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
+  await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  const input = await screen.findByLabelText('Total que contaste');
+  await waitFor(() => expect(input).toBeEnabled());
+  fireEvent.change(input, { target: { value: '900' } });
+  const comparar = screen.getByRole('button', { name: 'Comparar con lo esperado' });
+  const reloj = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+  comparar.focus();
+  fireEvent.click(comparar, { detail: 1 });
+  // «Confirmar» aparece en el mismo lugar, pero es otro botón y el foco pasa al resultado.
+  const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ });
+  expect(confirmar).not.toBe(comparar);
+  expect(confirmar).not.toHaveFocus();
+  expect(screen.getByText('Coincide').closest('[role="status"]')).toHaveFocus();
+  await waitFor(() => expect(confirmar).toBeEnabled());
+  // El segundo clic del doble clic no cierra.
+  fireEvent.click(confirmar, { detail: 2 });
+  expect(closeTurnoAction).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?')).toBeInTheDocument();
+  // Un clic posterior, ya con el resultado a la vista, sí.
+  reloj.mockReturnValue(1_001_000);
+  fireEvent.click(confirmar, { detail: 1 });
+  reloj.mockRestore();
+  await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith('yo-turno', expect.objectContaining({ efectivoContado: 900 })));
+});
+
 test('el super admin no abre turnos de caja: lo explica y no deja abrir', async () => {
   jest.mocked(useSession).mockReturnValue({ data: { user: { ...user, role: 'SUPER_ADMIN' } }, status: 'authenticated' } as ReturnType<typeof useSession>);
   render(<TurnoBar />);

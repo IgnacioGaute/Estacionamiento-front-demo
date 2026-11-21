@@ -1,6 +1,6 @@
 'use client';
 import { useForegroundPoll } from '@/hooks/use-foreground-poll';
-import { ReactNode, useEffect, useId, useState, useTransition } from 'react';
+import { ReactNode, useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -115,8 +115,13 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const relevoValido = amountValid(relevo) && relevoVisto && (diferenciaRelevo === 0 || !!motivoRelevo.trim());
   const datosRelevo = () => ({ conteoRelevo: Number(relevo), motivoConteoRelevo: diferenciaRelevo !== 0 ? motivoRelevo.trim() : undefined });
   const compararRelevo = () => { if (amountValid(relevo)) setRelevoVisto(true); };
+  // «Comparar» y «Confirmar cierre» ocupan el mismo lugar del pie: el segundo clic de un doble clic
+  // (o un toque doble) caía en «Confirmar» y cerraba la caja sin ver cuánto se deja ni el sueldo.
+  const resultadoRef = useRef<HTMLDivElement>(null);
+  const comparadoEn = useRef(0);
   const compararConteo = () => {
     if (!amountValid(counted) || !active) return;
+    comparadoEn.current = Date.now();
     setConteoVisto(true);
     setPrimerConteo(previo => previo ?? Number(counted));
     // El detalle se pide recién ahora: no viaja con el contexto, que llega antes de contar.
@@ -242,6 +247,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const fondoPropio = active?.abrioLaCaja !== false && !forzando;
   // Contó de más: lo más común es un auto que pagó y se fue sin registrar la salida.
   const sobrante = etapa === 'resultado' && closingDifference < 0 ? -closingDifference : 0;
+  // Al comparar, el foco pasa al resultado: si quedaba en el botón del pie, Enter o espacio cerraban.
+  useEffect(() => { if (etapa === 'resultado') resultadoRef.current?.focus(); }, [etapa]);
   const bloqueSueldo = salaryExpected > 0 && (salaryAlcanza > 0
     ? <button type="button" role="switch" aria-checked={retirarSueldo} disabled={pending} onClick={() => setRetirarSueldo(v => !v)}
       className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-gm-line bg-gm-surface-2/60 px-4 py-2 text-left transition-colors hover:bg-gm-surface-3/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50">
@@ -351,7 +358,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           {/* Resultado: coincide o no; con diferencia, el motivo. Con eso resuelto, cuánto deja, el
               sueldo y qué se saca de la caja. */}
           {etapa === 'resultado' && <>
-            <div role="status" className="flex items-center gap-3.5">
+            <div ref={resultadoRef} tabIndex={-1} role="status" className="flex items-center gap-3.5 rounded-xl outline-none">
               <span aria-hidden className={cn('grid size-12 shrink-0 place-items-center rounded-full', closingDifference === 0 ? 'bg-gm-ok/15 text-gm-ok' : 'bg-gm-atencion/15 text-gm-atencion')}>
                 {closingDifference === 0 ? <Check className="size-6" strokeWidth={3} /> : <AlertCircle className="size-6" strokeWidth={2.4} />}
               </span>
@@ -410,10 +417,10 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           {/* Mientras se escribe el importe el pie sigue visible: «Comparar» queda justo arriba del teclado. */}
           <ActionDialogFooter ocultarConTeclado={etapa !== 'contar'}>
             {etapa === 'autos'
-              ? <ActionDialogPrimaryButton disabled={pending || pendientesAutos > 0} detail={pendientesAutos ? (pendientesAutos === 1 ? 'Falta 1 auto' : `Faltan ${pendientesAutos} autos`) : undefined} onClick={() => setAutosListos(true)}>Seguir</ActionDialogPrimaryButton>
+              ? <ActionDialogPrimaryButton key="autos" disabled={pending || pendientesAutos > 0} detail={pendientesAutos ? (pendientesAutos === 1 ? 'Falta 1 auto' : `Faltan ${pendientesAutos} autos`) : undefined} onClick={() => setAutosListos(true)}>Seguir</ActionDialogPrimaryButton>
               : etapa === 'contar'
-                ? <ActionDialogPrimaryButton disabled={pending || !amountValid(counted)} detail={amountValid(counted) ? undefined : 'Escribí cuánto contaste'} onClick={compararConteo}>Comparar con lo esperado</ActionDialogPrimaryButton>
-                : <ActionDialogPrimaryButton type="submit" disabled={pending || !closingValid} detail={pending ? undefined : faltaParaCerrar}>{pending ? 'Cerrando…' : arqueo ? 'Confirmar cierre de turno y caja' : 'Confirmar cierre de turno'}</ActionDialogPrimaryButton>}
+                ? <ActionDialogPrimaryButton key="contar" disabled={pending || !amountValid(counted)} detail={amountValid(counted) ? undefined : 'Escribí cuánto contaste'} onClick={compararConteo}>Comparar con lo esperado</ActionDialogPrimaryButton>
+                : <ActionDialogPrimaryButton key="cerrar" type="submit" onClick={e => { if (e.detail > 0 && Date.now() - comparadoEn.current < 700) e.preventDefault(); }} disabled={pending || !closingValid} detail={pending ? undefined : faltaParaCerrar}>{pending ? 'Cerrando…' : arqueo ? 'Confirmar cierre de turno y caja' : 'Confirmar cierre de turno'}</ActionDialogPrimaryButton>}
           </ActionDialogFooter>
         </form> : <><ActionDialogBody className="[&>*]:shrink-0">
           <section aria-label="Tu turno en curso" className="relative overflow-hidden rounded-[22px] bg-gm-yellow text-gm-ink shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)]">
