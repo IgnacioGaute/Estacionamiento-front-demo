@@ -64,9 +64,12 @@ un conteo de relevo (`ConteoRelevo` en turno-bar.tsx). El super admin no abre tu
 Al registrar una entrada, si la patente salió hace menos de 30 minutos (`salidaReciente` del estado de
 patente) se avisa cómo salió antes de seguir; la salida sin entrada muestra el mismo aviso.
 El conteo incluye sueldo y recaudación antes de separarlos; excluye retiros ya realizados.
-El conteo es ciego: «¿Cuánto efectivo contaste?» empieza vacío, la única opción rápida es «No hay
-efectivo» y el esperado («Esperado por el sistema») y la diferencia aparecen recién con el importe
-cargado. Antes el primer atajo era «Conté todo · $esperado» y el camino corto era no contar. En Mi
+El cierre va por pasos (turno-bar.tsx, `etapa`): autos de más de 4 h (`RepasoEstadias`, si hay),
+contar y resultado. El conteo es ciego: «Total que contaste» empieza vacío, la única opción rápida es
+«No hay efectivo» y arriba se recuerda el fondo con que arrancó la caja (`fondoCaja`, `abrioLaCaja`
+del contexto: lo confirmado al abrir, no el esperado). El esperado y la diferencia aparecen recién al
+tocar «Comparar con lo esperado», en el paso de resultado, junto al motivo, lo que se deja, el sueldo
+y la conciliación (cobros digitales sin verificar, «Para revisar»). Antes el primer atajo era «Conté todo · $esperado» y el camino corto era no contar. En Mi
 turno el operador tampoco ve el esperado; administración sí (supervisa y registra retiros).
 Con turnos activos el operador no registra salidas ni cobros sin su turno abierto, con ningún medio
 (backend: `exigirTurnoParaSalida`, error `TURNO_REQUERIDO`). Cobrar salida lo sabe con

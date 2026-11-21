@@ -27,21 +27,23 @@ test('cada auto se marca «Sigue en la playa» o se cobra; «Siguen todos» marc
   const onCobrar = jest.fn();
   const estadias = paraRepasar([estadia('a', 'AF876EB', '2026-10-14', '07:11:00', 'Franco Pizarro'), estadia('b', 'NBO468', '2026-10-14', '12:44:00', 'Franco Pizarro')], ahora);
   render(<RepasoEstadias estadias={estadias} todas confirmadas={['b']} onConfirmar={onConfirmar} onCobrar={onCobrar} />);
-  expect(screen.getByText('2 autos llevan más de 4 h')).toBeInTheDocument();
-  expect(screen.getByText('Entró 07:11 · Franco Pizarro')).toBeInTheDocument();
-  const sigue = screen.getAllByRole('button', { name: /Sigue en la playa/ });
+  expect(screen.getByRole('heading', { name: '¿Siguen en la playa?' })).toBeInTheDocument();
+  expect(screen.getByText('2 autos llevan más de 4 h. Si alguno se fue, cobralo.')).toBeInTheDocument();
+  // Una fila por auto: sin lista con scroll propio.
+  expect(screen.getByRole('list').className).not.toMatch(/overflow-y-auto|max-h-/);
+  expect(screen.getAllByText('Franco Pizarro')).toHaveLength(2);
+  const sigue = screen.getAllByRole('button', { name: /sigue en la playa/ });
+  expect(sigue[0]).toHaveAccessibleName('AF876EB: sigue en la playa');
   expect(sigue[1]).toHaveAttribute('aria-pressed', 'true');
   fireEvent.click(sigue[0]);
   expect(onConfirmar).toHaveBeenCalledWith(['a'], true);
   fireEvent.click(screen.getByRole('button', { name: 'Siguen todos' }));
   expect(onConfirmar).toHaveBeenLastCalledWith(['a'], true);
-  fireEvent.click(screen.getAllByRole('button', { name: 'Se fue: cobrar' })[0]);
+  fireEvent.click(screen.getByRole('button', { name: 'AF876EB: se fue, cobrar' }));
   expect(onCobrar).toHaveBeenCalledWith('a');
 });
 
-test('sin autos largos no muestra nada, salvo que el conteo dé de más', () => {
-  const { container, rerender } = render(<RepasoEstadias estadias={[]} confirmadas={[]} onConfirmar={jest.fn()} />);
+test('sin autos largos no muestra nada', () => {
+  const { container } = render(<RepasoEstadias estadias={[]} confirmadas={[]} onConfirmar={jest.fn()} />);
   expect(container).toBeEmptyDOMElement();
-  rerender(<RepasoEstadias estadias={[]} confirmadas={[]} onConfirmar={jest.fn()} sobrante={84500} />);
-  expect(screen.getByRole('alert')).toHaveTextContent('Contaste $ 84.500 de más');
 });

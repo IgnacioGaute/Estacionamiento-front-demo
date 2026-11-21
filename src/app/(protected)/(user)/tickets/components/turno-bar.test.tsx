@@ -29,7 +29,7 @@ const shift = (owner = user, shared = false): OpenTurno => ({ id: owner.id + '-t
 const context = (active: OpenTurno | null = null): CashContext => ({ active, pending: null, efectivoDisponible: active ? 900 : 40000, openTurnos: [shift(other)], cajas: [caja], multipleShiftsEnabled: false });
 // Arqueo ciego: no hay atajo con el importe esperado, lo contado se escribe.
 const contar = async (monto: number) => {
-  const input = await screen.findByLabelText('¿Cuánto efectivo contaste?');
+  const input = await screen.findByLabelText('Total que contaste');
   await waitFor(() => expect(input).toBeEnabled());
   fireEvent.change(input, { target: { value: String(monto) } });
   // El arqueo es ciego hasta comparar; si ya se comparó (corrección), el botón no está.
@@ -166,7 +166,8 @@ test('si comparte caja cierra sólo su turno sin pedir efectivo contado', async 
   jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift(user, true)) });
   render(<TurnoBar />); fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
   const close = await screen.findByRole('button', { name: 'Cerrar sólo mi turno' }); await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
-  expect(screen.queryByLabelText('¿Cuánto efectivo contaste?')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Total que contaste')).not.toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Cerrás solo tu turno' })).toBeInTheDocument();
   // Deja la caja y otros siguen: cuenta el cajón (conteo de relevo), sin arqueo.
   const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno(?! y caja)/ });
   contarRelevo(900);
@@ -184,23 +185,77 @@ test('para cerrar hay que marcar los autos de más de 4 horas como que siguen, o
   const onCobrarEstadia = jest.fn();
   render(<TurnoBar onCobrarEstadia={onCobrarEstadia} />); fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
   const close = await screen.findByRole('button', { name: 'Cerrar sólo mi turno' }); await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
-  expect(await screen.findByText('Un auto lleva más de 4 h')).toBeInTheDocument();
-  const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno(?! y caja)/ });
-  expect(confirmar).toBeDisabled();
+  // Primer paso del cierre: solo los autos. «Seguir» espera a que estén todos revisados.
+  expect(await screen.findByRole('heading', { name: '¿Sigue en la playa?' })).toBeInTheDocument();
+  const seguir = screen.getByRole('button', { name: /^Seguir/ });
+  expect(seguir).toBeDisabled();
+  expect(seguir).toHaveTextContent('Falta 1 auto');
+  expect(screen.queryByRole('button', { name: /^Confirmar cierre/ })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Efectivo que contaste')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'AF876EB: sigue en la playa' }));
+  await waitFor(() => expect(seguir).toBeEnabled());
+  fireEvent.click(seguir);
+  const confirmar = await screen.findByRole('button', { name: /^Confirmar cierre de turno(?! y caja)/ });
   contarRelevo(900);
-  fireEvent.click(screen.getByRole('button', { name: /Sigue en la playa/ }));
   await waitFor(() => expect(confirmar).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', { name: 'Se fue: cobrar' }));
+  // Se puede volver a los autos y cobrar el que se fue.
+  fireEvent.click(screen.getByRole('button', { name: 'Volver a los autos' }));
+  fireEvent.click(screen.getByRole('button', { name: 'AF876EB: se fue, cobrar' }));
   expect(onCobrarEstadia).toHaveBeenCalledWith('vieja');
+});
+
+test('con arqueo, si contó de más ofrece revisar los autos de más de 4 h', async () => {
+  jest.mocked(getEstadiasAbiertasTurnoAction).mockResolvedValueOnce([
+    { id: 'otra', patente: 'AB123CD', vehicleType: 'AUTO', entryDay: '2026-10-05', entryTime: '07:11:00', anticipo: 0 },
+  ]);
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift()) });
+  render(<TurnoBar />); fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' }); await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  fireEvent.click(await screen.findByRole('button', { name: 'AB123CD: sigue en la playa' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Seguir/ }));
+  await contar(1000);
+  expect(screen.getByRole('status')).toHaveTextContent(/Sobran .*100/);
+  expect(screen.getByText('Puede ser un auto que pagó y se fue sin registrar la salida.')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Revisar los autos' }));
+  expect(screen.getByRole('heading', { name: '¿Sigue en la playa?' })).toBeInTheDocument();
+});
+
+test('al contar recuerda el fondo con que arrancó la caja, sin mostrar lo esperado', async () => {
+  const casos: [Partial<OpenTurno>, RegExp][] = [
+    [{ fondoCaja: 25000, abrioLaCaja: true }, /Incluí los .*25\.000 que recibiste al empezar, más todo lo cobrado en efectivo/],
+    [{ fondoCaja: 25000, abrioLaCaja: false }, /Incluí los .*25\.000 con que se abrió la caja/],
+    [{ fondoCaja: 0, abrioLaCaja: true }, /Empezaste sin fondo: contá todo lo cobrado en efectivo/],
+  ];
+  for (const [extra, texto] of casos) {
+    jest.mocked(getCashContextAction).mockResolvedValue({ context: context({ ...shift(), ...extra } as OpenTurno) });
+    const vista = render(<TurnoBar />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+    const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' }); await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+    await screen.findByRole('heading', { name: '¿Cuánto efectivo hay en el cajón?' });
+    const nota = screen.getByRole('note');
+    expect(nota).toHaveTextContent(texto);
+    // El esperado (900) no aparece antes de comparar.
+    expect(nota).not.toHaveTextContent('900');
+    vista.unmount();
+  }
 });
 
 test('el administrador cierra el último turno con arqueo y motivo, preservando el formulario si falla', async () => {
   render(<TurnoBar turnoId="otro-turno" />); fireEvent.click(screen.getByRole('button', { name: 'Cerrar turno' }));
-  const input = await screen.findByLabelText('¿Cuánto efectivo contaste?'); await waitFor(() => expect(input).toBeEnabled()); fireEvent.change(input, { target: { value: '900' } });
+  const input = await screen.findByLabelText('Total que contaste'); await waitFor(() => expect(input).toBeEnabled()); fireEvent.change(input, { target: { value: '900' } });
+  // Cierra el turno de otro: se dice de quién y no «lo que recibiste».
+  expect(screen.getByText('Turno de Luis')).toBeInTheDocument();
+  expect(screen.getByRole('note')).not.toHaveTextContent('recibiste');
   fireEvent.click(screen.getByRole('button', { name: 'Comparar con lo esperado' }));
   const submit = await screen.findByRole('button', { name: /^Confirmar cierre de turno y caja/ }); expect(submit).toBeDisabled(); fireEvent.change(screen.getByLabelText('¿Por qué cerrás el turno de otra persona?'), { target: { value: 'Fin de jornada' } }); fireEvent.click(submit);
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith('otro-turno', expect.objectContaining({ cerrarCaja: true, efectivoContado: 900, efectivoEsperado: 900, motivoCierreForzado: 'Fin de jornada' })));
-  expect(input).toHaveValue(900);
+  // Si el servidor lo rechaza, se conserva lo cargado.
+  expect(screen.getByLabelText('¿Por qué cerrás el turno de otra persona?')).toHaveValue('Fin de jornada');
+  // Mientras recarga la caja después del rechazo, «Volver» está deshabilitado.
+  const volver = screen.getByRole('button', { name: 'Volver al conteo' });
+  await waitFor(() => expect(volver).toBeEnabled());
+  fireEvent.click(volver);
+  expect(screen.getByLabelText('Total que contaste')).toHaveValue(900);
 });
 
 test('un turno ya cerrado muestra un error y no ofrece abrir uno ajeno', async () => {
@@ -216,25 +271,25 @@ test('arqueo ciego: el esperado aparece después de cargar lo contado y la difer
   fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
   const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
   await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
-  const input = await screen.findByLabelText('¿Cuánto efectivo contaste?');
+  const input = await screen.findByLabelText('Total que contaste');
   await waitFor(() => expect(input).toBeEnabled());
   expect(input).toHaveValue(null);
   // Antes de contar no se ve lo que espera el sistema ni un atajo que lo copie.
-  expect(screen.queryByText('Esperado por el sistema')).not.toBeInTheDocument();
+  expect(screen.queryByText(/esperaba/)).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /^Conté todo/ })).not.toBeInTheDocument();
-  const opciones = within(screen.getByRole('group', { name: 'Opciones rápidas: ¿Cuánto efectivo contaste?' })).getAllByRole('button');
+  const opciones = within(screen.getByRole('group', { name: 'Opciones rápidas: Total que contaste' })).getAllByRole('button');
   expect(opciones.map(o => o.textContent?.trim())).toEqual(['No hay efectivo']);
-  expect(screen.getByRole('button', { name: 'Escribir importe: ¿Cuánto efectivo contaste?' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Escribir importe: Total que contaste' })).toBeInTheDocument();
   fireEvent.change(input, { target: { value: '800' } });
   // Escribir no alcanza: con cualquier número se averiguaba el esperado. Aparece al comparar.
-  expect(screen.queryByText('Esperado por el sistema')).not.toBeInTheDocument();
+  expect(screen.queryByText(/esperaba/)).not.toBeInTheDocument();
   expect(screen.queryByText(/Faltan/)).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Comparar con lo esperado' }));
-  expect(screen.getByText('Esperado por el sistema')).toBeInTheDocument();
-  // La píldora y la línea del motivo dicen lo mismo.
-  const faltan = screen.getAllByText(/Faltan/);
-  expect(faltan).toHaveLength(2);
-  faltan.forEach(e => expect(e).toHaveTextContent('100'));
+  // El resultado, una sola vez y en grande: cuánto falta, lo contado y lo esperado.
+  const resultado = screen.getByRole('status');
+  expect(resultado).toHaveTextContent(/Faltan .*100/);
+  expect(resultado).toHaveTextContent(/Contaste .*800 · esperaba .*900/);
+  expect(screen.getAllByText(/Faltan/)).toHaveLength(1);
   const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ });
   expect(confirmar).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Motivo de la diferencia'), { target: { value: 'Faltante al contar' } });
@@ -250,8 +305,8 @@ test('arqueo ciego: el esperado aparece después de cargar lo contado y la difer
 });
 
 // Un operador no pudo cerrar: el motivo estaba al final del diálogo y el botón quedaba gris sin
-// decir por qué. Ahora va debajo del importe, con motivos rápidos, y el botón dice qué falta.
-test('con diferencia, el motivo va debajo del importe, el botón dice qué falta y «No sé el motivo» destraba', async () => {
+// decir por qué. Ahora va enseguida del resultado, con motivos rápidos, y el botón dice qué falta.
+test('con diferencia, el motivo va debajo del resultado, el botón dice qué falta y «No sé el motivo» destraba', async () => {
   jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift()) });
   render(<TurnoBar />); fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
   const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
@@ -260,11 +315,12 @@ test('con diferencia, el motivo va debajo del importe, el botón dice qué falta
   const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ });
   expect(confirmar).toBeDisabled();
   expect(confirmar).toHaveTextContent('Falta el motivo de la diferencia');
-  // El motivo está dentro del paso 1, junto al importe, y no queda la nota opcional del final.
+  // El motivo va enseguida del resultado; lo que se deja en caja aparece recién con el motivo, y no
+  // queda la nota opcional.
   const motivo = screen.getByLabelText('Motivo de la diferencia');
-  expect(screen.getByLabelText('¿Cuánto efectivo contaste?').closest('li')).toContainElement(motivo);
+  expect(screen.queryByLabelText('¿Cuánto dejás en caja para el próximo turno?')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Nota del turno (opcional)')).not.toBeInTheDocument();
-  expect(screen.getByText(/contá qué pasó/)).toHaveTextContent('Faltan');
+  expect(screen.getByText('Queda en el historial y en Avisos.')).toBeInTheDocument();
   const rapidos = within(screen.getByRole('group', { name: 'Motivos rápidos' })).getAllByRole('button');
   expect(rapidos.map(b => b.textContent)).toEqual(['Error en un vuelto', 'Cobro sin registrar', 'Cobro registrado dos veces', 'Pago por transferencia anotado como efectivo', 'Retiro de efectivo sin registrar', 'Gasto sin registrar', 'Error del sistema', 'No sé el motivo']);
   const noSe = screen.getByRole('button', { name: 'No sé el motivo' });
@@ -287,8 +343,9 @@ test('antes de contar, el botón pide el importe; si coincide no hay motivos rá
   render(<TurnoBar />); fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
   const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
   await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
-  await screen.findByLabelText('¿Cuánto efectivo contaste?');
-  await waitFor(() => expect(screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ })).toHaveTextContent('Escribí cuánto contaste'));
+  await screen.findByLabelText('Total que contaste');
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Comparar con lo esperado/ })).toHaveTextContent('Escribí cuánto contaste'));
+  expect(screen.getByRole('button', { name: /^Comparar con lo esperado/ })).toBeDisabled();
   await contar(900);
   expect(screen.queryByRole('group', { name: 'Motivos rápidos' })).not.toBeInTheDocument();
   expect(screen.getByLabelText('Nota del turno (opcional)')).not.toBeRequired();
@@ -301,13 +358,12 @@ test('si hay menos que el fondo sugerido, propone dejar todo sin exigir ese fond
   const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
   await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
   // El paso 2 no se ve hasta comparar el conteo.
-  await screen.findByLabelText('¿Cuánto efectivo contaste?');
+  await screen.findByLabelText('Total que contaste');
   expect(screen.queryByLabelText('¿Cuánto dejás en caja para el próximo turno?')).not.toBeInTheDocument();
   await contar(900);
   expect(screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?')).toBeEnabled();
   expect(screen.getByRole('button', { name: /^Usar sugerido/ })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: /^Dejar todo/ }));
-  expect(screen.getByLabelText('¿Cuánto efectivo contaste?')).toHaveValue(900);
   expect(screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?')).toHaveValue(900);
   if (process.env.TURNOS_VISUAL_QA) writeFileSync('../estacionamiento-back-demo/.tmp/turnos-close.html', document.body.innerHTML);
   fireEvent.click(screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ }));
@@ -429,8 +485,8 @@ test('al confirmar el arqueo queda un resumen del cierre hasta tocar «Listo»',
   const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
   // Antes era un aviso de unos segundos; ahora el resumen queda en pantalla.
   const resumen = await screen.findByRole('region', { name: 'Resumen del cierre' });
-  expect(resumen).toHaveTextContent('Coincide');
-  expect(resumen).toHaveTextContent('Queda para el próximo operador');
+  expect(resumen).toHaveTextContent('Conteo: Coincide');
+  expect(resumen).toHaveTextContent('Queda en la caja');
   expect(screen.getByRole('heading', { name: 'Turno y caja cerrados' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Listo' }));
   await waitFor(() => expect(screen.queryByRole('region', { name: 'Resumen del cierre' })).not.toBeInTheDocument());
@@ -446,9 +502,9 @@ test('dejando menos que el fondo aparece el sueldo: se compara con lo que queda 
   await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
   await contar(15000);
   expect(screen.getByRole('alert')).toHaveTextContent(/dejá .*10\.000 o menos/);
-  expect(screen.queryByRole('button', { name: /Retirar sueldo/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('switch', { name: /Retirar mi sueldo/ })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?'), { target: { value: '10000' } });
-  expect(screen.getByRole('button', { name: /Retirar sueldo/ })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('switch', { name: /Retirar mi sueldo/ })).toHaveAttribute('aria-checked', 'true');
   const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: 5000, efectivoContado: 15000, efectivoParaSiguiente: 10000 })));
 });
@@ -464,9 +520,12 @@ test('si el efectivo alcanza, se puede elegir no retirar el sueldo y queda para 
   // «Cambiar importe» va al medio de lo que se deja en caja.
   const dejar = within(screen.getByRole('group', { name: 'Opciones rápidas: ¿Cuánto dejás en caja para el próximo turno?' })).getAllByRole('button');
   expect(dejar.map(o => o.textContent?.replace(/\$.*/, '').trim())).toEqual(['Usar sugerido', 'Cambiar importe', 'Dejar todo']);
-  expect(screen.getByRole('button', { name: /Retirar sueldo/ })).toHaveAttribute('aria-pressed', 'true');
-  fireEvent.click(screen.getByRole('button', { name: /No retirarlo/ }));
-  expect(screen.getByText(/No se descuenta el sueldo: ese efectivo sigue en la caja/)).toBeInTheDocument();
+  const sueldo = screen.getByRole('switch', { name: /Retirar mi sueldo/ });
+  expect(sueldo).toHaveAttribute('aria-checked', 'true');
+  expect(sueldo).toHaveTextContent('25.000');
+  fireEvent.click(sueldo);
+  expect(sueldo).toHaveAttribute('aria-checked', 'false');
+  expect(sueldo).toHaveTextContent('Queda en la caja');
   // Sin sueldo, el retiro de recaudación incluye esos $25.000: 105.000 − 15.000.
   expect(screen.getByRole('region', { name: 'Cómo queda la caja' })).toHaveTextContent(new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(90000).replace(/\s/g, ' '));
   const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
@@ -483,13 +542,15 @@ test.each([0, 10000, 20000, 80000])('el operador elige dejar %i y el retiro se c
   await contar(active.efectivoDisponible);
   const input = screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?');
   expect(input).toHaveValue(15000);
-  expect(screen.getByText(/es una referencia.*más, menos o \$0/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Cambiar importe: ¿Cuánto dejás en caja para el próximo turno?' }));
+  expect(screen.getByText(/Sugerido .*15\.000: podés dejar más, menos o \$0/)).toBeInTheDocument();
+  // «Cambiar importe» está una sola vez, entre las opciones (antes también arriba del importe).
+  expect(screen.getAllByRole('button', { name: /Cambiar importe/ })).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Cambiar importe' }));
   expect(input).toHaveFocus();
   fireEvent.change(input, { target: { value: String(paraSiguiente) } });
   const resumen = screen.getByRole('region', { name: 'Cómo queda la caja' });
   const importe = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(80000 - paraSiguiente).replace(/\s/g, ' ');
-  expect(within(resumen).getByText('Retiro de recaudación').parentElement).toHaveTextContent('− ' + importe);
+  expect(within(resumen).getByText('Recaudación').parentElement).toHaveTextContent(importe);
   const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ });
   await waitFor(() => expect(confirmar).toBeEnabled());
   if (process.env.TURNOS_VISUAL_QA && paraSiguiente === 20000) {
@@ -515,8 +576,11 @@ test('conserva lo que eligió dejar al corregir el conteo y permite volver al su
   await contar(active.efectivoDisponible);
   const input = screen.getByLabelText('¿Cuánto dejás en caja para el próximo turno?');
   fireEvent.change(input, { target: { value: '20000' } });
-  fireEvent.change(screen.getByLabelText('¿Cuánto efectivo contaste?'), { target: { value: '110000' } });
-  // Con diferencia, el paso 2 se oculta hasta poner el motivo; lo elegido se conserva.
+  // Corrige el conteo: vuelve al paso anterior, cambia el importe y compara de nuevo.
+  fireEvent.click(screen.getByRole('button', { name: 'Volver al conteo' }));
+  expect(screen.getByLabelText('Total que contaste')).toHaveValue(105000);
+  await contar(110000);
+  // Con diferencia, lo que se deja se oculta hasta poner el motivo; lo elegido se conserva.
   expect(screen.queryByLabelText('¿Cuánto dejás en caja para el próximo turno?')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Motivo de la diferencia'), { target: { value: 'Sobrante al contar' } });
@@ -586,15 +650,16 @@ test('arqueo: la conciliación se pide recién al comparar y se envía el primer
   fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
   const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
   await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
-  const input = await screen.findByLabelText('¿Cuánto efectivo contaste?');
+  const input = await screen.findByLabelText('Total que contaste');
   await waitFor(() => expect(input).toBeEnabled());
   fireEvent.change(input, { target: { value: '800' } });
   // Antes de comparar no viaja nada de lo esperado.
   expect(getConciliacionAction).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Comparar con lo esperado' }));
   expect(getConciliacionAction).toHaveBeenCalledWith('yo-turno');
-  // Vio «Faltan $100» y corrigió a lo esperado: el cierre lleva los dos importes.
-  fireEvent.change(input, { target: { value: '900' } });
+  // Vio «Faltan $100», volvió a contar y corrigió a lo esperado: el cierre lleva los dos importes.
+  fireEvent.click(screen.getByRole('button', { name: 'Volver a contar' }));
+  await contar(900);
   const confirmar = screen.getByRole('button', { name: /^Confirmar cierre de turno y caja/ }); await waitFor(() => expect(confirmar).toBeEnabled()); fireEvent.click(confirmar);
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith('yo-turno', expect.objectContaining({ efectivoContado: 900, primerConteo: 800 })));
 });
@@ -620,4 +685,16 @@ test('al cerrar, si lo contado coincide, se ve «Coincide» y no pide motivo', a
   await contar(900);
   expect(within(screen.getAllByRole('status').find(e => e.textContent?.includes('Coincide'))!).getByText('Coincide')).toBeInTheDocument();
   expect(screen.queryByRole('group', { name: 'Motivos rápidos' })).not.toBeInTheDocument();
+});
+
+test('aunque coincida, después de comparar se ven los cobros digitales sin verificar', async () => {
+  jest.mocked(getConciliacionAction).mockResolvedValueOnce({ fondoInicial: 0, ingresos: 900, egresos: 0, esperado: 900, movimientos: [],
+    sinVerificar: [{ tipo: 'TRANSFERENCIA', id: 't1', hora: '10:15', concepto: 'AB123CD', operador: 'Ana', importe: 4000 }] } as never);
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context(shift()) });
+  render(<TurnoBar />); fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  const close = await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' });
+  await waitFor(() => expect(close).toBeEnabled()); fireEvent.click(close);
+  await contar(900);
+  expect(screen.getByRole('status')).toHaveTextContent('Coincide');
+  expect(await screen.findByRole('heading', { name: /Cobros digitales sin verificar/ })).toBeInTheDocument();
 });

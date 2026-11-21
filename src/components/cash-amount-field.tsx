@@ -34,10 +34,12 @@ export function CashAmountField({ id, label, value, onChange, disabled, max, pla
   // La opción de editar entre las rápidas («Conté menos», «Cambiar importe») queda marcada cuando
   // el importe es uno propio, que no coincide con ninguna de las otras.
   const importePropio = numero !== null && !shortcuts.some(shortcut => !('edit' in shortcut) && shortcut.amount === numero);
+  // Si entre las opciones ya está la de editar, el botón de arriba sobra: decía lo mismo dos veces.
+  const editarEnOpciones = shortcuts.some(shortcut => 'edit' in shortcut);
   return <div className="space-y-2.5">
     <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
       <Label htmlFor={id} className={cn('min-w-0 flex-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground', labelClassName)}>{label}</Label>
-      {!!shortcuts.length && <button type="button" disabled={disabled} aria-label={editLabel + ': ' + label} aria-controls={id}
+      {!!shortcuts.length && !editarEnOpciones && <button type="button" disabled={disabled} aria-label={editLabel + ': ' + label} aria-controls={id}
         onClick={() => inputRef.current?.focus()}
         className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-gm-line-strong px-3 text-xs font-semibold text-gm-yellow transition-colors hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50">
         <Pencil className="size-3.5" aria-hidden />{editLabel}
