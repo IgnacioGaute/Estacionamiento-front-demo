@@ -203,7 +203,7 @@ export default function CardTicket({
       { key: 'occupancy', title: 'Todos los vehículos', desc: `Se agrupan por hace cuánto están y el color lo dice: verde menos de 1 h, azul de 1 a 4 h, violeta más de 4 h. La línea de abajo de cada uno se llena a medida que se acerca al tramo siguiente; en naranja, los que se pasaron del tiempo avisado. Tocá uno para ${cobroHabilitado ? 'cobrarlo' : 'registrar su salida'}.` },
       ...(cobroHabilitado ? [{ key: 'abonos', title: 'Tus estadías largas', desc: `En Día/Sem/Mes podés buscar y abrir cada abono: ver duración, vencimiento, pago y registrar su salida.${receiptDeliveryEnabled ? ' En su detalle también podés abrir el comprobante de entrada.' : ''} Que venza no significa que el vehículo se haya retirado.` }] : []),
       ...(receiptDeliveryEnabled ? [
-        { key: 'comprobantes', title: 'Comprobantes, sin perderlos', desc: 'Acá están las estadías con entrada o salida del día. Usá la fecha para ver otro día y el buscador para encontrar patente, ticket o apellido. Cada fila abre la Entrada y, si ya se retiró, la Salida.' },
+        { key: 'comprobantes', title: 'Comprobantes, sin perderlos', desc: 'Acá están las estadías con entrada o salida del día. Elegí Hoy, Ayer u Otro día, filtrá las que siguen en la playa o ya salieron y buscá patente, ticket o apellido. Cada fila abre la Entrada y, si ya se retiró, la Salida.' },
       ] : []),
       ...(cobroHabilitado ? [{ key: 'precios', title: 'Consultá antes de cobrar', desc: 'Tarifas te muestra los precios de la playa. Los precios de Día/Sem/Mes son distintos de los precios por duración.' }] : []),
       ...(isAdmin && cobroHabilitado ? [{ key: 'admin', title: 'Configuración de la playa', desc: 'Administrar tarifas reúne los precios por tiempo y los pases de día, semana o mes. Podés editar un borrador, probar cuánto cobrarías y aplicar los cambios juntos.' }] : []),
@@ -643,37 +643,51 @@ export default function CardTicket({
     />
   );
 
+  // Movimientos y Comprobantes se enlazan entre sí desde el encabezado (en el celular, solo el ícono).
+  const accesoVista = "inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-3 text-sm font-semibold text-foreground transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow sm:px-4";
   const comprobantes = (
     <div ref={refVisible('comprobantes')} className="flex flex-col gap-4">
-      <EncabezadoVista titulo="Comprobantes" onVolver={() => irA('inicio')} acciones={tour.node} />
-      <div className="rounded-[20px] border border-border bg-card p-4">
-        <DepartureHistory
-          barcodeTicketsEnabled={barcodeTicketsEnabled}
-          today={dayjs(now).tz(TZ).format('YYYY-MM-DD')}
-          registrations={registrations}
-          dailyRegistrations={registrationsForDay}
-          onReceipt={(id, kind) => setReceiptTarget({ id, kind })}
-        />
-      </div>
+      <EncabezadoVista titulo="Comprobantes" onVolver={() => irA('inicio')} acciones={
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => irA('movimientos')} aria-label="Ver movimientos" className={accesoVista}>
+            <ScrollText className="size-4 text-gm-yellow" aria-hidden /><span className="hidden sm:inline">Ver movimientos</span>
+          </button>
+          {tour.node}
+        </div>
+      } />
+      <DepartureHistory
+        barcodeTicketsEnabled={barcodeTicketsEnabled}
+        today={dayjs(now).tz(TZ).format('YYYY-MM-DD')}
+        registrations={registrations}
+        dailyRegistrations={registrationsForDay}
+        onReceipt={(id, kind) => setReceiptTarget({ id, kind })}
+      />
     </div>
   );
 
   const movimientos = (
     <div className="flex flex-col gap-4">
-      <EncabezadoVista titulo="Movimientos" onVolver={() => irA('inicio')} acciones={tour.node} />
-      <div className="rounded-[20px] border border-border bg-card p-4">
-        <MovimientosHistorial
-          today={dayjs(now).tz(TZ).format('YYYY-MM-DD')}
-          isAdmin={isAdmin}
-          turnos={TURNO_BAR_ENABLED}
-          cobro={cobroHabilitado}
-          comprobantes={receiptDeliveryEnabled}
-          barcodeTicketsEnabled={barcodeTicketsEnabled}
-          adentro={adentro}
-          revision={registrations}
-          onReceipt={(id, kind) => setReceiptTarget({ id, kind })}
-        />
-      </div>
+      <EncabezadoVista titulo="Movimientos" onVolver={() => irA('inicio')} acciones={
+        <div className="flex items-center gap-2">
+          {receiptDeliveryEnabled && (
+            <button type="button" onClick={() => irA('comprobantes')} aria-label="Ver comprobantes" className={accesoVista}>
+              <Receipt className="size-4 text-gm-yellow" aria-hidden /><span className="hidden sm:inline">Ver comprobantes</span>
+            </button>
+          )}
+          {tour.node}
+        </div>
+      } />
+      <MovimientosHistorial
+        today={dayjs(now).tz(TZ).format('YYYY-MM-DD')}
+        isAdmin={isAdmin}
+        turnos={TURNO_BAR_ENABLED}
+        cobro={cobroHabilitado}
+        comprobantes={receiptDeliveryEnabled}
+        barcodeTicketsEnabled={barcodeTicketsEnabled}
+        adentro={adentro}
+        revision={registrations}
+        onReceipt={(id, kind) => setReceiptTarget({ id, kind })}
+      />
     </div>
   );
 

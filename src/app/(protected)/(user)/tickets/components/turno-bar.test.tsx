@@ -516,7 +516,7 @@ test.each([{ counted: 105000, salary: 25000, withdrawn: 65000 }, { counted: 2300
   await waitFor(() => expect(closeTurnoAction).toHaveBeenCalledWith(active.id, expect.objectContaining({ sueldoEsperado: salary, efectivoParaSiguiente: 15000 })));
 });
 
-test('sin fondo protegido no sugiere fondo y propone dejar $0', async () => {
+test('una caja sin fondo no sugiere fondo y propone dejar $0', async () => {
   const active = { ...shift(), efectivoDisponible: 30000, fondoObjetivo: 0, sueldoPrevisto: 25000 };
   jest.mocked(getCashContextAction).mockResolvedValue({ context: context(active) });
   render(<TurnoBar />);
@@ -526,7 +526,7 @@ test('sin fondo protegido no sugiere fondo y propone dejar $0', async () => {
   await contar(30000);
   expect(screen.queryByRole('button', { name: /^Usar sugerido/ })).toBeNull();
   expect(screen.queryByText(/Fondo de referencia/)).toBeNull();
-  expect(screen.getByText(/no tiene fondo protegido/)).toBeInTheDocument();
+  expect(screen.getByText(/configurada sin fondo/)).toBeInTheDocument();
   expect(screen.getByLabelText('Cuánto dejás para el próximo turno')).toHaveValue(null);
   // Sin fondo, la opción rápida es no dejar nada.
   fireEvent.click(screen.getByRole('button', { name: /^No dejo nada/ }));

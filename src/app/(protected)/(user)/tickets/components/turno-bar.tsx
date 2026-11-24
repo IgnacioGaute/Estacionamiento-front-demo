@@ -425,7 +425,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
               <div className="space-y-2">
                 <CashAmountField id="cash-for-next" label="Cuánto dejás para el próximo turno" labelClassName="min-w-[min(100%,14rem)] text-[15px] font-semibold normal-case tracking-normal text-foreground" value={forNext} onChange={setCashForNext} disabled={pending} max={afterSalary} editLabel="Cambiar importe"
                   shortcuts={[reserve > 0 ? { label: 'Usar sugerido · ' + money(reserve), amount: reserve, disabled: reserve > afterSalary } : { label: 'No dejo nada · ' + money(0), amount: 0 }, { label: 'Cambiar importe', edit: true }, { label: 'Dejar todo · ' + money(afterSalary), amount: afterSalary }]}
-                  description={`Sale del total que contaste (${money(Number(counted))}). ` + (reserve > 0 ? `Sugerido ${money(reserve)}: podés dejar más, menos o $0.` : 'Esta caja no tiene fondo protegido: dejá lo que necesite el próximo turno, o $0.')} />
+                  description={`Sale del total que contaste (${money(Number(counted))}). ` + (reserve > 0 ? `Sugerido ${money(reserve)}: podés dejar más, menos o $0.` : 'Esta caja está configurada sin fondo: dejá lo que necesite el próximo turno, o $0.')} />
                 {amountValid(forNext) && Number(forNext) > afterSalary && <p role="alert" className="text-sm text-destructive">No podés dejar más de {money(afterSalary)}: es el efectivo disponible después del sueldo.</p>}
               </div>
               {bloqueSueldo}

@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { writeFileSync } from 'node:fs';
 import { BarcodeTicketsSetting, OperationSettings } from './operation-settings';
 import { updateTicketScheduleAction } from '@/actions/tickets/update-ticket-schedule.action';
@@ -14,18 +14,21 @@ const usuarios = [{ id: 'ana', firstName: 'Ana', lastName: 'Pérez', username: '
 configure({ asyncUtilTimeout: 4000 });
 // Después de guardar, el botón dice «Guardando…» hasta que termina: se espera a que vuelva a Continuar.
 const continuar = async () => fireEvent.click(await screen.findByRole('button', { name: /^Continuar/ }));
-beforeEach(() => { jest.clearAllMocks(); jest.mocked(getCashConfigurationAction).mockResolvedValue({ configuration: { cajas, usuarios, hayTurnosAbiertos: false } }); jest.mocked(updateTicketScheduleAction).mockResolvedValue({ success: 'ok' }); });
+const opcion = (nombre: string) => screen.getByRole('radio', { name: new RegExp('^' + nombre) });
+const guardar = () => fireEvent.click(screen.getByRole('button', { name: /^Guardar cambios/ }));
+beforeEach(() => { jest.clearAllMocks(); jest.mocked(getCashConfigurationAction).mockResolvedValue({ configuration: { cajas, usuarios, hayTurnosAbiertos: false } }); jest.mocked(updateTicketScheduleAction).mockResolvedValue({ success: 'ok' }); jest.mocked(saveCajaAction).mockResolvedValue({ caja: cajas[0] }); });
 
 test('activar es obligatorio; cada paso guarda lo suyo al continuar', async () => {
   render(<OperationSettings shiftsEnabled={false} />);
   expect(screen.getByRole('button', { name: /^Continuar/ })).toBeDisabled();
   expect(screen.getByRole('button', { name: /^Paso 2: Modo/ })).toBeDisabled();
-  fireEvent.click(screen.getByRole('switch', { name: 'Activar turnos de caja' }));
+  expect(opcion('No, sin turnos')).toHaveAttribute('aria-checked', 'true');
+  fireEvent.click(opcion('Sí, con turnos'));
   await continuar();
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ shiftsEnabled: true }));
-  const multiple = await screen.findByRole('switch', { name: 'Permitir turnos múltiples' });
-  await waitFor(() => expect(multiple).toBeEnabled());
-  fireEvent.click(multiple);
+  const varias = await screen.findByRole('radio', { name: /^Varias personas a la vez/ });
+  await waitFor(() => expect(varias).toBeEnabled());
+  fireEvent.click(varias);
   await continuar();
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ multipleShiftsEnabled: true }));
   expect(await screen.findByLabelText('Agregar otra caja')).toBeInTheDocument();
@@ -33,43 +36,60 @@ test('activar es obligatorio; cada paso guarda lo suyo al continuar', async () =
 
 test('al activarlos recién, cada paso queda listo cuando se lo pasa, no antes', async () => {
   render(<OperationSettings shiftsEnabled={false} />);
-  fireEvent.click(screen.getByRole('switch', { name: 'Activar turnos de caja' }));
+  fireEvent.click(opcion('Sí, con turnos'));
   await continuar();
-  await screen.findByRole('switch', { name: 'Permitir turnos múltiples' });
+  await screen.findByRole('radio', { name: /^Varias personas a la vez/ });
   expect(screen.getByRole('button', { name: 'Paso 1: Activar · Activos' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Paso 3: Cajas · Pendiente' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Paso 4: Sueldo · Pendiente' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Paso 1: Activar · Activos' }));
-  expect(await screen.findByRole('button', { name: 'Paso 2: Modo · Simple' })).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'Paso 2: Modo · Una persona' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Paso 3: Cajas · Pendiente' })).toBeInTheDocument();
+});
+
+test('en el recorrido, los cambios de una caja se guardan al continuar', async () => {
+  render(<OperationSettings shiftsEnabled={false} multipleShiftsEnabled />);
+  fireEvent.click(opcion('Sí, con turnos'));
+  await continuar();
+  await screen.findByRole('radio', { name: /^Varias personas a la vez/ });
+  await continuar();
+  const fondo = await screen.findByRole('radiogroup', { name: 'Fondo de Entrada lateral' });
+  fireEvent.click(within(fondo).getByRole('radio', { name: 'Sin fondo' }));
+  await continuar();
+  await waitFor(() => expect(saveCajaAction).toHaveBeenCalledWith({ nombre: 'Entrada lateral', activa: true, fondoObjetivo: 0 }, 'lateral'));
+  expect(saveCajaAction).toHaveBeenCalledTimes(1);
+  expect(await screen.findByRole('radio', { name: /^Sí, al terminar la jornada/ })).toBeInTheDocument();
 });
 
 test('un refresco con los mismos datos no apaga lo que se está activando', () => {
   const { rerender } = render(<OperationSettings shiftsEnabled={false} sueldosPorUsuario={[]} />);
-  fireEvent.click(screen.getByRole('switch', { name: 'Activar turnos de caja' }));
+  fireEvent.click(opcion('Sí, con turnos'));
   rerender(<OperationSettings shiftsEnabled={false} sueldosPorUsuario={[]} />);
-  expect(screen.getByRole('switch', { name: 'Activar turnos de caja' })).toBeChecked();
+  expect(opcion('Sí, con turnos')).toHaveAttribute('aria-checked', 'true');
 });
 
 test('si falla el guardado no avanza de paso', async () => {
   jest.mocked(updateTicketScheduleAction).mockResolvedValue({ error: { message: 'Prueba', code: 'TEST' } });
   render(<OperationSettings shiftsEnabled={false} />);
-  fireEvent.click(screen.getByRole('switch', { name: 'Activar turnos de caja' }));
+  fireEvent.click(opcion('Sí, con turnos'));
   await continuar();
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalled());
-  expect(screen.queryByRole('switch', { name: 'Permitir turnos múltiples' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('radio', { name: /^Varias personas a la vez/ })).not.toBeInTheDocument();
 });
 
-test('apagar turnos activos los desactiva sin pasar a los pasos siguientes', async () => {
+test('apagar turnos activos los desactiva y oculta el resto', async () => {
   render(<OperationSettings shiftsEnabled />);
-  fireEvent.click(screen.getByRole('switch', { name: 'Activar turnos de caja' }));
+  fireEvent.click(opcion('No, sin turnos'));
+  expect(screen.getByText('Para desactivarlos, primero cerrá todos los turnos abiertos.')).toBeInTheDocument();
+  expect(screen.queryByRole('radio', { name: /^Varias personas a la vez/ })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /^Desactivar turnos/ }));
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ shiftsEnabled: false, multipleShiftsEnabled: false }));
 });
 
-test('el modo simple explica los relevos y no ofrece varias cajas', async () => {
+test('con una persona a la vez explica los relevos y no ofrece varias cajas', async () => {
   render(<OperationSettings shiftsEnabled />);
-  expect(await screen.findByText(/Modo simple: una sola caja/)).toBeInTheDocument();
+  expect(opcion('Una persona a la vez')).toHaveAttribute('aria-checked', 'true');
+  expect(opcion('Una persona a la vez')).toHaveTextContent('Cuando uno cierra, el siguiente recibe el fondo que dejó.');
   expect(await screen.findByDisplayValue('Caja principal')).toBeInTheDocument();
   expect(screen.queryByDisplayValue('Entrada lateral')).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Agregar otra caja')).not.toBeInTheDocument();
@@ -86,60 +106,69 @@ test('explica entradas separadas y cajón compartido, y permite agregar una caja
   await waitFor(() => expect(saveCajaAction).toHaveBeenCalledWith({ nombre: 'Salida norte' }));
 });
 
-test('el fondo protegido de una caja se puede apagar: se guarda en $0', async () => {
-  jest.mocked(saveCajaAction).mockResolvedValue({ caja: { ...cajas[0], fondoObjetivo: 0 } });
+test('una caja puede quedar sin fondo: se guarda en $0', async () => {
   render(<OperationSettings shiftsEnabled />);
-  const proteger = await screen.findByRole('switch', { name: 'Fondo objetivo protegido' });
-  expect(proteger).toBeChecked();
-  expect(screen.getByLabelText('Importe del fondo protegido')).toHaveValue(15000);
-  fireEvent.click(proteger);
-  expect(screen.queryByLabelText('Importe del fondo protegido')).not.toBeInTheDocument();
-  expect(screen.getByText('Sin fondo: no se reserva efectivo')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Guardar caja' }));
+  const fondo = await screen.findByRole('radiogroup', { name: 'Fondo de Caja principal' });
+  expect(within(fondo).getByRole('radio', { name: 'Dejar fondo' })).toHaveAttribute('aria-checked', 'true');
+  expect(screen.getByLabelText('Importe del fondo de Caja principal')).toHaveValue('15.000');
+  fireEvent.click(within(fondo).getByRole('radio', { name: 'Sin fondo' }));
+  expect(screen.queryByLabelText('Importe del fondo de Caja principal')).not.toBeInTheDocument();
+  expect(screen.getByText(/No se reserva efectivo/)).toBeInTheDocument();
+  guardar();
   await waitFor(() => expect(saveCajaAction).toHaveBeenCalledWith({ nombre: 'Caja principal', activa: true, fondoObjetivo: 0 }, 'principal'));
+  expect(updateTicketScheduleAction).not.toHaveBeenCalled();
 });
 
-test('una caja sin fondo protegido aparece apagada y al prenderla propone $15.000', async () => {
+test('una caja sin fondo aparece así y al dejar fondo propone $15.000', async () => {
   jest.mocked(getCashConfigurationAction).mockResolvedValue({ configuration: { cajas: [{ ...cajas[0], fondoObjetivo: 0 }], usuarios, hayTurnosAbiertos: false } });
   render(<OperationSettings shiftsEnabled />);
-  const proteger = await screen.findByRole('switch', { name: 'Fondo objetivo protegido' });
-  expect(proteger).not.toBeChecked();
-  expect(screen.getByRole('button', { name: 'Guardar caja' })).toBeDisabled();
-  fireEvent.click(proteger);
-  expect(screen.getByLabelText('Importe del fondo protegido')).toHaveValue(15000);
-  expect(screen.getByRole('button', { name: 'Guardar caja' })).toBeEnabled();
+  const fondo = await screen.findByRole('radiogroup', { name: 'Fondo de Caja principal' });
+  expect(within(fondo).getByRole('radio', { name: 'Sin fondo' })).toHaveAttribute('aria-checked', 'true');
+  expect(screen.getByRole('status')).toHaveTextContent('Todo guardado');
+  expect(screen.getByRole('button', { name: /^Guardar cambios/ })).toBeDisabled();
+  fireEvent.click(within(fondo).getByRole('radio', { name: 'Dejar fondo' }));
+  expect(screen.getByLabelText('Importe del fondo de Caja principal')).toHaveValue('15.000');
+  expect(screen.getByRole('button', { name: /^Guardar cambios/ })).toBeEnabled();
+  // Un fondo de $0 no vale: para eso está «Sin fondo».
+  fireEvent.change(screen.getByLabelText('Importe del fondo de Caja principal'), { target: { value: '0' } });
+  expect(screen.getByRole('button', { name: /^Guardar cambios/ })).toBeDisabled();
+  expect(screen.getByRole('status')).toHaveTextContent('Revisá el nombre y el fondo de las cajas.');
 });
 
-test('el sueldo se guarda desde su sección', async () => {
+test('el sueldo se carga por persona: vacío no retira', async () => {
   render(<OperationSettings shiftsEnabled />);
-  expect(screen.queryByRole('button', { name: /^Guardar sueldo/ })).not.toBeInTheDocument();
-  fireEvent.click(await screen.findByRole('switch', { name: 'Retirar sueldo de la caja automáticamente' }));
-  fireEvent.click(await screen.findByRole('switch', { name: 'Retira sueldo: Ana Pérez' }));
-  expect(screen.getByRole('button', { name: /^Guardar sueldo/ })).toBeDisabled();
-  fireEvent.change(screen.getByLabelText('Importe por jornada: Ana Pérez'), { target: { value: '25000' } });
-  expect(screen.getByRole('switch', { name: 'Retira sueldo: Juan Pérez' })).not.toBeChecked();
-  fireEvent.click(screen.getByRole('button', { name: /^Guardar sueldo/ }));
+  expect(opcion('No se retira')).toHaveAttribute('aria-checked', 'true');
+  fireEvent.click(opcion('Sí, al terminar la jornada'));
+  const ana = await screen.findByLabelText('Sueldo por jornada: Ana Pérez');
+  fireEvent.change(ana, { target: { value: '$ 25.000' } });
+  expect(ana).toHaveValue('25.000');
+  expect(screen.getByText(/Retira \$25\.000 por jornada/)).toBeInTheDocument();
+  expect(screen.getByLabelText('Sueldo por jornada: Juan Pérez')).toHaveValue('');
+  guardar();
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ sueldoAutomatico: true, sueldosPorUsuario: [{ usuarioId: 'ana', importe: 25000 }] }));
 });
 
 test('permite dejar sin sueldo a un usuario que lo tenía configurado', async () => {
   render(<OperationSettings shiftsEnabled sueldoAutomatico sueldosPorUsuario={[{ usuarioId: 'ana', importe: 25000 }]} />);
-  fireEvent.click(await screen.findByRole('switch', { name: 'Retira sueldo: Ana Pérez' }));
-  fireEvent.click(screen.getByRole('button', { name: /^Guardar sueldo/ }));
+  const ana = await screen.findByLabelText('Sueldo por jornada: Ana Pérez');
+  expect(ana).toHaveValue('25.000');
+  fireEvent.change(ana, { target: { value: '' } });
+  guardar();
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ sueldoAutomatico: true, sueldosPorUsuario: [] }));
 });
 
-test('si falla la carga de usuarios impide guardar y permite reintentar', async () => {
+test('si falla la carga de usuarios impide guardar el sueldo y permite reintentar', async () => {
   jest.mocked(getCashConfigurationAction).mockResolvedValue({ error: 'Sin conexión' });
   render(<OperationSettings shiftsEnabled sueldoAutomatico />);
   // Cajas y Sueldo están a la vista y las dos avisan que no se pudo cargar.
-  expect((await screen.findAllByText('Sin conexión')).length).toBeGreaterThan(0);
-  fireEvent.click(screen.getByRole('switch', { name: 'Retirar sueldo de la caja automáticamente' }));
-  expect(screen.getByRole('button', { name: /^Guardar sueldo/ })).toBeDisabled();
-  fireEvent.click(screen.getByRole('switch', { name: 'Retirar sueldo de la caja automáticamente' }));
+  expect((await screen.findAllByText('Sin conexión')).length).toBe(2);
+  fireEvent.click(opcion('No se retira'));
+  expect(screen.getByRole('button', { name: /^Guardar cambios/ })).toBeDisabled();
+  expect(screen.getByRole('status')).toHaveTextContent('Reintentá cargar los usuarios');
+  fireEvent.click(opcion('Sí, al terminar la jornada'));
   jest.mocked(getCashConfigurationAction).mockResolvedValue({ configuration: { cajas, usuarios, hayTurnosAbiertos: false } });
   fireEvent.click(screen.getAllByRole('button', { name: 'Reintentar' }).at(-1)!);
-  expect(await screen.findByRole('switch', { name: 'Retira sueldo: Ana Pérez' })).toBeInTheDocument();
+  expect(await screen.findByLabelText('Sueldo por jornada: Ana Pérez')).toBeInTheDocument();
 });
 
 test('los tickets por código de barras se guardan aparte', async () => {
@@ -149,43 +178,64 @@ test('los tickets por código de barras se guardan aparte', async () => {
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ barcodeTicketsEnabled: true }));
 });
 
-test('con turnos activos se editan sin recorrido: las cuatro partes a la vista, con su estado', () => {
+test('con turnos activos se editan sin recorrido: las cuatro partes a la vista y un resumen arriba', async () => {
   render(<OperationSettings shiftsEnabled sueldoAutomatico={false} />);
   expect(screen.queryByRole('button', { name: /^Continuar/ })).not.toBeInTheDocument();
   expect(screen.queryByText(/Paso \d de 4/)).not.toBeInTheDocument();
-  for (const estado of ['Activos', 'Simple', 'Caja principal', 'Sin retiro']) expect(screen.getByText(estado)).toBeInTheDocument();
-  expect(screen.getByRole('switch', { name: 'Permitir turnos múltiples' })).toBeInTheDocument();
-  expect(screen.getByRole('switch', { name: 'Retirar sueldo de la caja automáticamente' })).toBeInTheDocument();
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+  const resumen = screen.getByLabelText('Así trabaja tu playa');
+  for (const valor of ['Activos', 'Una persona a la vez', 'Sigue trabajando', 'Sin retiro']) expect(resumen).toHaveTextContent(valor);
+  await waitFor(() => expect(resumen).toHaveTextContent('1 caja'));
+  for (const pregunta of ['¿Trabajan con turnos?', '¿Cuántas personas cobran a la vez?', '¿Qué pasa a las 00:00 con un turno abierto?', '¿Se retira sueldo de la caja?']) expect(screen.getByRole('radiogroup', { name: pregunta })).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('Todo guardado');
   expect(screen.queryByText(/Pendiente/i)).not.toBeInTheDocument();
 });
 
-test('editando, el modo se guarda desde su sección', async () => {
+test('editando, todo se guarda junto con un solo botón', async () => {
   render(<OperationSettings shiftsEnabled />);
-  expect(screen.queryByRole('button', { name: /^Guardar modo/ })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('switch', { name: 'Permitir turnos múltiples' }));
-  fireEvent.click(screen.getByRole('button', { name: /^Guardar modo/ }));
-  await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ multipleShiftsEnabled: true }));
+  fireEvent.click(opcion('Varias personas a la vez'));
+  fireEvent.click(opcion('Se cierra todo'));
+  fireEvent.click(opcion('Sí, al terminar la jornada'));
+  fireEvent.change(await screen.findByLabelText('Sueldo por jornada: Juan Pérez'), { target: { value: '18000' } });
+  const fondo = await screen.findByRole('radiogroup', { name: 'Fondo de Entrada lateral' });
+  fireEvent.click(within(fondo).getByRole('radio', { name: 'Sin fondo' }));
+  expect(screen.getByRole('status')).toHaveTextContent('Tenés cambios sin guardar');
+  guardar();
+  await waitFor(() => expect(saveCajaAction).toHaveBeenCalledWith({ nombre: 'Entrada lateral', activa: true, fondoObjetivo: 0 }, 'lateral'));
+  expect(updateTicketScheduleAction).toHaveBeenCalledTimes(1);
+  expect(updateTicketScheduleAction).toHaveBeenCalledWith({ multipleShiftsEnabled: true, continuarTurnoMedianoche: false, sueldoAutomatico: true, sueldosPorUsuario: [{ usuarioId: 'juan', importe: 18000 }] });
+  expect(saveCajaAction).toHaveBeenCalledTimes(1);
 });
 
-test('seguir el turno después de las 00:00 viene activado; apagarlo explica el cierre y guarda solo eso', async () => {
+test('«Descartar» vuelve a lo guardado', async () => {
   render(<OperationSettings shiftsEnabled />);
-  const medianoche = screen.getByRole('switch', { name: 'Seguir el turno después de las 00:00' });
-  expect(medianoche).toBeChecked();
-  fireEvent.click(medianoche);
-  expect(screen.getByText(/a las 00:00 se cierran el turno y la caja sin contar/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: /^Guardar modo/ }));
+  await screen.findByDisplayValue('Caja principal');
+  fireEvent.click(opcion('Se cierra todo'));
+  fireEvent.click(screen.getByRole('button', { name: 'Descartar' }));
+  expect(opcion('Sigue trabajando')).toHaveAttribute('aria-checked', 'true');
+  expect(screen.getByRole('status')).toHaveTextContent('Todo guardado');
+  expect(screen.queryByRole('button', { name: 'Descartar' })).not.toBeInTheDocument();
+});
+
+test('con turnos abiertos no se puede cambiar cuántas personas cobran, pero sí la medianoche', async () => {
+  jest.mocked(getCashConfigurationAction).mockResolvedValue({ configuration: { cajas, usuarios, hayTurnosAbiertos: true } });
+  render(<OperationSettings shiftsEnabled />);
+  expect(await screen.findByText('Para cambiar esto, primero cerrá todos los turnos abiertos.')).toBeInTheDocument();
+  expect(opcion('Varias personas a la vez')).toBeDisabled();
+  fireEvent.click(opcion('Se cierra todo'));
+  guardar();
   // No manda el modo (cambiarlo exige no tener turnos abiertos): solo la medianoche.
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ continuarTurnoMedianoche: false }));
 });
 
-test('con la medianoche apagada, la muestra apagada y al continuar en el recorrido la guarda', async () => {
+test('con la medianoche en «Se cierra todo», la muestra así y al continuar en el recorrido guarda el cambio', async () => {
   render(<OperationSettings shiftsEnabled={false} continuarTurnoMedianoche={false} />);
-  fireEvent.click(screen.getByRole('switch', { name: 'Activar turnos de caja' }));
+  fireEvent.click(opcion('Sí, con turnos'));
   await continuar();
-  const medianoche = await screen.findByRole('switch', { name: 'Seguir el turno después de las 00:00' });
-  expect(medianoche).not.toBeChecked();
-  await waitFor(() => expect(medianoche).toBeEnabled());
-  fireEvent.click(medianoche);
+  const cierra = await screen.findByRole('radio', { name: /^Se cierra todo/ });
+  expect(cierra).toHaveAttribute('aria-checked', 'true');
+  await waitFor(() => expect(cierra).toBeEnabled());
+  fireEvent.click(opcion('Sigue trabajando'));
   await continuar();
   await waitFor(() => expect(updateTicketScheduleAction).toHaveBeenCalledWith({ continuarTurnoMedianoche: true }));
 });

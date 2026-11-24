@@ -3,7 +3,7 @@ import { configure, fireEvent, render, screen, waitFor, within } from '@testing-
 import { MovimientosHistorial } from './movimientos-historial';
 import { detalleOperacionAction, historialMovimientosAction, resolverCorreccionAction } from '@/actions/operaciones/operaciones.action';
 import { getCashContextAction, getOperadoresAction } from '@/actions/turnos/cash-context.action';
-import type { Correccion, DetalleEstadia, MovimientoHistorial } from '@/types/operaciones.type';
+import type { Correccion, DetalleEstadia, MovimientoHistorial, ResumenHistorial } from '@/types/operaciones.type';
 
 jest.mock('@/actions/operaciones/operaciones.action', () => ({
   historialMovimientosAction: jest.fn(),
@@ -41,7 +41,13 @@ const detalle = (extra: Partial<DetalleEstadia> = {}): DetalleEstadia => ({
   ajustes: [{ id: 'a1', tipo: 'AJUSTE', metodo: 'CASH', monto: -1500, motivo: 'Corrección de medio de pago: efectivo → transferencia', fecha: '2026-11-23T15:05:00.000Z', correccionId: 'c0', operador: 'Ana' }],
   correcciones: [correccion()], version: 'v7', permiso: { directo: true, motivoRevision: null }, comprobantes: { entrada: true, salida: true }, ...extra,
 });
-const respuesta = (data: MovimientoHistorial[], total = data.length) => ({ data: { data, meta: { totalItems: total }, filtros: { desde: '2026-11-23', hasta: '2026-11-23' } } });
+const RESUMEN: ResumenHistorial = {
+  total: 45, porTipo: { ENTRADA: 20, SALIDA: 18, ANTICIPO: 2, PASE: 3, CORRECCION: 2 },
+  cobrado: { total: 54500, porMedio: { CASH: 31000, TRANSFER: 18500, MERCADOPAGO: 5000 } }, pendientes: 1,
+};
+const respuesta = (data: MovimientoHistorial[], total = data.length, resumen: ResumenHistorial | null = RESUMEN) =>
+  ({ data: { data, meta: { totalItems: total }, filtros: { desde: '2026-11-23', hasta: '2026-11-23' }, ...(resumen ? { resumen } : {}) } });
+const ultimaConsulta = () => jest.mocked(historialMovimientosAction).mock.calls.at(-1)![0];
 
 const montar = (props: Partial<React.ComponentProps<typeof MovimientosHistorial>> = {}) => render(
   <MovimientosHistorial today="2026-11-23" isAdmin={false} turnos cobro comprobantes adentro={[]} onReceipt={jest.fn()} {...props} />,
@@ -49,48 +55,92 @@ const montar = (props: Partial<React.ComponentProps<typeof MovimientosHistorial>
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.mocked(getCashContextAction).mockResolvedValue({ context: { active: { id: 'turno-mio' } } } as never);
+  // El turno abrió a las 14:00 (17:00 UTC).
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: { active: { id: 'turno-mio', fechaApertura: '2026-11-23T17:00:00.000Z' } } } as never);
   jest.mocked(getOperadoresAction).mockResolvedValue({ operadores: [{ id: 'u-ana', firstName: 'Ana', lastName: 'Paz' }] });
-  jest.mocked(historialMovimientosAction).mockResolvedValue(respuesta([fila({}), fila({ id: 'E:reg-2', tipo: 'ENTRADA', registrationId: 'reg-2', identificacion: 'AC999ZZ', importe: null, medios: null, recibido: null, vuelto: null, correccion: 'CORREGIDA' })], 45));
+  jest.mocked(historialMovimientosAction).mockResolvedValue(respuesta([
+    fila({ duracion: 130, patente: 'AB123CD' }),
+    fila({ id: 'E:reg-2', tipo: 'ENTRADA', registrationId: 'reg-2', identificacion: 'AC999ZZ', patente: 'AC999ZZ', vehiculo: 'AUTO', importe: null, medios: null, recibido: null, vuelto: null, correccion: 'CORREGIDA' }),
+    fila({ id: 'M:mov-3', tipo: 'ANTICIPO', registrationId: 'reg-3', identificacion: 'AD789HJ', patente: 'AD789HJ', importe: 2000, medios: { CASH: 2000 }, recibido: null, vuelto: null }),
+  ], 45));
   jest.mocked(detalleOperacionAction).mockResolvedValue({ data: detalle() });
 });
 
-test('arranca en el día de hoy y en mi turno, con la consulta paginada en el servidor', async () => {
+test('arranca en hoy y en mi turno, con el resumen y las cantidades del servidor, y «Ver más» trae la página siguiente', async () => {
   montar();
   await waitFor(() => expect(historialMovimientosAction).toHaveBeenCalledTimes(1));
   expect(historialMovimientosAction).toHaveBeenCalledWith(expect.objectContaining({ desde: '2026-11-23', hasta: '2026-11-23', turnoId: 'turno-mio', page: 1 }));
-  expect(await screen.findByRole('status')).toHaveTextContent('45 movimientos · Hoy · Mi turno');
-  const lista = screen.getByRole('region', { name: /Movimientos: desplazá/ });
-  // Plata y evento operativo: la salida lleva importe, medios vigentes y lo recibido; la entrada no.
-  const salida = within(lista).getByRole('button', { name: /^Salida de AB123CD/ });
+  expect(await screen.findByRole('switch', { name: 'Solo mi turno · desde 14:00' })).toHaveAttribute('aria-checked', 'true');
+  // El resumen: movimientos, lo cobrado por medio y lo que espera revisión.
+  const resumen = screen.getByRole('region', { name: 'Resumen del período' });
+  expect(resumen).toHaveTextContent('20 entradas · 18 salidas');
+  expect(resumen).toHaveTextContent(/Efectivo \$\s?31\.000/);
+  expect(resumen).toHaveTextContent(/QR \$\s?5\.000/);
+  // Los tipos con su cantidad (sin el filtro de tipo).
+  expect(screen.getByRole('button', { name: /^Salidas/ })).toHaveTextContent('18');
+  expect(screen.getByRole('button', { name: /^Todos/ })).toHaveTextContent('45');
+  // Plata y evento operativo: la salida lleva importe, cuánto estuvo y lo recibido; la entrada no.
+  const salida = screen.getByRole('button', { name: /^Salida de AB123CD/ });
   expect(salida).toHaveTextContent(/\$\s?3\.500/);
-  expect(salida).toHaveTextContent(/Efectivo \$\s?2\.000 · Transferencia \$\s?1\.500 · Entregó \$\s?5\.000 · vuelto \$\s?3\.000/);
-  const entrada = within(lista).getByRole('button', { name: /^Entrada de AC999ZZ/ });
+  expect(salida).toHaveTextContent(/Estuvo 2 h 10 min · Ana · entregó \$\s?5\.000 · vuelto \$\s?3\.000/);
+  const entrada = screen.getByRole('button', { name: /^Entrada de AC999ZZ/ });
   expect(entrada).not.toHaveTextContent('$');
   expect(entrada).toHaveTextContent('Corregida');
+  // Un cobro en efectivo sin lo que entregó lo dice, sin suponer que pagó justo.
+  expect(screen.getByRole('button', { name: /^Anticipo de AD789HJ/ })).toHaveTextContent('sin informar con cuánto pagó');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Mi turno' }));
-  await waitFor(() => expect(historialMovimientosAction).toHaveBeenLastCalledWith(expect.not.objectContaining({ turnoId: expect.anything() })));
-  fireEvent.click(await screen.findByRole('button', { name: 'Siguiente' }));
-  await waitFor(() => expect(historialMovimientosAction).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 })));
+  fireEvent.click(screen.getByRole('switch', { name: /Solo mi turno/ }));
+  await waitFor(() => expect(ultimaConsulta()).not.toHaveProperty('turnoId', 'turno-mio'));
+  expect(ultimaConsulta().turnoId).toBeUndefined();
+  const llamadas = jest.mocked(historialMovimientosAction).mock.calls.length;
+  fireEvent.click(await screen.findByRole('button', { name: 'Ver 20 más' }));
+  await waitFor(() => expect(jest.mocked(historialMovimientosAction).mock.calls.length).toBe(llamadas + 1));
+  expect(ultimaConsulta()).toMatchObject({ page: 2 });
 });
 
-test('sin turno abierto muestra el día entero y los filtros viajan al servidor', async () => {
+test('período, tipo, búsqueda y «Más filtros» viajan al servidor; «Para revisar» filtra las pendientes', async () => {
   jest.mocked(getCashContextAction).mockResolvedValue({ context: { active: null } } as never);
   montar({ isAdmin: true });
   await waitFor(() => expect(historialMovimientosAction).toHaveBeenCalledTimes(1));
-  expect(historialMovimientosAction).toHaveBeenCalledWith(expect.not.objectContaining({ turnoId: expect.anything() }));
-  expect(screen.queryByRole('button', { name: 'Mi turno' })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: /Filtros/ }));
-  fireEvent.change(screen.getByLabelText('Tipo'), { target: { value: 'SALIDA' } });
-  fireEvent.change(screen.getByLabelText('Medio de pago'), { target: { value: 'TRANSFER' } });
-  fireEvent.change(screen.getByLabelText('Correcciones'), { target: { value: 'PENDIENTE' } });
-  fireEvent.change(await screen.findByLabelText('Operador'), { target: { value: 'u-ana' } });
-  fireEvent.change(screen.getByLabelText('Patente, ticket o apellido'), { target: { value: 'ab123' } });
-  await waitFor(() => expect(historialMovimientosAction).toHaveBeenLastCalledWith(expect.objectContaining({
-    tipo: 'SALIDA', medio: 'TRANSFER', correccion: 'PENDIENTE', operadorId: 'u-ana', q: 'ab123', page: 1,
-  })));
-  expect(screen.getByRole('button', { name: /Filtros · 4/ })).toBeInTheDocument();
+  expect(ultimaConsulta().turnoId).toBeUndefined();
+  expect(screen.queryByRole('switch', { name: /Solo mi turno/ })).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Ayer' }));
+  await waitFor(() => expect(ultimaConsulta()).toMatchObject({ desde: '2026-11-22', hasta: '2026-11-22' }));
+  fireEvent.click(screen.getByRole('button', { name: '7 días' }));
+  await waitFor(() => expect(ultimaConsulta()).toMatchObject({ desde: '2026-11-17', hasta: '2026-11-23' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Salidas/ }));
+  fireEvent.change(screen.getByLabelText('Buscar movimientos'), { target: { value: 'ab123' } });
+  await waitFor(() => expect(ultimaConsulta()).toMatchObject({ tipo: 'SALIDA', q: 'ab123', page: 1 }));
+
+  // «Más filtros»: la hoja aplica al tocar y el botón dice cuántos quedan.
+  fireEvent.click(screen.getByRole('button', { name: /^Más filtros/ }));
+  const hoja = await screen.findByRole('dialog');
+  fireEvent.click(within(hoja).getByRole('button', { name: 'Transferencia' }));
+  fireEvent.click(within(hoja).getByRole('button', { name: 'Rechazadas' }));
+  fireEvent.change(await within(hoja).findByLabelText('Operador'), { target: { value: 'u-ana' } });
+  await waitFor(() => expect(ultimaConsulta()).toMatchObject({ medio: 'TRANSFER', correccion: 'RECHAZADA', operadorId: 'u-ana' }));
+  fireEvent.click(within(hoja).getByRole('button', { name: /^Ver 45 movimientos/ }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  // Los filtros de la hoja quedan a la vista y se sacan con la X.
+  expect(screen.getByRole('button', { name: /^Más filtros · 3/ })).toBeInTheDocument();
+  fireEvent.click(screen.getAllByRole('button', { name: /Quitar el filtro Transferencia/ })[0]);
+  await waitFor(() => expect(ultimaConsulta().medio).toBeUndefined());
+
+  // «Para revisar» lleva a las correcciones esperando revisión.
+  fireEvent.click(screen.getAllByRole('button', { name: /esperando a administración|esperan revisión|espera revisión/ })[0]);
+  await waitFor(() => expect(ultimaConsulta()).toMatchObject({ correccion: 'PENDIENTE' }));
+  expect(ultimaConsulta().tipo).toBeUndefined();
+});
+
+test('sin movimientos en mi turno lo explica y ofrece ver todo el día', async () => {
+  jest.mocked(historialMovimientosAction).mockResolvedValue(respuesta([], 0, { ...RESUMEN, total: 0, porTipo: {}, cobrado: { total: 0, porMedio: {} }, pendientes: 0 }));
+  montar();
+  expect(await screen.findByRole('heading', { name: 'Todavía no hay movimientos en tu turno' })).toBeInTheDocument();
+  expect(screen.getByText(/Tu turno empezó a las 14:00/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Ver todo el día' }));
+  await waitFor(() => expect(ultimaConsulta().turnoId).toBeUndefined());
+  expect(await screen.findByRole('heading', { name: 'Todavía no hay movimientos hoy' })).toBeInTheDocument();
 });
 
 test('el detalle muestra el cobro como se registró, los ajustes y el historial de cambios', async () => {

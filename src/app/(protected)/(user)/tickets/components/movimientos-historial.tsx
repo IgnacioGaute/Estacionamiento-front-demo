@@ -1,27 +1,33 @@
 'use client';
 
 // Movimientos: todo lo que pasó en la playa, guardado en el servidor, con filtros y paginación en
-// la consulta (no es el tablero ampliado). Se abre con «Ver movimientos» desde Últimos movimientos y usa
-// el mismo lenguaje que Comprobantes. Cada renglón abre el detalle de la operación: cobros con lo
-// que entregó el cliente y el vuelto, ajustes, comprobantes y el historial de cambios, con
-// «Corregir» y, para administración, la revisión de las correcciones pendientes.
+// la consulta (no es el tablero ampliado). Se abre con «Ver movimientos» desde Últimos movimientos y
+// comparte el lenguaje de Comprobantes (filtros-historial.tsx).
+//
+// Arriba, el buscador, el período en un toque (Hoy · Ayer · 7 días · Este mes · Elegir fechas) y
+// «Solo mi turno»; los tipos con su cantidad y «Más filtros» (medio, correcciones, operador), que en
+// el celular es una hoja con todo. Después, el resumen del período (movimientos, lo cobrado por medio
+// y lo que espera revisión) y la lista agrupada por hora (o por día, si es un rango). Cada renglón
+// abre el detalle de la operación: cobros con lo que entregó el cliente y el vuelto, ajustes,
+// comprobantes y el historial de cambios, con «Corregir» y, para administración, la revisión de las
+// correcciones pendientes.
 //
 // Un operador ve sus operaciones (como en la planilla); administración, las de toda la playa.
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import {
-  ArrowDownLeft, ArrowUpRight, CalendarDays, CalendarRange, ChevronRight, Clock3, Coins, PencilLine, Receipt, SlidersHorizontal, Undo2, Wallet,
+  ArrowDownLeft, ArrowUpRight, CalendarDays, ChevronRight, Clock3, Coins, PencilLine, Receipt, ScrollText, Search, SlidersHorizontal, Undo2, Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/lib/toast';
 import { formatImporte } from '@/components/pricing-breakdown';
 import { AppDatePicker } from '@/components/app-date-picker';
-import { AnimatedScrollList } from '@/components/animated-scroll-list';
-import { CompactPagination } from '@/components/compact-pagination';
-import { DataLoading } from '@/components/ui/data-loading';
+import { PlateChip } from '@/components/plate-chip';
+import { VehicleTypeLabelsContext } from '@/components/vehicle-type-badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   ActionDialog,
   ActionDialogBody,
@@ -34,17 +40,37 @@ import {
 import { detalleOperacionAction, historialMovimientosAction, resolverCorreccionAction } from '@/actions/operaciones/operaciones.action';
 import { getCashContextAction, getOperadoresAction } from '@/actions/turnos/cash-context.action';
 import type {
-  Correccion, DetalleOperacion, EstadoCorreccionFiltro, FiltrosHistorial, MedioHistorial, MovimientoHistorial, TipoMovimientoHistorial,
+  Correccion, DetalleOperacion, EstadoCorreccionFiltro, FiltrosHistorial, MedioHistorial, MovimientoHistorial, ResumenHistorial, TipoMovimientoHistorial,
 } from '@/types/operaciones.type';
+import { formatEstadia } from '@/utils/estadia';
 import { ComprobantesCargando } from './cargando';
 import { CorregirRegistro, horaDe, MEDIO, TIPOS_CORRECCION, type OperacionACorregir, type VehiculoAdentro } from './corregir-registro';
+import { BuscadorHistorial, ChipFiltro, EstadoVacio, Interruptor, Segmentado, VerMas } from './filtros-historial';
 
-const PAGE_SIZE = 20;
+dayjs.extend(utc);
+dayjs.extend(timezone);
 const TZ = 'America/Argentina/Buenos_Aires';
+const enfoque = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow';
 
-const TIPO: Record<TipoMovimientoHistorial, string> = {
-  ENTRADA: 'Entrada', SALIDA: 'Salida', ANTICIPO: 'Anticipo', COBRO_PARCIAL: 'Cobro parcial', DEVOLUCION: 'Devolución', PASE: 'Estadía larga', CORRECCION: 'Corrección',
+type Periodo = 'HOY' | 'AYER' | '7D' | 'MES' | 'FECHAS';
+const PERIODOS: { id: Exclude<Periodo, 'FECHAS'>; texto: string }[] = [
+  { id: 'HOY', texto: 'Hoy' }, { id: 'AYER', texto: 'Ayer' }, { id: '7D', texto: '7 días' }, { id: 'MES', texto: 'Este mes' },
+];
+// Los que van a la vista en la computadora; los demás (cobros parciales, devoluciones), en «Más filtros».
+const TIPOS_RAPIDOS: TipoMovimientoHistorial[] = ['ENTRADA', 'SALIDA', 'ANTICIPO', 'PASE', 'CORRECCION'];
+const TODOS_LOS_TIPOS: TipoMovimientoHistorial[] = ['ENTRADA', 'SALIDA', 'ANTICIPO', 'COBRO_PARCIAL', 'DEVOLUCION', 'PASE', 'CORRECCION'];
+const SIN_COBRO: TipoMovimientoHistorial[] = ['ENTRADA', 'SALIDA', 'CORRECCION'];
+const TIPO_PLURAL: Record<TipoMovimientoHistorial, string> = {
+  ENTRADA: 'Entradas', SALIDA: 'Salidas', ANTICIPO: 'Anticipos', COBRO_PARCIAL: 'Cobros parciales', DEVOLUCION: 'Devoluciones', PASE: 'Estadías largas', CORRECCION: 'Correcciones',
 };
+const MEDIOS: { id: MedioHistorial; texto: string; corto: string; punto: string }[] = [
+  { id: 'CASH', texto: 'Efectivo', corto: 'Efectivo', punto: 'bg-gm-ok' },
+  { id: 'TRANSFER', texto: 'Transferencia', corto: 'Transf.', punto: 'bg-violet-400' },
+  { id: 'MERCADOPAGO', texto: 'QR', corto: 'QR', punto: 'bg-sky-400' },
+];
+const CORRECCIONES: { id: EstadoCorreccionFiltro; texto: string }[] = [
+  { id: 'PENDIENTE', texto: 'En revisión' }, { id: 'CORREGIDA', texto: 'Corregidas' }, { id: 'RECHAZADA', texto: 'Rechazadas' }, { id: 'SIN', texto: 'Sin correcciones' },
+];
 const ICONO: Record<TipoMovimientoHistorial, typeof Wallet> = {
   ENTRADA: ArrowDownLeft, SALIDA: ArrowUpRight, ANTICIPO: Wallet, COBRO_PARCIAL: Coins, DEVOLUCION: Undo2, PASE: CalendarDays, CORRECCION: PencilLine,
 };
@@ -64,18 +90,56 @@ const fechaHora = (fecha: string) => `${fechaCorta(fecha)} ${horaDe(fecha)}`;
 const diaLegible = (dia: string) => new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(dayjs(dia).toDate());
 const textoMedios = (medios: MovimientoHistorial['medios']) =>
   Object.entries(medios ?? {}).filter(([, n]) => n).map(([m, n]) => `${MEDIO[m] ?? m} ${formatImporte(n!)}`).join(' · ');
-const selectClase = 'h-10 w-full rounded-lg border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow';
+const selectClase = 'h-11 w-full rounded-xl border border-gm-line-strong bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow';
 
 function Insignia({ texto, clase }: { texto: string; clase: string }) {
   return <span className={cn('inline-flex h-6 shrink-0 items-center rounded-full border px-2 text-[11px] font-semibold', clase)}>{texto}</span>;
 }
 
+// El rango de fechas de un período. Un rango elegido a mano se acota a tres meses (lo que acepta el servidor).
+function rangoDe(periodo: Periodo, hoy: string, fechas: { desde: string; hasta: string }): [string, string] {
+  const d = dayjs(hoy);
+  if (periodo === 'AYER') { const ayer = d.subtract(1, 'day').format('YYYY-MM-DD'); return [ayer, ayer]; }
+  if (periodo === '7D') return [d.subtract(6, 'day').format('YYYY-MM-DD'), hoy];
+  if (periodo === 'MES') return [d.startOf('month').format('YYYY-MM-DD'), hoy];
+  if (periodo === 'FECHAS') return [fechas.desde, fechas.hasta];
+  return [hoy, hoy];
+}
+
+function tituloDe(f: MovimientoHistorial) {
+  if (f.tipo === 'PASE') return f.detalle === 'Retiro' ? 'Estadía larga · retiro' : 'Estadía larga · alta';
+  if (f.tipo === 'CORRECCION') return `Corrección · ${(TIPOS_CORRECCION[f.detalle as keyof typeof TIPOS_CORRECCION]?.titulo ?? '').toLowerCase()}`;
+  return { ENTRADA: 'Entrada', SALIDA: 'Salida', ANTICIPO: 'Anticipo', COBRO_PARCIAL: 'Cobro parcial', DEVOLUCION: 'Devolución' }[f.tipo];
+}
+
+function estadoDe(f: MovimientoHistorial) {
+  if (!f.correccion) return null;
+  if (f.tipo === 'CORRECCION' && f.correccion === 'CORREGIDA') return { texto: f.detalle === 'OTRO' ? 'Resuelta' : 'Aplicada', clase: ESTADO_CORRECCION.APLICADA.clase };
+  return ESTADO_FILTRO[f.correccion];
+}
+
+// Lo que se lee debajo del título: cuánto estuvo, quién, el vehículo y lo que entregó el cliente.
+function detalleDe(f: MovimientoHistorial, vehiculo: string | null) {
+  const efectivo = (f.medios?.CASH ?? 0) > 0;
+  const recibido = f.recibido != null ? `entregó ${formatImporte(f.recibido)} · vuelto ${formatImporte(f.vuelto ?? 0)}`
+    : efectivo && ['SALIDA', 'ANTICIPO', 'COBRO_PARCIAL'].includes(f.tipo) ? 'sin informar con cuánto pagó' : null;
+  const partes: (string | null | undefined)[] =
+    f.tipo === 'SALIDA' ? [f.duracion != null ? `Estuvo ${formatEstadia(f.duracion)}` : null, f.operador, recibido]
+    : f.tipo === 'ENTRADA' ? [vehiculo, f.operador]
+    : f.tipo === 'PASE' ? [vehiculo, f.operador, f.detalle === 'Alta' ? recibido : null]
+    : f.tipo === 'DEVOLUCION' ? [f.detalle, f.operador]
+    : f.tipo === 'CORRECCION' ? [f.operador]
+    : [f.operador, recibido];
+  const texto = partes.filter(Boolean).join(' · ');
+  return texto ? texto.charAt(0).toUpperCase() + texto.slice(1) : '';
+}
+
 export function MovimientosHistorial({ today, isAdmin, turnos, cobro, comprobantes, barcodeTicketsEnabled = true, adentro, revision, onReceipt }: {
   today: string;
   isAdmin: boolean;
-  // Turnos activos: ofrece «Mi turno» (y arranca ahí si hay uno abierto).
+  // Turnos activos: ofrece «Solo mi turno» (y arranca ahí si hay uno abierto).
   turnos: boolean;
-  // Playa con cobro: filtros de medio. En la modalidad gratuita no hay plata.
+  // Playa con cobro: lo cobrado y el medio de pago. En la modalidad gratuita no hay plata.
   cobro: boolean;
   comprobantes: boolean;
   barcodeTicketsEnabled?: boolean;
@@ -84,22 +148,33 @@ export function MovimientosHistorial({ today, isAdmin, turnos, cobro, comprobant
   revision?: unknown;
   onReceipt: (id: string, kind: 'ENTRY' | 'EXIT') => void;
 }) {
-  const [desde, setDesde] = useState(today);
-  const [hasta, setHasta] = useState(today);
+  const tiposVehiculo = useContext(VehicleTypeLabelsContext);
+  const nombreVehiculo = useCallback((code?: string | null) => {
+    if (!code) return null;
+    const conocido = tiposVehiculo.find((t) => t.code === code)?.name;
+    if (conocido) return conocido;
+    const texto = code.replace(/_/g, ' ').toLocaleLowerCase('es-AR');
+    return texto.charAt(0).toLocaleUpperCase('es-AR') + texto.slice(1);
+  }, [tiposVehiculo]);
+
+  const [periodo, setPeriodo] = useState<Periodo>('HOY');
+  const [fechas, setFechas] = useState({ desde: today, hasta: today });
   const [q, setQ] = useState('');
-  const [tipo, setTipo] = useState<TipoMovimientoHistorial | ''>('');
-  const [medio, setMedio] = useState<MedioHistorial | ''>('');
-  const [correccion, setCorreccion] = useState<EstadoCorreccionFiltro | ''>('');
-  const [operadorId, setOperadorId] = useState('');
+  const [tipo, setTipo] = useState<TipoMovimientoHistorial | null>(null);
+  const [medio, setMedio] = useState<MedioHistorial | null>(null);
+  const [correccion, setCorreccion] = useState<EstadoCorreccionFiltro | null>(null);
+  const [operadorId, setOperadorId] = useState<string | null>(null);
   const [operadores, setOperadores] = useState<{ id: string; nombre: string }[]>([]);
-  const [miTurnoId, setMiTurnoId] = useState<string | null>(null);
-  const [miTurno, setMiTurno] = useState(false);
-  // Con turnos, se espera saber si hay uno propio abierto: arranca en «Mi turno» sin una carga previa de todo el día.
+  // El turno abierto de quien mira y desde qué hora: «Solo mi turno» arranca prendido si hay uno.
+  const [miTurno, setMiTurno] = useState<{ id: string; desde: string } | null>(null);
+  const [soloMiTurno, setSoloMiTurno] = useState(false);
+  // Con turnos, se espera saber si hay uno abierto: arranca en «Solo mi turno» sin una carga previa de todo el día.
   const [contextoListo, setContextoListo] = useState(!turnos);
   const [verFiltros, setVerFiltros] = useState(false);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
   const [rows, setRows] = useState<MovimientoHistorial[]>([]);
   const [total, setTotal] = useState(0);
+  const [resumen, setResumen] = useState<ResumenHistorial | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [recarga, setRecarga] = useState(0);
@@ -111,9 +186,9 @@ export function MovimientosHistorial({ today, isAdmin, turnos, cobro, comprobant
     let vigente = true;
     getCashContextAction().then((r) => {
       if (!vigente) return;
-      const id = r.context?.active?.id ?? null;
-      setMiTurnoId(id);
-      setMiTurno(!!id);
+      const activo = r.context?.active;
+      setMiTurno(activo ? { id: activo.id, desde: horaDe(activo.fechaApertura) } : null);
+      setSoloMiTurno(!!activo);
     }).catch(() => undefined).finally(() => { if (vigente) setContextoListo(true); });
     return () => { vigente = false; };
   }, [turnos]);
@@ -125,163 +200,245 @@ export function MovimientosHistorial({ today, isAdmin, turnos, cobro, comprobant
     }).catch(() => undefined);
   }, [isAdmin, turnos]);
 
+  // Cada entrada o salida nueva vuelve a pedir la primera página.
+  useEffect(() => { setRecarga((n) => n + 1); }, [revision]);
+
+  const [desde, hasta] = rangoDe(periodo, today, fechas);
   const filtros: FiltrosHistorial = useMemo(() => ({
-    desde, hasta: hasta < desde ? desde : hasta, q: q.trim() || undefined, tipo: tipo || undefined, medio: medio || undefined,
-    correccion: correccion || undefined, operadorId: operadorId || undefined, turnoId: miTurno && miTurnoId ? miTurnoId : undefined, page: page + 1,
-  }), [desde, hasta, q, tipo, medio, correccion, operadorId, miTurno, miTurnoId, page]);
+    desde, hasta, q: q.trim() || undefined, tipo: tipo ?? undefined, medio: medio ?? undefined, correccion: correccion ?? undefined,
+    operadorId: operadorId ?? undefined, turnoId: soloMiTurno && miTurno ? miTurno.id : undefined,
+  }), [desde, hasta, q, tipo, medio, correccion, operadorId, soloMiTurno, miTurno]);
+  const clave = JSON.stringify(filtros) + '|' + recarga;
+  const claveRef = useRef(clave);
 
   useEffect(() => {
     if (!contextoListo) return;
+    // Cambió un filtro: se vuelve a la primera página y la lista se reemplaza.
+    if (claveRef.current !== clave) {
+      claveRef.current = clave;
+      if (page !== 1) { setPage(1); return; }
+    }
     let vigente = true;
     setPending(true);
     const timer = setTimeout(() => {
-      historialMovimientosAction(filtros).then((r) => {
+      historialMovimientosAction({ ...filtros, page }).then((r) => {
         if (!vigente) return;
-        if (r.error !== undefined) { setRows([]); setTotal(0); setError(r.error); return; }
-        setRows(r.data.data); setTotal(r.data.meta.totalItems); setError('');
+        if (r.error !== undefined) {
+          if (page === 1) { setRows([]); setTotal(0); setResumen(null); }
+          setError(r.error);
+          return;
+        }
+        setError('');
+        setTotal(r.data.meta.totalItems);
+        if (r.data.resumen) setResumen(r.data.resumen);
+        setRows((previas) => page === 1 ? r.data.data : [...previas, ...r.data.data.filter((f) => !previas.some((p) => p.id === f.id))]);
       }).finally(() => { if (vigente) setPending(false); });
-    }, 250);
+    }, page === 1 ? 250 : 0);
     return () => { vigente = false; clearTimeout(timer); };
-  }, [filtros, contextoListo, revision, recarga]);
+  }, [clave, page, contextoListo, filtros]);
 
-  const cambiar = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPage(0); };
-  const extras = [tipo, medio, correccion, operadorId].filter(Boolean).length;
-  const rango = desde === hasta ? (desde === today ? 'Hoy' : diaLegible(desde)) : `${diaLegible(desde)} – ${diaLegible(hasta)}`;
+  const tiposVisibles = cobro ? TIPOS_RAPIDOS : SIN_COBRO;
+  const tiposDeLaHoja = cobro ? TODOS_LOS_TIPOS : SIN_COBRO;
+  const tipoFueraDeLaVista = !!tipo && !tiposVisibles.includes(tipo);
+  const cantidadExtra = [medio, correccion, operadorId, tipoFueraDeLaVista ? tipo : null].filter(Boolean).length;
+  const hayFiltros = !!(q.trim() || tipo || medio || correccion || operadorId);
+  const limpiar = () => { setTipo(null); setMedio(null); setCorreccion(null); setOperadorId(null); setQ(''); };
+  const elegirPeriodo = (id: Periodo) => {
+    if (id === 'FECHAS') setFechas({ desde, hasta });
+    setPeriodo(id);
+  };
+  // Un rango elegido a mano no pasa de tres meses: se corre la otra punta.
+  const elegirFecha = (punta: 'desde' | 'hasta', valor: string) => setFechas((actual) => {
+    const nuevo = { ...actual, [punta]: valor };
+    if (nuevo.hasta < nuevo.desde) nuevo[punta === 'desde' ? 'hasta' : 'desde'] = valor;
+    if (dayjs(nuevo.hasta).diff(dayjs(nuevo.desde), 'day') > 92) {
+      if (punta === 'desde') nuevo.hasta = dayjs(nuevo.desde).add(92, 'day').format('YYYY-MM-DD');
+      else nuevo.desde = dayjs(nuevo.hasta).subtract(92, 'day').format('YYYY-MM-DD');
+    }
+    if (nuevo.hasta > today) nuevo.hasta = today;
+    return nuevo;
+  });
+  const etiquetaPeriodo = periodo === 'FECHAS' ? (desde === hasta ? diaLegible(desde) : `${diaLegible(desde)} – ${diaLegible(hasta)}`) : PERIODOS.find((p) => p.id === periodo)!.texto;
   const variosDias = desde !== hasta;
+  const porTipo = resumen?.porTipo ?? {};
+  const totalTodos = Object.values(porTipo).reduce<number>((a, n) => a + (n ?? 0), 0);
+  const nombreMedio = (id: MedioHistorial) => MEDIOS.find((m) => m.id === id)!.texto;
+  const nombreCorreccion = (id: EstadoCorreccionFiltro) => CORRECCIONES.find((c) => c.id === id)!.texto;
+  const nombreOperador = (id: string) => operadores.find((o) => o.id === id)?.nombre ?? 'Operador';
+
+  // Agrupados por hora (un día) o por día (un rango), en el orden en que llegan.
+  const grupos = useMemo(() => {
+    const lista: { clave: string; titulo: string; filas: MovimientoHistorial[] }[] = [];
+    for (const f of rows) {
+      const momento = dayjs(f.fecha).tz(TZ);
+      const claveGrupo = variosDias ? momento.format('YYYY-MM-DD') : momento.format('HH');
+      const ultimo = lista[lista.length - 1];
+      if (ultimo?.clave === claveGrupo) ultimo.filas.push(f);
+      else lista.push({ clave: claveGrupo, titulo: variosDias ? new Intl.DateTimeFormat('es-AR', { weekday: 'short', day: 'numeric', month: 'short', timeZone: TZ }).format(momento.toDate()) : `${claveGrupo}:00`, filas: [f] });
+    }
+    return lista;
+  }, [rows, variosDias]);
 
   const abrir = (row: MovimientoHistorial) => {
     if (row.paseId) setAbierta({ tipo: 'PASE', id: row.paseId });
     else if (row.registrationId) setAbierta({ tipo: 'ESTADIA', id: row.registrationId });
   };
+  const periodoConFechas = (
+    <>
+      {periodo === 'FECHAS' && (
+        <div className="flex flex-wrap items-center gap-2">
+          <AppDatePicker value={desde} title="Desde" max={today} onChange={(v) => elegirFecha('desde', v)} trigger={
+            <button type="button" className={cn('inline-flex min-h-10 items-center gap-2 rounded-xl border-[1.5px] border-gm-line-strong px-3 text-sm font-semibold hover:border-gm-yellow/50', enfoque)}>
+              <span className="text-muted-foreground">Desde</span><span className="gm-mono">{diaLegible(desde)}</span>
+            </button>
+          } />
+          <AppDatePicker value={hasta} title="Hasta" min={desde} max={today} onChange={(v) => elegirFecha('hasta', v)} trigger={
+            <button type="button" className={cn('inline-flex min-h-10 items-center gap-2 rounded-xl border-[1.5px] border-gm-line-strong px-3 text-sm font-semibold hover:border-gm-yellow/50', enfoque)}>
+              <span className="text-muted-foreground">Hasta</span><span className="gm-mono">{diaLegible(hasta)}</span>
+            </button>
+          } />
+        </div>
+      )}
+    </>
+  );
 
   return (
-    <section aria-label="Movimientos" className="min-w-0 space-y-3">
-      <div className="flex min-w-0 items-center gap-2 rounded-xl border border-border bg-secondary/20 p-2">
-        <AppDatePicker value={desde} title="Desde" max={today} onChange={(v) => { setDesde(v); if (v > hasta) setHasta(v); setPage(0); }} trigger={
-          <Button type="button" size="icon" variant="outline" aria-label="Elegir desde qué fecha" className="size-10 shrink-0 rounded-lg border-gm-yellow/30 text-gm-yellow hover:bg-gm-yellow/10"><CalendarDays className="size-4" /></Button>
-        } />
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] text-muted-foreground">Fecha</p>
-          <p className="truncate text-sm font-semibold tabular-nums">{rango}</p>
+    <section aria-label="Movimientos" className="min-w-0 space-y-4">
+      <div className="space-y-3 rounded-[22px] border border-gm-line bg-card p-3 sm:p-4">
+        <BuscadorHistorial value={q} onChange={setQ} etiqueta="Buscar movimientos"
+          placeholder={barcodeTicketsEnabled ? 'Buscar patente, ticket o apellido' : 'Buscar patente o apellido'} />
+
+        {/* Computadora: el período y mi turno a la vista. */}
+        <div className="hidden flex-wrap items-center gap-2.5 sm:flex">
+          <Segmentado etiqueta="Período" valor={periodo} onChange={elegirPeriodo} opciones={[
+            ...PERIODOS.map((p) => ({ id: p.id as Periodo, texto: p.texto })),
+            { id: 'FECHAS' as Periodo, texto: <><CalendarDays className="size-4" aria-hidden />Elegir fechas</> },
+          ]} />
+          {periodoConFechas}
+          <div className="flex-1" />
+          {miTurno && <Interruptor activo={soloMiTurno} onChange={setSoloMiTurno}>Solo mi turno · desde {miTurno.desde}</Interruptor>}
         </div>
-        <AppDatePicker value={hasta} title="Hasta" min={desde} max={today} onChange={(v) => { setHasta(v); setPage(0); }} trigger={
-          <Button type="button" variant="ghost" size="sm" aria-label="Elegir hasta qué fecha" className="shrink-0 gap-1.5"><CalendarRange className="size-4" />Hasta</Button>
-        } />
-        {(desde !== today || hasta !== today) && <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={() => { setDesde(today); setHasta(today); setPage(0); }}>Hoy</Button>}
+
+        {/* Celular: chips que se deslizan; lo demás, en la hoja de filtros. */}
+        <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-0.5 sm:hidden">
+          <ChipFiltro activo onClick={() => setVerFiltros(true)}><CalendarDays className="size-4 text-gm-yellow" aria-hidden />{etiquetaPeriodo}</ChipFiltro>
+          {miTurno && <ChipFiltro activo={soloMiTurno} onClick={() => setSoloMiTurno(!soloMiTurno)}><Clock3 className="size-4" aria-hidden />Mi turno</ChipFiltro>}
+          {tipo && <ChipFiltro activo onQuitar={() => setTipo(null)}>{TIPO_PLURAL[tipo]}</ChipFiltro>}
+          {medio && <ChipFiltro activo onQuitar={() => setMedio(null)}>{nombreMedio(medio)}</ChipFiltro>}
+          {correccion && <ChipFiltro activo onQuitar={() => setCorreccion(null)}>{nombreCorreccion(correccion)}</ChipFiltro>}
+          {operadorId && <ChipFiltro activo onQuitar={() => setOperadorId(null)}>{nombreOperador(operadorId)}</ChipFiltro>}
+          <ChipFiltro onClick={() => setVerFiltros(true)}><SlidersHorizontal className="size-4" aria-hidden />Filtros</ChipFiltro>
+        </div>
+
+        {/* Computadora: los tipos con su cantidad y «Más filtros». */}
+        <div className="hidden flex-wrap items-center gap-2 border-t border-gm-line pt-3 sm:flex">
+          <ChipFiltro activo={!tipo} onClick={() => setTipo(null)} cuenta={resumen ? totalTodos : undefined}>Todos</ChipFiltro>
+          {tiposVisibles.map((t) => (
+            <ChipFiltro key={t} activo={tipo === t} onClick={() => setTipo(tipo === t ? null : t)} cuenta={resumen ? porTipo[t] ?? 0 : undefined}>{TIPO_PLURAL[t]}</ChipFiltro>
+          ))}
+          <div className="flex-1" />
+          <ChipFiltro activo={cantidadExtra > 0} onClick={() => setVerFiltros(true)}>
+            <SlidersHorizontal className="size-4" aria-hidden />Más filtros{cantidadExtra ? ` · ${cantidadExtra}` : ''}
+          </ChipFiltro>
+        </div>
+        {cantidadExtra > 0 && (
+          <div className="hidden flex-wrap items-center gap-2 sm:flex">
+            {tipoFueraDeLaVista && tipo && <ChipFiltro activo onQuitar={() => setTipo(null)}>{TIPO_PLURAL[tipo]}</ChipFiltro>}
+            {medio && <ChipFiltro activo onQuitar={() => setMedio(null)}>{nombreMedio(medio)}</ChipFiltro>}
+            {correccion && <ChipFiltro activo onQuitar={() => setCorreccion(null)}>{nombreCorreccion(correccion)}</ChipFiltro>}
+            {operadorId && <ChipFiltro activo onQuitar={() => setOperadorId(null)}>{nombreOperador(operadorId)}</ChipFiltro>}
+            <button type="button" onClick={() => { setMedio(null); setCorreccion(null); setOperadorId(null); if (tipoFueraDeLaVista) setTipo(null); }}
+              className={cn('min-h-10 rounded-full px-2 text-sm font-semibold text-muted-foreground hover:text-foreground', enfoque)}>Limpiar</button>
+          </div>
+        )}
       </div>
 
-      <label className="block space-y-1 text-xs text-muted-foreground">
-        <span>{barcodeTicketsEnabled ? 'Patente, ticket o apellido' : 'Patente o apellido'}</span>
-        <Input value={q} placeholder="Buscar movimientos…" onChange={(e) => { setQ(e.target.value); setPage(0); }} />
-      </label>
+      {resumen && <ResumenPeriodo resumen={resumen} cobro={cobro} onRevisar={() => { setTipo(null); setMedio(null); setCorreccion('PENDIENTE'); }} />}
 
-      <div className="flex flex-wrap items-center gap-2">
-        {miTurnoId && (
-          <button type="button" aria-pressed={miTurno} onClick={() => { setMiTurno(!miTurno); setPage(0); }}
-            className={cn('inline-flex min-h-9 items-center gap-1.5 rounded-full border-[1.5px] px-3 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
-              miTurno ? 'border-gm-yellow bg-gm-yellow/[0.12]' : 'border-gm-line-strong hover:border-gm-yellow/40')}>
-            <Clock3 className="size-3.5" aria-hidden />Mi turno
-          </button>
+      {pending && !rows.length ? <ComprobantesCargando />
+        : error && !rows.length ? <p role="alert" className="rounded-xl border border-destructive/40 p-4 text-sm text-destructive">{error}</p>
+        : !rows.length ? (
+          hayFiltros ? (
+            <EstadoVacio icono={<Search className="size-7" />} titulo="No hay movimientos con estos filtros" texto={`${etiquetaPeriodo}${soloMiTurno && miTurno ? ' · mi turno' : ''}`}>
+              <Button type="button" variant="outline" className="min-h-12 rounded-2xl" onClick={limpiar}>Quitar filtros</Button>
+            </EstadoVacio>
+          ) : soloMiTurno && miTurno && periodo === 'HOY' ? (
+            <EstadoVacio icono={<Clock3 className="size-7" />} titulo="Todavía no hay movimientos en tu turno"
+              texto={`Tu turno empezó a las ${miTurno.desde}. Cada entrada, salida y cobro que registres aparece acá al instante.`}>
+              <Button type="button" variant="outline" className="min-h-12 rounded-2xl" onClick={() => setSoloMiTurno(false)}>Ver todo el día</Button>
+              <Button type="button" variant="ghost" className="min-h-11 text-gm-yellow" onClick={() => { setSoloMiTurno(false); setPeriodo('AYER'); }}>Ver ayer</Button>
+            </EstadoVacio>
+          ) : (
+            <EstadoVacio icono={<ScrollText className="size-7" />} titulo={periodo === 'HOY' ? 'Todavía no hay movimientos hoy' : 'No hay movimientos en este período'}>
+              {periodo === 'HOY'
+                ? <Button type="button" variant="outline" className="min-h-12 rounded-2xl" onClick={() => { setSoloMiTurno(false); setPeriodo('AYER'); }}>Ver ayer</Button>
+                : <Button type="button" variant="outline" className="min-h-12 rounded-2xl" onClick={() => setPeriodo('HOY')}>Ver hoy</Button>}
+            </EstadoVacio>
+          )
+        ) : (
+          <div className={cn('space-y-4 transition-opacity', pending && page === 1 && 'opacity-60')} aria-busy={pending}>
+            {grupos.map((g) => (
+              <section key={g.clave} aria-label={g.titulo} className="space-y-2">
+                <h2 className="flex items-center gap-3 px-1 text-[13px] font-bold text-muted-foreground">
+                  <span className={cn(!variosDias && 'gm-mono', 'capitalize')}>{g.titulo}</span>
+                  <span aria-hidden className="h-px flex-1 bg-gm-line" />
+                  <span className="font-semibold">{g.filas.length === 1 ? '1 movimiento' : `${g.filas.length} movimientos`}</span>
+                </h2>
+                <ul className="overflow-hidden rounded-[18px] border border-gm-line bg-card">
+                  {g.filas.map((f, i) => (
+                    <FilaMovimiento key={f.id} f={f} primero={i === 0} variosDias={variosDias} vehiculo={nombreVehiculo(f.vehiculo)} onAbrir={() => abrir(f)} />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
         )}
-        <button type="button" aria-expanded={verFiltros} onClick={() => setVerFiltros(!verFiltros)}
-          className={cn('inline-flex min-h-9 items-center gap-1.5 rounded-full border-[1.5px] px-3 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow',
-            extras ? 'border-gm-yellow bg-gm-yellow/[0.12]' : 'border-gm-line-strong hover:border-gm-yellow/40')}>
-          <SlidersHorizontal className="size-3.5" aria-hidden />Filtros{extras ? ` · ${extras}` : ''}
-        </button>
-        {extras > 0 && (
-          <button type="button" className="min-h-9 px-1 text-[13px] font-semibold text-muted-foreground hover:text-foreground"
-            onClick={() => { setTipo(''); setMedio(''); setCorreccion(''); setOperadorId(''); setPage(0); }}>Quitar filtros</button>
-        )}
-      </div>
+      {error && rows.length > 0 && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      <VerMas mostrando={rows.length} total={total} cargando={pending && page > 1} onClick={() => setPage((p) => p + 1)} />
 
-      {verFiltros && (
-        <div className="grid gap-2 rounded-xl border border-border bg-secondary/20 p-3 sm:grid-cols-2">
-          <label className="space-y-1 text-xs text-muted-foreground"><span>Tipo</span>
-            <select className={selectClase} value={tipo} onChange={(e) => cambiar(setTipo)(e.target.value as TipoMovimientoHistorial | '')}>
-              <option value="">Todos</option>
-              {(Object.keys(TIPO) as TipoMovimientoHistorial[]).filter((t) => cobro || ['ENTRADA', 'SALIDA', 'CORRECCION'].includes(t)).map((t) => <option key={t} value={t}>{TIPO[t]}</option>)}
-            </select>
-          </label>
-          {cobro && (
-            <label className="space-y-1 text-xs text-muted-foreground"><span>Medio de pago</span>
-              <select className={selectClase} value={medio} onChange={(e) => cambiar(setMedio)(e.target.value as MedioHistorial | '')}>
-                <option value="">Todos</option>
-                <option value="CASH">Efectivo</option>
-                <option value="TRANSFER">Transferencia</option>
-                <option value="MERCADOPAGO">Mercado Pago (QR)</option>
-              </select>
-            </label>
-          )}
-          <label className="space-y-1 text-xs text-muted-foreground"><span>Correcciones</span>
-            <select className={selectClase} value={correccion} onChange={(e) => cambiar(setCorreccion)(e.target.value as EstadoCorreccionFiltro | '')}>
-              <option value="">Todas</option>
-              <option value="CORREGIDA">Corregidas</option>
-              <option value="PENDIENTE">En revisión</option>
-              <option value="RECHAZADA">Rechazadas</option>
-              <option value="SIN">Sin correcciones</option>
-            </select>
-          </label>
-          {isAdmin && operadores.length > 0 && (
-            <label className="space-y-1 text-xs text-muted-foreground"><span>Operador</span>
-              <select className={selectClase} value={operadorId} onChange={(e) => cambiar(setOperadorId)(e.target.value)}>
-                <option value="">Todos</option>
-                {operadores.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-              </select>
-            </label>
-          )}
-        </div>
-      )}
-
-      <p role="status" className="text-xs text-muted-foreground">
-        {pending ? '…' : total} movimientos · {rango}{miTurno && miTurnoId ? ' · Mi turno' : ''}
-      </p>
-
-      <AnimatedScrollList key={JSON.stringify({ ...filtros, page: 0 })} label="Movimientos: desplazá para ver más">
-        {pending && !rows.length ? <ComprobantesCargando /> : pending ? <DataLoading label="Cargando movimientos…" /> : rows.map((row) => {
-          const Icono = ICONO[row.tipo];
-          const plata = row.importe != null && row.importe !== 0;
-          const titulo = row.tipo === 'PASE' ? `${TIPO.PASE} · ${(row.detalle ?? '').toLowerCase()}`
-            : row.tipo === 'CORRECCION' ? `${TIPO.CORRECCION} · ${TIPOS_CORRECCION[row.detalle as keyof typeof TIPOS_CORRECCION]?.titulo.toLowerCase() ?? ''}`
-              : row.tipo === 'DEVOLUCION' && row.detalle ? `${TIPO.DEVOLUCION} · ${row.detalle}` : TIPO[row.tipo];
-          const estado = row.correccion ? (row.tipo === 'CORRECCION' && row.correccion === 'CORREGIDA' ? { texto: 'Aplicada', clase: ESTADO_CORRECCION.APLICADA.clase } : ESTADO_FILTRO[row.correccion]) : null;
-          return (
-            <button key={row.id} type="button" onClick={() => abrir(row)} aria-label={`${titulo} de ${row.identificacion}, ${horaDe(row.fecha)}`}
-              className="block w-full min-w-0 rounded-xl border border-border bg-secondary/40 p-3 text-left transition-colors hover:border-gm-yellow/40 hover:bg-gm-yellow/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
-              <span className="flex min-w-0 items-start gap-2.5">
-                <span className={cn('grid size-8 shrink-0 place-items-center rounded-lg', plata ? 'bg-gm-yellow/10 text-gm-yellow' : 'bg-gm-surface-3 text-muted-foreground')}><Icono className="size-4" aria-hidden /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-baseline justify-between gap-2">
-                    <span className="gm-mono truncate text-base font-semibold leading-tight tracking-wide">{row.identificacion}</span>
-                    {plata && <span className="gm-mono shrink-0 text-[15px] font-bold">{row.importe! < 0 ? '−' : ''}{formatImporte(Math.abs(row.importe!))}</span>}
-                  </span>
-                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted-foreground">
-                    <span className="font-semibold text-foreground/90">{titulo}</span>
-                    {estado && <Insignia {...estado} />}
-                  </span>
-                </span>
-                <ChevronRight className="mt-1 size-4 shrink-0 text-gm-texto-tenue" aria-hidden />
-              </span>
-              {(plata && row.medios) || row.recibido != null ? (
-                <span className="mt-1.5 block pl-[42px] text-[12px] text-muted-foreground">
-                  {plata && row.medios ? textoMedios(row.medios) : ''}
-                  {row.recibido != null && <>{plata && row.medios ? ' · ' : ''}Entregó {formatImporte(row.recibido)} · vuelto {formatImporte(row.vuelto ?? 0)}</>}
-                </span>
-              ) : null}
-              <span className="mt-1 flex flex-wrap items-center justify-between gap-1 pl-[42px] text-[11px] text-muted-foreground">
-                <span className="truncate">{row.operador || 'Operador no registrado'}</span>
-                <span className="tabular-nums">{variosDias ? fechaHora(row.fecha) : horaDe(row.fecha)}</span>
-              </span>
-            </button>
-          );
-        })}
-      </AnimatedScrollList>
-      {!pending && !error && rows.length === 0 && (
-        <p className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
-          No hay movimientos para {miTurno && miTurnoId ? 'tu turno con ' : ''}estos filtros.
-        </p>
-      )}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {!pending && <CompactPagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} />}
+      {/* La hoja de filtros: se aplican al tocarlos; el botón dice cuántos quedan. */}
+      <ActionDialog open={verFiltros} onOpenChange={setVerFiltros}>
+        <ActionDialogContent>
+          <ActionDialogHeader title="Filtros" description={`${etiquetaPeriodo}${soloMiTurno && miTurno ? ' · mi turno' : ''}`} />
+          <ActionDialogBody className="gap-6">
+            <GrupoFiltros titulo="Período">
+              {PERIODOS.map((p) => <ChipFiltro key={p.id} activo={periodo === p.id} onClick={() => elegirPeriodo(p.id)}>{p.texto}</ChipFiltro>)}
+              <ChipFiltro activo={periodo === 'FECHAS'} onClick={() => elegirPeriodo('FECHAS')}>Elegir fechas</ChipFiltro>
+            </GrupoFiltros>
+            {periodoConFechas}
+            {miTurno && <Interruptor activo={soloMiTurno} onChange={setSoloMiTurno} className="w-full justify-start">Solo mi turno · desde {miTurno.desde}</Interruptor>}
+            <GrupoFiltros titulo="Tipo">
+              <ChipFiltro activo={!tipo} onClick={() => setTipo(null)}>Todos</ChipFiltro>
+              {tiposDeLaHoja.map((t) => <ChipFiltro key={t} activo={tipo === t} onClick={() => setTipo(tipo === t ? null : t)} cuenta={resumen ? porTipo[t] ?? 0 : undefined}>{TIPO_PLURAL[t]}</ChipFiltro>)}
+            </GrupoFiltros>
+            {cobro && (
+              <GrupoFiltros titulo="Medio de pago">
+                <ChipFiltro activo={!medio} onClick={() => setMedio(null)}>Todos</ChipFiltro>
+                {MEDIOS.map((m) => <ChipFiltro key={m.id} activo={medio === m.id} onClick={() => setMedio(medio === m.id ? null : m.id)}>{m.texto}</ChipFiltro>)}
+              </GrupoFiltros>
+            )}
+            <GrupoFiltros titulo="Correcciones">
+              <ChipFiltro activo={!correccion} onClick={() => setCorreccion(null)}>Todas</ChipFiltro>
+              {CORRECCIONES.map((c) => <ChipFiltro key={c.id} activo={correccion === c.id} onClick={() => setCorreccion(correccion === c.id ? null : c.id)}>{c.texto}</ChipFiltro>)}
+            </GrupoFiltros>
+            {isAdmin && operadores.length > 0 && (
+              <label className="block space-y-2">
+                <span className="text-[13px] font-bold uppercase tracking-[0.06em] text-muted-foreground">Operador</span>
+                <select className={selectClase} value={operadorId ?? ''} onChange={(e) => setOperadorId(e.target.value || null)}>
+                  <option value="">Todos</option>
+                  {operadores.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                </select>
+              </label>
+            )}
+          </ActionDialogBody>
+          <ActionDialogFooter>
+            <ActionDialogSecondaryButton onClick={limpiar}>Limpiar</ActionDialogSecondaryButton>
+            <ActionDialogPrimaryButton onClick={() => setVerFiltros(false)}>
+              {pending ? 'Buscando…' : total === 1 ? 'Ver 1 movimiento' : `Ver ${total} movimientos`}
+            </ActionDialogPrimaryButton>
+          </ActionDialogFooter>
+        </ActionDialogContent>
+      </ActionDialog>
 
       <DetalleMovimiento
         operacion={abierta}
@@ -304,6 +461,119 @@ export function MovimientosHistorial({ today, isAdmin, turnos, cobro, comprobant
         onListo={() => setRecarga((n) => n + 1)}
       />
     </section>
+  );
+}
+
+function GrupoFiltros({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="space-y-2.5">
+      <legend className="mb-2.5 text-[13px] font-bold uppercase tracking-[0.06em] text-muted-foreground">{titulo}</legend>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </fieldset>
+  );
+}
+
+// Movimientos, lo cobrado por medio y lo que espera revisión (lo toca y filtra esas).
+function ResumenPeriodo({ resumen, cobro, onRevisar }: { resumen: ResumenHistorial; cobro: boolean; onRevisar: () => void }) {
+  const entradas = resumen.porTipo.ENTRADA ?? 0;
+  const salidas = resumen.porTipo.SALIDA ?? 0;
+  const medios = MEDIOS.filter((m) => resumen.cobrado.porMedio[m.id]);
+  const etiqueta = 'text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground';
+  return (
+    <section aria-label="Resumen del período">
+      {/* Celular: una franja. */}
+      <div className="flex flex-col gap-2 sm:hidden">
+        <div className="flex items-baseline justify-between gap-3 rounded-2xl border border-gm-line bg-card px-4 py-3">
+          <span className="text-sm text-gm-texto-2"><strong className="font-display text-[22px] font-semibold text-foreground">{resumen.total}</strong> {resumen.total === 1 ? 'movimiento' : 'movimientos'}</span>
+          {cobro && <span className="gm-mono text-[17px] font-bold">{formatImporte(resumen.cobrado.total)}</span>}
+        </div>
+        {resumen.pendientes > 0 && (
+          <button type="button" onClick={onRevisar} className={cn('flex min-h-11 items-center justify-between rounded-2xl border-[1.5px] border-gm-atencion/45 bg-gm-atencion/[0.08] px-4 text-left text-sm font-semibold', enfoque)}>
+            <span><span className="font-bold text-gm-atencion">{resumen.pendientes}</span> {resumen.pendientes === 1 ? 'corrección espera' : 'correcciones esperan'} revisión</span>
+            <ChevronRight className="size-4 text-gm-atencion" aria-hidden />
+          </button>
+        )}
+      </div>
+      {/* Computadora: tres tarjetas. */}
+      <div className={cn('hidden gap-3 sm:grid', cobro ? 'grid-cols-3' : 'grid-cols-2')}>
+        <div className="rounded-[18px] border border-gm-line bg-card px-[18px] py-4">
+          <p className={etiqueta}>Movimientos</p>
+          <p className="mt-1.5 font-display text-[30px] font-semibold leading-none">{resumen.total}</p>
+          <p className="mt-1.5 text-[13px] text-muted-foreground">{entradas} {entradas === 1 ? 'entrada' : 'entradas'} · {salidas} {salidas === 1 ? 'salida' : 'salidas'}</p>
+        </div>
+        {cobro && (
+          <div className="rounded-[18px] border border-gm-line bg-card px-[18px] py-4">
+            <p className={etiqueta}>Cobrado</p>
+            <p className="mt-1.5 font-display text-[30px] font-semibold leading-none">{formatImporte(resumen.cobrado.total)}</p>
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gm-texto-2">
+              {medios.length ? medios.map((m) => (
+                <span key={m.id} className="inline-flex items-center gap-1.5"><span aria-hidden className={cn('size-[7px] rounded-full', m.punto)} />{m.corto} {formatImporte(resumen.cobrado.porMedio[m.id]!)}</span>
+              )) : <span className="text-muted-foreground">Sin cobros</span>}
+            </div>
+          </div>
+        )}
+        {resumen.pendientes > 0 ? (
+          <button type="button" onClick={onRevisar} className={cn('rounded-[18px] border-[1.5px] border-gm-atencion/45 bg-gm-atencion/[0.08] px-[18px] py-4 text-left transition-colors hover:bg-gm-atencion/[0.12]', enfoque)}>
+            <span className="block text-xs font-semibold uppercase tracking-[0.08em] text-gm-atencion">Para revisar</span>
+            <span className="mt-1.5 block font-display text-[30px] font-semibold leading-none">{resumen.pendientes}</span>
+            <span className="mt-1.5 block text-[13px] text-gm-texto-2">{resumen.pendientes === 1 ? 'Corrección esperando' : 'Correcciones esperando'} a administración →</span>
+          </button>
+        ) : (
+          <div className="rounded-[18px] border border-gm-line bg-card px-[18px] py-4">
+            <p className={etiqueta}>Para revisar</p>
+            <p className="mt-1.5 font-display text-[30px] font-semibold leading-none text-muted-foreground">0</p>
+            <p className="mt-1.5 text-[13px] text-muted-foreground">Nada esperando revisión</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function FilaMovimiento({ f, primero, variosDias, vehiculo, onAbrir }: { f: MovimientoHistorial; primero: boolean; variosDias: boolean; vehiculo: string | null; onAbrir: () => void }) {
+  const Icono = ICONO[f.tipo];
+  const plata = f.importe != null && f.importe !== 0;
+  const titulo = tituloDe(f);
+  const estado = estadoDe(f);
+  const detalle = detalleDe(f, vehiculo);
+  const hora = variosDias ? fechaHora(f.fecha) : horaDe(f.fecha);
+  const medios = MEDIOS.filter((m) => f.medios?.[m.id]);
+  return (
+    <li className={cn(!primero && 'border-t border-gm-line')}>
+      <button type="button" onClick={onAbrir} aria-label={`${titulo} de ${f.identificacion}, ${hora}`}
+        className={cn('flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-gm-yellow/[0.04] sm:grid sm:grid-cols-[52px_40px_minmax(0,1fr)_auto_18px] sm:gap-4 sm:px-4 sm:py-3.5', 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gm-yellow')}>
+        <span className="gm-mono hidden text-sm text-muted-foreground sm:block">{variosDias ? horaDe(f.fecha) : hora}</span>
+        <span aria-hidden className={cn('hidden size-10 place-items-center rounded-full sm:grid', plata ? 'bg-gm-yellow/[0.14] text-gm-yellow' : 'bg-gm-surface-3 text-gm-texto-2')}>
+          <Icono className="size-[18px]" strokeWidth={f.tipo === 'ENTRADA' || f.tipo === 'SALIDA' ? 2.4 : 2} />
+        </span>
+        <span className="flex min-w-0 flex-1 items-center gap-3 sm:gap-3.5">
+          {f.patente ? <PlateChip plate={f.patente} size="sm" /> : <span className="gm-mono min-w-[88px] shrink-0 text-sm font-bold">{f.identificacion}</span>}
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-[15px] font-bold">{titulo}</span>
+              {estado && <Insignia {...estado} />}
+            </span>
+            <span className="mt-0.5 line-clamp-2 text-[13px] text-muted-foreground sm:line-clamp-1">
+              {detalle}<span className="sm:hidden">{detalle ? ' · ' : ''}<span className="gm-mono">{hora}</span></span>
+            </span>
+          </span>
+        </span>
+        <span className="flex shrink-0 flex-col items-end gap-1.5">
+          {plata ? <span className="gm-mono text-[15px] font-bold sm:text-base">{f.importe! < 0 ? '−' : ''}{formatImporte(Math.abs(f.importe!))}</span>
+            : f.tipo === 'SALIDA' ? <span className="text-[13px] text-muted-foreground">Sin cobro</span> : null}
+          {plata && medios.length > 0 && (
+            <span className="hidden gap-1.5 sm:flex">
+              {medios.map((m) => (
+                <span key={m.id} className="inline-flex h-[22px] items-center gap-1.5 rounded-full bg-gm-surface-2 px-2 text-xs font-semibold text-gm-texto-2">
+                  <span aria-hidden className={cn('size-[7px] rounded-full', m.punto)} />{m.corto}
+                </span>
+              ))}
+            </span>
+          )}
+        </span>
+        <ChevronRight className="hidden size-[18px] text-gm-texto-tenue sm:block" aria-hidden />
+      </button>
+    </li>
   );
 }
 

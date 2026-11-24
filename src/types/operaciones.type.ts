@@ -22,6 +22,20 @@ export type MovimientoHistorial = {
   correccion: Exclude<EstadoCorreccionFiltro, 'SIN'> | null;
   // Pases: «Alta» o «Retiro». Correcciones: su tipo. Devoluciones: el motivo.
   detalle: string | null;
+  // Salidas: cuánto estuvo, en minutos.
+  duracion?: number | null;
+  // La patente (null si es tarjeta o sin patente) y el código del tipo de vehículo.
+  patente?: string | null;
+  vehiculo?: string | null;
+};
+
+// El resumen del período con los mismos filtros: `porTipo` sin el filtro de tipo (las cantidades de
+// los filtros), lo cobrado por medio y las correcciones esperando revisión.
+export type ResumenHistorial = {
+  total: number;
+  porTipo: Partial<Record<TipoMovimientoHistorial, number>>;
+  cobrado: { total: number; porMedio: Partial<Record<MedioHistorial | string, number>> };
+  pendientes: number;
 };
 
 export type FiltrosHistorial = {
@@ -40,6 +54,7 @@ export type HistorialMovimientos = {
   data: MovimientoHistorial[];
   meta: { totalItems: number; currentPage?: number; totalPages?: number; itemsPerPage?: number };
   filtros: { desde: string; hasta: string };
+  resumen?: ResumenHistorial;
 };
 
 export type TipoCorreccion = 'IDENTIFICACION' | 'MEDIO_PAGO' | 'RECIBIDO_VUELTO' | 'VEHICULO' | 'OTRO';

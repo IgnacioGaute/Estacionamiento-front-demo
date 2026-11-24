@@ -1,25 +1,33 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+// Comprobantes: las estadías del día con su comprobante de entrada y, si ya salieron, el de salida,
+// para reenviarlos o imprimirlos. Mismo lenguaje que Movimientos (filtros-historial.tsx): buscador,
+// el día en un toque (Hoy · Ayer · Otro día) y el estado con su cantidad (Todas · En la playa ·
+// Salieron). Cada estadía muestra la chapa, cuándo entró y salió y quién lo registró.
+
+import { useContext, useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { receiptHistoryAction } from '@/actions/tickets/receipt-history.action';
-import { CompactPagination } from '@/components/compact-pagination';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { AnimatedScrollList } from '@/components/animated-scroll-list';
-import { CalendarDays, ReceiptText } from 'lucide-react';
+import { CalendarDays, Receipt, ReceiptText, Search } from 'lucide-react';
+import { receiptHistoryAction, type ConteoComprobantes, type FilaComprobante } from '@/actions/tickets/receipt-history.action';
 import { AppDatePicker } from '@/components/app-date-picker';
-import { DataLoading } from '@/components/ui/data-loading';
+import { PlateChip } from '@/components/plate-chip';
+import { VehicleTypeLabelsContext } from '@/components/vehicle-type-badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { ComprobantesCargando } from './cargando';
+import { BuscadorHistorial, ChipFiltro, EstadoVacio, Segmentado, VerMas } from './filtros-historial';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 import type { TicketRegistrationForDay } from '@/types/ticket-registration-for-day.type';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-const PAGE_SIZE = 20;
+const enfoque = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow';
+const diaLegible = (dia: string) => new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' }).format(dayjs(dia).toDate());
+
+type Dia = 'HOY' | 'AYER' | 'OTRO';
+type Estado = 'TODAS' | 'ADENTRO' | 'SALIO';
 
 export function DepartureHistory({ registrations, dailyRegistrations, onReceipt, today, barcodeTicketsEnabled = true }: {
   today: string;
@@ -28,52 +36,146 @@ export function DepartureHistory({ registrations, dailyRegistrations, onReceipt,
   dailyRegistrations: TicketRegistrationForDay[];
   onReceipt: (id: string, kind: 'ENTRY' | 'EXIT') => void;
 }) {
+  const tiposVehiculo = useContext(VehicleTypeLabelsContext);
+  const [dia, setDia] = useState<Dia>('HOY');
+  const [otroDia, setOtroDia] = useState(today);
+  const ayer = dayjs(today).subtract(1, 'day').format('YYYY-MM-DD');
+  const date = dia === 'HOY' ? today : dia === 'AYER' ? ayer : otroDia;
   const [query, setQuery] = useState('');
-  const [selectedDate, setDate] = useState<string | null>(null);
-  const date = selectedDate ?? today;
-  const [page, setPage] = useState(0);
-  const [rows, setRows] = useState<{ id: string; identification: string; type: string; departed: boolean; time: string; entryOperatorName: string | null; exitOperatorName: string | null }[]>([]);
+  const [estado, setEstado] = useState<Estado>('TODAS');
+  const [page, setPage] = useState(1);
+  const [rows, setRows] = useState<FilaComprobante[]>([]);
   const [total, setTotal] = useState(0);
+  const [conteo, setConteo] = useState<ConteoComprobantes | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [recarga, setRecarga] = useState(0);
+
+  // Una entrada o salida nueva vuelve a pedir la primera página.
+  useEffect(() => { setRecarga((n) => n + 1); }, [registrations, dailyRegistrations]);
+
+  const clave = `${date}|${query}|${estado}|${recarga}`;
+  const claveRef = useRef(clave);
   useEffect(() => {
-    let current = true;
+    if (claveRef.current !== clave) {
+      claveRef.current = clave;
+      if (page !== 1) { setPage(1); return; }
+    }
+    let vigente = true;
     setPending(true);
     const timer = setTimeout(() => {
-      receiptHistoryAction(date, query, page + 1).then(result => {
-        if (!current) return;
-        setRows(result.data); setTotal(result.meta.totalItems); setError('');
-      }).catch(() => { if (current) { setRows([]); setError('No se pudieron cargar los comprobantes.'); } })
-        .finally(() => { if (current) setPending(false); });
-    }, 250);
-    return () => { current = false; clearTimeout(timer); };
-  }, [date, query, page, registrations, dailyRegistrations]);
+      receiptHistoryAction(date, query, page, estado === 'TODAS' ? undefined : estado).then((result) => {
+        if (!vigente) return;
+        setTotal(result.meta.totalItems);
+        if (result.conteo) setConteo(result.conteo);
+        setRows((previas) => page === 1 ? result.data : [...previas, ...result.data.filter((r) => !previas.some((p) => p.id === r.id))]);
+        setError('');
+      }).catch(() => { if (vigente) { if (page === 1) setRows([]); setError('No se pudieron cargar los comprobantes.'); } })
+        .finally(() => { if (vigente) setPending(false); });
+    }, page === 1 ? 250 : 0);
+    return () => { vigente = false; clearTimeout(timer); };
+  }, [clave, date, query, estado, page]);
 
-  return <section aria-label="Comprobantes" className="min-w-0 space-y-3">
-      <div className="flex min-w-0 items-center gap-2 rounded-xl border border-border bg-secondary/20 p-2">
-        <AppDatePicker value={date} title="Fecha de comprobantes" max={today} onChange={value => { setDate(value); setPage(0); }} trigger={
-          <Button type="button" size="icon" variant="outline" aria-label="Elegir fecha de comprobantes" className="size-10 shrink-0 rounded-lg border-gm-yellow/30 text-gm-yellow hover:bg-gm-yellow/10"><CalendarDays className="size-4" /></Button>
-        } />
-        <div className="min-w-0 flex-1"><p className="text-[11px] text-muted-foreground">Fecha de entrada o salida</p><p className="truncate text-sm font-semibold capitalize tabular-nums">{new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short', year: 'numeric' }).format(dayjs(date).toDate())}</p></div>
-        {date !== today && <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={() => { setDate(null); setPage(0); }}>Hoy</Button>}
-      </div>
-      <div className="grid gap-3">
-        <label className="space-y-1 text-xs text-muted-foreground"><span>{barcodeTicketsEnabled ? 'Patente, ticket o apellido' : 'Patente o apellido'}</span><Input value={query} placeholder="Buscar comprobantes…" onChange={e => { setQuery(e.target.value); setPage(0); }} /></label>
-      </div>
-      <p role="status" className="text-xs text-muted-foreground">{pending ? '…' : total} estadías · {date === today ? 'Hoy' : date.split('-').reverse().join('/')}</p>
-      <AnimatedScrollList key={`${date}-${query}`} label="Comprobantes: desplazá para ver más">
-        {pending ? (rows.length ? <DataLoading label="Cargando comprobantes…" /> : <ComprobantesCargando />) : rows.map(row => <div key={row.id} className="min-w-0 rounded-xl border border-border bg-secondary/40 p-3 transition-colors hover:border-gm-yellow/40 hover:bg-gm-yellow/5">
-          <div className="flex min-w-0 items-start gap-2.5"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-gm-yellow/10 text-gm-yellow"><ReceiptText className="size-4" /></span><div className="min-w-0 flex-1"><p className="break-words text-base font-semibold leading-tight tracking-wide">{row.identification}</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{row.type}</p></div></div>
-          <p className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] text-muted-foreground"><span>{row.departed ? 'Salida registrada' : 'En la playa'}</span>{row.time && <span className="tabular-nums">{row.time}</span>}</p>
-          <div className="mt-2 space-y-0.5 text-xs text-muted-foreground"><p>Entrada: {row.entryOperatorName || 'Operador no registrado'}</p>{row.departed && <p>Salida: {row.exitOperatorName || 'Operador no registrado'}</p>}</div>
-          <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border pt-2">
-            <Button variant="ghost" size="sm" className="min-h-10 w-full min-w-0 rounded-lg bg-background/40 text-xs text-gm-yellow hover:bg-gm-yellow/10" onClick={() => onReceipt(row.id, 'ENTRY')} aria-label={`Abrir comprobante de entrada de ${row.identification}`}>Entrada</Button>
-            {row.departed && <Button variant="ghost" size="sm" className="min-h-10 w-full min-w-0 rounded-lg bg-background/40 text-xs text-gm-yellow hover:bg-gm-yellow/10" onClick={() => onReceipt(row.id, 'EXIT')} aria-label={`Abrir comprobante de salida de ${row.identification}`}>Salida</Button>}
+  const nombreVehiculo = (code?: string | null) => {
+    if (!code) return null;
+    const conocido = tiposVehiculo.find((t) => t.code === code)?.name;
+    if (conocido) return conocido;
+    const texto = code.replace(/_/g, ' ').toLocaleLowerCase('es-AR');
+    return texto.charAt(0).toLocaleUpperCase('es-AR') + texto.slice(1);
+  };
+  const conFiltro = !!query.trim() || estado !== 'TODAS';
+
+  return (
+    <section aria-label="Comprobantes" className="min-w-0 space-y-4">
+      <div className="space-y-3 rounded-[22px] border border-gm-line bg-card p-3 sm:p-4">
+        <BuscadorHistorial value={query} onChange={setQuery} etiqueta="Buscar comprobantes"
+          placeholder={barcodeTicketsEnabled ? 'Buscar patente, ticket o apellido' : 'Buscar patente o apellido'} />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Segmentado etiqueta="Día" valor={dia} onChange={setDia} opciones={[
+            { id: 'HOY', texto: 'Hoy' }, { id: 'AYER', texto: 'Ayer' },
+            { id: 'OTRO', texto: <><CalendarDays className="size-4" aria-hidden />Otro día</> },
+          ]} />
+          {dia === 'OTRO' && (
+            <AppDatePicker value={otroDia} title="Fecha de comprobantes" max={today} onChange={setOtroDia} trigger={
+              <button type="button" className={cn('inline-flex min-h-10 items-center gap-2 rounded-xl border-[1.5px] border-gm-line-strong px-3 text-sm font-semibold hover:border-gm-yellow/50', enfoque)}>
+                <span className="text-muted-foreground">Día</span><span className="gm-mono">{diaLegible(otroDia)}</span>
+              </button>
+            } />
+          )}
+          <div className="hidden flex-1 sm:block" />
+          <div role="group" aria-label="Estado" className="flex flex-wrap gap-2">
+            <ChipFiltro activo={estado === 'TODAS'} onClick={() => setEstado('TODAS')} cuenta={conteo?.todas}>Todas</ChipFiltro>
+            <ChipFiltro activo={estado === 'ADENTRO'} onClick={() => setEstado(estado === 'ADENTRO' ? 'TODAS' : 'ADENTRO')} cuenta={conteo?.adentro}>En la playa</ChipFiltro>
+            <ChipFiltro activo={estado === 'SALIO'} onClick={() => setEstado(estado === 'SALIO' ? 'TODAS' : 'SALIO')} cuenta={conteo?.salieron}>Salieron</ChipFiltro>
           </div>
-        </div>)}
-      </AnimatedScrollList>
-      {!pending && !error && rows.length === 0 && <p className="rounded-xl border border-dashed border-border p-5 text-center text-sm text-muted-foreground">No hay comprobantes para esta fecha y búsqueda.</p>}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {!pending && <CompactPagination page={page} total={total} pageSize={PAGE_SIZE} onChange={setPage} />}
-  </section>;
+        </div>
+      </div>
+
+      {pending && !rows.length ? <ComprobantesCargando />
+        : error && !rows.length ? <p role="alert" className="rounded-xl border border-destructive/40 p-4 text-sm text-destructive">{error}</p>
+        : !rows.length ? (
+          conFiltro ? (
+            <EstadoVacio icono={<Search className="size-7" />} titulo="No hay comprobantes con esta búsqueda" texto={dia === 'HOY' ? 'Hoy' : diaLegible(date)}>
+              <Button type="button" variant="outline" className="min-h-12 rounded-2xl" onClick={() => { setQuery(''); setEstado('TODAS'); }}>Quitar filtros</Button>
+            </EstadoVacio>
+          ) : (
+            <EstadoVacio icono={<ReceiptText className="size-7" />} titulo={dia === 'HOY' ? 'Todavía no hay comprobantes hoy' : 'No hay comprobantes de ese día'}
+              texto="Cada entrada y salida deja su comprobante para reenviarlo o imprimirlo.">
+              {dia === 'HOY' && <Button type="button" variant="outline" className="min-h-12 rounded-2xl" onClick={() => setDia('AYER')}>Ver ayer</Button>}
+            </EstadoVacio>
+          )
+        ) : (
+          <ul className={cn('space-y-2.5 transition-opacity', pending && page === 1 && 'opacity-60')} aria-busy={pending}>
+            {rows.map((row) => <FilaDeComprobante key={row.id} row={row} vehiculo={nombreVehiculo(row.vehicleType)} onReceipt={onReceipt} />)}
+          </ul>
+        )}
+      {error && rows.length > 0 && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      <VerMas mostrando={rows.length} total={total} cargando={pending && page > 1} onClick={() => setPage((p) => p + 1)} />
+    </section>
+  );
+}
+
+function FilaDeComprobante({ row, vehiculo, onReceipt }: { row: FilaComprobante; vehiculo: string | null; onReceipt: (id: string, kind: 'ENTRY' | 'EXIT') => void }) {
+  const pase = row.type !== 'Por hora';
+  const modalidad = pase ? 'día, semana o mes' : 'por hora';
+  const titulo = vehiculo ? `${vehiculo} · ${modalidad}` : modalidad.charAt(0).toUpperCase() + modalidad.slice(1);
+  // Las respuestas de versiones anteriores del servidor solo traen `time` (la última hora).
+  const entrada = row.entryTime ?? (row.departed ? null : row.time?.slice(0, 5));
+  const salida = row.exitTime ?? (row.departed ? row.time?.slice(0, 5) : null);
+  const estado = row.departed
+    ? <span className="inline-flex h-6 items-center rounded-full bg-gm-surface-2 px-2.5 text-xs font-bold text-gm-texto-2">{pase ? 'Se retiró' : 'Salió'}</span>
+    : <span className="inline-flex h-6 items-center rounded-full bg-sky-400/[0.14] px-2.5 text-xs font-bold text-sky-300">En la playa</span>;
+  return (
+    <li className="grid grid-cols-1 gap-3 rounded-[18px] border border-gm-line bg-card p-3.5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-[18px] sm:px-4">
+      <div className="flex items-center justify-between gap-3 sm:contents">
+        {row.patente ? <PlateChip plate={row.patente} size="md" /> : <span className="gm-mono min-w-[124px] text-base font-bold">{row.identification}</span>}
+        <span className="sm:hidden">{estado}</span>
+      </div>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[15px] font-bold">{titulo}</span>
+          <span className="hidden sm:inline-flex">{estado}</span>
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-muted-foreground">
+          <span>Entró {entrada && <strong className="gm-mono font-bold text-gm-texto-2">{entrada}</strong>} · {row.entryOperatorName || 'operador no registrado'}</span>
+          {row.departed && <>
+            <span aria-hidden className="text-gm-line-strong">→</span>
+            <span>{pase ? 'Se retiró' : 'Salió'} {salida && <strong className="gm-mono font-bold text-gm-texto-2">{salida}</strong>} · {row.exitOperatorName || 'operador no registrado'}</span>
+          </>}
+        </div>
+      </div>
+      <div className={cn('grid gap-2 border-t border-gm-line pt-3 sm:flex sm:border-0 sm:pt-0', row.departed ? 'grid-cols-2' : 'grid-cols-1')}>
+        <button type="button" onClick={() => onReceipt(row.id, 'ENTRY')} aria-label={`Abrir comprobante de entrada de ${row.identification}`}
+          className={cn('inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border-[1.5px] border-gm-line-strong px-3.5 text-sm font-semibold transition-colors hover:border-gm-yellow/50', enfoque)}>
+          <ReceiptText className="size-4 text-gm-yellow" aria-hidden />Entrada
+        </button>
+        {row.departed && (
+          <button type="button" onClick={() => onReceipt(row.id, 'EXIT')} aria-label={`Abrir comprobante de salida de ${row.identification}`}
+            className={cn('inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gm-yellow px-3.5 text-sm font-bold text-gm-ink transition-colors hover:bg-gm-yellow-deep', enfoque)}>
+            <Receipt className="size-4" aria-hidden />Salida
+          </button>
+        )}
+      </div>
+    </li>
+  );
 }
