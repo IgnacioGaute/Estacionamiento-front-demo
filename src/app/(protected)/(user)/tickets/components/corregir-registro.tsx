@@ -50,7 +50,7 @@ export const TIPOS_CORRECCION: Record<TipoCorreccion, { titulo: string; ayuda: s
 const MOTIVOS: Record<TipoCorreccion, string[]> = {
   IDENTIFICACION: ['Error de tipeo', 'La cámara leyó mal'],
   MEDIO_PAGO: ['Pagó con otro medio', 'Pago mixto mal cargado'],
-  RECIBIDO_VUELTO: ['Cargué mal lo que entregó', 'Toqué «Justo» por error'],
+  RECIBIDO_VUELTO: ['Cargué mal lo que entregó', 'No se había indicado'],
   VEHICULO: ['Elegí otro de la lista'],
   OTRO: [],
 };
@@ -202,6 +202,7 @@ export function CorregirRegistro({ operacion, open, onOpenChange, cobroReciente 
         break;
       case 'RECIBIDO_VUELTO': {
         if (detalle.tipo === 'ESTADIA' && !cobro) return 'Elegí el cobro';
+        if (recibido === null) return 'Tocá «Justo» o con cuánto pagó';
         const f = faltaDelEfectivo(aplicadoEfectivo, recibido);
         if (f) return f;
         if (figura && recibido === figura.recibido) return 'Es lo mismo que figura';
@@ -419,7 +420,7 @@ export function CorregirRegistro({ operacion, open, onOpenChange, cobroReciente 
                   <p className="text-[13px] text-muted-foreground">
                     {figura?.recibido == null ? 'No se indicó con cuánto pagó.' : <>Figura: entregó <strong className="gm-mono text-foreground">{formatImporte(figura.recibido)}</strong> · vuelto <strong className="gm-mono text-foreground">{formatImporte(figura.vuelto ?? 0)}</strong></>}
                   </p>
-                  <EfectivoRecibido aplicado={aplicadoEfectivo} recibido={recibido} onChange={setRecibido} disabled={pending} titulo="¿Con cuánto pagó de verdad?" />
+                  <EfectivoRecibido obligatorio aplicado={aplicadoEfectivo} recibido={recibido} onChange={setRecibido} disabled={pending} titulo="¿Con cuánto pagó de verdad?" />
                   <p className="text-[12px] text-muted-foreground">Es lo declarado: no cambia lo que entró a la caja. Si el vuelto que se dio fue otro, aparece al contar.</p>
                 </div>
               )}

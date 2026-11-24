@@ -384,8 +384,9 @@ export function CloseTicketPanel({
   const [discountMode, setDiscountMode] = useState<'AMOUNT' | 'ALL' | 'PREV' | 'NONE'>('AMOUNT');
   // El detalle se despliega junto al resumen sin ocultar los medios de pago.
   const [verCalculo, setVerCalculo] = useState(false);
-  // Con cuánto paga en efectivo («Justo» o el importe que entrega): se manda con el cobro y el
-  // servidor calcula el vuelto. Sin elegirlo, o si no alcanza, no se confirma el efectivo.
+  // Con cuánto paga en efectivo («Calcular vuelto», opcional): si se indica, se manda con el cobro y
+  // el servidor calcula el vuelto; si no alcanza, no se confirma. Sin indicarlo se cobra igual y
+  // queda sin informar.
   const [recibido, setRecibido] = useState<number | null>(null);
   // Pago híbrido: lo que entrega en efectivo; la transferencia es el resto del saldo.
   const [efectivoHibrido, setEfectivoHibrido] = useState('');
@@ -514,8 +515,8 @@ export function CloseTicketPanel({
     if (!summary) return;
     const id = summary.registration.id;
     const efectivo = Number(efectivoHibrido);
-    const entregado = recibidoHibrido;
-    if (entregado === null) return;
+    // Con cuánto paga es opcional: sin calcular el vuelto queda sin informar.
+    const entregado = recibidoHibrido ?? undefined;
     startTransition(async () => {
       const r = await pagoParcialEfectivoAction(id, { importe: efectivo, expectedPrice: summary.previewBracket.price, expectedCollected: summary.totalCollectedSoFar, efectivoRecibido: entregado });
       if (r.error || !r.summary) {
@@ -676,6 +677,8 @@ export function CloseTicketPanel({
   const handleClose = (closeType: 'PAYMENT' | 'NO_CHARGE', metodo?: 'CASH' | 'TRANSFER', refundMetodo?: 'CASH' | 'TRANSFER', pagos?: { metodo: 'CASH' | 'TRANSFER'; importe: number }[], efectivoRecibido?: number) => {
     if (!summary) return;
     const cobrado = saldo;
+    // Hubo efectivo (todo o una parte): la franja del último cobro lo muestra, con o sin vuelto.
+    const conEfectivo = closeType === 'PAYMENT' && (metodo === 'CASH' || !!pagos?.some((p) => p.metodo === 'CASH'));
     const medioCobro = pagos ? 'efectivo + transferencia' : 'en efectivo';
     startTransition(async () => {
       const data = await closeRegistrationAction(summary.registration.id, {
@@ -698,8 +701,9 @@ export function CloseTicketPanel({
         const errorMessage = typeof data?.error === 'string' ? data.error : data?.error?.message;
         await resolverTrasError(id, errorMessage ?? 'Error desconocido');
       } else {
-        // Solo cuando se cobró efectivo: el servidor devuelve lo que quedó guardado.
-        if (efectivoRecibido !== undefined) anunciarCobro(data.cobroEfectivo, { total: cobrado, medio: medioCobro });
+        // Solo cuando se cobró efectivo: el servidor devuelve lo que quedó guardado (recibido y
+        // vuelto sin informar si no se calculó el vuelto).
+        if (conEfectivo) anunciarCobro(data.cobroEfectivo, { total: cobrado, medio: medioCobro });
         toast.success('Salida registrada exitosamente');
         if (data.registrationId) setReceiptId(data.registrationId);
         onSalidaRegistrada?.(data.registrationId ?? id);
@@ -730,13 +734,13 @@ export function CloseTicketPanel({
 
   const confirmarMedio = () => {
     if (paymentMethod === 'CASH') {
-      if (faltaEfectivo || recibido === null) return;
-      handleClose('PAYMENT', 'CASH', undefined, undefined, recibido);
+      if (faltaEfectivo) return;
+      handleClose('PAYMENT', 'CASH', undefined, undefined, recibido ?? undefined);
     } else if (paymentMethod === 'TRANSFER') handleClose('PAYMENT', paymentMethod);
     else if (paymentMethod === 'AMBOS') {
-      if (errorHibrido || faltaEfectivoHibrido || recibidoHibrido === null) return;
+      if (errorHibrido || faltaEfectivoHibrido) return;
       // Con transferencia ya verificada se cierra todo junto; QR y alias se acreditan después.
-      if (restoPor === 'TRANSFER') handleClose('PAYMENT', undefined, undefined, [{ metodo: 'CASH', importe: efectivoParte }, { metodo: 'TRANSFER', importe: restoParte }], recibidoHibrido);
+      if (restoPor === 'TRANSFER') handleClose('PAYMENT', undefined, undefined, [{ metodo: 'CASH', importe: efectivoParte }, { metodo: 'TRANSFER', importe: restoParte }], recibidoHibrido ?? undefined);
       else cobrarEfectivoYSeguir(restoPor);
     } else if (paymentMethod === 'QR') generarQr();
     else if (paymentMethod === 'ALIAS') iniciarAlias();
@@ -791,7 +795,7 @@ export function CloseTicketPanel({
     : efectivoParte >= saldo
       ? 'El efectivo cubre todo: elegí «Efectivo».'
       : null;
-  // Lo que falta del efectivo para poder confirmar (con cuánto paga, o que alcance).
+  // Lo que falta del efectivo para poder confirmar: solo si se calculó el vuelto con un importe que no alcanza.
   const faltaEfectivo = faltaDelEfectivo(saldo, recibido);
   const faltaEfectivoHibrido = errorHibrido ? null : faltaDelEfectivo(efectivoParte, recibidoHibrido);
   // Entregó menos que el saldo: se pasa al pago mixto con lo entregado en efectivo y el resto aparte.
@@ -867,7 +871,7 @@ export function CloseTicketPanel({
       );
     if (saldo > 0) {
       const texto: Record<Medio, { accion: string; detalle: string }> = {
-        CASH: { accion: 'Cobrar y registrar salida', detalle: `${formatImporte(saldo)} en efectivo · vuelto ${formatImporte((recibido ?? saldo) - saldo)}` },
+        CASH: { accion: 'Cobrar y registrar salida', detalle: `${formatImporte(saldo)} en efectivo${recibido !== null && recibido >= saldo ? ` · vuelto ${formatImporte(recibido - saldo)}` : ''}` },
         TRANSFER: { accion: 'Cobrar y registrar salida', detalle: `${formatImporte(saldo)} por transferencia` },
         QR: { accion: 'Mostrar el QR', detalle: `${formatImporte(saldo)} · se acredita solo` },
         ALIAS: { accion: 'Esperar la transferencia', detalle: `${formatImporte(saldo)} al alias` },
@@ -1213,7 +1217,7 @@ export function CloseTicketPanel({
                           </div>
                           {/* Los billetes que entrega por la parte en efectivo: el vuelto es contra esa parte. */}
                           {!errorHibrido && efectivoParte > 0 && (
-                            <EfectivoRecibido titulo="¿Con cuánto paga el efectivo?" aplicado={efectivoParte} recibido={recibidoHibrido} onChange={setRecibidoHibrido} disabled={isPending} />
+                            <EfectivoRecibido aplicado={efectivoParte} recibido={recibidoHibrido} onChange={setRecibidoHibrido} disabled={isPending} />
                           )}
                         </>) : paymentMethod === 'CASH' ? (
                           <EfectivoRecibido aplicado={saldo} recibido={recibido} onChange={setRecibido} disabled={isPending} onCobrarResto={cobrarRestoConOtroMedio} />

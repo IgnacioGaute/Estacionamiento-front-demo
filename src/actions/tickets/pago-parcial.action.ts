@@ -11,8 +11,9 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // La parte en efectivo de un pago híbrido cuyo resto va por QR o alias: se registra sin la salida
 // y devuelve el resumen con el saldo que queda, que es lo que piden después el QR o el alias.
-// `efectivoRecibido`: los billetes que entregó por esta parte; el servidor devuelve el vuelto.
-export async function pagoParcialEfectivoAction(id: string, valores: { importe: number; expectedPrice: number; expectedCollected: number; efectivoRecibido: number }): Promise<{ summary?: CloseSummary; cobroEfectivo?: CobroEfectivoConfirmado | null; error?: string; code?: string }> {
+// `efectivoRecibido` (opcional, «Calcular vuelto»): los billetes que entregó por esta parte; el
+// servidor devuelve el vuelto. Sin el dato queda sin informar.
+export async function pagoParcialEfectivoAction(id: string, valores: { importe: number; expectedPrice: number; expectedCollected: number; efectivoRecibido?: number }): Promise<{ summary?: CloseSummary; cobroEfectivo?: CobroEfectivoConfirmado | null; error?: string; code?: string }> {
   if (!Number.isInteger(valores.importe) || valores.importe <= 0) return { error: 'Ingresá cuánto entrega en efectivo.' };
   try {
     const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/pago-parcial`, {

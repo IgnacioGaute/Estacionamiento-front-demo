@@ -182,7 +182,9 @@ test('pase: lo que entregó se indica de nuevo, sin preelegir, y no acepta lo mi
   abrir({ operacion: { tipo: 'PASE', id: 'pase-1' } });
   fireEvent.click(await screen.findByRole('button', { name: /Recibido y vuelto/ }));
   expect(screen.getByText(/Figura: entregó/)).toHaveTextContent(/10\.000.*vuelto.*2\.000/);
-  expect(primario()).toHaveTextContent('Tocá «Justo» o con cuánto paga');
+  // Acá lo recibido es el dato que se corrige: es obligatorio y está «Justo».
+  expect(screen.getByRole('button', { name: 'Justo' })).toBeInTheDocument();
+  expect(primario()).toHaveTextContent('Tocá «Justo» o con cuánto pagó');
   fireEvent.click(screen.getByRole('button', { name: '10.000' }));
   expect(primario()).toHaveTextContent('Es lo mismo que figura');
   fireEvent.click(screen.getByRole('button', { name: '20.000' }));

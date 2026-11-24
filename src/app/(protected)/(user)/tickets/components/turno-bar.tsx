@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useId, useRef, useState, useTransition } from 're
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, ArrowDownLeft, ArrowUpRight, Check, ChevronRight, History, Plus, RotateCcw, Scale, ShieldCheck, Wallet, Car } from 'lucide-react';
+import { AlertCircle, ArrowDownLeft, ArrowUpRight, Check, ChevronRight, Coins, History, PenLine, Plus, RotateCcw, Scale, ShieldCheck, Wallet, Car } from 'lucide-react';
 import { TurnoResumenPanel } from '@/components/turno-resumen';
 import { Etiqueta, Iniciales, Pill } from '@/components/turno-ui';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,7 @@ import { addCashMovementAction } from '@/actions/turnos/cajas.action';
 const money = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
 const date = (s: string) => new Date(s).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', dateStyle: 'short', timeStyle: 'short' });
 const amountValid = (s: string) => s !== '' && Number.isInteger(Number(s)) && Number(s) >= 0;
+const opcionConteo = 'flex min-h-14 w-full items-center gap-3 rounded-2xl border border-gm-line-strong bg-gm-surface-2/40 px-4 py-2.5 text-left transition-colors hover:border-gm-yellow/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50';
 
 const horaApertura = (s: string) => new Date(s).toLocaleTimeString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
@@ -53,13 +54,16 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const [received, setReceived] = useState('');
   const [added, setAdded] = useState('0');
   const [openingReason, setOpeningReason] = useState('');
-  // Arqueo final por billetes: cuántos hay de cada denominación, o «No hay efectivo». El total
-  // contado sale de ahí (el servidor lo vuelve a calcular); no se escribe un total suelto.
+  // Arqueo final: el total contado (incluido el fondo) se escribe directo; contar por billetes es una
+  // alternativa que lo suma por denominación (y el servidor lo vuelve a calcular desde el desglose).
+  const [modoConteo, setModoConteo] = useState<'total' | 'billetes'>('total');
+  const [totalEscrito, setTotalEscrito] = useState('');
   const [cantidades, setCantidades] = useState<Cantidades>({});
   const [sinEfectivo, setSinEfectivo] = useState(false);
   const desglose = desgloseDe(cantidades);
   const errorEnBilletes = conteoConErrores(cantidades);
-  const counted = sinEfectivo ? '0' : desglose.length && !errorEnBilletes ? String(totalDesglose(desglose)) : '';
+  const totalBilletes = sinEfectivo ? '0' : desglose.length && !errorEnBilletes ? String(totalDesglose(desglose)) : '';
+  const counted = modoConteo === 'total' ? totalEscrito : totalBilletes;
   // El desglose del primer conteo comparado (como primerConteo): si después se corrige, queda.
   const [primerDesglose, setPrimerDesglose] = useState<ConteoBillete[] | null>(null);
   // Sin una elección propia se sugiere el fondo de la caja. Corregir el conteo no pisa lo elegido.
@@ -136,8 +140,9 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     if (!amountValid(counted) || !active) return;
     comparadoEn.current = Date.now();
     setConteoVisto(true);
-    setPrimerConteo(previo => previo ?? Number(counted));
-    setPrimerDesglose(previo => previo ?? desglose);
+    // El primer conteo comparado queda (con sus billetes, si se contó así): si después se corrige,
+    // se ve qué cambió.
+    if (primerConteo === null) { setPrimerConteo(Number(counted)); setPrimerDesglose(modoConteo === 'billetes' ? desglose : null); }
     // El detalle se pide recién ahora: no viaja con el contexto, que llega antes de contar.
     void getConciliacionAction(active.id).then(r => setConciliacion(r ?? null), () => setConciliacion(null));
   };
@@ -205,7 +210,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     startTransition(async () => {
       const result = await closeTurnoAction(active.id, { cerrarCaja: arqueo, sueldoEsperado: salary, sinSueldo: salaryAlcanza > 0 && !retirarSueldo, efectivoEsperado: expected,
         ...(arqueo ? { efectivoContado: Number(counted), efectivoEsperado: expected, efectivoParaSiguiente: Number(forNext), primerConteo: primerConteo ?? Number(counted),
-          desglose, primerConteoDesglose: primerDesglose ?? desglose } : {}),
+          // Los billetes viajan solo si se contó así; el primer conteo, si también fue por billetes.
+          ...(modoConteo === 'billetes' ? { desglose, ...(primerDesglose ? { primerConteoDesglose: primerDesglose } : {}) } : {}) } : {}),
         ...(dejandoCaja ? datosRelevo() : {}),
         observaciones: notes, motivoCierreForzado: forzando ? forcedReason : undefined });
       if (result.error) { toast.error(typeof result.error === 'string' ? result.error : result.error.message); await refresh(); return; }
@@ -239,7 +245,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
   const faltaParaCerrar = closingValid ? undefined
     : estadias === null ? 'Revisando los vehículos…'
     : !largas.every(e => confirmadas.includes(e.id)) ? 'Confirmá los vehículos de más de 4 h'
-    : arqueo && !amountValid(counted) ? 'Contá los billetes'
+    : arqueo && !amountValid(counted) ? (modoConteo === 'total' ? 'Escribí el total que contaste' : 'Contá los billetes')
     : arqueo && !conteoVisto ? 'Tocá «Comparar con lo esperado»'
     : conDiferencia && !notes.trim() ? 'Falta el motivo de la diferencia'
     : dejandoCaja && !amountValid(relevo) ? 'Contá el efectivo de la caja'
@@ -300,7 +306,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     : !amountValid(added) ? 'Revisá el cambio que agregás'
     : undefined;
   const reiniciarConteos = () => { setRecibidoVisto(false); setRelevo(''); setRelevoVisto(false); setMotivoRelevo(''); };
-  const abrir = () => { setCierreListo(null); setClosing(!!turnoId); setAutosListos(false); setReceived(''); setAdded('0'); setOpeningReason(''); setCantidades({}); setSinEfectivo(false); setPrimerDesglose(null); setCashForNext(null); setNotes(''); setForcedReason(''); setRetirarSueldo(true);
+  const abrir = () => { setCierreListo(null); setClosing(!!turnoId); setAutosListos(false); setReceived(''); setAdded('0'); setOpeningReason(''); setModoConteo('total'); setTotalEscrito(''); setCantidades({}); setSinEfectivo(false); setPrimerDesglose(null); setCashForNext(null); setNotes(''); setForcedReason(''); setRetirarSueldo(true);
     setConteoVisto(false); setPrimerConteo(null); setConciliacion(undefined); reiniciarConteos(); setOpen(true); startTransition(() => refresh(true)); };
   const enlaceHistorial = esAdmin && <Link href="/admin/caja/turnos" onClick={e => { if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(false); setTimeout(() => router.push('/admin/caja/turnos'), 200); }} className="mx-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-gm-yellow/10 hover:text-gm-yellow"><History className="size-3.5" aria-hidden />Ver turnos e historial</Link>;
   return <>
@@ -333,11 +339,12 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           </div>
           <section aria-label="Resumen del cierre" className="overflow-hidden rounded-2xl border border-gm-line">
             <dl className="space-y-2.5 px-4 py-3.5 text-[15px]">
-              <Linea label="Recaudación" value={money(cierreListo.retiro)} />
-              {cierreListo.sueldo > 0 && <Linea label="Sueldo" value={money(cierreListo.sueldo)} />}
+              <Linea label="Total que contaste, incluido el fondo" value={money(cierreListo.contado)} />
+              <Linea label="Sacás: recaudación" value={money(cierreListo.retiro)} />
+              {cierreListo.sueldo > 0 && <Linea label="Sacás: sueldo" value={money(cierreListo.sueldo)} />}
             </dl>
             <div className="flex items-center justify-between gap-3 border-t border-gm-line bg-gm-ok/[0.06] px-4 py-3">
-              <span className="text-[15px] font-semibold">Queda en la caja</span>
+              <span className="text-[15px] font-semibold">Queda para el próximo turno</span>
               <strong className="text-[15px] tabular-nums text-gm-ok">{money(cierreListo.deja)}</strong>
             </div>
             <p className="border-t border-gm-line px-4 py-2.5 text-xs text-muted-foreground">Conteo: {cierreListo.diferencia === 0 ? 'Coincide' : cierreListo.diferencia > 0 ? 'faltaron ' + money(cierreListo.diferencia) : 'sobraron ' + money(-cierreListo.diferencia)}</p>
@@ -350,7 +357,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
         </> : !context ? <ActionDialogBody className="[&>*]:shrink-0">
           {error ? <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : <TurnoCargando />}
           {enlaceHistorial}
-        </ActionDialogBody> : active ? closing ? <form onSubmit={e => { e.preventDefault(); submitClose(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-6 [&>*]:shrink-0">
+        </ActionDialogBody> : active ? closing ? <form noValidate onSubmit={e => { e.preventDefault(); submitClose(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-6 [&>*]:shrink-0">
           {etapas.length > 1 && numeroEtapa > 0 && <div aria-hidden className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${etapas.length}, minmax(0, 1fr))` }}>
             {etapas.map((p, i) => <span key={p} className={cn('h-[3px] rounded-full transition-colors', i < numeroEtapa ? 'bg-gm-yellow' : 'bg-gm-line')} />)}
           </div>}
@@ -362,8 +369,8 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
               más: el esperado aparece recién al comparar (conteo ciego). */}
           {etapa === 'contar' && <>
             <div>
-              <h3 className="font-display text-[26px] font-bold leading-tight">¿Cuántos billetes hay en el cajón?</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Contá todo lo que hay ahora, junto y sin separar nada. Lo que ya se retiró no se suma.</p>
+              <h3 className="font-display text-[26px] font-bold leading-tight">¿Cuánto efectivo hay en el cajón?</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Contá todo lo que hay ahora, junto y sin separar nada. Lo que ya se retiró no se suma. Lo que dejás para el próximo turno se elige después.</p>
             </div>
             <p role="note" className="flex items-start gap-3 rounded-2xl border border-gm-yellow/25 bg-gm-yellow/[0.07] px-4 py-3.5 text-sm leading-relaxed">
               <Wallet className="mt-0.5 size-5 shrink-0 text-gm-yellow" aria-hidden />
@@ -371,7 +378,24 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
                 ? <>Incluí los <strong className="font-bold tabular-nums text-gm-yellow">{money(fondoCaja)}</strong> {fondoPropio ? 'que recibiste al empezar' : 'con que se abrió la caja'}, más todo lo cobrado en efectivo.</>
                 : <>{fondoPropio ? 'Empezaste' : 'La caja se abrió'} sin fondo: contá todo lo cobrado en efectivo.</>}</span>
             </p>
-            <ConteoBilletes cantidades={cantidades} onCantidades={setCantidades} sinEfectivo={sinEfectivo} onSinEfectivo={setSinEfectivo} disabled={pending} />
+            {modoConteo === 'total' ? <div className="space-y-3">
+              <CashAmountField id="cash-counted" label="Total que contaste, incluido el fondo" labelClassName="text-[15px] font-semibold normal-case tracking-normal text-foreground" value={totalEscrito} onChange={setTotalEscrito} disabled={pending} placeholder="Escribí el total" />
+              <button type="button" disabled={pending} onClick={() => setModoConteo('billetes')} className={opcionConteo}>
+                <Coins className="size-[18px] shrink-0 text-gm-yellow" aria-hidden />
+                <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Contar por billetes</span><span className="block text-xs text-muted-foreground">Anotás cuántos hay de cada uno y se suma solo</span></span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              </button>
+            </div> : <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[15px] font-semibold">Total que contaste, incluido el fondo</p>
+                {/* Volver al total lo completa con lo que ya sumaron los billetes. */}
+                <button type="button" disabled={pending} onClick={() => { setTotalEscrito(totalBilletes); setModoConteo('total'); }}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-gm-line-strong px-3 text-xs font-semibold text-gm-yellow transition-colors hover:bg-gm-yellow/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50">
+                  <PenLine className="size-3.5" aria-hidden />Escribir el total
+                </button>
+              </div>
+              <ConteoBilletes cantidades={cantidades} onCantidades={setCantidades} sinEfectivo={sinEfectivo} onSinEfectivo={setSinEfectivo} disabled={pending} />
+            </div>}
           </>}
 
           {/* Resultado: coincide o no; con diferencia, el motivo. Con eso resuelto, cuánto deja, el
@@ -383,7 +407,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
               </span>
               <div className="min-w-0">
                 <p className={cn('font-display text-[28px] font-bold leading-none tabular-nums', closingDifference === 0 ? 'text-gm-ok' : 'text-gm-atencion')}>{closingDifference === 0 ? 'Coincide' : closingDifference > 0 ? 'Faltan ' + money(closingDifference) : 'Sobran ' + money(-closingDifference)}</p>
-                <p className="mt-1 text-sm tabular-nums text-muted-foreground">Contaste {money(Number(counted))}{closingDifference !== 0 && <> · esperaba {money(expected)}</>}</p>
+                <p className="mt-1 text-sm tabular-nums text-muted-foreground">Total que contaste, incluido el fondo: {money(Number(counted))}{closingDifference !== 0 && <> · se esperaba {money(expected)}</>}</p>
               </div>
             </div>
             {closingDifference !== 0 && <div className="space-y-2">
@@ -399,20 +423,20 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             <ConciliacionCajaPanel detalle={conciliacion} />
             {paso1Listo && <>
               <div className="space-y-2">
-                <CashAmountField id="cash-for-next" label="¿Cuánto dejás en caja para el próximo turno?" labelClassName="min-w-[min(100%,14rem)] text-[15px] font-semibold normal-case tracking-normal text-foreground" value={forNext} onChange={setCashForNext} disabled={pending} max={afterSalary} editLabel="Cambiar importe"
+                <CashAmountField id="cash-for-next" label="Cuánto dejás para el próximo turno" labelClassName="min-w-[min(100%,14rem)] text-[15px] font-semibold normal-case tracking-normal text-foreground" value={forNext} onChange={setCashForNext} disabled={pending} max={afterSalary} editLabel="Cambiar importe"
                   shortcuts={[reserve > 0 ? { label: 'Usar sugerido · ' + money(reserve), amount: reserve, disabled: reserve > afterSalary } : { label: 'No dejo nada · ' + money(0), amount: 0 }, { label: 'Cambiar importe', edit: true }, { label: 'Dejar todo · ' + money(afterSalary), amount: afterSalary }]}
-                  description={reserve > 0 ? `Sugerido ${money(reserve)}: podés dejar más, menos o $0.` : 'Esta caja no tiene fondo protegido: dejá lo que necesite el próximo turno, o $0.'} />
+                  description={`Sale del total que contaste (${money(Number(counted))}). ` + (reserve > 0 ? `Sugerido ${money(reserve)}: podés dejar más, menos o $0.` : 'Esta caja no tiene fondo protegido: dejá lo que necesite el próximo turno, o $0.')} />
                 {amountValid(forNext) && Number(forNext) > afterSalary && <p role="alert" className="text-sm text-destructive">No podés dejar más de {money(afterSalary)}: es el efectivo disponible después del sueldo.</p>}
               </div>
               {bloqueSueldo}
               <section aria-label="Cómo queda la caja" className="overflow-hidden rounded-2xl border border-gm-line" aria-live="polite">
-                <p className="px-4 pt-3.5 text-[13px] font-semibold text-muted-foreground">Sacás de la caja</p>
-                <dl className="space-y-2 px-4 pb-3.5 pt-2 text-[15px]">
-                  <Linea label="Recaudación" value={withdrawn === null ? '—' : money(withdrawn)} />
-                  {salary > 0 && <Linea label="Sueldo" value={money(salary)} />}
+                <dl className="space-y-2 px-4 pb-3.5 pt-3.5 text-[15px]">
+                  <Linea label="Total que contaste, incluido el fondo" value={money(Number(counted))} />
+                  <Linea label="Sacás: recaudación" value={withdrawn === null ? '—' : money(withdrawn)} />
+                  {salary > 0 && <Linea label="Sacás: sueldo" value={money(salary)} />}
                 </dl>
                 <div className={cn('flex items-center justify-between gap-3 border-t border-gm-line px-4 py-3', handoverValid ? 'bg-gm-ok/[0.06]' : sinElegirDeja ? 'bg-gm-surface-2/60' : 'bg-destructive/10')}>
-                  <span className="text-[15px] font-semibold">{handoverValid ? 'Queda en la caja' : sinElegirDeja ? 'Falta elegir cuánto dejás' : 'Revisá cuánto dejás en caja'}</span>
+                  <span className="text-[15px] font-semibold">{handoverValid ? 'Queda para el próximo turno' : sinElegirDeja ? 'Falta elegir cuánto dejás' : 'Revisá cuánto dejás en caja'}</span>
                   <strong className={cn('text-[15px] tabular-nums', handoverValid ? 'text-gm-ok' : sinElegirDeja ? 'text-muted-foreground' : 'text-destructive')}>{handoverValid ? money(Number(forNext)) : '—'}</strong>
                 </div>
               </section>
@@ -438,7 +462,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
             {etapa === 'autos'
               ? <ActionDialogPrimaryButton key="autos" disabled={pending || pendientesAutos > 0} falta={pendientesAutos ? (pendientesAutos === 1 ? 'Falta 1 auto' : `Faltan ${pendientesAutos} autos`) : undefined} onClick={() => setAutosListos(true)}>Seguir</ActionDialogPrimaryButton>
               : etapa === 'contar'
-                ? <ActionDialogPrimaryButton key="contar" disabled={pending || !amountValid(counted)} falta={amountValid(counted) || pending ? undefined : errorEnBilletes ? 'Revisá las cantidades' : 'Contá los billetes'} onClick={compararConteo}>Comparar con lo esperado</ActionDialogPrimaryButton>
+                ? <ActionDialogPrimaryButton key="contar" disabled={pending || !amountValid(counted)} falta={amountValid(counted) || pending ? undefined : modoConteo === 'total' ? 'Escribí el total que contaste' : errorEnBilletes ? 'Revisá las cantidades' : 'Contá los billetes'} onClick={compararConteo}>Comparar con lo esperado</ActionDialogPrimaryButton>
                 : <ActionDialogPrimaryButton key="cerrar" type="submit" onClick={e => { if (e.detail > 0 && Date.now() - comparadoEn.current < 700) e.preventDefault(); }} disabled={pending || !closingValid} falta={pending ? undefined : faltaParaCerrar}>{pending ? 'Cerrando…' : arqueo ? 'Confirmar cierre de turno y caja' : 'Confirmar cierre de turno'}</ActionDialogPrimaryButton>}
           </ActionDialogFooter>
         </form> : <><ActionDialogBody className="[&>*]:shrink-0">
@@ -472,7 +496,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
           <ActionDialogFooter ocultarConTeclado>
             <ActionDialogPrimaryButton disabled={pending || !canClose} onClick={() => setClosing(true)}>{arqueo ? 'Cerrar mi turno y contar la caja' : 'Cerrar sólo mi turno'}</ActionDialogPrimaryButton>
           </ActionDialogFooter>
-        </> : <form onSubmit={e => { e.preventDefault(); submitOpen(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-5 [&>*]:shrink-0">
+        </> : <form noValidate onSubmit={e => { e.preventDefault(); submitOpen(); }} className="flex min-h-0 flex-auto flex-col"><ActionDialogBody className="gap-5 [&>*]:shrink-0">
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-gm-line bg-gm-surface-2/50 p-3">
             <span className="flex min-w-0 items-center gap-3"><Iniciales nombre={nombreUsuario} className="size-8 text-[11px]" /><span className="min-w-0"><span className="block text-[11px] text-muted-foreground">Tu turno</span><strong className="block truncate text-sm font-semibold">{nombreUsuario}</strong></span></span>
             {(context.cajas?.length ?? 0) <= 1 && <Pill>{caja?.nombre ?? 'Caja principal'}</Pill>}

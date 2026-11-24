@@ -13,20 +13,21 @@ function button(text, click, secondary = true) { const b = el('button', text, se
 const numeric = (key, label, value = 0) => ({ key, label, type: 'number', value, min: 0, required: true });
 const text = (key, label, value = '', required = false) => ({ key, label, value, required });
 const select = (key, label, options, value) => ({ key, label, options, value });
-// Con efectivo hay que indicar con cuánto pagó: «Justo» o el importe que entregó. Se guarda con la
-// operación y el servidor calcula el vuelto al sincronizar.
+// Con efectivo, con cuánto pagó es opcional (para calcular el vuelto): si se indica, se guarda con la
+// operación y el servidor calcula el vuelto al sincronizar; si no, queda sin informar (nunca se
+// asume que pagó justo).
 const cashFields = when => [
-  { ...select('cashMode', '¿Con cuánto pagó en efectivo?', [...choose('Elegí: justo u otro importe'), ['EXACT', 'Justo'], ['OTHER', 'Entregó otro importe']]), required: true, when },
-  { key: 'received', label: 'Importe que entregó', type: 'number', value: '', min: 0, required: true, when: d => when(d) && d.cashMode === 'OTHER' },
+  { key: 'received', label: 'Con cuánto pagó (opcional, para calcular el vuelto)', type: 'number', value: '', min: 0, when },
 ];
 function declaredCash(d, cash) {
-  const received = d.cashMode === 'EXACT' ? cash : d.received;
-  if (!d.cashMode || !Number.isSafeInteger(received) || received < 0 || (d.cashMode === 'OTHER' && !received)) throw new Error('Indicá con cuánto pagó: «Justo» o el importe que entregó.');
-  if (received < cash) throw new Error('Le falta entregar ' + money(cash - received) + '. Corregí el importe o cobrá el resto por transferencia.');
-  return received;
+  // Un campo numérico vacío llega como 0: es «no indicado».
+  if (!d.received) return undefined;
+  if (!Number.isSafeInteger(d.received) || d.received < 0) throw new Error('Lo que entregó va en pesos enteros.');
+  if (d.received < cash) throw new Error('Le falta entregar ' + money(cash - d.received) + '. Corregí el importe o cobrá el resto por transferencia.');
+  return d.received;
 }
 // Los campos de la pantalla que no van en la operación (y los medios sin elegir).
-function clean(d) { delete d.cashMode; delete d.received; for (const key of ['paymentMetodo', 'method']) if (d[key] === '') delete d[key]; return d; }
+function clean(d) { delete d.received; for (const key of ['paymentMetodo', 'method']) if (d[key] === '') delete d[key]; return d; }
 export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }) {
   let mounted = false, dialog, lastCash = null;
   const s = getState;
@@ -87,8 +88,8 @@ export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }
     const pending = s().pending.some(op => op.registrationId === lastCash.registrationId && op.action === lastCash.action);
     box.replaceChildren(
       el('strong', 'Último cobro en efectivo · ' + (pending ? 'guardado en este equipo, pendiente de sincronizar' : 'sincronizado')),
-      el('p', lastCash.plate + ' · ' + money(lastCash.total) + ' ' + lastCash.medio + ' · entregó ' + money(lastCash.received)),
-      el('p', 'Vuelto: ' + money(lastCash.received - lastCash.cash), 'offline-change'),
+      el('p', lastCash.plate + ' · ' + money(lastCash.total) + ' ' + lastCash.medio + (lastCash.received === undefined ? ' · sin informar con cuánto pagó' : ' · entregó ' + money(lastCash.received))),
+      ...(lastCash.received === undefined ? [] : [el('p', 'Vuelto: ' + money(lastCash.received - lastCash.cash), 'offline-change')]),
       button('Ocultar', () => { lastCash = null; render(); }),
     );
   }
@@ -114,15 +115,16 @@ export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }
         else if (current.saldo) data.metodo = d.method;
         if (current.refund) data.refundMetodo = d.method;
         if (d.earlier) data.salidaEn = departure;
-        // Con efectivo: con cuánto pagó la parte en efectivo (no se confirma sin eso ni si no alcanza).
+        // Con efectivo: con cuánto pagó la parte en efectivo, si se indicó (si no alcanza, no se confirma).
         cash = !current.saldo ? 0 : d.method === 'CASH' ? current.saldo : d.method === 'MIXED' ? d.cash : 0;
-        if (cash > 0) data.efectivoRecibido = declaredCash(d, cash);
+        const received = cash > 0 ? declaredCash(d, cash) : undefined;
+        if (received !== undefined) data.efectivoRecibido = received;
       }
       const save = async () => {
         await commit('CLOSE', v.id, data, quoteAt);
         if (cash > 0) showCash({ registrationId: v.id, action: 'CLOSE', plate: v.plate, total: current.saldo, cash, received: data.efectivoRecibido, medio: data.pagos ? 'efectivo + transferencia' : 'en efectivo' });
       };
-      if (d.earlier) return show('Confirmar la salida anterior', [], save, { description: 'Salida: ' + new Date(departure).toLocaleString('es-AR') + ' · Total: ' + money(current.price) + ' · A cobrar: ' + money(current.saldo) + ' · A devolver: ' + money(current.refund) + (cash ? ' · Vuelto: ' + money(data.efectivoRecibido - cash) : ''), label: 'Confirmar salida y cobro' });
+      if (d.earlier) return show('Confirmar la salida anterior', [], save, { description: 'Salida: ' + new Date(departure).toLocaleString('es-AR') + ' · Total: ' + money(current.price) + ' · A cobrar: ' + money(current.saldo) + ' · A devolver: ' + money(current.refund) + (cash && data.efectivoRecibido !== undefined ? ' · Vuelto: ' + money(data.efectivoRecibido - cash) : ''), label: 'Confirmar salida y cobro' });
       await save();
     }, { description: free(v) ? 'Salida sin cobro.' : 'Total ' + money(totals.price) + ' · Anticipos ' + money(totals.collected) + ' · A cobrar ' + money(totals.saldo) + (totals.refund ? ' · A devolver ' + money(totals.refund) : '') + '. Elegí transferencia sólo si verificaste que recibiste el pago.', label: 'Guardar salida pendiente' });
   }
@@ -170,12 +172,12 @@ export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }
       show('Confirmar estadía · ' + d.vehiclePlateCustomer, [], async () => {
         await commit('PASS_ENTRY', id, d);
         if (cash) showCash({ registrationId: id, action: 'PASS_ENTRY', plate: d.vehiclePlateCustomer, total: price, cash, received, medio: 'en efectivo' });
-      }, { description: 'Total: '+money(price)+' · '+(d.paid?'Pago recibido':'Queda pendiente de pago')+(cash ? ' · Vuelto: '+money(received - cash) : ''), label:'Confirmar estadía pendiente' });
+      }, { description: 'Total: '+money(price)+' · '+(d.paid?'Pago recibido':'Queda pendiente de pago')+(cash && received !== undefined ? ' · Vuelto: '+money(received - cash) : ''), label:'Confirmar estadía pendiente' });
     });
   }
   function passDetail(p) {
     show('Estadía · '+p.vehiclePlateCustomer, [{key:'paid',label:'Pago recibido',type:'checkbox',value:!!p.paid}, { ...select('paymentMetodo','Medio de pago',[...(p.paymentMetodo==='MERCADOPAGO'?[['KEEP','Conservar pago por Mercado Pago']]:p.paid?[]:choose('Elegí cómo pagó')),...methods],p.paymentMetodo==='MERCADOPAGO'?'KEEP':p.paid ? p.paymentMetodo || 'CASH' : ''), required: true, when: d => !!d.paid }, ...cashFields(d => !p.paid && !!d.paid && d.paymentMetodo === 'CASH'), {key:'retired',label:'El vehículo se retira',type:'checkbox',value:!!p.retired}], async d=>{
-      // Se cobra ahora en efectivo: con cuánto pagó.
+      // Se cobra ahora en efectivo: con cuánto pagó, si se indicó.
       const cash = !p.paid && d.paid && d.paymentMetodo === 'CASH' ? p.price : 0;
       const received = cash ? declaredCash(d, cash) : undefined;
       clean(d); if(d.paymentMetodo==='KEEP' || !d.paid)delete d.paymentMetodo; if (received !== undefined) d.efectivoRecibido = received;

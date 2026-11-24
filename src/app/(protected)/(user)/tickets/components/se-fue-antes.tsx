@@ -7,8 +7,8 @@
 // servidor con el mismo cálculo del cobro. El pago entra ahora, en el turno de quien lo registra,
 // con los mismos medios que el cobro normal:
 // - Efectivo, transferencia o efectivo + transferencia: la salida se registra junto con el pago. Con
-//   efectivo, como en el cobro normal, hay que indicar con cuánto paga («Justo» o el importe) y
-//   tiene que alcanzar; el último cobro queda a la vista con el vuelto que confirmó el servidor.
+//   efectivo, como en el cobro normal, «Calcular vuelto» es opcional (si se indica, tiene que
+//   alcanzar); el último cobro queda a la vista con el vuelto que confirmó el servidor, si lo hay.
 // - QR o alias: se cobra el importe de la tarifa como anticipo y, al acreditarse, se registra la
 //   salida (ya paga). Con efectivo + QR o alias, primero el efectivo y después el resto.
 // Queda en la Actividad.
@@ -127,7 +127,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
   const esperando = cobroQr?.estado === 'PENDIENTE' || (!!cobroAlias && ['ESPERANDO', 'REVISION'].includes(cobroAlias.estado));
   const efectivoParte = efectivoHibrido ? Number(efectivoHibrido) : 0;
   const errorHibrido = medio !== 'AMBOS' ? null : !efectivoParte ? 'Ingresá cuánto entrega en efectivo.' : efectivoParte >= saldo ? 'El efectivo cubre todo: elegí «Efectivo».' : null;
-  // Lo que falta del efectivo para confirmar: con cuánto paga, o que alcance.
+  // Lo que falta del efectivo para confirmar: solo si se calculó el vuelto con un importe que no alcanza.
   const faltaEfectivo = saldo <= 0 ? null : medio === 'CASH' ? faltaDelEfectivo(saldo, recibido) : medio === 'AMBOS' && !errorHibrido ? faltaDelEfectivo(efectivoParte, recibidoHibrido) : null;
   const restoMedios: { id: Resto; texto: string }[] = [
     ...(transferenciaManual ? [{ id: 'TRANSFER' as const, texto: 'Transferencia' }] : []),
@@ -172,7 +172,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
       if (resultado.code === 'TICKET_PRICE_CHANGED') await cargar(registration.id);
       return;
     }
-    if (pendiente > 0 && pago.efectivoRecibido !== undefined) anunciarCobro(resultado.cobroEfectivo, pendiente, pago.pagos ? 'efectivo + transferencia' : 'en efectivo');
+    if (pendiente > 0 && (pago.metodo === 'CASH' || !!pago.pagos?.some((p) => p.metodo === 'CASH'))) anunciarCobro(resultado.cobroEfectivo, pendiente, pago.pagos ? 'efectivo + transferencia' : 'en efectivo');
     terminar(resultado.registration);
   };
 
@@ -226,8 +226,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
         // piden después lo que falta para cubrir la tarifa.
         const resumen = await getCloseSummaryAction(registration.id);
         if (!resumen || !('previewBracket' in resumen)) { setError('No se pudo leer la estadía. Intentá de nuevo.'); return; }
-        if (recibidoHibrido === null) return;
-        const parcial = await pagoParcialEfectivoAction(registration.id, { importe: efectivoParte, expectedPrice: resumen.previewBracket.price, expectedCollected: resumen.totalCollectedSoFar, efectivoRecibido: recibidoHibrido });
+        const parcial = await pagoParcialEfectivoAction(registration.id, { importe: efectivoParte, expectedPrice: resumen.previewBracket.price, expectedCollected: resumen.totalCollectedSoFar, efectivoRecibido: recibidoHibrido ?? undefined });
         if (parcial.error) { setError(parcial.error); return; }
         anunciarCobro(parcial.cobroEfectivo, efectivoParte, `en efectivo · resto ${restoPor === 'QR' ? 'por QR' : 'al alias'}`);
         toast.success(`Efectivo cobrado: ${formatImporte(efectivoParte)}.`);
@@ -326,7 +325,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
                 </div>
               )}
               {medio === 'AMBOS' && !errorHibrido && efectivoParte > 0 && (
-                <EfectivoRecibido titulo="¿Con cuánto paga el efectivo?" aplicado={efectivoParte} recibido={recibidoHibrido} onChange={setRecibidoHibrido} disabled={enviando} />
+                <EfectivoRecibido aplicado={efectivoParte} recibido={recibidoHibrido} onChange={setRecibidoHibrido} disabled={enviando} />
               )}
               {(medio === 'QR' || medio === 'ALIAS' || (medio === 'AMBOS' && restoPor !== 'TRANSFER')) && (
                 <p className="text-xs text-muted-foreground">Cuando el pago se acredite, la salida se registra sola con «{etiquetaOpcion}».</p>

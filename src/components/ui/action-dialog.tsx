@@ -197,8 +197,8 @@ function ActionDialogFooterPortal({ children }: { children: React.ReactNode }) {
 // El botón principal: lo que se hace y, abajo, sobre qué (patente, importe, medio). Lee de una
 // pasada qué se va a registrar antes de tocarlo.
 //
-// `falta`: lo que falta para poder confirmar («Tocá «Justo» o con cuánto paga», «Contá los
-// billetes»…). Va en lugar del detalle, en rojo vivo y con un punto que palpita: en gris pasaba
+// `falta`: lo que falta para poder confirmar («Le falta entregar $ 500», «Escribí el total que
+// contaste»…). Va en lugar del detalle, en rojo vivo y con un punto que palpita: en gris pasaba
 // desapercibido y el operador tocaba el botón sin entender por qué no hacía nada.
 const ActionDialogPrimaryButton = React.forwardRef<
   HTMLButtonElement,

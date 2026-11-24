@@ -62,13 +62,13 @@ test('cobra ahora con QR: registra sin pagar, cobra el abono al ingresar y cierr
   expect(setOpen).toHaveBeenLastCalledWith(false);
 });
 
-test('cobra ahora en efectivo: con cuánto paga y se registra pagada de una vez', async () => {
+test('cobra ahora en efectivo: se registra pagada de una vez, con el vuelto si se calcula', async () => {
   await abrirYCompletar(/Efectivo/);
   const registrar = screen.getByRole('button', { name: /Registrar estadía/ });
-  // El total de la semana y «¿Con cuánto paga?»: sin elegirlo no se registra.
+  // El total de la semana; «Calcular vuelto» es opcional: no frena el registro.
   expect((await screen.findAllByText(/18\.000/)).length).toBeGreaterThan(0);
-  await waitFor(() => expect(registrar).toHaveTextContent('Tocá «Justo» o con cuánto paga'));
-  expect(registrar).toBeDisabled();
+  await waitFor(() => expect(registrar).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: /^Calcular vuelto/ }));
   fireEvent.click(screen.getByRole('button', { name: '20.000' }));
   expect(screen.getByRole('status')).toHaveTextContent(/Vuelto\s*\$\s?2\.000/);
   fireEvent.click(registrar);

@@ -91,7 +91,8 @@ interface ActiveDayTicketDialogProps {
 export function ActiveDayTicketDialog({ registration, open, onOpenChange, deliveryEnabled = false }: ActiveDayTicketDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [medio, setMedio] = useState<MedioCobro | null>(null);
-  // Con efectivo: con cuánto paga («Justo» o el importe). Lo guarda el servidor con el vuelto.
+  // Con efectivo, «Calcular vuelto» (opcional): con cuánto paga. Si se indica, el servidor lo guarda
+  // con el vuelto; si no, queda sin informar.
   const [recibido, setRecibido] = useState<number | null>(null);
   const [alias, setAlias] = useState<DisponibilidadAlias | null>(null);
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);

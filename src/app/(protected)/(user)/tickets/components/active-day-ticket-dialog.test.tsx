@@ -47,8 +47,9 @@ test('muestra los cuatro medios y cobra efectivo solamente al confirmar', async 
   for (const medio of ['Efectivo', 'QR / celular', 'Al alias', 'Transferencia']) expect(screen.getByRole('button', { name: new RegExp(medio) })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /Efectivo/ }));
   expect(updateStatus).not.toHaveBeenCalled();
-  // Con cuánto paga: sin indicarlo no se confirma.
-  expect(screen.getByRole('button', { name: /Cobrar y registrar salida/ })).toBeDisabled();
+  // Se puede confirmar directo; acá se usa «Calcular vuelto» y viaja lo que entregó.
+  expect(screen.getByRole('button', { name: /Cobrar y registrar salida/ })).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: /^Calcular vuelto/ }));
   fireEvent.click(screen.getByRole('button', { name: '20.000' }));
   fireEvent.click(screen.getByRole('button', { name: /Cobrar y registrar salida/ }));
   await waitFor(() => expect(updateStatus).toHaveBeenCalledWith('abono', { paid: true, paymentMetodo: 'CASH', retired: true, efectivoRecibido: 20000 }));

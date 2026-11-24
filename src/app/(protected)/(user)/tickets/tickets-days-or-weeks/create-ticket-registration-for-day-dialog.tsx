@@ -225,7 +225,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
     } else {
       const efectivo = elegido === 'CASH';
       if (efectivo && recibido === null) return;
-      const r = await updateTicketRegistrationForDayStatusAction(id, { paid: true, paymentMetodo: elegido, ...(efectivo ? { efectivoRecibido: recibido! } : {}) });
+      const r = await updateTicketRegistrationForDayStatusAction(id, { paid: true, paymentMetodo: elegido, ...(efectivo && recibido !== null ? { efectivoRecibido: recibido } : {}) });
       if ('error' in r && r.error) toast.error(typeof r.error === 'string' ? r.error : 'No se pudo registrar el pago.');
       else {
         if (efectivo && 'success' in r && registrada?.precio != null) publicarUltimoCobro({ tipo: 'PASE', registroId: id, identificacion: registrada.patente || 'Sin patente',

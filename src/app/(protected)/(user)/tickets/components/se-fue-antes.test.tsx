@@ -46,11 +46,10 @@ test('las horas extra se suman con un contador sobre la última tarifa y se cobr
   // Hasta elegir cómo paga no se puede confirmar.
   expect(screen.getByRole('button', { name: /Cobrar y registrar salida/ })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: /^Efectivo Contalo/ }));
-  // Con efectivo, también acá hay que indicar con cuánto paga.
-  expect(screen.getByRole('button', { name: /Cobrar y registrar salida/ })).toBeDisabled();
-  fireEvent.click(screen.getByRole('button', { name: 'Justo' }));
+  // Con efectivo se confirma directo; «Calcular vuelto» es opcional y, sin usarlo, queda sin informar.
+  expect(screen.getByRole('button', { name: /^Calcular vuelto/ })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /Cobrar y registrar salida/ }));
-  await waitFor(() => expect(registrarSalidaAnteriorAction).toHaveBeenCalledWith('reg', { salidaEn: opciones[1].salidaEn, expectedPrice: 2000, expectedCollected: 0, closeType: 'PAYMENT', metodo: 'CASH', efectivoRecibido: 2000 }));
+  await waitFor(() => expect(registrarSalidaAnteriorAction).toHaveBeenCalledWith('reg', { salidaEn: opciones[1].salidaEn, expectedPrice: 2000, expectedCollected: 0, closeType: 'PAYMENT', metodo: 'CASH', efectivoRecibido: undefined }));
   expect(onRegistrada).toHaveBeenCalledWith(registration);
   expect(onOpenChange).toHaveBeenCalledWith(false);
 });
@@ -61,8 +60,9 @@ test('efectivo y transferencia: se registra junto, repartido', async () => {
   fireEvent.click(await screen.findByRole('radio', { name: /^Hora/ }));
   fireEvent.click(screen.getByRole('button', { name: /^Efectivo y otro medio/ }));
   fireEvent.change(screen.getByLabelText('En efectivo'), { target: { value: '400' } });
-  expect(screen.getByRole('button', { name: /Cobrar y registrar salida/ })).toBeDisabled();
-  // Entrega $ 1.000 por los $ 400 en efectivo: el vuelto es $ 600.
+  expect(screen.getByRole('button', { name: /Cobrar y registrar salida/ })).toBeEnabled();
+  // Con «Calcular vuelto»: entrega $ 1.000 por los $ 400 en efectivo, el vuelto es $ 600.
+  fireEvent.click(screen.getByRole('button', { name: /^Calcular vuelto/ }));
   fireEvent.click(screen.getByRole('button', { name: '1.000' }));
   fireEvent.click(screen.getByRole('button', { name: /Cobrar y registrar salida/ }));
   await waitFor(() => expect(registrarSalidaAnteriorAction).toHaveBeenCalledWith('reg', expect.objectContaining({
@@ -74,6 +74,7 @@ test('efectivo que no alcanza: no se registra y ofrece cobrar el resto con otro 
   abrir();
   fireEvent.click(await screen.findByRole('radio', { name: /^Hora/ }));
   fireEvent.click(screen.getByRole('button', { name: /^Efectivo Contalo/ }));
+  fireEvent.click(screen.getByRole('button', { name: /^Calcular vuelto/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Otro' }));
   fireEvent.change(screen.getByLabelText('Importe que entrega'), { target: { value: '800' } });
   expect(screen.getByRole('button', { name: /Cobrar y registrar salida/ })).toBeDisabled();
