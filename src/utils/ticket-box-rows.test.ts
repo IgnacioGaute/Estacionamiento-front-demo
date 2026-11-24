@@ -39,3 +39,16 @@ test('planilla: conserva registros históricos sin movimientos y admite la API a
   expect(ticketBoxRows(caja({ ticketRegistrations: [legacy] }))).toEqual([legacy]);
   expect(ticketBoxRows(caja({ ticketRegistrations: [legacy], ticketMovements: [] }))).toEqual([legacy]);
 });
+
+test('planilla: una corrección de medio de pago se lee como corrección, con su efectivo y su transferencia', () => {
+  const auto = { id: 'stay', pricingSnapshot: {}, licensePlateOriginal: 'AB123CD' };
+  const rows = ticketBoxRows(caja({ date: '2026-11-23', ticketRegistrations: [], ticketMovements: [
+    { id: 'p1', monto: 3500, tipo: 'SALDO', metodo: 'CASH', ticketRegistration: auto },
+    { id: 'c1', monto: -3500, tipo: 'AJUSTE', metodo: 'CASH', correccionId: 'corr', ticketRegistration: auto },
+    { id: 'c2', monto: 3500, tipo: 'AJUSTE', metodo: 'TRANSFER', correccionId: 'corr', ticketRegistration: auto },
+  ] }));
+  expect(rows.map(r => r.description)).toEqual(['Saldo - AB123CD', 'Corrección - AB123CD', 'Corrección - AB123CD']);
+  // El total del día no cambia: cambia el medio.
+  expect(rows.reduce((sum, r) => sum + r.price, 0)).toBe(3500);
+  expect(rows.map(r => r.movimientos?.[0].metodo)).toEqual(['CASH', 'CASH', 'TRANSFER']);
+});

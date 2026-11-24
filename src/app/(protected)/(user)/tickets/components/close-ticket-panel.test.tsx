@@ -14,7 +14,7 @@ import { getCashContextAction } from '@/actions/turnos/cash-context.action';
 import type { CloseSummary } from '@/services/tickets.service';
 import type { TicketRegistration } from '@/types/ticket-registration.type';
 // useTenant vive junto a la acción de contexto (next-auth): se simula con una playa con cobro.
-const mockTenant = { cobroHabilitado: true, shiftsEnabled: false };
+const mockTenant = { cobroHabilitado: true, shiftsEnabled: false, playaId: 'playa-1' };
 jest.mock('@/components/tenant-provider', () => ({ useTenant: () => mockTenant }));
 jest.mock('@/actions/turnos/cash-context.action', () => ({ getCashContextAction: jest.fn() }));
 jest.mock('./turno-bar', () => ({ TurnoBar: () => <button type="button">Abrir mi turno</button> }));
@@ -47,11 +47,13 @@ const summary = (price = 1000, collected = 0) => ({ registration: { id: 'reg', v
 beforeEach(() => {
   jest.clearAllMocks();
   localStorage.clear();
+  sessionStorage.clear();
   mockTenant.shiftsEnabled = false;
   mockRol.actual = 'USER';
   jest.mocked(getCloseSummaryAction).mockResolvedValue(summary());
-  jest.mocked(closeRegistrationAction).mockResolvedValue({ success: 'OK', registrationId: 'reg' });
+  jest.mocked(closeRegistrationAction).mockResolvedValue({ success: 'OK', registrationId: 'reg', cobroEfectivo: null });
 });
+const ultimoCobro = () => JSON.parse(sessionStorage.getItem('ultimo-cobro:playa-1') ?? 'null');
 async function openDiscount() {
   render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
   const button = await screen.findByRole('button', { name: 'Descuento' });
@@ -133,8 +135,54 @@ test('descuento parcial: exige un importe válido y cobra el resto con el medio 
   const cash = await screen.findByRole('button', { name: /^Efectivo Contalo/ });
   await waitFor(() => expect(cash).toBeEnabled());
   fireEvent.click(cash);
+  fireEvent.click(screen.getByRole('button', { name: 'Justo' }));
   fireEvent.click(screen.getByRole('button', { name: /Cobrar y registrar salida/ }));
-  await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({ closeType: 'PAYMENT', metodo: 'CASH', expectedPrice: 700 })));
+  await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({ closeType: 'PAYMENT', metodo: 'CASH', expectedPrice: 700, efectivoRecibido: 700 })));
+});
+
+test('efectivo: sin «Justo» ni importe no se confirma, lo que no alcanza tampoco, y el vuelto confirmado queda a la vista', async () => {
+  jest.mocked(closeRegistrationAction).mockResolvedValue({ success: 'OK', registrationId: 'reg', cobroEfectivo: { importe: 1000, efectivoRecibido: 2000, vuelto: 1000 } });
+  const onOpenChange = jest.fn();
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={onOpenChange} />);
+  const cash = await screen.findByRole('button', { name: /^Efectivo Contalo/ });
+  await waitFor(() => expect(cash).toBeEnabled());
+  fireEvent.click(cash);
+  const cobrar = screen.getByRole('button', { name: /Cobrar y registrar salida/ });
+  // «Justo» no se elige solo: hay que tocarlo o indicar el importe.
+  expect(screen.getByRole('button', { name: 'Justo' })).toHaveAttribute('aria-pressed', 'false');
+  expect(cobrar).toBeDisabled();
+  expect(cobrar).toHaveTextContent('Tocá «Justo» o con cuánto paga');
+  // Entrega menos: no se puede cobrar todo en efectivo.
+  fireEvent.click(screen.getByRole('button', { name: 'Otro' }));
+  fireEvent.change(screen.getByLabelText('Importe que entrega'), { target: { value: '600' } });
+  expect(screen.getByRole('alert')).toHaveTextContent('Le falta entregar');
+  expect(cobrar).toBeDisabled();
+  expect(cobrar).toHaveTextContent('Le falta entregar');
+  fireEvent.change(screen.getByLabelText('Importe que entrega'), { target: { value: '2000' } });
+  expect(screen.getByRole('status')).toHaveTextContent(/Vuelto\s*\$\s?1\.000/);
+  expect(cobrar).toBeEnabled();
+  fireEvent.click(cobrar);
+  await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({ metodo: 'CASH', efectivoRecibido: 2000 })));
+  await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  // El último cobro: lo que confirmó el servidor, no la cuenta de la pantalla.
+  expect(ultimoCobro()).toEqual(expect.objectContaining({ tipo: 'ESTADIA', registroId: 'reg', identificacion: 'AB123CD', total: 1000, efectivo: 1000, recibido: 2000, vuelto: 1000, medio: 'en efectivo' }));
+});
+
+test('efectivo que no alcanza: se pasa al pago mixto con lo entregado, sin descontar la diferencia', async () => {
+  render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
+  const cash = await screen.findByRole('button', { name: /^Efectivo Contalo/ });
+  await waitFor(() => expect(cash).toBeEnabled());
+  fireEvent.click(cash);
+  fireEvent.click(screen.getByRole('button', { name: 'Otro' }));
+  fireEvent.change(screen.getByLabelText('Importe que entrega'), { target: { value: '700' } });
+  fireEvent.click(screen.getByRole('button', { name: /700 en efectivo y \$\s?300 con otro medio/ }));
+  expect(screen.getByRole('button', { name: /Efectivo y otro medio/ })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByLabelText('En efectivo')).toHaveValue(700);
+  expect(screen.getByText('El resto').parentElement).toHaveTextContent(/300$/);
+  fireEvent.click(screen.getByRole('button', { name: /Cobrar y registrar salida/ }));
+  await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({
+    pagos: [{ metodo: 'CASH', importe: 700 }, { metodo: 'TRANSFER', importe: 300 }], efectivoRecibido: 700,
+  })));
 });
 test('todo el saldo respeta el anticipo y después permite confirmar la salida sin cobro', async () => {
   jest.mocked(getCloseSummaryAction).mockResolvedValue(summary(1000, 400));
@@ -218,17 +266,21 @@ test('efectivo y transferencia: se escribe el efectivo, el resto va por transfer
   // Sin alias habilitado, el resto se elige entre transferencia (por defecto) y QR.
   expect(screen.getByRole('button', { name: 'Transferencia' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.queryByRole('button', { name: 'Al alias' })).not.toBeInTheDocument();
+  // Falta con cuánto paga el efectivo: el vuelto es contra los $ 400, no contra el total.
+  expect(cobrar).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: '1.000' }));
+  expect(screen.getByRole('status')).toHaveTextContent(/Vuelto\s*\$\s?600/);
   expect(cobrar).toBeEnabled();
   fireEvent.click(cobrar);
   await waitFor(() => expect(closeRegistrationAction).toHaveBeenCalledWith('reg', expect.objectContaining({
     closeType: 'PAYMENT', metodo: undefined, expectedPrice: 1000,
-    pagos: [{ metodo: 'CASH', importe: 400 }, { metodo: 'TRANSFER', importe: 600 }],
+    pagos: [{ metodo: 'CASH', importe: 400 }, { metodo: 'TRANSFER', importe: 600 }], efectivoRecibido: 1000,
   })));
   expect(pagoParcialEfectivoAction).not.toHaveBeenCalled();
 });
 
 test('efectivo y QR: primero se cobra el efectivo sin la salida y después el QR pide el resto', async () => {
-  jest.mocked(pagoParcialEfectivoAction).mockResolvedValue({ summary: summary(1000, 400) });
+  jest.mocked(pagoParcialEfectivoAction).mockResolvedValue({ summary: summary(1000, 400), cobroEfectivo: { importe: 400, efectivoRecibido: 400, vuelto: 0 } });
   jest.mocked(crearCobroMercadoPagoAction).mockResolvedValue({ cobro: { id: 'qr', estado: 'PENDIENTE', monto: 600 } } as unknown as Awaited<ReturnType<typeof crearCobroMercadoPagoAction>>);
   render(<CloseTicketPanel open initialRegistrationId="reg" onOpenChange={jest.fn()} />);
   const hibrido = await screen.findByRole('button', { name: /Efectivo y otro medio/ });
@@ -236,9 +288,12 @@ test('efectivo y QR: primero se cobra el efectivo sin la salida y después el QR
   fireEvent.click(hibrido);
   fireEvent.change(screen.getByLabelText('En efectivo'), { target: { value: '400' } });
   fireEvent.click(screen.getByRole('button', { name: 'QR' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Justo' }));
   fireEvent.click(screen.getByRole('button', { name: /Cobrar efectivo y mostrar el QR/ }));
   await waitFor(() => expect(crearCobroMercadoPagoAction).toHaveBeenCalledWith('reg'));
-  expect(pagoParcialEfectivoAction).toHaveBeenCalledWith('reg', { importe: 400, expectedPrice: 1000, expectedCollected: 0 });
+  expect(pagoParcialEfectivoAction).toHaveBeenCalledWith('reg', { importe: 400, expectedPrice: 1000, expectedCollected: 0, efectivoRecibido: 400 });
+  // La parte en efectivo ya quedó cobrada: su vuelto queda a la vista aunque el resto se pague después.
+  expect(ultimoCobro()).toEqual(expect.objectContaining({ total: 400, efectivo: 400, recibido: 400, vuelto: 0, medio: 'en efectivo · resto por QR' }));
   expect(jest.mocked(pagoParcialEfectivoAction).mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(crearCobroMercadoPagoAction).mock.invocationCallOrder[0]);
   expect(closeRegistrationAction).not.toHaveBeenCalled();
 });

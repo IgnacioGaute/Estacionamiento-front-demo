@@ -79,6 +79,7 @@ export default {
           "line-strong": "hsl(var(--gm-line-strong))",
           // Colores de estado (ver globals.css). Con <alpha-value> para usar /10, /40, etc.
           aviso:         "hsl(var(--gm-aviso) / <alpha-value>)",
+          falta:         "hsl(var(--gm-falta) / <alpha-value>)",
           atencion:      "hsl(var(--gm-atencion) / <alpha-value>)",
           ok:            "hsl(var(--gm-ok) / <alpha-value>)",
           "texto-tenue": "hsl(var(--gm-texto-tenue) / <alpha-value>)",

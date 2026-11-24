@@ -9,7 +9,7 @@ import { useEffect, useId, useMemo, useState, type ReactNode, type RefObject } f
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { ArrowDownLeft, ArrowRight, ArrowUpRight, Banknote, CalendarDays, CalendarPlus, CarFront, Check, ChevronRight, Clock3, LogIn, Receipt, Search } from 'lucide-react';
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, Banknote, CalendarDays, CalendarPlus, CarFront, Check, ChevronRight, Clock3, LogIn, Receipt, ScrollText, Search } from 'lucide-react';
 import { AnimatedScrollList } from '@/components/animated-scroll-list';
 import { PlateChip } from '@/components/plate-chip';
 import { VehicleTypeBadge } from '@/components/vehicle-type-badge';
@@ -35,6 +35,7 @@ export type FiltroTablero = 'todos' | 'excedidos' | 'vencidas';
 type Refe = (el: HTMLElement | null) => void;
 
 const enfoque = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow';
+const accesoHistorial = 'flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-[14px] border-[1.5px] border-gm-line-strong bg-gm-surface-2/40 px-2 py-2 text-center text-[13px] font-semibold leading-tight text-foreground transition-colors hover:border-gm-yellow/50 hover:bg-gm-yellow/[0.06] active:scale-[0.98]';
 
 export function Kbd({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -209,12 +210,15 @@ export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef,
 
 // ── Lo último que pasó ────────────────────────────────────────────────────────
 
-export function UltimosMovimientos({ registros, ahora, comprobantes, onComprobante, onTodos, refEl }: {
+export function UltimosMovimientos({ registros, ahora, comprobantes, onComprobante, onTodos, onComprobantes, refEl }: {
   registros: TicketRegistration[];
   ahora: number;
   comprobantes: boolean;
   onComprobante: (id: string, kind: 'ENTRY' | 'EXIT') => void;
+  // «Ver movimientos»: el historial completo, con filtros y correcciones.
   onTodos: () => void;
+  // El historial de comprobantes sigue a mano, aparte.
+  onComprobantes?: () => void;
   refEl?: Refe;
 }) {
   const ultimos = useMemo(
@@ -223,15 +227,7 @@ export function UltimosMovimientos({ registros, ahora, comprobantes, onComproban
   );
   return (
     <section ref={refEl} aria-labelledby="ultimos-movimientos" className="rounded-[22px] border border-border bg-card px-4 pb-2 pt-3">
-      <div className="flex min-h-9 items-center justify-between gap-2">
-        <h2 id="ultimos-movimientos" className="text-sm font-bold">Últimos movimientos</h2>
-        {comprobantes && (
-          <button type="button" onClick={onTodos} aria-label="Ver todos los comprobantes" className={cn('inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-1 text-[13px] font-semibold text-gm-yellow hover:underline', enfoque)}>
-            <Receipt className="size-4" aria-hidden />
-            Comprobantes
-          </button>
-        )}
-      </div>
+      <h2 id="ultimos-movimientos" className="flex min-h-9 items-center text-sm font-bold">Últimos movimientos</h2>
       {ultimos.length ? (
         <ul className="mt-1">
           {ultimos.map((r) => {
@@ -266,6 +262,21 @@ export function UltimosMovimientos({ registros, ahora, comprobantes, onComproban
       ) : (
         <p className="py-4 text-sm text-muted-foreground">Todavía no hay movimientos.</p>
       )}
+      {/* Los accesos al historial, con su nombre completo. Arriba, chicos y pegados al título,
+          «Comprobantes» se leía como una etiqueta y «Ver todos» no decía de qué. Ícono arriba del
+          texto: en el mostrador de 320 px «Ver comprobantes» no entra al lado del ícono. */}
+      <div className={cn('mt-1 grid gap-2 border-t border-gm-line pb-1.5 pt-2.5', comprobantes && onComprobantes ? 'grid-cols-2' : 'grid-cols-1')}>
+        <button type="button" onClick={onTodos} className={cn(accesoHistorial, enfoque)}>
+          <ScrollText className="size-[18px] text-gm-yellow" aria-hidden />
+          Ver movimientos
+        </button>
+        {comprobantes && onComprobantes && (
+          <button type="button" onClick={onComprobantes} className={cn(accesoHistorial, enfoque)}>
+            <Receipt className="size-[18px] text-gm-yellow" aria-hidden />
+            Ver comprobantes
+          </button>
+        )}
+      </div>
     </section>
   );
 }

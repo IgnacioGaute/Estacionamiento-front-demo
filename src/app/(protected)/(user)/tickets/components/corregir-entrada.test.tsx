@@ -5,7 +5,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { corregirEntradaAction } from '@/actions/tickets/corregir-entrada.action';
 import type { CloseSummary } from '@/services/tickets.service';
-import { CorregirEntrada, entradaDesdeHora } from './corregir-entrada';
+import { CorregirEntrada, entradaDesdeHora, formatoHora } from './corregir-entrada';
 
 jest.mock('@/actions/tickets/corregir-entrada.action', () => ({ corregirEntradaAction: jest.fn() }));
 dayjs.extend(utc);
@@ -59,10 +59,38 @@ test('los atajos completan la hora sin abrir el reloj del teléfono', async () =
   jest.mocked(corregirEntradaAction).mockResolvedValue({ summary: resumen(120) });
   render(<CorregirEntrada summary={resumen(0)} onCorregido={jest.fn()} />);
   fireEvent.click(screen.getByRole('button', { name: '¿Entró antes?' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Hace 2 h' }));
   const esperada = dayjs().tz(TZ).subtract(2, 'hour').format('HH:mm');
+  // Cada atajo muestra a qué hora queda.
+  const atajo = screen.getByRole('button', { name: /^Hace 2 h/ });
+  expect(atajo).toHaveTextContent(esperada);
+  fireEvent.click(atajo);
+  expect(atajo).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByLabelText(/Desde qué hora está/i)).toHaveValue(esperada);
+  // Antes de recalcular dice desde cuándo se va a cobrar.
+  expect(screen.getByText(/Se cobra desde/)).toHaveTextContent(new RegExp(`las ${esperada} · estuvo 2 h 00 min`));
   fireEvent.click(screen.getByRole('button', { name: 'Recalcular' }));
   await waitFor(() => expect(corregirEntradaAction).toHaveBeenCalled());
   expect(dayjs(jest.mocked(corregirEntradaAction).mock.calls[0][1]).tz(TZ).format('HH:mm')).toBe(esperada);
+});
+
+test('la hora se escribe con números, en 24 h, y el botón dice qué falta', () => {
+  expect(formatoHora('1315')).toBe('13:15');
+  expect(formatoHora('13:15')).toBe('13:15');
+  expect(formatoHora('9')).toBe('9');
+  expect(formatoHora('08001')).toBe('08:00');
+  render(<CorregirEntrada summary={resumen(0)} onCorregido={jest.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: '¿Entró antes?' }));
+  const campo = screen.getByLabelText(/Desde qué hora está/i);
+  const recalcular = () => screen.getByRole('button', { name: /^Recalcular/ });
+  expect(recalcular()).toBeDisabled();
+  expect(recalcular()).toHaveTextContent('Elegí la hora');
+  fireEvent.change(campo, { target: { value: '13' } });
+  expect(recalcular()).toHaveTextContent('Completá HH:MM');
+  fireEvent.change(campo, { target: { value: '2575' } });
+  expect(campo).toHaveValue('25:75');
+  expect(recalcular()).toHaveTextContent('Esa hora no existe');
+  fireEvent.change(campo, { target: { value: '0730' } });
+  expect(campo).toHaveValue('07:30');
+  expect(recalcular()).toBeEnabled();
+  expect(recalcular()).toHaveTextContent(/^Recalcular$/);
 });

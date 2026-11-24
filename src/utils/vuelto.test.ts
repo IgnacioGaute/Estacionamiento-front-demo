@@ -1,4 +1,4 @@
-import { calcularVuelto, pagosSugeridos } from './vuelto';
+import { calcularVuelto, estadoEfectivo, pagosSugeridos } from './vuelto';
 
 describe('pagosSugeridos', () => {
   test('propone los primeros importes redondos mayores al saldo', () => {
@@ -26,5 +26,22 @@ describe('calcularVuelto', () => {
 
   test('no arrastra errores de coma flotante', () => {
     expect(calcularVuelto(1000.1, 1000.3)).toBe(0.2);
+  });
+});
+
+describe('estadoEfectivo', () => {
+  test('sin indicar con cuánto paga no se puede confirmar', () => {
+    expect(estadoEfectivo(3500, null)).toEqual({ estado: 'SIN_INDICAR' });
+  });
+
+  test('justo, con vuelto o lo que le falta', () => {
+    expect(estadoEfectivo(3500, 3500)).toEqual({ estado: 'LISTO', vuelto: 0 });
+    expect(estadoEfectivo(3500, 10000)).toEqual({ estado: 'LISTO', vuelto: 6500 });
+    expect(estadoEfectivo(3500, 3000)).toEqual({ estado: 'FALTA', falta: 500 });
+  });
+
+  test('en un pago mixto el vuelto es contra la parte en efectivo', () => {
+    // Total $ 5.000: $ 2.000 en efectivo y $ 3.000 por transferencia, entrega $ 5.000.
+    expect(estadoEfectivo(2000, 5000)).toEqual({ estado: 'LISTO', vuelto: 3000 });
   });
 });

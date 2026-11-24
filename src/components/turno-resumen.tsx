@@ -54,6 +54,7 @@ export function TurnoResumenPanel({ turno }: { turno: Turno }) {
         : !abierto && <p className="px-4 py-3 text-xs text-muted-foreground">{turno.cierreAutomatico ? (turno.cierreCaja ? 'Corte de las 00:00. La caja se cerró sin contar.' : 'Corte de las 00:00. La caja continúa abierta.') : 'La caja sigue abierta con otros operadores.'}</p>}
     </div>
 
+    {r.correcciones && (r.correcciones.aplicadas > 0 || r.correcciones.pendientes > 0) && <Correcciones c={r.correcciones} />}
     {turno.alertaSueldo && <p role="alert" className="rounded-xl border border-gm-atencion/40 bg-gm-atencion/5 p-3 text-xs text-gm-atencion">{turno.alertaSueldo}</p>}
     {r.movimientos.length > 0 && <details className="group text-xs">
       <summary className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground">Ver movimientos de caja</summary>
@@ -65,6 +66,25 @@ export function TurnoResumenPanel({ turno }: { turno: Turno }) {
       </ul>
     </details>}
   </section>;
+}
+
+// Correcciones de registros del turno. Las aplicadas mientras su caja estaba abierta ya están en los
+// cobros de arriba; las aplicadas después de contar y cerrar la caja no cambian su arqueo (contado,
+// esperado y diferencia quedan igual) y su ajuste fue a la planilla del día en que se aplicaron.
+function Correcciones({ c }: { c: NonNullable<NonNullable<Turno['resumen']>['correcciones']> }) {
+  const p = c.posterioresAlCierre;
+  return <div role="note" aria-label="Correcciones del turno" className="space-y-1 rounded-xl border border-gm-line px-4 py-3 text-xs">
+    <p className="font-semibold">
+      {c.aplicadas > 0 && `${c.aplicadas} ${c.aplicadas === 1 ? 'corrección aplicada' : 'correcciones aplicadas'}`}
+      {c.aplicadas > 0 && c.pendientes > 0 && ' · '}
+      {c.pendientes > 0 && <span className="text-gm-orange">{c.pendientes} en revisión</span>}
+    </p>
+    {p && <p className="leading-relaxed text-muted-foreground">
+      {p.cantidad === 1 ? 'Una se aplicó' : `${p.cantidad} se aplicaron`} después del cierre: el arqueo de este turno no cambió.
+      {p.efectivo !== 0 && <> El efectivo {p.efectivo < 0 ? 'bajó' : 'subió'} <span className="font-semibold tabular-nums text-foreground">{money(Math.abs(p.efectivo))}</span> en la planilla del día en que se corrigió.</>}
+    </p>}
+    {c.pendientes > 0 && <p className="text-muted-foreground">Las pendientes no cambian nada hasta que administración las revise.</p>}
+  </div>;
 }
 
 function Medio({ punto, label, value, children }: { punto: string; label: string; value: string; children?: ReactNode }) {

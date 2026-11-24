@@ -15,7 +15,7 @@ export async function updateTicketRegistrationForDayStatusAction(
     if ('error' in result) {
       return { error: result.error?.message || 'Error al editar el ticket' };
     }
-    return { success: 'Ticket editado exitosamente' };
+    return { success: 'Ticket editado exitosamente', efectivoRecibido: (result.efectivoRecibido ?? null) as number | null, vuelto: (result.vuelto ?? null) as number | null };
   } catch (error) {
     console.log(error);
     return { error: 'Error al editar el ticket' };

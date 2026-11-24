@@ -411,7 +411,8 @@ export function CobroAliasPanel({
           <ActionDialogPrimaryButton
             disabled={!elegida || ocupado}
             onClick={() => void asignar()}
-            detail={opcionElegida ? (opcionElegida.nombre || opcionElegida.documento || `Operación ${operacionCorta(opcionElegida.operacionId)}`) : 'Elegí una transferencia'}
+            detail={opcionElegida ? (opcionElegida.nombre || opcionElegida.documento || `Operación ${operacionCorta(opcionElegida.operacionId)}`) : undefined}
+            falta={opcionElegida ? undefined : 'Elegí una transferencia'}
           >
             {ocupado ? 'Registrando…' : cobro.tipo === 'INQUILINO' ? 'Confirmar pago' : cobro.anticipo ? 'Confirmar anticipo' : 'Confirmar pago y salida'}
           </ActionDialogPrimaryButton>

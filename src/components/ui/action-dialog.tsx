@@ -196,10 +196,14 @@ function ActionDialogFooterPortal({ children }: { children: React.ReactNode }) {
 
 // El botón principal: lo que se hace y, abajo, sobre qué (patente, importe, medio). Lee de una
 // pasada qué se va a registrar antes de tocarlo.
+//
+// `falta`: lo que falta para poder confirmar («Tocá «Justo» o con cuánto paga», «Contá los
+// billetes»…). Va en lugar del detalle, en rojo vivo y con un punto que palpita: en gris pasaba
+// desapercibido y el operador tocaba el botón sin entender por qué no hacía nada.
 const ActionDialogPrimaryButton = React.forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { detail?: React.ReactNode }
->(({ className, children, detail, type = "button", ...props }, ref) => (
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { detail?: React.ReactNode; falta?: React.ReactNode }
+>(({ className, children, detail, falta, type = "button", ...props }, ref) => (
   <button
     ref={ref}
     type={type}
@@ -210,7 +214,9 @@ const ActionDialogPrimaryButton = React.forwardRef<
     {...props}
   >
     <span className="gm-display text-[16px] font-semibold leading-tight tracking-[0.05em]">{children}</span>
-    {detail && <span className="gm-mono text-[13px] font-semibold opacity-80">{detail}</span>}
+    {falta
+      ? <span className="gm-mono inline-flex items-center gap-2 text-[13px] font-bold text-gm-falta"><span aria-hidden className="gm-punto-falta" />{falta}</span>
+      : detail && <span className="gm-mono text-[13px] font-semibold opacity-80">{detail}</span>}
   </button>
 ))
 ActionDialogPrimaryButton.displayName = "ActionDialogPrimaryButton"

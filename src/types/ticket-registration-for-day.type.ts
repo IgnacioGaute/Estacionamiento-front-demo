@@ -24,6 +24,9 @@ export type TicketRegistrationForDay = {
     retired: boolean;
     retiredAt?: string | null;
     paymentMetodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO' | null;
+    // Cobrada en efectivo: lo que se declaró recibir y el vuelto (null si no se guardó).
+    efectivoRecibido?: number | null;
+    vuelto?: number | null;
     medioPagoDetalle?: string;
     comisionPagoEstimada?: DetalleComisionPago;
     boxList: BoxList;

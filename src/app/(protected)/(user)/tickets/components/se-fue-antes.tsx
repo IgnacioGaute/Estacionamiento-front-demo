@@ -6,7 +6,9 @@
 // la hora exacta ni corregir primero para cobrar después. Las tarifas y sus importes los arma el
 // servidor con el mismo cálculo del cobro. El pago entra ahora, en el turno de quien lo registra,
 // con los mismos medios que el cobro normal:
-// - Efectivo, transferencia o efectivo + transferencia: la salida se registra junto con el pago.
+// - Efectivo, transferencia o efectivo + transferencia: la salida se registra junto con el pago. Con
+//   efectivo, como en el cobro normal, hay que indicar con cuánto paga («Justo» o el importe) y
+//   tiene que alcanzar; el último cobro queda a la vista con el vuelto que confirmó el servidor.
 // - QR o alias: se cobra el importe de la tarifa como anticipo y, al acreditarse, se registra la
 //   salida (ya paga). Con efectivo + QR o alias, primero el efectivo y después el resto.
 // Queda en la Actividad.
@@ -42,6 +44,9 @@ import { PaymentMethodChoices, type MedioSalida } from './payment-method-choices
 import { CobroQrMercadoPago } from './cobro-qr-mercadopago';
 import { CobroAliasPanel } from './cobro-alias';
 import { TarifasElegibles } from './tarifas-elegibles';
+import { EfectivoRecibido, faltaDelEfectivo } from './efectivo-recibido';
+import { publicarUltimoCobro } from '@/lib/ultimo-cobro';
+import type { CobroEfectivoConfirmado } from '@/types/cobro-efectivo.type';
 
 type Devolucion = 'CASH' | 'TRANSFER';
 const DEVOLUCIONES: { id: Devolucion; texto: string; Icono: typeof Banknote }[] = [
@@ -63,6 +68,9 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
   const [medio, setMedio] = useState<MedioSalida | null>(null);
   const [devolucion, setDevolucion] = useState<Devolucion | null>(null);
   const [efectivoHibrido, setEfectivoHibrido] = useState('');
+  // Con cuánto paga el efectivo (todo el saldo, o la parte en efectivo de un pago mixto).
+  const [recibido, setRecibido] = useState<number | null>(null);
+  const [recibidoHibrido, setRecibidoHibrido] = useState<number | null>(null);
   const [restoPor, setRestoPor] = useState<Resto>('TRANSFER');
   const [aliasDisponible, setAliasDisponible] = useState(false);
   // Con el alias activo, el operador no tiene «Transferencia» sin verificar.
@@ -91,7 +99,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
 
   useEffect(() => {
     if (!open || !id) return;
-    setDatos(null); setElegida(null); setCada(0); setMedio(null); setDevolucion(null); setEfectivoHibrido('');
+    setDatos(null); setElegida(null); setCada(0); setMedio(null); setDevolucion(null); setEfectivoHibrido(''); setRecibido(null); setRecibidoHibrido(null);
     setRestoPor('TRANSFER'); setCobroQr(null); setCobroAlias(null); setError('');
     void cargar(id);
     void disponibilidadAliasAction().then((r) => {
@@ -119,14 +127,23 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
   const esperando = cobroQr?.estado === 'PENDIENTE' || (!!cobroAlias && ['ESPERANDO', 'REVISION'].includes(cobroAlias.estado));
   const efectivoParte = efectivoHibrido ? Number(efectivoHibrido) : 0;
   const errorHibrido = medio !== 'AMBOS' ? null : !efectivoParte ? 'Ingresá cuánto entrega en efectivo.' : efectivoParte >= saldo ? 'El efectivo cubre todo: elegí «Efectivo».' : null;
+  // Lo que falta del efectivo para confirmar: con cuánto paga, o que alcance.
+  const faltaEfectivo = saldo <= 0 ? null : medio === 'CASH' ? faltaDelEfectivo(saldo, recibido) : medio === 'AMBOS' && !errorHibrido ? faltaDelEfectivo(efectivoParte, recibidoHibrido) : null;
   const restoMedios: { id: Resto; texto: string }[] = [
     ...(transferenciaManual ? [{ id: 'TRANSFER' as const, texto: 'Transferencia' }] : []),
     { id: 'QR', texto: 'QR' },
     ...(aliasDisponible ? [{ id: 'ALIAS' as const, texto: 'Al alias' }] : []),
   ];
-  const listo = !!opcion && !enviando && !esperando && (saldo > 0 ? !!medio && !errorHibrido : devolver > 0 ? !!devolucion : true);
+  const listo = !!opcion && !enviando && !esperando && (saldo > 0 ? !!medio && !errorHibrido && !faltaEfectivo : devolver > 0 ? !!devolucion : true);
   const patente = registration.licensePlateOriginal || registration.ticket?.codeBar || registration.codeBarTicket || registration.lastNameCustomer || 'Sin patente';
   const etiquetaOpcion = opcion?.etiqueta ?? '';
+
+  // El efectivo que confirmó el servidor queda a la vista en la pantalla de operación.
+  const anunciarCobro = (cobro: CobroEfectivoConfirmado | null | undefined, total: number, medioCobro: string) => {
+    if (!cobro) return;
+    publicarUltimoCobro({ tipo: 'ESTADIA', registroId: registration.id, identificacion: patente, total, efectivo: cobro.importe, medio: medioCobro,
+      recibido: cobro.efectivoRecibido, vuelto: cobro.vuelto });
+  };
 
   const terminar = (registrada: TicketRegistration) => {
     toast.success(`Salida registrada: ${patente} con «${etiquetaOpcion}».`);
@@ -135,7 +152,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
   };
 
   // Registra la salida con la tarifa elegida y el pago que corresponda (o sin cobro si ya está paga).
-  const registrar = async (pago: { metodo?: Devolucion; pagos?: { metodo: Devolucion; importe: number }[] } = {}, actual = datos) => {
+  const registrar = async (pago: { metodo?: Devolucion; pagos?: { metodo: Devolucion; importe: number }[]; efectivoRecibido?: number } = {}, actual = datos) => {
     if (!opcion || !actual) return;
     const vigente = actual.opciones.find((o) => o.salidaEn === opcion.salidaEn);
     if (!vigente) { setError('La tarifa elegida ya no está disponible. Elegí otra.'); return; }
@@ -155,6 +172,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
       if (resultado.code === 'TICKET_PRICE_CHANGED') await cargar(registration.id);
       return;
     }
+    if (pendiente > 0 && pago.efectivoRecibido !== undefined) anunciarCobro(resultado.cobroEfectivo, pendiente, pago.pagos ? 'efectivo + transferencia' : 'en efectivo');
     terminar(resultado.registration);
   };
 
@@ -199,16 +217,19 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
     setError('');
     try {
       if (saldo === 0) return await registrar();
-      if (medio === 'CASH' || medio === 'TRANSFER') return await registrar({ metodo: medio });
+      if (medio === 'CASH') return await registrar({ metodo: medio, efectivoRecibido: recibido ?? undefined });
+      if (medio === 'TRANSFER') return await registrar({ metodo: medio });
       if (medio === 'AMBOS' && restoPor === 'TRANSFER')
-        return await registrar({ pagos: [{ metodo: 'CASH', importe: efectivoParte }, { metodo: 'TRANSFER', importe: saldo - efectivoParte }] });
+        return await registrar({ pagos: [{ metodo: 'CASH', importe: efectivoParte }, { metodo: 'TRANSFER', importe: saldo - efectivoParte }], efectivoRecibido: recibidoHibrido ?? undefined });
       if (medio === 'AMBOS') {
         // Primero el efectivo, que ya está en la mano (como en el cobro normal); el QR o el alias
         // piden después lo que falta para cubrir la tarifa.
         const resumen = await getCloseSummaryAction(registration.id);
         if (!resumen || !('previewBracket' in resumen)) { setError('No se pudo leer la estadía. Intentá de nuevo.'); return; }
-        const parcial = await pagoParcialEfectivoAction(registration.id, { importe: efectivoParte, expectedPrice: resumen.previewBracket.price, expectedCollected: resumen.totalCollectedSoFar });
+        if (recibidoHibrido === null) return;
+        const parcial = await pagoParcialEfectivoAction(registration.id, { importe: efectivoParte, expectedPrice: resumen.previewBracket.price, expectedCollected: resumen.totalCollectedSoFar, efectivoRecibido: recibidoHibrido });
         if (parcial.error) { setError(parcial.error); return; }
+        anunciarCobro(parcial.cobroEfectivo, efectivoParte, `en efectivo · resto ${restoPor === 'QR' ? 'por QR' : 'al alias'}`);
         toast.success(`Efectivo cobrado: ${formatImporte(efectivoParte)}.`);
         await cargar(registration.id);
         return await pedirAnticipo(restoPor as 'QR' | 'ALIAS');
@@ -221,8 +242,12 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
     }
   };
 
-  const elegir = (clave: string) => { setElegida(clave); setCada(0); setMedio(null); setDevolucion(null); setError(''); };
-  const detalleBoton = !opcion ? 'Elegí la tarifa' : saldo > 0 ? formatImporte(saldo) : etiquetaOpcion;
+  const elegir = (clave: string) => { setElegida(clave); setCada(0); setMedio(null); setDevolucion(null); setRecibido(null); setRecibidoHibrido(null); setError(''); };
+  const detalleBoton = saldo > 0 ? formatImporte(saldo) : etiquetaOpcion;
+  // Lo que falta para confirmar, en rojo bajo el botón.
+  const faltaBoton = enviando ? null : !opcion ? 'Elegí la tarifa' : saldo > 0 && !medio ? 'Elegí cómo paga' : faltaEfectivo
+    ?? (medio === 'AMBOS' && saldo > 0 ? errorHibrido?.replace(/\.$/, '') ?? null : null)
+    ?? (saldo === 0 && devolver > 0 && !devolucion ? 'Elegí cómo se devuelve' : null);
   const textoBoton = enviando ? 'Registrando…'
     : saldo > 0 && (medio === 'QR' || (medio === 'AMBOS' && restoPor === 'QR')) ? 'Cobrar con QR'
     : saldo > 0 && (medio === 'ALIAS' || (medio === 'AMBOS' && restoPor === 'ALIAS')) ? 'Esperar transferencia al alias'
@@ -253,7 +278,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
                 onElegir={elegir}
                 cada={repeticiones.length ? {
                   etiqueta: etiquetaCada, max: repeticiones.length, cantidad: cada,
-                  onCantidad: (n) => { setCada(n); setMedio(null); setError(''); },
+                  onCantidad: (n) => { setCada(n); setMedio(null); setRecibido(null); setRecibidoHibrido(null); setError(''); },
                   precioCon: (n) => repeticiones[n - 1]?.precio ?? ultimaBase?.precio ?? 0,
                 } : null}
               />
@@ -275,9 +300,13 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
             <div role="group" aria-labelledby="se-fue-medio" className="space-y-2">
               <p id="se-fue-medio" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">¿Cómo paga?</p>
               <PaymentMethodChoices compact hibrido value={medio} onChange={(m) => { setMedio(m); setError(''); }} disabled={enviando} aliasDisponible={aliasDisponible} transferenciaManual={transferenciaManual} />
+              {medio === 'CASH' && (
+                <EfectivoRecibido aplicado={saldo} recibido={recibido} onChange={setRecibido} disabled={enviando}
+                  onCobrarResto={(entregado) => { setMedio('AMBOS'); setEfectivoHibrido(String(entregado)); setRecibidoHibrido(entregado); }} />
+              )}
               {medio === 'AMBOS' && (
                 <div className="space-y-2.5 rounded-2xl border border-border bg-gm-surface-2/50 p-3">
-                  <CashAmountField compact id="se-fue-efectivo" label="En efectivo" value={efectivoHibrido} onChange={setEfectivoHibrido} disabled={enviando} max={saldo} />
+                  <CashAmountField compact id="se-fue-efectivo" label="En efectivo" value={efectivoHibrido} onChange={(v) => { setEfectivoHibrido(v); setRecibidoHibrido(null); }} disabled={enviando} max={saldo} />
                   <div className="space-y-2 border-t border-dashed border-gm-line-strong pt-2.5">
                     <p className="flex items-center justify-between gap-2">
                       <span className="text-[14px] font-semibold">El resto</span>
@@ -295,6 +324,9 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
                   </div>
                   {errorHibrido && efectivoHibrido && <p role="alert" className="text-xs text-gm-orange">{errorHibrido}</p>}
                 </div>
+              )}
+              {medio === 'AMBOS' && !errorHibrido && efectivoParte > 0 && (
+                <EfectivoRecibido titulo="¿Con cuánto paga el efectivo?" aplicado={efectivoParte} recibido={recibidoHibrido} onChange={setRecibidoHibrido} disabled={enviando} />
               )}
               {(medio === 'QR' || medio === 'ALIAS' || (medio === 'AMBOS' && restoPor !== 'TRANSFER')) && (
                 <p className="text-xs text-muted-foreground">Cuando el pago se acredite, la salida se registra sola con «{etiquetaOpcion}».</p>
@@ -320,7 +352,7 @@ export function SeFueAntes({ registration, open, onOpenChange, onRegistrada }: {
         </ActionDialogBody>
         {!esperando && (
           <ActionDialogFooter>
-            <ActionDialogPrimaryButton disabled={!listo} onClick={() => void confirmar()} detail={detalleBoton}>
+            <ActionDialogPrimaryButton disabled={!listo} onClick={() => void confirmar()} detail={detalleBoton} falta={faltaBoton}>
               {textoBoton}
             </ActionDialogPrimaryButton>
           </ActionDialogFooter>

@@ -5,14 +5,30 @@ const money = n => new Intl.NumberFormat('es-AR', { style: 'currency', currency:
 const localTime = value => { const d = new Date(value); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
 const now = () => new Date(Math.floor(Date.now() / 1000) * 1000).toISOString();
 const methods = [['CASH','Efectivo'],['TRANSFER','Transferencia verificada']];
+// Sin medio preseleccionado: el operador elige cómo le pagaron, como en la pantalla con conexión.
+const choose = label => [['', label]];
 const operationLabels = { PLATE_ENTRY:'Entrada por patente', CARD_ENTRY:'Entrada con tarjeta', CLOSE:'Salida', ADVANCE:'Anticipo', DISCOUNT:'Descuento', PARTIAL_CASH:'Pago parcial en efectivo', EDIT:'Corrección de datos', EDIT_ENTRY:'Corrección de ingreso', DELETE:'Ingreso eliminado por error', PASS_ENTRY:'Alta de estadía', PASS_UPDATE:'Cobro / retiro de estadía', SHIFT_OPEN:'Apertura de turno', SHIFT_CLOSE:'Cierre de turno', CASH_MOVEMENT:'Retiro / aporte', BOX_MOVEMENT:'Ingreso / gasto', ENTRY:'Entrada', EXIT:'Salida' };
 function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
 function button(text, click, secondary = true) { const b = el('button', text, secondary ? 'secondary' : ''); b.type = 'button'; b.onclick = click; return b; }
 const numeric = (key, label, value = 0) => ({ key, label, type: 'number', value, min: 0, required: true });
 const text = (key, label, value = '', required = false) => ({ key, label, value, required });
 const select = (key, label, options, value) => ({ key, label, options, value });
+// Con efectivo hay que indicar con cuánto pagó: «Justo» o el importe que entregó. Se guarda con la
+// operación y el servidor calcula el vuelto al sincronizar.
+const cashFields = when => [
+  { ...select('cashMode', '¿Con cuánto pagó en efectivo?', [...choose('Elegí: justo u otro importe'), ['EXACT', 'Justo'], ['OTHER', 'Entregó otro importe']]), required: true, when },
+  { key: 'received', label: 'Importe que entregó', type: 'number', value: '', min: 0, required: true, when: d => when(d) && d.cashMode === 'OTHER' },
+];
+function declaredCash(d, cash) {
+  const received = d.cashMode === 'EXACT' ? cash : d.received;
+  if (!d.cashMode || !Number.isSafeInteger(received) || received < 0 || (d.cashMode === 'OTHER' && !received)) throw new Error('Indicá con cuánto pagó: «Justo» o el importe que entregó.');
+  if (received < cash) throw new Error('Le falta entregar ' + money(cash - received) + '. Corregí el importe o cobrá el resto por transferencia.');
+  return received;
+}
+// Los campos de la pantalla que no van en la operación (y los medios sin elegir).
+function clean(d) { delete d.cashMode; delete d.received; for (const key of ['paymentMetodo', 'method']) if (d[key] === '') delete d[key]; return d; }
 export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }) {
-  let mounted = false, dialog;
+  let mounted = false, dialog, lastCash = null;
   const s = getState;
   const types = current => [...s().types.map(t => [t.code, t.name]), ...(current && !s().types.some(t => t.code === current) ? [[current, current + ' (tipo del ingreso)']] : [])];
   const free = v => (v?.modalidad ?? s().modalidad) === 'GRATUITO';
@@ -60,11 +76,29 @@ export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }
       ...(!noPlate ? [{key:'duplicateOverride',label:'Confirmo otro ingreso de la misma patente',type:'checkbox',when:d=>s().vehicles.some(v=>!v.departed && v.plate===d.licensePlate?.toUpperCase().replace(/[^A-Z0-9]/g,''))},{...text('duplicateOverrideReason','Motivo del ingreso duplicado','',true),when:d=>!!d.duplicateOverride}] : []),
     ], async d => { if (noPlate) d.noPlate = true; if(!d.duplicateOverride) {delete d.duplicateOverride;delete d.duplicateOverrideReason;} for (const key of ['phoneCustomer','casilleroNumber','lastNameCustomer']) if (!d[key]) delete d[key]; if (d.phoneCustomer) d.phoneCustomer = d.phoneCustomer.replace(/[\s()+-]/g,''); await commit('PLATE_ENTRY', crypto.randomUUID(), d); $('plate').value = ''; }, { description: 'Podés agregar el anticipo o la duración prevista desde el detalle del vehículo.' });
   }
+  // El último cobro en efectivo guardado en este equipo: se muestra con el vuelto, aclarando que
+  // todavía no lo confirmó el servidor (queda pendiente hasta sincronizar).
+  function showCash(entry) { lastCash = entry; render(); }
+  function cashBanner() {
+    const box = $('offline-last-cash');
+    if (!box) return;
+    box.hidden = !lastCash;
+    if (!lastCash) return;
+    const pending = s().pending.some(op => op.registrationId === lastCash.registrationId && op.action === lastCash.action);
+    box.replaceChildren(
+      el('strong', 'Último cobro en efectivo · ' + (pending ? 'guardado en este equipo, pendiente de sincronizar' : 'sincronizado')),
+      el('p', lastCash.plate + ' · ' + money(lastCash.total) + ' ' + lastCash.medio + ' · entregó ' + money(lastCash.received)),
+      el('p', 'Vuelto: ' + money(lastCash.received - lastCash.cash), 'offline-change'),
+      button('Ocultar', () => { lastCash = null; render(); }),
+    );
+  }
   function payment(v) {
     const quoteAt = now(), totals = summary(s(), v, quoteAt);
+    const charges = totals.saldo > 0 || totals.refund > 0;
     const fields = [
-      select('method', totals.refund ? 'Devolución del anticipo excedente' : 'Pago recibido', [...methods, ...(!totals.refund && totals.saldo ? [['MIXED','Efectivo + transferencia'],['COURTESY','Cortesía / sin cobrar con motivo']] : [])], 'CASH'),
+      ...(charges ? [{ ...select('method', totals.refund ? 'Devolución del anticipo excedente' : 'Pago recibido', [...choose(totals.refund ? 'Elegí cómo devolviste' : 'Elegí cómo pagó'), ...methods, ...(!totals.refund && totals.saldo ? [['MIXED','Efectivo + transferencia'],['COURTESY','Cortesía / sin cobrar con motivo']] : [])]), required: true }] : []),
       { ...numeric('cash','Parte recibida en efectivo', Math.floor(totals.saldo / 2)), when: d => d.method === 'MIXED' },
+      ...cashFields(d => !totals.refund && (d.method === 'CASH' || d.method === 'MIXED')),
       { ...text('motivo','Motivo de la cortesía', '', true), when: d => d.method === 'COURTESY' },
       { key: 'earlier', label: 'El vehículo se fue antes', type: 'checkbox', value: false },
       { key: 'salidaEn', label: 'Hora real de salida', type: 'datetime-local', value: localTime(quoteAt), required: true, when: d => d.earlier },
@@ -73,15 +107,23 @@ export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }
       const departure = d.earlier ? new Date(d.salidaEn).toISOString() : quoteAt;
       const current = summary(s(), v, departure);
       const data = free(v) ? {} : { expectedPrice: current.price, expectedCollected: current.collected, closeType: d.method === 'COURTESY' ? 'COURTESY' : current.saldo ? 'PAYMENT' : 'NO_CHARGE' };
+      let cash = 0;
       if (!free(v)) {
         if (d.method === 'COURTESY') data.motivo = d.motivo;
         else if (current.saldo && d.method === 'MIXED') data.pagos = [{ metodo: 'CASH', importe: d.cash }, { metodo: 'TRANSFER', importe: current.saldo - d.cash }];
         else if (current.saldo) data.metodo = d.method;
         if (current.refund) data.refundMetodo = d.method;
         if (d.earlier) data.salidaEn = departure;
+        // Con efectivo: con cuánto pagó la parte en efectivo (no se confirma sin eso ni si no alcanza).
+        cash = !current.saldo ? 0 : d.method === 'CASH' ? current.saldo : d.method === 'MIXED' ? d.cash : 0;
+        if (cash > 0) data.efectivoRecibido = declaredCash(d, cash);
       }
-      if (d.earlier) return show('Confirmar la salida anterior', [], () => commit('CLOSE', v.id, data, quoteAt), { description: 'Salida: ' + new Date(departure).toLocaleString('es-AR') + ' · Total: ' + money(current.price) + ' · A cobrar: ' + money(current.saldo) + ' · A devolver: ' + money(current.refund), label: 'Confirmar salida y cobro' });
-      await commit('CLOSE', v.id, data, quoteAt);
+      const save = async () => {
+        await commit('CLOSE', v.id, data, quoteAt);
+        if (cash > 0) showCash({ registrationId: v.id, action: 'CLOSE', plate: v.plate, total: current.saldo, cash, received: data.efectivoRecibido, medio: data.pagos ? 'efectivo + transferencia' : 'en efectivo' });
+      };
+      if (d.earlier) return show('Confirmar la salida anterior', [], save, { description: 'Salida: ' + new Date(departure).toLocaleString('es-AR') + ' · Total: ' + money(current.price) + ' · A cobrar: ' + money(current.saldo) + ' · A devolver: ' + money(current.refund) + (cash ? ' · Vuelto: ' + money(data.efectivoRecibido - cash) : ''), label: 'Confirmar salida y cobro' });
+      await save();
     }, { description: free(v) ? 'Salida sin cobro.' : 'Total ' + money(totals.price) + ' · Anticipos ' + money(totals.collected) + ' · A cobrar ' + money(totals.saldo) + (totals.refund ? ' · A devolver ' + money(totals.refund) : '') + '. Elegí transferencia sólo si verificaste que recibiste el pago.', label: 'Guardar salida pendiente' });
   }
   function advance(v) {
@@ -103,7 +145,11 @@ export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }
     actions.push(['Registrar salida', () => payment(v)]);
     if (!free(v)) {
       actions.push(['Anticipo / duración prevista', () => advance(v)], ['Descuento', () => discount(v)]);
-      if (totals.saldo > 1) actions.push(['Cobrar una parte en efectivo', () => show('Parte en efectivo', [numeric('importe','Importe cobrado', 1)], d => commit('PARTIAL_CASH', v.id, { ...d, expectedPrice: totals.price, expectedCollected: totals.collected }, at), { description: 'El resto podrá cobrarse por transferencia al registrar la salida.' })]);
+      if (totals.saldo > 1) actions.push(['Cobrar una parte en efectivo', () => show('Parte en efectivo', [numeric('importe','Importe cobrado', 1), ...cashFields(() => true)], async d => {
+        const efectivoRecibido = declaredCash(d, d.importe);
+        await commit('PARTIAL_CASH', v.id, { importe: d.importe, efectivoRecibido, expectedPrice: totals.price, expectedCollected: totals.collected }, at);
+        showCash({ registrationId: v.id, action: 'PARTIAL_CASH', plate: v.plate, total: d.importe, cash: d.importe, received: efectivoRecibido, medio: 'en efectivo · resto al salir' });
+      }, { description: 'El resto podrá cobrarse por transferencia al registrar la salida.' })]);
     }
     actions.push(['Corregir patente o vehículo', () => show('Corregir estadía', [...(v.entryMode === 'BARCODE' ? [] : [text('licensePlate','Patente', v.noPlate ? '' : v.plate, true)]), select('vehicleType','Tipo de vehículo', types(v.vehicleType), v.vehicleType)], d => commit('EDIT', v.id, d))]);
     if (Date.now() - Date.parse(v.entry) <= 900000) actions.push(['Corregir hora de ingreso', () => show('Ingreso cargado tarde', [{ key: 'entrada', label: 'Hora real de ingreso', type: 'datetime-local', value: localTime(v.entry), required: true }], d => commit('EDIT_ENTRY', v.id, { entrada: new Date(d.entrada).toISOString() }), { description: 'Hasta 24 horas hacia atrás. Disponible para ingresos cargados en los últimos 15 minutos.' })]);
@@ -111,17 +157,31 @@ export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }
     show('Estadía · ' + v.plate, [], () => payment(v), { description: 'Entrada: ' + new Date(v.entry).toLocaleString('es-AR') + ' · ' + v.vehicleType + (v.casilleroNumber ? ' · Casillero ' + v.casilleroNumber : '') + (v.lastNameCustomer ? ' · ' + v.lastNameCustomer : '') + (v.phoneCustomer ? ' · ' + v.phoneCustomer : '') + (free(v) ? ' · Sin cobro' : ' · Total ' + money(totals.price) + ' · Anticipos ' + money(totals.collected) + ' · Saldo ' + money(totals.saldo) + '\n' + totals.breakdown.map(b => b.label + ': ' + money(b.amount)).join(' · ')), label: 'Continuar a la salida', shortcuts: actions.slice(1) });
   }
   function passEntry() {
-    show('Registrar estadía', [text('vehiclePlateCustomer','Patente', '', true), select('vehicleType','Vehículo', types()), text('lastNameCustomer','Apellido (opcional)'), select('ticketTimeType','Duración', [['DIA','Días'],['SEMANA','Semanas'],['MES','Meses'],['SEMANA_Y_DIA','Semanas y días'],['MES_Y_DIA','Meses y días']]), { ...numeric('days','Cantidad de días',1), when:d=>['DIA','SEMANA_Y_DIA','MES_Y_DIA'].includes(d.ticketTimeType) }, { ...numeric('weeks','Cantidad de semanas',1), when:d=>['SEMANA','SEMANA_Y_DIA'].includes(d.ticketTimeType) }, { ...numeric('months','Cantidad de meses',1), when:d=>['MES','MES_Y_DIA'].includes(d.ticketTimeType) }, {key:'paid',label:'Ya recibí el pago',type:'checkbox'}, select('paymentMetodo','Medio recibido',methods)], async d => {
+    show('Registrar estadía', [text('vehiclePlateCustomer','Patente', '', true), select('vehicleType','Vehículo', types()), text('lastNameCustomer','Apellido (opcional)'), select('ticketTimeType','Duración', [['DIA','Días'],['SEMANA','Semanas'],['MES','Meses'],['SEMANA_Y_DIA','Semanas y días'],['MES_Y_DIA','Meses y días']]), { ...numeric('days','Cantidad de días',1), when:d=>['DIA','SEMANA_Y_DIA','MES_Y_DIA'].includes(d.ticketTimeType) }, { ...numeric('weeks','Cantidad de semanas',1), when:d=>['SEMANA','SEMANA_Y_DIA'].includes(d.ticketTimeType) }, { ...numeric('months','Cantidad de meses',1), when:d=>['MES','MES_Y_DIA'].includes(d.ticketTimeType) }, {key:'paid',label:'Ya recibí el pago',type:'checkbox'}, { ...select('paymentMetodo','Medio recibido',[...choose('Elegí cómo pagó'), ...methods]), required: true, when: d => !!d.paid }, ...cashFields(d => !!d.paid && d.paymentMetodo === 'CASH')], async d => {
       if (!['DIA','SEMANA_Y_DIA','MES_Y_DIA'].includes(d.ticketTimeType)) delete d.days;
       if (!['SEMANA','SEMANA_Y_DIA'].includes(d.ticketTimeType)) delete d.weeks;
       if (!['MES','MES_Y_DIA'].includes(d.ticketTimeType)) delete d.months;
       const rate = type => s().passPrices.find(p=>p.ticketTimeType===type && p.vehicleType===d.vehicleType)?.ticketTimePrice;
       const price = (d.days || 0)*(rate('DIA') || 0)+(d.weeks || 0)*(rate('SEMANA') || 0)+(d.months || 0)*(rate('MES') || 0);
-      show('Confirmar estadía · ' + d.vehiclePlateCustomer, [], () => commit('PASS_ENTRY',crypto.randomUUID(),d), { description: 'Total: '+money(price)+' · '+(d.paid?'Pago recibido':'Queda pendiente de pago'), label:'Confirmar estadía pendiente' });
+      const cash = d.paid && d.paymentMetodo === 'CASH' ? price : 0;
+      const received = cash ? declaredCash(d, cash) : undefined;
+      clean(d); if (!d.paid) delete d.paymentMetodo; if (received !== undefined) d.efectivoRecibido = received;
+      const id = crypto.randomUUID();
+      show('Confirmar estadía · ' + d.vehiclePlateCustomer, [], async () => {
+        await commit('PASS_ENTRY', id, d);
+        if (cash) showCash({ registrationId: id, action: 'PASS_ENTRY', plate: d.vehiclePlateCustomer, total: price, cash, received, medio: 'en efectivo' });
+      }, { description: 'Total: '+money(price)+' · '+(d.paid?'Pago recibido':'Queda pendiente de pago')+(cash ? ' · Vuelto: '+money(received - cash) : ''), label:'Confirmar estadía pendiente' });
     });
   }
   function passDetail(p) {
-    show('Estadía · '+p.vehiclePlateCustomer, [{key:'paid',label:'Pago recibido',type:'checkbox',value:!!p.paid}, select('paymentMetodo','Medio de pago',[...(p.paymentMetodo==='MERCADOPAGO'?[['KEEP','Conservar pago por Mercado Pago']]:[]),...methods],p.paymentMetodo==='MERCADOPAGO'?'KEEP':p.paymentMetodo || 'CASH'), {key:'retired',label:'El vehículo se retira',type:'checkbox',value:!!p.retired}], d=>{if(d.paymentMetodo==='KEEP')delete d.paymentMetodo;return commit('PASS_UPDATE',p.id,d);}, { description:'Total '+money(p.price)+' · '+p.ticketTimeType+'. Los cambios de cobro se registran como movimientos de ajuste.' });
+    show('Estadía · '+p.vehiclePlateCustomer, [{key:'paid',label:'Pago recibido',type:'checkbox',value:!!p.paid}, { ...select('paymentMetodo','Medio de pago',[...(p.paymentMetodo==='MERCADOPAGO'?[['KEEP','Conservar pago por Mercado Pago']]:p.paid?[]:choose('Elegí cómo pagó')),...methods],p.paymentMetodo==='MERCADOPAGO'?'KEEP':p.paid ? p.paymentMetodo || 'CASH' : ''), required: true, when: d => !!d.paid }, ...cashFields(d => !p.paid && !!d.paid && d.paymentMetodo === 'CASH'), {key:'retired',label:'El vehículo se retira',type:'checkbox',value:!!p.retired}], async d=>{
+      // Se cobra ahora en efectivo: con cuánto pagó.
+      const cash = !p.paid && d.paid && d.paymentMetodo === 'CASH' ? p.price : 0;
+      const received = cash ? declaredCash(d, cash) : undefined;
+      clean(d); if(d.paymentMetodo==='KEEP' || !d.paid)delete d.paymentMetodo; if (received !== undefined) d.efectivoRecibido = received;
+      await commit('PASS_UPDATE',p.id,d);
+      if (cash) showCash({ registrationId: p.id, action: 'PASS_UPDATE', plate: p.vehiclePlateCustomer, total: p.price, cash, received, medio: 'en efectivo' });
+    }, { description:'Total '+money(p.price)+' · '+p.ticketTimeType+'. Los cambios de cobro se registran como movimientos de ajuste.' });
   }
   function forgottenEntry() {
     show('Vehículo que se va sin ingreso registrado',[text('licensePlate','Patente','',true),select('vehicleType','Vehículo',types()),{key:'entrada',label:'Hora real de ingreso',type:'datetime-local',value:localTime(Date.now()-3600000),required:true}],async d=>{
@@ -142,6 +202,7 @@ export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }
     // Qué necesita internet vale para toda la pantalla: va bajo el resumen de pendientes, no arriba
     // del título de las estadías por día, semana o mes.
     const hint=el('p','La cámara para leer patentes, el asistente, los pagos por QR y la verificación bancaria necesitan internet. El resto de las operaciones de este equipo se guardan como pendientes.','operation-hint offline-note');document.querySelector('.workspace-summary').after(hint);
+    const lastCashBox=el('section',undefined,'offline-last-cash');lastCashBox.id='offline-last-cash';lastCashBox.hidden=true;lastCashBox.setAttribute('role','status');lastCashBox.setAttribute('aria-label','Último cobro en efectivo');hint.after(lastCashBox);
     const staysTitle=el('h2','Estadías por día, semana o mes');staysTitle.id='offline-stays-title';
     panel.append(staysTitle,button('Registrar estadía',passEntry));panel.lastChild.id='offline-new-pass';
     panel.append(el('div'));panel.lastChild.id='offline-passes';
@@ -149,7 +210,7 @@ export function createOfflineWorkspace({ getState, commit, isBusy, showReceipt }
   }
   function render() {
     if(s()?.operationVersion!==3) return;
-    mount(); $('exit').hidden=true;
+    mount(); $('exit').hidden=true; cashBanner();
     const q=$('search').value.toUpperCase().replace(/[^A-Z0-9]/g,'');
     const vehicles=s().vehicles.filter(v=>!v.departed && (!q || [v.plate,v.lastNameCustomer,v.casilleroNumber,v.phoneCustomer].some(x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'').includes(q))));
     $('rows').replaceChildren(...vehicles.map(v=>{const row=el('div',undefined,'row');row.append(el('strong',v.plate),el('p',v.vehicleType+' · '+new Date(v.entry).toLocaleString('es-AR')));const actions=el('div',undefined,'actions');actions.append(button('Ver opciones',()=>{try{detail(v);}catch(e){$('status').textContent=e.message;}}),button('Registrar salida',()=>{try{payment(v);}catch(e){$('status').textContent=e.message;}},false)); if(!free(v)&&s().receiptDelivery?.print) actions.append(button('Comprobante de entrada',()=>showReceipt((s().receipts||[]).find(r=>r.registrationId===v.id&&r.kind==='ENTRY') || {id:v.id,registrationId:v.id,kind:'ENTRY',plate:v.plate,vehicleType:v.vehicleType,entry:v.entry,occurredAt:v.entry,business:s().business,historical:true})));row.append(actions);return row;}));

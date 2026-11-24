@@ -71,6 +71,13 @@ main:has(#workspace[hidden]) footer .return-online{display:none}
 #pending[data-hay=true]{color:hsl(var(--gm-atencion))}
 #stamp{font-size:12px;max-width:680px;margin:0;font-variant-numeric:tabular-nums}
 .offline-note{margin:0 0 20px;max-width:60rem}
+/* Último cobro en efectivo guardado en el equipo: el vuelto a la vista, aclarando que falta sincronizar. */
+.offline-last-cash{margin:0 0 20px;padding:14px 16px;border:1px solid hsl(var(--gm-line-strong));border-radius:16px;background:hsl(var(--gm-surface-2));display:grid;gap:4px}
+.offline-last-cash[hidden]{display:none}
+.offline-last-cash strong{font-size:13px;color:hsl(var(--gm-texto-2))}
+.offline-last-cash p{margin:0}
+.offline-last-cash .offline-change{font-size:22px;font-weight:700;color:hsl(var(--gm-yellow));font-variant-numeric:tabular-nums}
+.offline-last-cash button{justify-self:start;margin-top:6px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .workspace-summary>.actions{flex-shrink:0}
 

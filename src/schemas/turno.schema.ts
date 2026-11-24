@@ -12,6 +12,7 @@ export const openTurnoSchema = z.object({
   motivoConteoRelevo: z.string().max(255).optional(),
 });
 export type OpenTurnoSchemaType = z.infer<typeof openTurnoSchema>;
+const conteoBillete = z.object({ denominacion: z.number().int().positive(), cantidad: z.number().int().min(0).max(100000) });
 export const closeTurnoSchema = z.object({
   sueldoEsperado: z.number().int().min(0).optional(),
   // El operador eligió no retirar el sueldo aunque el efectivo alcanzaba.
@@ -27,5 +28,8 @@ export const closeTurnoSchema = z.object({
   // Deja una caja compartida que sigue abierta: lo que contó en el cajón.
   conteoRelevo: z.number().int().min(0).optional(),
   motivoConteoRelevo: z.string().max(255).optional(),
+  // Arqueo final por billetes: el conteo final y el primero comparado. El servidor recalcula los totales.
+  desglose: z.array(conteoBillete).max(13).optional(),
+  primerConteoDesglose: z.array(conteoBillete).max(13).optional(),
 }).refine(v => v.efectivoContado === undefined ? v.efectivoParaSiguiente === undefined : (v.efectivoParaSiguiente ?? 0) <= v.efectivoContado, { path: ['efectivoParaSiguiente'], message: 'No puede superar el efectivo contado.' });
 export type CloseTurnoSchemaType = z.infer<typeof closeTurnoSchema>;

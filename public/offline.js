@@ -234,6 +234,7 @@ $('confirm-exit').onclick = async () => {
     const vehicle = next.vehicles.find(v => v.id === exit.registrationId);
     if (!vehicle || vehicle.departed) throw new Error('La salida ya fue registrada.');
     const free = isFree(vehicle);
+    if (!free && !$('method').value) throw new Error('Elegí cómo pagó.');
     const op = free ? { ...exit } : { ...exit, method: $('method').value };
     next.pending.push(op); vehicle.departed = true; addReceipt(next, op);
     await persist(next); exit = null; $('exit').hidden = true; message(free ? 'Salida guardada. Pendiente de sincronizar.' : 'Salida y cobro guardados. Pendientes de sincronizar.');

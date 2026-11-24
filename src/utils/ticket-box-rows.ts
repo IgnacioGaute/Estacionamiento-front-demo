@@ -37,7 +37,9 @@ export function ticketBoxRows(box: BoxList): TicketRegistration[] {
       price: m.monto,
       operatorName: m.operador,
       dateNow: box.date,
-      description: `${labels[m.tipo]} - ${identificacion(m.ticketRegistration)}`,
+      // Los movimientos de una corrección de registro (medio de pago, vehículo equivocado) se leen
+      // como tales: el original sigue en la planilla de su día y esto es su ajuste.
+      description: `${m.correccionId ? 'Corrección' : labels[m.tipo]} - ${identificacion(m.ticketRegistration)}`,
       movimientos: [{ metodo: m.metodo, tipo: m.tipo, monto: m.monto, medioPagoDetalle: m.medioPagoDetalle, comisionPagoEstimada: m.comisionPagoEstimada }],
     } });
   }

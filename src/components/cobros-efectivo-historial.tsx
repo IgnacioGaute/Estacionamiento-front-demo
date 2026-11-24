@@ -28,6 +28,8 @@ const CONCEPTOS: Record<CobroEfectivo['concepto'], { largo: string; corto: strin
   DEVOLUCION_ANTICIPO: { largo: 'Devolución de anticipo', corto: 'Devolución' },
   AJUSTE_CAJA: { largo: 'Ajuste de caja', corto: 'Ajuste caja' },
   COBRO: { largo: 'Cobro en efectivo', corto: 'Efectivo' },
+  // Un cobro que se corrigió de medio (de efectivo a transferencia, o al revés).
+  CORRECCION: { largo: 'Corrección de medio de pago', corto: 'Corrección' },
 };
 const largo = (c: CobroEfectivo) =>
   c.concepto === 'ESTADIA_PERIODO' && c.periodo ? `Estadía por ${c.periodo}`
@@ -163,7 +165,11 @@ export function CobrosEfectivoHistorial({ turnoId, resumen }: { turnoId: string;
               <td className="py-1.5 pl-2 text-xs text-muted-foreground" title={largo(c)}>
                 <span aria-hidden>{corto(c)}</span><span className="sr-only">{largo(c)}</span>
               </td>
-              <td className={cn('whitespace-nowrap py-1.5 pl-2 pr-3.5 text-right font-semibold tabular-nums', c.importe < 0 && 'text-gm-atencion')}>{conSigno(c.importe)}</td>
+              <td className={cn('whitespace-nowrap py-1.5 pl-2 pr-3.5 text-right font-semibold tabular-nums', c.importe < 0 && 'text-gm-atencion')}>
+                {conSigno(c.importe)}
+                {/* Lo declarado al cobrar: con cuánto pagó y el vuelto. No suma al total. */}
+                {c.recibido != null && <span className="block text-[11px] font-normal text-muted-foreground">entregó {money(c.recibido)}{c.vuelto ? ` · vuelto ${money(c.vuelto)}` : ' · justo'}</span>}
+              </td>
             </tr>
           ))}
           {!filas.length && <tr><td colSpan={4} className="px-3.5 py-4 text-center text-xs text-muted-foreground">Ningún cobro coincide con «{busqueda}».</td></tr>}
@@ -179,6 +185,7 @@ export function CobrosEfectivoHistorial({ turnoId, resumen }: { turnoId: string;
       </p>
       {!mismoAlcance && <p className="text-gm-atencion">El resumen del turno da {conSigno(delResumen!)} entre lo cobrado y lo devuelto en efectivo, y este detalle {conSigno(detalle.total)}. Revisá la diferencia en la planilla del día.</p>}
       {detalle.sinDetalle > 0 && <p>«Sin detalle»: entró a la caja sin que se pueda saber de qué operación (por ejemplo, un ajuste de caja); se muestra con su hora e importe.</p>}
+      {detalle.cobros.some((c) => c.recibido != null) && <p>«Entregó» y «vuelto»: lo que el operador indicó al cobrar. Es lo declarado, no prueba que ese dinero se haya recibido o entregado. Los cobros anteriores a este dato no lo tienen.</p>}
     </footer>
   </>);
 }

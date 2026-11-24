@@ -15,6 +15,8 @@ import timezone from 'dayjs/plugin/timezone';
 import { corregirEntradaAction } from '@/actions/tickets/corregir-entrada.action';
 import type { ResumenSalida } from '@/services/tickets.service';
 import { Clock3 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { formatEstadia } from '@/utils/estadia';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -31,6 +33,15 @@ export function entradaDesdeHora(hora: string, ahora = dayjs().tz(TZ)): string |
   return momento.toISOString();
 }
 
+// Lo que se tipea en el campo de hora → «HH:MM» (24 h). Se escriben solo números y los dos puntos
+// se ponen solos: «1315» queda «13:15». El campo nativo mostraba «--:-- --» con AM/PM según el
+// idioma del navegador y el reloj del sistema, ajeno al resto de la pantalla.
+export function formatoHora(texto: string): string {
+  const d = texto.replace(/\D/g, '').slice(0, 4);
+  return d.length > 2 ? `${d.slice(0, 2)}:${d.slice(2)}` : d;
+}
+const horaValida = (hora: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(hora);
+
 export function CorregirEntrada({ summary, onCorregido }: { summary: Pick<ResumenSalida, 'registration' | 'elapsedMinutes'>; onCorregido: (summary: ResumenSalida) => void }) {
   const [abierto, setAbierto] = useState(false);
   const [hora, setHora] = useState('');
@@ -45,8 +56,15 @@ export function CorregirEntrada({ summary, onCorregido }: { summary: Pick<Resume
   if (summary.elapsedMinutes >= MINUTOS_PARA_PREGUNTAR) return null;
   const minutos = Math.max(0, summary.elapsedMinutes);
 
+  const valida = horaValida(hora);
+  const ahora = dayjs().tz(TZ);
+  const entradaElegida = valida ? entradaDesdeHora(hora, ahora) : null;
+  // Lo que falta para recalcular, en el botón y en rojo, como en el resto de los cobros.
+  const falta = !hora ? 'Elegí la hora' : hora.length < 5 ? 'Completá HH:MM' : !valida ? 'Esa hora no existe' : null;
+
   const corregir = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!valida) return;
     const entrada = entradaDesdeHora(hora);
     if (!entrada) { setError('Indicá la hora en que entró.'); return; }
     setEnviando(true);
@@ -64,7 +82,8 @@ export function CorregirEntrada({ summary, onCorregido }: { summary: Pick<Resume
     }
   };
 
-  const atajo = (horas: number) => { setHora(dayjs().tz(TZ).subtract(horas, 'hour').format('HH:mm')); setError(''); };
+  const horaDeAtajo = (horas: number) => ahora.subtract(horas, 'hour').format('HH:mm');
+  const atajo = (horas: number) => { setHora(horaDeAtajo(horas)); setError(''); };
   // Corto para que la franja entre en una línea en el celular.
   const hace = minutos === 0 ? 'instantes' : `${minutos} min`;
 
@@ -85,9 +104,12 @@ export function CorregirEntrada({ summary, onCorregido }: { summary: Pick<Resume
     );
 
   // Abierta: todo apilado, que en el celular no hay ancho para una fila. Los atajos resuelven lo
-  // común sin abrir el reloj del teléfono; el campo queda para cualquier otra hora.
+  // común y muestran a qué hora quedan; el campo queda para cualquier otra hora. Abajo se confirma
+  // desde cuándo se va a cobrar, antes de recalcular.
+  const minutosDesde = entradaElegida ? ahora.diff(dayjs(entradaElegida), 'minute') : null;
+  const deAyer = entradaElegida ? dayjs(entradaElegida).tz(TZ).format('YYYY-MM-DD') !== ahora.format('YYYY-MM-DD') : false;
   return (
-    <form onSubmit={corregir} className="mt-2.5 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3">
+    <form onSubmit={corregir} noValidate className="mt-2.5 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3">
       <label htmlFor="hora-real-entrada" className="block text-[13px] font-semibold text-foreground">
         ¿Desde qué hora está?
       </label>
@@ -95,48 +117,77 @@ export function CorregirEntrada({ summary, onCorregido }: { summary: Pick<Resume
         Si se olvidaron de registrar la entrada, se cobra desde esa hora.
       </p>
       <div className="mt-2.5 grid grid-cols-3 gap-1.5">
-        {[1, 2, 3].map((horas) => (
-          <button
-            key={horas}
-            type="button"
-            onClick={() => atajo(horas)}
-            disabled={enviando}
-            className="h-9 whitespace-nowrap rounded-[10px] border border-white/[0.08] bg-white/[0.03] text-[13px] font-semibold text-foreground transition-colors hover:border-gm-yellow/40 disabled:opacity-50"
-          >
-            Hace {horas} h
-          </button>
-        ))}
+        {[1, 2, 3].map((horas) => {
+          const valor = horaDeAtajo(horas);
+          const elegido = hora === valor;
+          return (
+            <button
+              key={horas}
+              type="button"
+              onClick={() => atajo(horas)}
+              disabled={enviando}
+              aria-pressed={elegido}
+              className={cn(
+                'flex min-h-12 flex-col items-center justify-center rounded-[12px] border px-1 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow disabled:opacity-50',
+                elegido ? 'border-gm-yellow bg-gm-yellow/[0.12]' : 'border-white/[0.08] bg-white/[0.03] hover:border-gm-yellow/40',
+              )}
+            >
+              <span className="whitespace-nowrap text-[13px] font-semibold text-foreground">Hace {horas} h</span>
+              <span className={cn('gm-mono text-[12px] tabular-nums', elegido ? 'text-gm-yellow' : 'text-muted-foreground')}>{valor}</span>
+            </button>
+          );
+        })}
       </div>
-      <input
-        ref={campo}
-        id="hora-real-entrada"
-        type="time"
-        value={hora}
-        onChange={(e) => { setHora(e.target.value); setError(''); }}
-        disabled={enviando}
-        aria-describedby="hora-real-ayuda"
-        className="gm-mono mt-2 h-12 w-full rounded-xl border border-white/10 bg-background px-3 text-center text-lg text-foreground focus-visible:border-gm-yellow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow/20"
-      />
+      <div className={cn(
+        'mt-2 flex h-14 items-center gap-3 rounded-xl border bg-background px-3 transition-colors focus-within:border-gm-yellow focus-within:ring-2 focus-within:ring-gm-yellow/20',
+        hora && !valida ? 'border-gm-orange/60' : 'border-white/10',
+      )}>
+        <Clock3 className="size-[18px] shrink-0 text-muted-foreground" aria-hidden />
+        <input
+          ref={campo}
+          id="hora-real-entrada"
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          enterKeyHint="done"
+          placeholder="HH:MM"
+          maxLength={5}
+          value={hora}
+          onChange={(e) => { setHora(formatoHora(e.target.value)); setError(''); }}
+          disabled={enviando}
+          aria-describedby="hora-real-ayuda"
+          aria-invalid={!!hora && !valida}
+          className="gm-mono min-w-0 flex-1 bg-transparent text-center text-[26px] font-bold tracking-[0.08em] text-foreground outline-none placeholder:text-[20px] placeholder:font-semibold placeholder:tracking-[0.12em] placeholder:text-gm-texto-tenue"
+        />
+        <span className="w-[18px] shrink-0" aria-hidden />
+      </div>
       {error ? (
         <p role="alert" className="mt-1.5 text-xs text-gm-orange">{error}</p>
       ) : (
-        <p id="hora-real-ayuda" className="mt-1.5 text-[12px] text-muted-foreground/80">Queda registrado quién corrigió la hora.</p>
+        <p id="hora-real-ayuda" aria-live="polite" className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
+          {entradaElegida && minutosDesde !== null && minutosDesde >= 0
+            ? <>Se cobra desde {deAyer ? 'ayer a ' : ''}las <strong className="gm-mono text-foreground">{hora}</strong> · estuvo <strong className="text-foreground">{formatEstadia(minutosDesde)}</strong>. Queda registrado quién corrigió la hora.</>
+            : 'Hora de 24 h. Queda registrado quién corrigió la hora.'}
+        </p>
       )}
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-2 items-stretch gap-2">
         <button
           type="button"
           onClick={() => { setAbierto(false); setError(''); setHora(''); }}
           disabled={enviando}
-          className="h-11 whitespace-nowrap rounded-xl border border-white/[0.08] text-[14px] font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          className="min-h-12 whitespace-nowrap rounded-xl border border-white/[0.08] text-[14px] font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
         >
           Cancelar
         </button>
         <button
           type="submit"
-          disabled={enviando || !hora}
-          className="h-11 whitespace-nowrap rounded-xl bg-gm-yellow text-[14px] font-bold text-gm-ink transition-[filter] hover:brightness-105 disabled:opacity-40"
+          disabled={enviando || !valida}
+          className="flex min-h-12 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-xl bg-gm-yellow px-2 py-1.5 text-gm-ink transition-[filter,background-color] hover:brightness-105 disabled:bg-gm-surface-3 disabled:text-muted-foreground"
         >
-          {enviando ? 'Recalculando…' : 'Recalcular'}
+          <span className="text-[14px] font-bold">{enviando ? 'Recalculando…' : 'Recalcular'}</span>
+          {falta && !enviando && (
+            <span className="gm-mono inline-flex items-center gap-1.5 text-[12px] font-bold text-gm-falta"><span aria-hidden className="gm-punto-falta" />{falta}</span>
+          )}
         </button>
       </div>
     </form>

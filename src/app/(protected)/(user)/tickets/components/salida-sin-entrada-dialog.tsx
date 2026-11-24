@@ -260,7 +260,8 @@ export function SalidaSinEntradaDialog({ plate, parecida, onClose, onCobrar, onR
         </ActionDialogBody>
         <ActionDialogFooter>
           <ActionDialogPrimaryButton disabled={!listo} onClick={confirmar}
-            detail={!todasContestadas ? 'Revisá las patentes parecidas' : precio !== null && minutos !== null ? `${formatImporte(precio)} · hasta ${formatEstadia(minutos)}` : 'Elegí la tarifa'}>
+            detail={todasContestadas && precio !== null && minutos !== null ? `${formatImporte(precio)} · hasta ${formatEstadia(minutos)}` : undefined}
+            falta={pending ? undefined : !todasContestadas ? 'Revisá las patentes parecidas' : precio === null || minutos === null ? 'Elegí la tarifa' : undefined}>
             {pending ? 'Registrando…' : 'Registrar y cobrar'}
           </ActionDialogPrimaryButton>
         </ActionDialogFooter>

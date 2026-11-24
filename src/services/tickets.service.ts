@@ -1,4 +1,5 @@
 import { DiscountRegistrationPayload } from '@/schemas/discount-registration.schema';
+import type { CobroEfectivoConfirmado } from '@/types/cobro-efectivo.type';
 import { tenantFetch as fetch } from '@/lib/tenant-fetch';
 import type { ReceiptDeliverySettings } from '@/types/parking-receipt.type';
 import type { PricingOptions, PricingPreviewResult } from '@/types/pricing-options.type';
@@ -625,7 +626,7 @@ export const closeRegistrationByPlate = async (
 
     if (response.ok) {
       revalidateTag(getCacheTag('tickets', 'all'));
-      return data as TicketRegistration;
+      return data as TicketRegistration & { cobroEfectivo?: CobroEfectivoConfirmado | null };
     } else {
       console.error(data);
       return {
@@ -837,6 +838,8 @@ export type SalidaAnteriorPayload = {
   refundMetodo?: 'CASH' | 'TRANSFER';
   // Pago combinado (efectivo + transferencia), como en el cobro normal: reemplaza a `metodo`.
   pagos?: { metodo: 'CASH' | 'TRANSFER'; importe: number }[];
+  // Lo que entregó el cliente por la parte en efectivo (ver close-registration.schema).
+  efectivoRecibido?: number;
 };
 
 // Las tarifas para cobrar un auto que se va sin entrada: cada franja con su importe y, si hay una
@@ -851,14 +854,14 @@ export async function tarifasSinEntrada(vehicleType: string): Promise<TarifasSin
   if (!response.ok) return { error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudieron cargar las tarifas.' };
   return data as TarifasSinEntrada;
 }
-export async function registrarSalidaAnterior(id: string, payload: SalidaAnteriorPayload): Promise<{ registration?: TicketRegistration; error?: string; code?: string }> {
+export async function registrarSalidaAnterior(id: string, payload: SalidaAnteriorPayload): Promise<{ registration?: TicketRegistration; cobroEfectivo?: CobroEfectivoConfirmado | null; error?: string; code?: string }> {
   const response = await fetch(`${BASE_URL}/tickets/registrations/${id}/salida-anterior`, {
     method: 'POST', headers: await getAuthHeaders(), body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) return { code: data?.code, error: Array.isArray(data?.message) ? data.message.join('. ') : data?.message || 'No se pudo registrar la salida.' };
   revalidateTag(getCacheTag('tickets', 'all'));
-  return { registration: data.registration as TicketRegistration };
+  return { registration: data.registration as TicketRegistration, cobroEfectivo: (data.cobroEfectivo ?? null) as CobroEfectivoConfirmado | null };
 }
 
 // Una estadía abierta y sin cobros que se cargó por error (solo el administrador). El backend

@@ -34,6 +34,10 @@ import { PlateCameraScanButton } from '../components/plate-camera-scan-button';
 import { MedioCobro, PaymentMethodChoices } from '../components/payment-method-choices';
 import { CobroQrMercadoPago, PagoQrRecibido } from '../components/cobro-qr-mercadopago';
 import { CobroAliasPanel, PagoRecibido } from '../components/cobro-alias';
+import { EfectivoRecibido, faltaDelEfectivo } from '../components/efectivo-recibido';
+import { preciosPasesAction, type PrecioPase } from '@/actions/tickets/precios-pases.action';
+import { formatImporte } from '@/components/pricing-breakdown';
+import { publicarUltimoCobro } from '@/lib/ultimo-cobro';
 
 const NOMBRE_MEDIO: Record<MedioCobro, string> = {
   CASH: 'en efectivo',
@@ -43,7 +47,21 @@ const NOMBRE_MEDIO: Record<MedioCobro, string> = {
 };
 
 // Con QR o alias el pago se confirma después de registrar la estadía: no hay medio que guardar.
-const esEnLinea = (medio: MedioCobro) => medio === 'QR' || medio === 'ALIAS';
+const esEnLinea = (medio: MedioCobro | null) => medio === 'QR' || medio === 'ALIAS';
+
+// El total que va a calcular el servidor (cantidad × tarifa de cada unidad), para mostrarlo antes de
+// cobrar y saber con cuánto paga. null si falta una tarifa: el servidor la rechaza igual.
+function totalPase(precios: PrecioPase[] | null, vehiculo: string, cantidades: { days?: number; weeks?: number; months?: number }) {
+  if (!precios) return null;
+  let total = 0;
+  for (const [tipo, cantidad] of [['DIA', cantidades.days], ['SEMANA', cantidades.weeks], ['MES', cantidades.months]] as const) {
+    if (!cantidad) continue;
+    const tarifa = precios.find((p) => p.ticketTimeType === tipo && p.vehicleType === vehiculo);
+    if (!tarifa) return null;
+    total += tarifa.ticketTimePrice * cantidad;
+  }
+  return total;
+}
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -59,7 +77,7 @@ const DEFAULT_VALUES: TicketRegistrationForDaySchemaType = {
   vehiclePlateCustomer: '',
   paid: false,
   retired: false,
-  paymentMetodo: 'CASH',
+  paymentMetodo: undefined,
   ticketTimeType: 'SEMANA',
   vehicleType: 'AUTO',
   weeks: 1,
@@ -120,11 +138,15 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
   const [vehicleValid, setVehicleValid] = useState(false);
   const [vehicleName, setVehicleName] = useState<string | null>(null);
   const [verNombre, setVerNombre] = useState(false);
-  const [medio, setMedio] = useState<MedioCobro>('CASH');
+  // Sin medio elegido de entrada, como en la salida: se toca el que corresponde.
+  const [medio, setMedio] = useState<MedioCobro | null>(null);
+  // Con efectivo: con cuánto paga. El servidor valida contra el precio que calcula y guarda el vuelto.
+  const [recibido, setRecibido] = useState<number | null>(null);
+  const [precios, setPrecios] = useState<PrecioPase[] | null>(null);
   const [alias, setAlias] = useState<DisponibilidadAlias | null>(null);
   // Con QR o alias la estadía se registra primero y después se cobra en la misma ventana: el
   // cobro necesita su id. Mientras tanto queda sin pagar, como «Paga al retirar».
-  const [registrada, setRegistrada] = useState<{ id: string; patente: string } | null>(null);
+  const [registrada, setRegistrada] = useState<{ id: string; patente: string; precio: number | null } | null>(null);
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
   const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
   const [pagado, setPagado] = useState<{ medio: 'QR'; cobro: CobroMercadoPago } | { medio: 'ALIAS'; cobro: CobroAlias } | null>(null);
@@ -158,6 +180,7 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
     if (!isOpen) return;
     let vigente = true;
     void disponibilidadAliasAction().then((r) => { if (vigente) setAlias(r.datos ?? null); });
+    void preciosPasesAction().then((r) => { if (vigente) setPrecios(r); });
     return () => { vigente = false; };
   }, [isOpen]);
 
@@ -168,7 +191,8 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
     setConDias(false);
     setDiasExtra(1);
     setVerNombre(false);
-    setMedio('CASH');
+    setMedio(null);
+    setRecibido(null);
     setRegistrada(null);
     setCobroQr(null);
     setCobroAlias(null);
@@ -187,7 +211,8 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
 
   // Cobra la estadía ya registrada. Efectivo y transferencia se asientan en el momento; QR y
   // alias esperan a que MercadoPago confirme, y entonces el abono queda pagado (no retirado).
-  const cobrar = async (id: string, elegido: MedioCobro) => {
+  const cobrar = async (id: string, elegido: MedioCobro | null) => {
+    if (!elegido) return;
     if (elegido === 'QR') {
       const r = await crearCobroMercadoPagoAction(id, 'ABONO', { alIngresar: true });
       if (r.error || !r.cobro) toast.error(r.error ?? 'No se pudo generar el QR.');
@@ -198,9 +223,15 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
       else if (r.datos.estado === 'CONFIRMADO') setPagado({ medio: 'ALIAS', cobro: r.datos });
       else setCobroAlias(r.datos);
     } else {
-      const r = await updateTicketRegistrationForDayStatusAction(id, { paid: true, paymentMetodo: elegido });
+      const efectivo = elegido === 'CASH';
+      if (efectivo && recibido === null) return;
+      const r = await updateTicketRegistrationForDayStatusAction(id, { paid: true, paymentMetodo: elegido, ...(efectivo ? { efectivoRecibido: recibido! } : {}) });
       if ('error' in r && r.error) toast.error(typeof r.error === 'string' ? r.error : 'No se pudo registrar el pago.');
-      else { toast.success('Estadía registrada y cobrada'); setReceiptId(id); cerrar(); }
+      else {
+        if (efectivo && 'success' in r && registrada?.precio != null) publicarUltimoCobro({ tipo: 'PASE', registroId: id, identificacion: registrada.patente || 'Sin patente',
+          total: registrada.precio, efectivo: registrada.precio, medio: 'en efectivo', recibido: r.efectivoRecibido ?? null, vuelto: r.vuelto ?? null });
+        toast.success('Estadía registrada y cobrada'); setReceiptId(id); cerrar();
+      }
     }
   };
 
@@ -228,16 +259,22 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
     return `${DIAS_SEMANA[fecha.day()]} ${fecha.format('DD/MM')} · ${fecha.format('HH:mm')}`;
   })();
   const u = UNIDADES.find((x) => x.id === unidad)!;
+  const total = totalPase(precios, form.watch('vehicleType'), { days: form.watch('days'), weeks: form.watch('weeks'), months: form.watch('months') });
+  // Con efectivo hay que indicar con cuánto paga (y que alcance); sin el total no se puede.
+  const faltaEfectivo = !isPaid || medio !== 'CASH' ? null : total === null ? 'Falta el total' : faltaDelEfectivo(total, recibido);
 
   const onSubmit = (values: TicketRegistrationForDaySchemaType) => {
     // Si todavía no pagó, no tiene sentido guardar un método — recién se sabe al cobrar,
     // ya sea acá (si eligen «Cobra ahora») o después al registrar la salida. Con QR o alias se
     // registra sin pagar y el pago se confirma enseguida, en esta misma ventana.
+    if (values.paid && (!medio || faltaEfectivo)) return;
     const enLinea = !!values.paid && esEnLinea(medio);
+    const efectivo = !!values.paid && medio === 'CASH';
     const payload = {
       ...values,
       paid: values.paid && !enLinea,
       paymentMetodo: values.paid && !enLinea ? (medio as 'CASH' | 'TRANSFER') : undefined,
+      efectivoRecibido: efectivo && recibido !== null ? recibido : undefined,
     };
     startTransition(async () => {
       const result = await createTicketRegistrationForDayAction(payload);
@@ -246,10 +283,13 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
         return;
       }
       if (enLinea && result.registrationId) {
-        setRegistrada({ id: result.registrationId, patente: values.vehiclePlateCustomer ?? '' });
+        setRegistrada({ id: result.registrationId, patente: values.vehiclePlateCustomer ?? '', precio: result.price ?? null });
         await cobrar(result.registrationId, medio);
         return;
       }
+      // El efectivo confirmado queda a la vista con lo que guardó el servidor.
+      if (efectivo && result.registrationId) publicarUltimoCobro({ tipo: 'PASE', registroId: result.registrationId, identificacion: values.vehiclePlateCustomer || 'Sin patente',
+        total: result.price ?? 0, efectivo: result.price ?? 0, medio: 'en efectivo', recibido: result.efectivoRecibido ?? null, vuelto: result.vuelto ?? null });
       toast.success('Estadía registrada exitosamente');
       if (result.registrationId) setReceiptId(result.registrationId);
       cerrar();
@@ -308,7 +348,8 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
                       <CheckCircle2 className="size-4 shrink-0 text-gm-ok" aria-hidden />
                       La estadía ya quedó registrada, sin cobrar.
                     </p>
-                    <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManualPermitida(alias)} />
+                    <PaymentMethodChoices value={medio} onChange={(m) => { setMedio(m); setRecibido(null); }} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManualPermitida(alias)} />
+                    {medio === 'CASH' && registrada.precio != null && <EfectivoRecibido aplicado={registrada.precio} recibido={recibido} onChange={setRecibido} disabled={isPending} />}
                   </fieldset>
                 )}
               </ActionDialogBody>
@@ -318,7 +359,9 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
                     <ActionDialogSecondaryButton tone="ghost" disabled={isPending} onClick={() => terminar('Estadía registrada: paga al retirar')}>
                       Paga al retirar
                     </ActionDialogSecondaryButton>
-                    <ActionDialogPrimaryButton disabled={isPending} onClick={() => startTransition(() => cobrar(registrada.id, medio))} detail={`${registrada.patente} · ${NOMBRE_MEDIO[medio]}`}>
+                    <ActionDialogPrimaryButton disabled={isPending || !medio || (medio === 'CASH' && (registrada.precio == null || !!faltaDelEfectivo(registrada.precio, recibido)))} onClick={() => startTransition(() => cobrar(registrada.id, medio))}
+                      detail={medio ? `${registrada.patente} · ${NOMBRE_MEDIO[medio]}` : undefined}
+                      falta={isPending ? undefined : !medio ? 'Elegí cómo paga' : medio === 'CASH' && registrada.precio != null ? faltaDelEfectivo(registrada.precio, recibido) : undefined}>
                       {isPending ? 'Procesando…' : medio === 'QR' ? 'Mostrar el QR' : medio === 'ALIAS' ? 'Esperar la transferencia' : 'Cobrar'}
                     </ActionDialogPrimaryButton>
                   </>
@@ -424,9 +467,13 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
                     ))}
                   </div>
                   {isPaid && (
-                    <div role="group" aria-label="Medio de pago">
-                      <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManualPermitida(alias)} />
-                      {medio === 'TRANSFER' && <p className="mt-2 text-xs text-muted-foreground">Confirmá solo si ya viste la transferencia acreditada en la cuenta.</p>}
+                    <div role="group" aria-label="Medio de pago" className="space-y-2">
+                      {total !== null && <p className="flex items-baseline justify-between gap-2 px-1"><span className="text-[13px] text-muted-foreground">Total</span><strong className="gm-mono text-[18px]">{formatImporte(total)}</strong></p>}
+                      <PaymentMethodChoices value={medio} onChange={(m) => { setMedio(m); setRecibido(null); }} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManualPermitida(alias)} />
+                      {medio === 'TRANSFER' && <p className="text-xs text-muted-foreground">Confirmá solo si ya viste la transferencia acreditada en la cuenta.</p>}
+                      {medio === 'CASH' && (total !== null
+                        ? <EfectivoRecibido aplicado={total} recibido={recibido} onChange={setRecibido} disabled={isPending} />
+                        : <p role="alert" className="text-xs text-gm-orange">No pudimos calcular el total para cobrar en efectivo. Revisá las tarifas por día, semana o mes, o registrala como «Paga al retirar».</p>)}
                     </div>
                   )}
                 </div>
@@ -436,8 +483,9 @@ export function CreateTicketRegistrationDialog({ setIsDialogOpen, isAdmin = fals
                 <ActionDialogSecondaryButton tone="ghost" className="hidden sm:inline-flex" onClick={cerrar}>Cancelar</ActionDialogSecondaryButton>
                 <ActionDialogPrimaryButton
                   type="submit"
-                  disabled={isPending || !patente.trim() || !vehicleValid}
-                  detail={[patente.trim() || 'Falta la patente', vehicleName, isPaid ? NOMBRE_MEDIO[medio] : 'paga al retirar'].filter(Boolean).join(' · ')}
+                  disabled={isPending || !patente.trim() || !vehicleValid || (!!isPaid && (!medio || !!faltaEfectivo))}
+                  detail={[patente.trim(), vehicleName, isPaid && medio ? NOMBRE_MEDIO[medio] : isPaid ? null : 'paga al retirar'].filter(Boolean).join(' · ')}
+                  falta={isPending ? undefined : !patente.trim() ? 'Falta la patente' : isPaid && !medio ? 'Elegí cómo paga' : isPaid && faltaEfectivo ? faltaEfectivo : undefined}
                 >
                   {isPending
                     ? 'Registrando…'

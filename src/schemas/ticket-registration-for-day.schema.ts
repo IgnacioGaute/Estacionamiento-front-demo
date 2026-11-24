@@ -14,6 +14,8 @@ export const ticketRegistrationForDaySchema = z.object({
     paid: z.boolean().optional(),
     retired: z.boolean().optional(),
     paymentMetodo: z.enum(['CASH', 'TRANSFER']).optional(),
+    // Cobrada en efectivo al registrarla: lo que entregó el cliente.
+    efectivoRecibido: z.number().int().min(0).max(1_000_000_000).optional(),
 });
 export type TicketRegistrationForDaySchemaType = z.infer<typeof ticketRegistrationForDaySchema>;
 
@@ -22,6 +24,7 @@ export const ticketRegistrationForDayStatusSchema = z.object({
     paid: z.boolean().optional(),
     retired: z.boolean().optional(),
     paymentMetodo: z.enum(['CASH', 'TRANSFER']).optional(),
+    efectivoRecibido: z.number().int().min(0).max(1_000_000_000).optional(),
 });
 export type TicketRegistrationForDayStatusSchemaType = z.infer<typeof ticketRegistrationForDayStatusSchema>;
 

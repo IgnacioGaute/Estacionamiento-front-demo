@@ -4,6 +4,12 @@ export const vehicleState = v => JSON.stringify([v.plate, v.vehicleType, v.entry
 export const passState = p => JSON.stringify([p.price, !!p.paid, !!p.retired, p.paymentMetodo ?? null]);
 const free = (s, v) => (v?.modalidad ?? s.modalidad) === 'GRATUITO';
 const integer = (n, min = 0) => { if (!Number.isSafeInteger(n) || n < min || n > 100000000) throw new Error('Ingresá un importe entero válido.'); return n; };
+// Lo que entregó el cliente por la parte en efectivo: si la operación lo trae, tiene que alcanzar.
+const declared = (received, cash) => {
+  if (received === undefined) return;
+  if (!cash) throw new Error('Lo que entregó el cliente va solo con un cobro en efectivo.');
+  if (integer(received) < cash) throw new Error('Lo que entregó no alcanza para el efectivo. Corregí el importe o cobrá el resto con otro medio.');
+};
 const reason = text => { if (!text?.trim() || text.trim().length > 255) throw new Error('Escribí un motivo de hasta 255 caracteres.'); return text.trim(); };
 export function summary(s, v, at = new Date().toISOString()) {
   if (free(s, v)) return { price: 0, saldo: 0, refund: 0, collected: 0, breakdown: [] };
@@ -81,6 +87,7 @@ export function applyOperation(source, op) {
         if (d.closeType !== 'PAYMENT' || payments.some(p => !['CASH','TRANSFER'].includes(p.metodo) || integer(p.importe, 1) < 1) || payments.reduce((n,p) => n + p.importe, 0) !== totals.saldo) throw new Error('Los pagos deben sumar el saldo a cobrar.');
         cash = payments.filter(p => p.metodo === 'CASH').reduce((n,p) => n + p.importe, 0);
       }
+      declared(d.efectivoRecibido, cash);
       if (totals.refund && !['CASH','TRANSFER'].includes(d.refundMetodo)) throw new Error('Elegí cómo devolviste el anticipo excedente.');
       if (d.refundMetodo === 'CASH') cash -= totals.refund;
     }
@@ -98,7 +105,7 @@ export function applyOperation(source, op) {
     const totals = summary(s, v, op.occurredAt), amount = integer(action === 'DISCOUNT' ? d.monto : d.importe, 1);
     if (totals.price !== d.expectedPrice || totals.collected !== d.expectedCollected || amount > totals.saldo || (action === 'PARTIAL_CASH' && amount === totals.saldo)) throw new Error('El importe debe ser menor o igual al saldo pendiente.');
     if (action === 'DISCOUNT') { reason(d.motivo); v.discount = (v.discount || 0) + amount; }
-    else { v.collected += amount; cashChange(s, amount); }
+    else { declared(d.efectivoRecibido, amount); v.collected += amount; cashChange(s, amount); }
   } else if (action === 'EDIT') {
     if (!v) throw new Error('No encontramos la estadía.');
     if (d.licensePlate !== undefined) {
@@ -124,6 +131,7 @@ export function applyOperation(source, op) {
     let price = 0;
     for (const [type, count] of units) { const rate = s.passPrices.find(p => p.ticketTimeType === type && p.vehicleType === d.vehicleType); if (!rate || integer(count) > 365) throw new Error('No hay tarifa guardada para esa duración y vehículo.'); price += rate.ticketTimePrice * count; }
     if (!price || !d.vehiclePlateCustomer?.trim()) throw new Error('Completá la patente y la duración.');
+    declared(d.efectivoRecibido, d.paid && d.paymentMetodo === 'CASH' ? price : 0);
     s.passes ||= []; s.passes.push({ ...d, id: op.registrationId, price, createdAt: op.occurredAt, retired: false });
     if (d.paid && d.paymentMetodo === 'CASH') cashChange(s, price);
     receipt(s, op, { id: op.registrationId, plate: d.vehiclePlateCustomer, vehicleType: d.vehicleType, entry: op.occurredAt }, 'ENTRY', price, d.paid ? price : 0, d.paymentMetodo);
@@ -131,6 +139,7 @@ export function applyOperation(source, op) {
     const p = s.passes.find(p => p.id === op.registrationId);
     if (!p || passState(p) !== op.expectedState) throw new Error('La estadía cambió. Volvé a abrirla.');
     const before = p.paid && !['TRANSFER','MERCADOPAGO'].includes(p.paymentMetodo) ? p.price : 0;
+    declared(d.efectivoRecibido, !p.paid && d.paid && d.paymentMetodo === 'CASH' ? p.price : 0);
     Object.assign(p, d); if (d.retired) p.retiredAt = op.occurredAt;
     const after = p.paid && !['TRANSFER','MERCADOPAGO'].includes(p.paymentMetodo) ? p.price : 0;
     cashChange(s, after - before);

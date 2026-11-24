@@ -82,3 +82,23 @@ test('si el total no coincide con el resumen, lo advierte con los dos importes',
   expect(seccion).toHaveTextContent(/El resumen del turno da .*59\.000.*este detalle .*53\.000/);
   expect(seccion).not.toHaveTextContent('Coincide con el resumen');
 });
+
+test('muestra lo declarado al cobrar (entregó y vuelto) y los cobros anteriores quedan sin ese dato', async () => {
+  jest.mocked(getCobrosEfectivoAction).mockResolvedValue({
+    cobros: [
+      { id: 'n1', fecha: '2026-11-19T13:05:00.000Z', concepto: 'SALDO', identificacion: 'AB123CD', importe: 3500, sinDetalle: false, recibido: 10000, vuelto: 6500 },
+      { id: 'n2', fecha: '2026-11-19T13:10:00.000Z', concepto: 'SALDO', identificacion: 'CD456EF', importe: 2000, sinDetalle: false, recibido: 2000, vuelto: 0 },
+      { id: 'v1', fecha: '2026-11-19T13:20:00.000Z', concepto: 'SALDO', identificacion: 'GH789IJ', importe: 1000, sinDetalle: false, recibido: null, vuelto: null },
+    ],
+    cantidad: 3, ingresos: 6500, egresos: 0, total: 6500, sinDetalle: 0,
+  });
+  render(<CobrosEfectivoHistorial turnoId="t1" />);
+  const seccion = await abrir();
+  const [conVuelto, justo, anterior] = filas(seccion);
+  expect(conVuelto[3]).toMatch(/3\.500.*entregó .*10\.000 · vuelto .*6\.500/);
+  expect(justo[3]).toMatch(/entregó .*2\.000 · justo/);
+  expect(anterior[3]).not.toMatch(/entregó/);
+  // El total sigue siendo lo que entró a la caja, y se aclara que es lo declarado.
+  expect(seccion).toHaveTextContent(/\$\s?6\.500en 3 cobros/);
+  expect(seccion).toHaveTextContent('lo que el operador indicó al cobrar');
+});

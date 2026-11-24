@@ -87,6 +87,9 @@
     --gm-ok:            151 65% 54%;
     --gm-texto-tenue:   35 10% 48%;
     --gm-peligro:       9 80% 70%;
+    /* falta (#FF4D3D): lo que falta para poder confirmar, bajo el botón principal. Rojo vivo para
+       que se vea de lejos; sobre el botón deshabilitado pasa 4,5:1 con 13 px en negrita. */
+    --gm-falta:         5 100% 62%;
     --gm-texto-2:       38 22% 81%;
     --gm-hondo:         40 16% 4%;
   }
@@ -142,6 +145,33 @@
     font-feature-settings: "tnum";
   }
   .gm-tnum { font-variant-numeric: tabular-nums; }
+
+  /* El punto que palpita delante de lo que falta para confirmar (ActionDialogPrimaryButton
+     `falta`). Una onda que se expande desde el punto; quieto con «reducir movimiento». */
+  .gm-punto-falta {
+    position: relative;
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: 9999px;
+    background: currentColor;
+  }
+  .gm-punto-falta::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: currentColor;
+    animation: gm-punto-falta 1.6s ease-out infinite;
+  }
+  @keyframes gm-punto-falta {
+    0% { transform: scale(1); opacity: 0.75; }
+    100% { transform: scale(2.8); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gm-punto-falta::after { animation: none; opacity: 0; }
+  }
 
   .gm-plate {
     @apply inline-flex items-center text-gm-ink rounded-[4px];

@@ -26,7 +26,8 @@ export async function closeRegistrationAction(id: string, values: CloseRegistrat
       return { error: handleTicketError(registration.error as TicketError) };
     }
 
-    return { success: 'Ticket cerrado exitosamente', registrationId: registration.id };
+    // El efectivo confirmado por el servidor (importe, recibido y vuelto), para el último cobro.
+    return { success: 'Ticket cerrado exitosamente', registrationId: registration.id, cobroEfectivo: registration.cobroEfectivo ?? null };
   } catch (error: unknown) {
     console.error('Error desde el backend:', error);
     return {

@@ -18,6 +18,8 @@ jest.mock('@/components/vehicle-type-options', () => ({
   },
 }));
 jest.mock('../components/plate-camera-scan-button', () => ({ PlateCameraScanButton: () => null }));
+// La tarifa semanal del auto: el total se muestra para cobrar en efectivo (el servidor lo recalcula).
+jest.mock('@/actions/tickets/precios-pases.action', () => ({ preciosPasesAction: async () => [{ ticketTimeType: 'SEMANA', vehicleType: 'AUTO', ticketTimePrice: 18000 }] }));
 jest.mock('@/actions/tickets/create-ticket-registration-for-day.action', () => ({ createTicketRegistrationForDayAction: jest.fn() }));
 jest.mock('@/actions/tickets/update-ticket-registration-for-day-status.action', () => ({ updateTicketRegistrationForDayStatusAction: jest.fn() }));
 jest.mock('@/actions/mercadopago/mercadopago.action', () => ({ crearCobroMercadoPagoAction: jest.fn(), cancelarCobroMercadoPagoAction: jest.fn() }));
@@ -60,11 +62,29 @@ test('cobra ahora con QR: registra sin pagar, cobra el abono al ingresar y cierr
   expect(setOpen).toHaveBeenLastCalledWith(false);
 });
 
-test('cobra ahora en efectivo sigue registrando pagada de una vez', async () => {
+test('cobra ahora en efectivo: con cuánto paga y se registra pagada de una vez', async () => {
   await abrirYCompletar(/Efectivo/);
-  fireEvent.click(screen.getByRole('button', { name: /Registrar estadía/ }));
-  await waitFor(() => expect(crear).toHaveBeenCalledWith(expect.objectContaining({ paid: true, paymentMetodo: 'CASH' })));
+  const registrar = screen.getByRole('button', { name: /Registrar estadía/ });
+  // El total de la semana y «¿Con cuánto paga?»: sin elegirlo no se registra.
+  expect((await screen.findAllByText(/18\.000/)).length).toBeGreaterThan(0);
+  await waitFor(() => expect(registrar).toHaveTextContent('Tocá «Justo» o con cuánto paga'));
+  expect(registrar).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: '20.000' }));
+  expect(screen.getByRole('status')).toHaveTextContent(/Vuelto\s*\$\s?2\.000/);
+  fireEvent.click(registrar);
+  await waitFor(() => expect(crear).toHaveBeenCalledWith(expect.objectContaining({ paid: true, paymentMetodo: 'CASH', efectivoRecibido: 20000 })));
   expect(crearQr).not.toHaveBeenCalled();
+});
+
+test('cobra ahora no arranca con un medio elegido', async () => {
+  const setOpen = jest.fn();
+  render(<CreateTicketRegistrationDialog setIsDialogOpen={setOpen} showTrigger={false} openSignal={1} />);
+  fireEvent.change(await screen.findByPlaceholderText('Ej.: AB123CD'), { target: { value: 'AB123CD' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Cobra ahora' }));
+  expect(await screen.findByRole('button', { name: /^Efectivo/ })).toHaveAttribute('aria-pressed', 'false');
+  const registrar = screen.getByRole('button', { name: /Registrar estadía/ });
+  expect(registrar).toBeDisabled();
+  expect(registrar).toHaveTextContent('Elegí cómo paga');
 });
 
 test('alias cancelado: la estadía queda registrada y puede pagar al retirar', async () => {

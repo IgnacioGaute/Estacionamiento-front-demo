@@ -46,6 +46,9 @@ import { isBarcodeOrigin, isOverdue, marcarSalidaLocal, mergeServerSnapshot, min
 import { estadiaLargaActiva as isDayRegistrationActive, estadiaLargaVencida as isDayRegistrationOverdue } from "@/utils/estadia-larga";
 import { AvisoEstadiasLargas, EncabezadoVista, estaAdentro, estadiasLargas, FichasEnElPlayon, HORAS_ESTADIA_LARGA, InicioHero, MostradorDock, normalizar, TodosLosVehiculos, VehiculoFila, type FiltroVehiculos } from "./inicio";
 import { useConfirmadas } from "./estadias-largas";
+import { UltimoCobroFranja } from "./ultimo-cobro";
+import { MovimientosHistorial } from "./movimientos-historial";
+import type { VehiculoAdentro } from "./corregir-registro";
 import { SeFueAntes } from "./se-fue-antes";
 import { AccionesEscritorio, BuscadorRapido, TableroPlaya, TarjetaAdentro, UltimosMovimientos, type FiltroTablero } from "./escritorio";
 import {
@@ -61,6 +64,7 @@ import {
   Hourglass,
   Map,
   Receipt,
+  ScrollText,
   Settings,
   SlidersHorizontal,
 } from "lucide-react";
@@ -75,7 +79,7 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 const TZ = "America/Argentina/Buenos_Aires";
 
-type Vista = "inicio" | "vehiculos" | "comprobantes";
+type Vista = "inicio" | "vehiculos" | "comprobantes" | "movimientos";
 
 export default function CardTicket({
   initialRegistrations,
@@ -195,7 +199,7 @@ export default function CardTicket({
         ? { key: 'salida', title: 'Cobrá la salida', desc: 'Buscá la patente o el ticket, o tocá un vehículo de la lista. Revisá el tiempo, el importe y los anticipos, elegí el medio de pago y confirmá. El tour no registra ni cobra nada.' }
         : { key: 'salida', title: 'Registrá la salida', desc: 'Buscá la patente o el ticket, o tocá un vehículo de la lista. Revisá el vehículo y cuánto estuvo, y confirmá. El estacionamiento es gratuito: no se cobra nada. El tour no registra nada.' },
       ...(cobroHabilitado ? [{ key: 'alta-abono', title: 'Día, semana o mes', desc: `Desde Estadía larga creás una estadía de días, semanas o meses: elegí la duración, el vehículo y si ya está pagada.${isAdmin ? ' Dentro del formulario tenés Administrar precios.' : ''}` }] : []),
-      { key: 'ticket', title: 'Lo último que pasó', desc: `Acá quedan las últimas entradas y salidas, con su hora${cobroHabilitado ? ' e importe' : ''}.${receiptDeliveryEnabled ? ` Con Comprobante lo volvés a abrir: no vuelve a registrar${cobroHabilitado ? ' ni cobrar' : ''}.` : ''}` },
+      { key: 'ticket', title: 'Lo último que pasó', desc: `Acá quedan las últimas entradas y salidas, con su hora${cobroHabilitado ? ' e importe' : ''}.${receiptDeliveryEnabled ? ` Con Comprobante lo volvés a abrir: no vuelve a registrar${cobroHabilitado ? ' ni cobrar' : ''}.` : ''} Movimientos tiene el historial completo, con filtros, y desde cada operación podés corregir un registro.` },
       { key: 'occupancy', title: 'Todos los vehículos', desc: `Se agrupan por hace cuánto están y el color lo dice: verde menos de 1 h, azul de 1 a 4 h, violeta más de 4 h. La línea de abajo de cada uno se llena a medida que se acerca al tramo siguiente; en naranja, los que se pasaron del tiempo avisado. Tocá uno para ${cobroHabilitado ? 'cobrarlo' : 'registrar su salida'}.` },
       ...(cobroHabilitado ? [{ key: 'abonos', title: 'Tus estadías largas', desc: `En Día/Sem/Mes podés buscar y abrir cada abono: ver duración, vencimiento, pago y registrar su salida.${receiptDeliveryEnabled ? ' En su detalle también podés abrir el comprobante de entrada.' : ''} Que venza no significa que el vehículo se haya retirado.` }] : []),
       ...(receiptDeliveryEnabled ? [
@@ -395,6 +399,12 @@ export default function CardTicket({
     (a, b) => parseInt(a.codeBar, 10) - parseInt(b.codeBar, 10)
   );
   const activosPorHora = visibleRegistrations.filter(estaAdentro);
+  // Para «Vehículo equivocado»: los que figuran adentro, con la misma identificación que el historial.
+  const adentro: VehiculoAdentro[] = activosPorHora.map((r) => ({
+    id: r.id,
+    identificacion: r.licensePlateOriginal || (r.codeBarTicket ? `Ticket ${r.codeBarTicket}` : null) || r.lastNameCustomer || "Sin patente",
+    entrada: `${r.entryDay === dayjs(now).tz(TZ).format("YYYY-MM-DD") ? "" : `${r.entryDay.split("-").reverse().slice(0, 2).join("/")} `}${r.entryTime?.slice(0, 5) ?? ""}`,
+  }));
   const excedidos = activosPorHora.filter((r) => isOverdue(r, now)).length;
   const total = activosPorHora.length + activeDayRegistrations.length;
   const ultimasEntradas = [...activosPorHora]
@@ -509,6 +519,9 @@ export default function CardTicket({
 
       <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={cobroHabilitado ? abrirSeFueAntes : undefined} />
 
+      {/* El último cobro en efectivo con su vuelto, mientras se entrega el cambio. */}
+      {cobroHabilitado && <UltimoCobroFranja adentro={adentro} isAdmin={isAdmin} onCorregido={() => router.refresh()} />}
+
       {latestRegistration && (
         <div ref={refVisible('ticket')} className="flex min-h-12 items-center gap-2.5 px-1">
           <span className={cn("grid size-[30px] shrink-0 place-items-center rounded-full", ultimaEsEntrada ? "bg-sky-400/15 text-sky-400" : "bg-gm-ok/15 text-gm-ok")}>
@@ -526,13 +539,14 @@ export default function CardTicket({
         </div>
       )}
 
-      {/* Estadía larga es una operación como entrar o salir: se destaca. Comprobantes es consulta. */}
-      <div className={cn("grid gap-2.5", receiptDeliveryEnabled && cobroHabilitado ? "grid-cols-2" : "grid-cols-1")}>
+      {/* Estadía larga es una operación como entrar o salir: se destaca. Comprobantes y Movimientos
+          son consulta; con los tres, Estadía larga ocupa todo el ancho. */}
+      <div className={cn("grid gap-2.5", cobroHabilitado || receiptDeliveryEnabled ? "grid-cols-2" : "grid-cols-1")}>
         {cobroHabilitado && <button
           type="button"
           ref={refVisible('alta-abono')}
           onClick={abrirEstadia}
-          className="group relative flex min-h-[104px] flex-col justify-between overflow-hidden rounded-[22px] border-[1.5px] border-gm-yellow/60 bg-gm-yellow/[0.1] p-3.5 text-left transition-colors hover:bg-gm-yellow/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.98]"
+          className={cn(receiptDeliveryEnabled && "col-span-2", "group relative flex min-h-[104px] flex-col justify-between overflow-hidden rounded-[22px] border-[1.5px] border-gm-yellow/60 bg-gm-yellow/[0.1] p-3.5 text-left transition-colors hover:bg-gm-yellow/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.98]")}
         >
           <CalendarDays aria-hidden className="pointer-events-none absolute -bottom-3 -right-3 size-20 text-gm-yellow/[0.12]" strokeWidth={1.5} />
           <span className="flex items-center justify-between">
@@ -560,6 +574,20 @@ export default function CardTicket({
             </span>
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => irA('movimientos')}
+          className="group flex min-h-[104px] flex-col justify-between rounded-[22px] border border-border bg-card p-3.5 text-left transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.98]"
+        >
+          <span className="flex items-center justify-between">
+            <span className="grid size-10 place-items-center rounded-full bg-background text-gm-yellow"><ScrollText className="size-5" aria-hidden /></span>
+            <ChevronRight className="size-[18px] text-gm-texto-tenue transition-transform group-hover:translate-x-0.5" aria-hidden />
+          </span>
+          <span>
+            <span className="gm-display block text-[17px] tracking-[0.04em]">Movimientos</span>
+            <span className="block text-xs text-muted-foreground">Historial y correcciones</span>
+          </span>
+        </button>
       </div>
 
       <section aria-labelledby="ultimas-entradas" className="flex flex-col gap-2.5">
@@ -630,6 +658,25 @@ export default function CardTicket({
     </div>
   );
 
+  const movimientos = (
+    <div className="flex flex-col gap-4">
+      <EncabezadoVista titulo="Movimientos" onVolver={() => irA('inicio')} acciones={tour.node} />
+      <div className="rounded-[20px] border border-border bg-card p-4">
+        <MovimientosHistorial
+          today={dayjs(now).tz(TZ).format('YYYY-MM-DD')}
+          isAdmin={isAdmin}
+          turnos={TURNO_BAR_ENABLED}
+          cobro={cobroHabilitado}
+          comprobantes={receiptDeliveryEnabled}
+          barcodeTicketsEnabled={barcodeTicketsEnabled}
+          adentro={adentro}
+          revision={registrations}
+          onReceipt={(id, kind) => setReceiptTarget({ id, kind })}
+        />
+      </div>
+    </div>
+  );
+
   // ── Computadora: mostrador a la izquierda, la playa entera a la derecha ──
   const accesoEscritorio = "inline-flex h-12 shrink-0 items-center gap-2 rounded-[16px] border-[1.5px] border-gm-line-strong bg-card px-4 text-sm font-semibold text-gm-texto-2 transition-colors hover:border-gm-yellow/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow";
   const escritorio = (
@@ -686,6 +733,7 @@ export default function CardTicket({
             onFiltro={setFiltroTablero}
           />
           <AvisoEstadiasLargas registros={visibleRegistrations} ahora={now} onCobrar={abrirCobro} onSeFueAntes={cobroHabilitado ? abrirSeFueAntes : undefined} />
+          {cobroHabilitado && <UltimoCobroFranja adentro={adentro} isAdmin={isAdmin} onCorregido={() => router.refresh()} />}
           <AccionesEscritorio
             onEntrada={abrirEntrada}
             onSalida={() => abrirCobro(null)}
@@ -703,7 +751,8 @@ export default function CardTicket({
             ahora={now}
             comprobantes={receiptDeliveryEnabled}
             onComprobante={(id, kind) => setReceiptTarget({ id, kind })}
-            onTodos={() => irA('comprobantes')}
+            onTodos={() => irA('movimientos')}
+            onComprobantes={() => irA('comprobantes')}
           />
           {lector && <div className="px-1">{lector}</div>}
           {esEscritorio === true && <OfflineConsultation revision={registrations} />}
@@ -739,7 +788,7 @@ export default function CardTicket({
       {esEscritorio !== true && (
         <div className="mx-auto max-w-2xl overflow-x-clip pb-36 lg:hidden">
           <div key={vista} className={animacion}>
-            {vista === "inicio" ? inicio : vista === "vehiculos" ? vehiculos : comprobantes}
+            {vista === "inicio" ? inicio : vista === "vehiculos" ? vehiculos : vista === "movimientos" ? movimientos : comprobantes}
           </div>
         </div>
       )}
@@ -747,8 +796,9 @@ export default function CardTicket({
       {/* En la computadora el tablero ya muestra todos los vehículos: no hay vista aparte. */}
       {esEscritorio !== false && (
         <div className="hidden lg:block">
-          <div key={vista === "comprobantes" ? "comprobantes" : "tablero"} className={animacion}>
-            {vista === "comprobantes" ? <div className="mx-auto max-w-3xl">{comprobantes}</div> : escritorio}
+          <div key={vista === "comprobantes" || vista === "movimientos" ? vista : "tablero"} className={animacion}>
+            {vista === "comprobantes" ? <div className="mx-auto max-w-3xl">{comprobantes}</div>
+              : vista === "movimientos" ? <div className="mx-auto max-w-3xl">{movimientos}</div> : escritorio}
           </div>
         </div>
       )}

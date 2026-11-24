@@ -570,7 +570,7 @@ export function EntryByPlateDialog({
             </ActionDialogBody>
             <ActionDialogFooter>
               <ActionDialogSecondaryButton tone="ghost" className="hidden sm:inline-flex" onClick={cerrar}>Cancelar</ActionDialogSecondaryButton>
-              <ActionDialogPrimaryButton onClick={submitTicket} disabled={ticketPending || !ticketCode} detail={ticketCode ? `Ticket ${ticketCode}` : 'Escribí o escaneá el número'}>
+              <ActionDialogPrimaryButton onClick={submitTicket} disabled={ticketPending || !ticketCode} detail={ticketCode ? `Ticket ${ticketCode}` : undefined} falta={ticketCode ? undefined : 'Escribí o escaneá el número'}>
                 {ticketPending ? 'Registrando…' : 'Registrar entrada'}
               </ActionDialogPrimaryButton>
             </ActionDialogFooter>
@@ -767,7 +767,8 @@ export function EntryByPlateDialog({
                 <ActionDialogPrimaryButton
                   type="submit"
                   disabled={isPending || !vehicleValid || !plateValue.trim()}
-                  detail={plateValue.trim() ? [plateValue, vehicleName].filter(Boolean).join(' · ') : 'Escribí o escaneá la patente'}
+                  detail={plateValue.trim() ? [plateValue, vehicleName].filter(Boolean).join(' · ') : undefined}
+                  falta={plateValue.trim() ? undefined : 'Escribí o escaneá la patente'}
                 >
                   {isPending ? 'Registrando entrada…' : 'Registrar entrada'}
                 </ActionDialogPrimaryButton>

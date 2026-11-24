@@ -11,6 +11,9 @@ export const closeRegistrationSchema = z.object({
   metodo: z.enum(MOVIMIENTO_METODO).optional(),
   // Pago híbrido: el saldo repartido entre efectivo y transferencia; reemplaza a `metodo`.
   pagos: z.array(z.object({ metodo: z.enum(['CASH', 'TRANSFER']), importe: z.number().int().min(1) })).length(2).optional(),
+  // Con efectivo: lo que entregó el cliente por la parte en efectivo («Justo»: el mismo importe).
+  // El servidor calcula el vuelto y rechaza lo que no alcanza.
+  efectivoRecibido: z.number().int().min(0).max(1_000_000_000).optional(),
   referencia: z.string().optional(),
   motivo: z.string().optional(),
 });

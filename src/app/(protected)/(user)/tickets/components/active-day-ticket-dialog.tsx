@@ -27,6 +27,9 @@ import { CobroMercadoPago } from '@/types/mercadopago.type';
 import { CobroAlias, DisponibilidadAlias, transferenciaManualPermitida } from '@/types/verificacion-alias.type';
 import { cobroAliasDeEstadiaAction, disponibilidadAliasAction, iniciarCobroAliasAction } from '@/actions/mercadopago/verificacion-alias.action';
 import { crearCobroMercadoPagoAction } from '@/actions/mercadopago/mercadopago.action';
+import { EfectivoRecibido, faltaDelEfectivo } from './efectivo-recibido';
+import { publicarUltimoCobro } from '@/lib/ultimo-cobro';
+
 
 const ars = (n: number) =>
   new Intl.NumberFormat('es-AR', {
@@ -88,6 +91,8 @@ interface ActiveDayTicketDialogProps {
 export function ActiveDayTicketDialog({ registration, open, onOpenChange, deliveryEnabled = false }: ActiveDayTicketDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [medio, setMedio] = useState<MedioCobro | null>(null);
+  // Con efectivo: con cuánto paga («Justo» o el importe). Lo guarda el servidor con el vuelto.
+  const [recibido, setRecibido] = useState<number | null>(null);
   const [alias, setAlias] = useState<DisponibilidadAlias | null>(null);
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
   const [cobroAlias, setCobroAlias] = useState<CobroAlias | null>(null);
@@ -100,7 +105,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
 
   useEffect(() => {
     let vigente = true;
-    setMedio(null); setAlias(null); setCobroQr(null); setCobroAlias(null); setPagoConSalida(null);
+    setMedio(null); setRecibido(null); setAlias(null); setCobroQr(null); setCobroAlias(null); setPagoConSalida(null);
     if (open && registration && !registration.paid && !registration.retired) {
       void disponibilidadAliasAction().then(r => { if (vigente) setAlias(r.datos ?? null); });
       void cobroAliasDeEstadiaAction(registration.id, 'ABONO').then(r => {
@@ -151,9 +156,11 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
             ? `${registration.months ?? 0} mes/es`
             : `${registration?.days ?? 0} día/s`;
 
+  const faltaEfectivo = !pagado && medio === 'CASH' && registration ? faltaDelEfectivo(registration.price, recibido) : null;
   const handleRegisterExit = () => {
     if (!registration) return;
     if (!pagado && !medio) return;
+    if (faltaEfectivo) return;
     startTransition(async () => {
       if (!pagado && medio === 'QR') {
         const r = await crearCobroMercadoPagoAction(registration.id, 'ABONO');
@@ -168,12 +175,16 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
           else setCobroAlias(r.datos);
         }
       } else {
+        const efectivo = !pagado && medio === 'CASH';
         const result = await updateTicketRegistrationForDayStatusAction(registration.id, pagado
           ? { retired: true }
-          : { paid: true, paymentMetodo: medio as 'CASH' | 'TRANSFER', retired: true });
+          : { paid: true, paymentMetodo: medio as 'CASH' | 'TRANSFER', retired: true, ...(efectivo && recibido !== null ? { efectivoRecibido: recibido } : {}) });
         if ('error' in result && result.error) {
           toast.error(result.error);
         } else {
+          // El efectivo confirmado queda a la vista con el vuelto que guardó el servidor.
+          if (efectivo && 'success' in result) publicarUltimoCobro({ tipo: 'PASE', registroId: registration.id, identificacion: registration.vehiclePlateCustomer || 'Sin patente',
+            total: registration.price, efectivo: registration.price, medio: 'en efectivo', recibido: result.efectivoRecibido ?? null, vuelto: result.vuelto ?? null });
           terminar();
         }
       }
@@ -205,8 +216,9 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
               <div className="flex min-w-0 flex-col gap-4 short:gap-3">
                 {pagoConSalida ? (pagoConSalida.medio === 'QR' ? <PagoQrRecibido cobro={pagoConSalida.cobro} onCerrar={terminar} /> : <PagoRecibido cobro={pagoConSalida.cobro} onCerrar={terminar} />) : cobroAlias ? <CobroAliasPanel key={cobroAlias.id} cobro={cobroAlias} onTerminado={terminadoAlias} onCancelado={() => setCobroAlias(null)} /> : cobroQr ? <CobroQrMercadoPago cobro={cobroQr} onAcreditado={acreditadoQr} onCancelar={() => setCobroQr(null)} /> : !pagado && !registration.retired ? <fieldset className="min-w-0 space-y-2">
                   <legend className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">¿Cómo paga?</legend>
-                  <PaymentMethodChoices value={medio} onChange={setMedio} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManualPermitida(alias)} />
+                  <PaymentMethodChoices value={medio} onChange={(m) => { setMedio(m); setRecibido(null); }} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManualPermitida(alias)} />
                   {medio === 'TRANSFER' && <p className="text-xs text-muted-foreground">Confirmá solo si ya viste la transferencia acreditada en la cuenta.</p>}
+                  {medio === 'CASH' && <EfectivoRecibido className="mt-2" aplicado={registration.price} recibido={recibido} onChange={setRecibido} disabled={isPending} />}
                 </fieldset> : null}
                 <details open={pagado || registration.retired || escritorio ? true : undefined} className="group">
                   <summary className="cursor-pointer py-1 text-xs text-muted-foreground group-open:mb-2">Datos de la estadía</summary>
@@ -238,7 +250,7 @@ export function ActiveDayTicketDialog({ registration, open, onOpenChange, delive
               {registration.retired ? <>
                 <p className="mr-auto text-center text-sm text-muted-foreground">Salida ya registrada.</p>
                 <ActionDialogSecondaryButton onClick={() => onOpenChange(false)}>Cerrar</ActionDialogSecondaryButton>
-              </> : !esperando && !pagoConSalida ? <ActionDialogPrimaryButton disabled={isPending || (!pagado && !medio)} onClick={handleRegisterExit} detail={`${registration.vehiclePlateCustomer || 'Sin patente'} · ${pagado ? 'Ya pagado' : ars(registration.price)}`}>
+              </> : !esperando && !pagoConSalida ? <ActionDialogPrimaryButton disabled={isPending || (!pagado && !medio) || !!faltaEfectivo} onClick={handleRegisterExit} detail={`${registration.vehiclePlateCustomer || 'Sin patente'} · ${pagado ? 'Ya pagado' : ars(registration.price)}`} falta={isPending ? undefined : faltaEfectivo}>
                 {isPending ? 'Procesando…' : pagado ? 'Registrar salida' : medio === 'QR' ? 'Generar QR' : medio === 'ALIAS' ? 'Esperar transferencia' : medio ? 'Cobrar y registrar salida' : 'Elegí cómo paga'}
               </ActionDialogPrimaryButton> : null}
             </ActionDialogFooter>

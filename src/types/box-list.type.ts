@@ -11,7 +11,7 @@ export type BoxList = {
     totalPrice: number;
     boxNumber: number;
     ticketRegistrations: TicketRegistration[];
-    ticketMovements?: { id: string; monto: number; metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; medioPagoDetalle?: string; comisionPagoEstimada?: DetalleComisionPago; tipo: 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'CORTESIA' | 'DESCUENTO'; operador?: string | null; motivo?: string | null; fechaHora: string; ticketRegistration: TicketRegistration }[];
+    ticketMovements?: { id: string; monto: number; metodo: 'CASH' | 'TRANSFER' | 'MERCADOPAGO'; medioPagoDetalle?: string; comisionPagoEstimada?: DetalleComisionPago; tipo: 'ANTICIPO' | 'SALDO' | 'AJUSTE' | 'CORTESIA' | 'DESCUENTO'; operador?: string | null; motivo?: string | null; fechaHora: string; ticketRegistration: TicketRegistration; correccionId?: string | null }[];
     ticketRegistrationForDays: TicketRegistrationForDay[];
     receipts: Receipt[];
     otherPayments: OtherPayment[];

@@ -44,7 +44,9 @@ import { registrarSalidaGratuitaAction } from '@/actions/tickets/registrar-salid
 import { marcarOrigenSalidaAction } from '@/actions/tickets/origen-salida.action';
 import { useTenant } from '@/components/tenant-provider';
 import { minutesSinceEntry, isOverdue, isBarcodeOrigin } from '@/utils/ticket-registration.utils';
-import { calcularVuelto, pagosSugeridos } from '@/utils/vuelto';
+import { EfectivoRecibido, faltaDelEfectivo } from './efectivo-recibido';
+import { publicarUltimoCobro } from '@/lib/ultimo-cobro';
+import type { CobroEfectivoConfirmado } from '@/types/cobro-efectivo.type';
 import { cuandoEntro, formatEstadia as formatElapsed } from '@/utils/estadia';
 import { CorregirEntrada, MINUTOS_PARA_PREGUNTAR } from './corregir-entrada';
 import { pagoParcialEfectivoAction } from '@/actions/tickets/pago-parcial.action';
@@ -87,7 +89,8 @@ type Medio = MedioSalida;
 
 
 const etiqueta = 'text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground';
-const miles = (valor: number) => new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(valor);
+// Cómo se nombra la estadía en el último cobro: la patente, la ficha o el apellido.
+const identificacionDe = (r: TicketRegistration) => r.licensePlateOriginal || r.ticket?.codeBar || r.codeBarTicket || r.lastNameCustomer || 'Sin patente';
 
 // Patente como chapa; las fichas y las estadías sin patente con su propio distintivo.
 function Identidad({ r, size = 'sm', highlight }: { r: TicketRegistration; size?: 'sm' | 'md'; highlight?: string }) {
@@ -358,7 +361,7 @@ export function CloseTicketPanel({
   const [summary, setSummary] = useState<CloseSummary | null>(null);
   // Una estadía que ingresó gratis: sin importes ni medios de pago, sale con «Registrar salida».
   const [gratuita, setGratuita] = useState<SalidaGratuitaSummary | null>(null);
-  const { cobroHabilitado, shiftsEnabled } = useTenant();
+  const { cobroHabilitado, shiftsEnabled, playaId } = useTenant();
   // Solo se consulta con el panel abierto y turnos activos; false = sabemos que no hay turno propio.
   // Mientras carga o si falla no se bloquea nada: el backend igual lo controla.
   const sinTurno = useTurnoPropio(open && shiftsEnabled) === false;
@@ -381,11 +384,13 @@ export function CloseTicketPanel({
   const [discountMode, setDiscountMode] = useState<'AMOUNT' | 'ALL' | 'PREV' | 'NONE'>('AMOUNT');
   // El detalle se despliega junto al resumen sin ocultar los medios de pago.
   const [verCalculo, setVerCalculo] = useState(false);
-  // Solo para calcular el vuelto en pantalla: no se manda al backend.
-  const [pagaCon, setPagaCon] = useState<number | 'OTRO' | null>(null);
-  const [otroImporte, setOtroImporte] = useState('');
+  // Con cuánto paga en efectivo («Justo» o el importe que entrega): se manda con el cobro y el
+  // servidor calcula el vuelto. Sin elegirlo, o si no alcanza, no se confirma el efectivo.
+  const [recibido, setRecibido] = useState<number | null>(null);
   // Pago híbrido: lo que entrega en efectivo; la transferencia es el resto del saldo.
   const [efectivoHibrido, setEfectivoHibrido] = useState('');
+  // Y los billetes que entrega por esa parte en efectivo (el vuelto es contra esa parte).
+  const [recibidoHibrido, setRecibidoHibrido] = useState<number | null>(null);
   // Con qué paga el resto: transferencia ya verificada (se cierra junto con el efectivo), QR o alias.
   const [restoPor, setRestoPor] = useState<'TRANSFER' | 'QR' | 'ALIAS'>('TRANSFER');
   const [cobroQr, setCobroQr] = useState<CobroMercadoPago | null>(null);
@@ -422,9 +427,9 @@ export function CloseTicketPanel({
     setDiscountAmount('');
     setDiscountMode('AMOUNT');
     setVerCalculo(false);
-    setPagaCon(null);
-    setOtroImporte('');
+    setRecibido(null);
     setEfectivoHibrido('');
+    setRecibidoHibrido(null);
     setRestoPor(transferenciaManualPermitida(alias) ? 'TRANSFER' : 'ALIAS');
   };
 
@@ -509,13 +514,17 @@ export function CloseTicketPanel({
     if (!summary) return;
     const id = summary.registration.id;
     const efectivo = Number(efectivoHibrido);
+    const entregado = recibidoHibrido;
+    if (entregado === null) return;
     startTransition(async () => {
-      const r = await pagoParcialEfectivoAction(id, { importe: efectivo, expectedPrice: summary.previewBracket.price, expectedCollected: summary.totalCollectedSoFar });
+      const r = await pagoParcialEfectivoAction(id, { importe: efectivo, expectedPrice: summary.previewBracket.price, expectedCollected: summary.totalCollectedSoFar, efectivoRecibido: entregado });
       if (r.error || !r.summary) {
         await resolverTrasError(id, r.error ?? 'No se pudo cobrar el efectivo.');
         return;
       }
       setSummary(r.summary);
+      // El efectivo ya quedó cobrado: el vuelto se entrega ahora, aunque el resto se pague después.
+      anunciarCobro(r.cobroEfectivo, { total: efectivo, medio: `en efectivo · resto ${medio === 'QR' ? 'por QR' : 'al alias'}` });
       toast.success(`Efectivo cobrado: ${formatImporte(efectivo)}. Falta ${formatImporte(r.summary.saldoACobrar)} ${medio === 'QR' ? 'por QR' : 'al alias'}.`);
       if (medio === 'QR') await pedirQr(id);
       else {
@@ -551,10 +560,18 @@ export function CloseTicketPanel({
 
   // Si el saldo cambia (la tarifa subió, entró un pago) la cuenta del vuelto ya no vale.
   useEffect(() => {
-    setPagaCon(null);
-    setOtroImporte('');
+    setRecibido(null);
     setEfectivoHibrido('');
+    setRecibidoHibrido(null);
   }, [summary?.saldoACobrar]);
+
+  // El cobro en efectivo que confirmó el servidor queda a la vista en la pantalla de operación
+  // (patente, importe, lo que entregó y el vuelto) mientras se da el cambio.
+  const anunciarCobro = (cobro: CobroEfectivoConfirmado | null | undefined, datos: { total: number; medio: string }) => {
+    if (!cobro || !summary) return;
+    publicarUltimoCobro({ tipo: 'ESTADIA', registroId: summary.registration.id, identificacion: identificacionDe(summary.registration), playaId,
+      total: datos.total, efectivo: cobro.importe, medio: datos.medio, recibido: cobro.efectivoRecibido, vuelto: cobro.vuelto });
+  };
 
   // La salida ya está registrada: se cierra el cobro y el vehículo sale de la lista. Nunca se
   // presenta como un error, que lleva a cobrar otra vez.
@@ -656,8 +673,10 @@ export function CloseTicketPanel({
     });
   };
 
-  const handleClose = (closeType: 'PAYMENT' | 'NO_CHARGE', metodo?: 'CASH' | 'TRANSFER', refundMetodo?: 'CASH' | 'TRANSFER', pagos?: { metodo: 'CASH' | 'TRANSFER'; importe: number }[]) => {
+  const handleClose = (closeType: 'PAYMENT' | 'NO_CHARGE', metodo?: 'CASH' | 'TRANSFER', refundMetodo?: 'CASH' | 'TRANSFER', pagos?: { metodo: 'CASH' | 'TRANSFER'; importe: number }[], efectivoRecibido?: number) => {
     if (!summary) return;
+    const cobrado = saldo;
+    const medioCobro = pagos ? 'efectivo + transferencia' : 'en efectivo';
     startTransition(async () => {
       const data = await closeRegistrationAction(summary.registration.id, {
         closeType,
@@ -666,6 +685,7 @@ export function CloseTicketPanel({
         refundMetodo,
         metodo,
         pagos,
+        efectivoRecibido,
       });
       const id = summary.registration.id;
       if (!data || 'error' in data) {
@@ -678,6 +698,8 @@ export function CloseTicketPanel({
         const errorMessage = typeof data?.error === 'string' ? data.error : data?.error?.message;
         await resolverTrasError(id, errorMessage ?? 'Error desconocido');
       } else {
+        // Solo cuando se cobró efectivo: el servidor devuelve lo que quedó guardado.
+        if (efectivoRecibido !== undefined) anunciarCobro(data.cobroEfectivo, { total: cobrado, medio: medioCobro });
         toast.success('Salida registrada exitosamente');
         if (data.registrationId) setReceiptId(data.registrationId);
         onSalidaRegistrada?.(data.registrationId ?? id);
@@ -707,11 +729,14 @@ export function CloseTicketPanel({
   };
 
   const confirmarMedio = () => {
-    if (paymentMethod === 'CASH' || paymentMethod === 'TRANSFER') handleClose('PAYMENT', paymentMethod);
+    if (paymentMethod === 'CASH') {
+      if (faltaEfectivo || recibido === null) return;
+      handleClose('PAYMENT', 'CASH', undefined, undefined, recibido);
+    } else if (paymentMethod === 'TRANSFER') handleClose('PAYMENT', paymentMethod);
     else if (paymentMethod === 'AMBOS') {
-      if (errorHibrido) return;
+      if (errorHibrido || faltaEfectivoHibrido || recibidoHibrido === null) return;
       // Con transferencia ya verificada se cierra todo junto; QR y alias se acreditan después.
-      if (restoPor === 'TRANSFER') handleClose('PAYMENT', undefined, undefined, [{ metodo: 'CASH', importe: efectivoParte }, { metodo: 'TRANSFER', importe: restoParte }]);
+      if (restoPor === 'TRANSFER') handleClose('PAYMENT', undefined, undefined, [{ metodo: 'CASH', importe: efectivoParte }, { metodo: 'TRANSFER', importe: restoParte }], recibidoHibrido);
       else cobrarEfectivoYSeguir(restoPor);
     } else if (paymentMethod === 'QR') generarQr();
     else if (paymentMethod === 'ALIAS') iniciarAlias();
@@ -751,9 +776,6 @@ export function CloseTicketPanel({
     } else elegirDescuento(tarifaAnterior ? 'PREV' : 'AMOUNT');
   };
   const mostrarMedios = !!summary && saldo > 0 && !enEspera && !pagoConSalida;
-  const sugeridos = pagosSugeridos(saldo);
-  const recibido = pagaCon === 'OTRO' ? (otroImporte ? Number(otroImporte) : null) : pagaCon;
-  const vuelto = recibido !== null ? calcularVuelto(saldo, recibido) : null;
   const efectivoParte = efectivoHibrido ? Number(efectivoHibrido) : 0;
   const restoParte = Math.max(0, saldo - efectivoParte);
   // Con el alias activo, el operador no tiene «Transferencia» sin verificar (tampoco para el resto).
@@ -769,6 +791,15 @@ export function CloseTicketPanel({
     : efectivoParte >= saldo
       ? 'El efectivo cubre todo: elegí «Efectivo».'
       : null;
+  // Lo que falta del efectivo para poder confirmar (con cuánto paga, o que alcance).
+  const faltaEfectivo = faltaDelEfectivo(saldo, recibido);
+  const faltaEfectivoHibrido = errorHibrido ? null : faltaDelEfectivo(efectivoParte, recibidoHibrido);
+  // Entregó menos que el saldo: se pasa al pago mixto con lo entregado en efectivo y el resto aparte.
+  const cobrarRestoConOtroMedio = (entregado: number) => {
+    setPaymentMethod('AMBOS');
+    setEfectivoHibrido(String(entregado));
+    setRecibidoHibrido(entregado);
+  };
 
   // La búsqueda trae primero las que coinciden y después las de patente parecida: lo escaneado o
   // escrito puede tener un carácter mal leído, y sin verlas se cobraba como salida sin entrada.
@@ -824,30 +855,32 @@ export function CloseTicketPanel({
     // Operador sin turno: ninguna salida ni cobro (el aviso de arriba tiene «Abrir mi turno»).
     if (bloqueadoSinTurno)
       return (
-        <ActionDialogPrimaryButton disabled detail="Abrí tu turno primero">
+        <ActionDialogPrimaryButton disabled falta="Abrí tu turno primero">
           {saldo > 0 ? 'Cobrar y registrar salida' : 'Registrar salida'}
         </ActionDialogPrimaryButton>
       );
     if (saldo > 0 && showDiscount)
       return (
-        <ActionDialogPrimaryButton disabled={isPending || !discountValid} onClick={aplicarDescuento} detail={discountValid ? `${discount ? `${formatImporte(discount)} de descuento` : 'Sin descuento'} · quedan ${formatImporte(quedanTrasDescuento)}` : 'Indicá importe y motivo'}>
+        <ActionDialogPrimaryButton disabled={isPending || !discountValid} onClick={aplicarDescuento} detail={discountValid ? `${discount ? `${formatImporte(discount)} de descuento` : 'Sin descuento'} · quedan ${formatImporte(quedanTrasDescuento)}` : undefined} falta={discountValid ? undefined : 'Indicá importe y motivo'}>
           {isPending ? 'Aplicando…' : !descuentoActual ? 'Aplicar descuento' : discount === 0 ? 'Quitar descuento' : 'Cambiar descuento'}
         </ActionDialogPrimaryButton>
       );
     if (saldo > 0) {
       const texto: Record<Medio, { accion: string; detalle: string }> = {
-        CASH: { accion: 'Cobrar y registrar salida', detalle: `${formatImporte(saldo)} en efectivo` },
+        CASH: { accion: 'Cobrar y registrar salida', detalle: `${formatImporte(saldo)} en efectivo · vuelto ${formatImporte((recibido ?? saldo) - saldo)}` },
         TRANSFER: { accion: 'Cobrar y registrar salida', detalle: `${formatImporte(saldo)} por transferencia` },
         QR: { accion: 'Mostrar el QR', detalle: `${formatImporte(saldo)} · se acredita solo` },
         ALIAS: { accion: 'Esperar la transferencia', detalle: `${formatImporte(saldo)} al alias` },
         AMBOS: {
           accion: restoPor === 'QR' ? 'Cobrar efectivo y mostrar el QR' : restoPor === 'ALIAS' ? 'Cobrar efectivo y esperar la transferencia' : 'Cobrar y registrar salida',
-          detalle: errorHibrido ? 'Indicá el efectivo' : `${formatImporte(efectivoParte)} en efectivo · ${formatImporte(restoParte)} ${restoDetalle}`,
+          detalle: `${formatImporte(efectivoParte)} en efectivo · ${formatImporte(restoParte)} ${restoDetalle}`,
         },
       };
       const elegido = paymentMethod ? texto[paymentMethod] : null;
+      // Lo que falta del efectivo (con cuánto paga, que alcance, cuánto en efectivo del mixto).
+      const falta = paymentMethod === 'CASH' ? faltaEfectivo : paymentMethod === 'AMBOS' ? (errorHibrido ? 'Indicá cuánto entrega en efectivo' : faltaEfectivoHibrido) : null;
       return (
-        <ActionDialogPrimaryButton disabled={isPending || !elegido || (paymentMethod === 'AMBOS' && !!errorHibrido)} onClick={confirmarMedio} detail={elegido?.detalle ?? formatImporte(saldo)}>
+        <ActionDialogPrimaryButton disabled={isPending || !elegido || !!falta} onClick={confirmarMedio} detail={elegido?.detalle ?? formatImporte(saldo)} falta={isPending ? undefined : falta}>
           {isPending ? (paymentMethod === 'QR' ? 'Generando…' : 'Registrando…') : (elegido?.accion ?? 'Elegí cómo paga')}
         </ActionDialogPrimaryButton>
       );
@@ -1152,9 +1185,9 @@ export function CloseTicketPanel({
                           <PaymentMethodChoices compact hibrido value={paymentMethod} onChange={setPaymentMethod} disabled={isPending} aliasDisponible={!!alias?.disponible} transferenciaManual={transferenciaManual} />
                         </fieldset>
 
-                        {paymentMethod === 'AMBOS' ? (
+                        {paymentMethod === 'AMBOS' ? (<>
                           <div className="space-y-2.5 rounded-2xl border border-border bg-gm-surface-2/50 p-3 short:space-y-2">
-                            <CashAmountField compact id="efectivo-hibrido" label="En efectivo" value={efectivoHibrido} onChange={setEfectivoHibrido} disabled={isPending} max={saldo} />
+                            <CashAmountField compact id="efectivo-hibrido" label="En efectivo" value={efectivoHibrido} onChange={(v) => { setEfectivoHibrido(v); setRecibidoHibrido(null); }} disabled={isPending} max={saldo} />
                             <div className="space-y-2 border-t border-dashed border-gm-line-strong pt-2.5">
                               <p className="flex items-center justify-between gap-2">
                                 <span className="text-[14px] font-semibold">El resto</span>
@@ -1178,66 +1211,12 @@ export function CloseTicketPanel({
                                     : `Se cobra el efectivo y después ${restoPor === 'QR' ? 'se genera el QR' : 'se espera la transferencia al alias'} por el resto. Al acreditarse, la salida se registra sola.`}
                                 </p>}
                           </div>
-                        ) : paymentMethod === 'CASH' ? (
-                          <div className="space-y-2.5 rounded-2xl border border-border bg-gm-surface-2/50 p-3 short:space-y-2">
-                            <p className="flex items-baseline justify-between gap-2">
-                              <span className="text-[14px] font-semibold">¿Con cuánto paga?</span>
-                              <span className="text-xs text-muted-foreground">Para calcular el vuelto</span>
-                            </p>
-                            {pagaCon === 'OTRO' ? (
-                              <div className="flex gap-2">
-                                <label htmlFor="paga-con-otro" className="sr-only">Importe que entrega</label>
-                                <input
-                                  id="paga-con-otro"
-                                  autoFocus
-                                  inputMode="numeric"
-                                  placeholder="Importe que entrega"
-                                  value={otroImporte ? miles(Number(otroImporte)) : ''}
-                                  onChange={(e) => setOtroImporte(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                                  className="gm-mono h-11 min-w-0 flex-1 rounded-xl border-[1.5px] border-gm-yellow bg-gm-surface-2 px-3 text-base font-semibold text-foreground outline-none"
-                                />
-                                <button type="button" onClick={() => { setPagaCon(null); setOtroImporte(''); }} className="h-11 shrink-0 rounded-xl px-3 text-[14px] font-semibold text-muted-foreground hover:text-foreground">
-                                  Volver
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-4 gap-2">
-                                {[{ valor: saldo, texto: 'Justo' }, ...sugeridos.map((valor) => ({ valor, texto: miles(valor) }))].map(({ valor, texto }) => (
-                                  <button
-                                    key={valor}
-                                    type="button"
-                                    aria-pressed={pagaCon === valor}
-                                    onClick={() => setPagaCon(pagaCon === valor ? null : valor)}
-                                    className={cn(
-                                      'h-11 rounded-xl border-[1.5px] px-1 text-[13px] font-semibold transition-colors',
-                                      texto !== 'Justo' && 'gm-mono',
-                                      pagaCon === valor ? 'border-gm-yellow bg-gm-yellow/[0.12]' : 'border-gm-line-strong bg-gm-surface-2 hover:border-gm-yellow/40',
-                                    )}
-                                  >
-                                    {texto}
-                                  </button>
-                                ))}
-                                <button type="button" onClick={() => setPagaCon('OTRO')} className="h-11 rounded-xl border-[1.5px] border-gm-line-strong bg-gm-surface-2 text-[13px] font-semibold transition-colors hover:border-gm-yellow/40">
-                                  Otro
-                                </button>
-                              </div>
-                            )}
-                            {vuelto !== null && (
-                              <p role="status" className="flex items-center justify-between border-t border-dashed border-gm-line-strong pt-2.5">
-                                {vuelto >= 0 ? (
-                                  <>
-                                    <span className="text-[14px] font-semibold">Vuelto</span>
-                                    <span className="gm-mono text-[24px] font-bold leading-none text-gm-yellow">{formatImporte(vuelto)}</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="text-[14px] font-semibold text-gm-orange">Le falta entregar</span>
-                                    <span className="gm-mono text-[20px] font-bold leading-none text-gm-orange">{formatImporte(-vuelto)}</span>
-                                  </>
-                                )}
-                              </p>
-                            )}
-                          </div>
+                          {/* Los billetes que entrega por la parte en efectivo: el vuelto es contra esa parte. */}
+                          {!errorHibrido && efectivoParte > 0 && (
+                            <EfectivoRecibido titulo="¿Con cuánto paga el efectivo?" aplicado={efectivoParte} recibido={recibidoHibrido} onChange={setRecibidoHibrido} disabled={isPending} />
+                          )}
+                        </>) : paymentMethod === 'CASH' ? (
+                          <EfectivoRecibido aplicado={saldo} recibido={recibido} onChange={setRecibido} disabled={isPending} onCobrarResto={cobrarRestoConOtroMedio} />
                         ) : (
                           // Sin medio elegido es solo una guía que ya repiten los botones: en pantallas bajas se omite.
                           <p className={cn('rounded-2xl border border-border bg-gm-surface-2/50 p-3 text-[13px] leading-relaxed text-muted-foreground', !paymentMethod && 'short:hidden')}>
