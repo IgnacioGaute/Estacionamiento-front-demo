@@ -47,7 +47,8 @@ export function DepartureHistory({ registrations, dailyRegistrations, onReceipt,
   const [rows, setRows] = useState<FilaComprobante[]>([]);
   const [total, setTotal] = useState(0);
   const [conteo, setConteo] = useState<ConteoComprobantes | null>(null);
-  const [pending, setPending] = useState(false);
+  // Arranca cargando: si no, el primer cuadro mostraba «No hay comprobantes» antes de la consulta.
+  const [pending, setPending] = useState(true);
   const [error, setError] = useState('');
   const [recarga, setRecarga] = useState(0);
 

@@ -176,6 +176,9 @@ export function MovimientosHistorial({ today, isAdmin, turnos, cobro, comprobant
   const [total, setTotal] = useState(0);
   const [resumen, setResumen] = useState<ResumenHistorial | null>(null);
   const [pending, setPending] = useState(false);
+  // Hasta la primera respuesta se muestra «cargando»: sin esto, entre que llega el turno y sale la
+  // consulta, asomaba un instante «Todavía no hay movimientos».
+  const [primeraCarga, setPrimeraCarga] = useState(true);
   const [error, setError] = useState('');
   const [recarga, setRecarga] = useState(0);
   const [abierta, setAbierta] = useState<OperacionACorregir | null>(null);
@@ -232,7 +235,7 @@ export function MovimientosHistorial({ today, isAdmin, turnos, cobro, comprobant
         setTotal(r.data.meta.totalItems);
         if (r.data.resumen) setResumen(r.data.resumen);
         setRows((previas) => page === 1 ? r.data.data : [...previas, ...r.data.data.filter((f) => !previas.some((p) => p.id === f.id))]);
-      }).finally(() => { if (vigente) setPending(false); });
+      }).finally(() => { if (vigente) { setPending(false); setPrimeraCarga(false); } });
     }, page === 1 ? 250 : 0);
     return () => { vigente = false; clearTimeout(timer); };
   }, [clave, page, contextoListo, filtros]);
@@ -355,7 +358,7 @@ export function MovimientosHistorial({ today, isAdmin, turnos, cobro, comprobant
 
       {resumen && <ResumenPeriodo resumen={resumen} cobro={cobro} onRevisar={() => { setTipo(null); setMedio(null); setCorreccion('PENDIENTE'); }} />}
 
-      {pending && !rows.length ? <ComprobantesCargando />
+      {(pending || primeraCarga) && !rows.length ? <ComprobantesCargando />
         : error && !rows.length ? <p role="alert" className="rounded-xl border border-destructive/40 p-4 text-sm text-destructive">{error}</p>
         : !rows.length ? (
           hayFiltros ? (
