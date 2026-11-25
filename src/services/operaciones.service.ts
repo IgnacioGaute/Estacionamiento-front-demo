@@ -4,6 +4,7 @@ import type {
   Correccion, CorreccionPayload, DetalleOperacion, FiltrosHistorial, HistorialMovimientos, PrevisualizacionCorreccion,
   ResultadoApi, TransferenciasParaCorreccion,
 } from '@/types/operaciones.type';
+import type { FiltrosPanel, PanelResumen } from '@/types/panel.type';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -20,6 +21,14 @@ export async function historialMovimientos(filtros: FiltrosHistorial, limit = 20
   for (const [clave, valor] of Object.entries({ ...filtros, limit })) if (valor !== undefined && valor !== '') url.searchParams.set(clave, String(valor));
   const response = await fetch(url.toString(), { headers: await getAuthHeaders(), cache: 'no-store' });
   return resultado<HistorialMovimientos>(response, 'No se pudieron consultar los movimientos.');
+}
+
+// El panel de la administración: lo cobrado comparado, las estadías, los autos adentro hoy y los avisos.
+export async function panelResumen(filtros: FiltrosPanel) {
+  const url = new URL(`${BASE_URL}/operaciones/panel`);
+  for (const [clave, valor] of Object.entries(filtros)) if (valor) url.searchParams.set(clave, valor);
+  const response = await fetch(url.toString(), { headers: await getAuthHeaders(), cache: 'no-store' });
+  return resultado<PanelResumen>(response, 'No se pudo cargar el panel.');
 }
 
 export async function detalleOperacion(tipo: 'ESTADIA' | 'PASE', id: string) {

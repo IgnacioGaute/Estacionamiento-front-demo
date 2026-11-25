@@ -4,94 +4,40 @@ export const fetchCache = 'force-no-store';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import Link from 'next/link';
 
-import {
-  getCustomersSummary,
-  getHourlyActivity,
-  getOtherPaymentsSummary,
-  getReceiptsSummary,
-  getRevenueSummary,
-} from '@/services/dashboard.service';
-import { DashboardDateRangePicker } from './components/date-range-picker';
-import { ActivityRevenueChart } from './components/activity-revenue-chart';
+import { getHourlyActivity } from '@/services/dashboard.service';
+import { panelResumen } from '@/services/operaciones.service';
+import { getDeudoresAction } from '@/actions/cuentas/cuentas.action';
 import { HourlyActivityAreaChart } from './components/hourly-activity-area-chart';
-import { IncomeExpensesLineChart } from './components/income-expenses-line-chart';
-import { ReceiptsGaugeChart } from './components/receipts-gauge-chart';
-import { CustomersByTypeChart } from './components/customers-by-type-chart';
-import { PaymentTypesBulletChart } from './components/payment-types-bullet-chart';
 import { PageHeader } from '@/components/page-header';
 import { PageTour } from '@/components/page-tour';
-import Link from 'next/link';
 import { modalidadActual } from '@/lib/modalidad.server';
-
-const TOUR_STEPS = [
-  {
-    key: 'activity',
-    selector: '[data-tour="dashboard-activity"]',
-    title: 'Actividad de recaudación',
-    desc: 'Mapa de calor tipo GitHub con los últimos 140 días: cuanto más intenso el color, más se recaudó ese día. Siempre muestra esta ventana fija, sin importar el rango elegido abajo.',
-    radius: 10,
-  },
-  {
-    key: 'hourly-activity',
-    selector: '[data-tour="dashboard-hourly-activity"]',
-    title: 'Actividad por hora',
-    desc: 'Entradas y salidas de tickets hora por hora — se ven los picos según cuándo entra y sale más gente. Tocá "Hoy" para elegir otro día.',
-    radius: 10,
-  },
-  {
-    key: 'range',
-    selector: '[data-tour="dashboard-range"]',
-    title: 'Rango de fechas',
-    desc: 'Cambiá el período que se usa en los gráficos de ingresos/egresos, clientes y tipos de pago.',
-    radius: 8,
-  },
-  {
-    key: 'income-expenses',
-    selector: '[data-tour="dashboard-income-expenses"]',
-    title: 'Ingresos y egresos',
-    desc: 'Evolución de los ingresos y egresos de "Varios" en el rango seleccionado.',
-    radius: 10,
-  },
-  {
-    key: 'receipts',
-    selector: '[data-tour="dashboard-receipts"]',
-    title: 'Recibos pagados vs. pendientes',
-    desc: 'Tiene su propio filtro por mes, independiente del rango global de la página.',
-    radius: 10,
-  },
-  {
-    key: 'customers',
-    selector: '[data-tour="dashboard-customers"]',
-    title: 'Clientes por tipo',
-    desc: 'Distribución de clientes entre propietarios, inquilinos y terceros.',
-    radius: 10,
-  },
-  {
-    key: 'payment-types',
-    selector: '[data-tour="dashboard-payment-types"]',
-    title: 'Tipos de pago',
-    desc: 'Cómo se distribuyen los cobros entre efectivo, transferencia y otros medios en el rango seleccionado.',
-    radius: 10,
-  },
-];
+import type { CompararPanel, VerPanel } from '@/types/panel.type';
+import { PanelCliente } from './panel/panel-cliente';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+const TOUR_STEPS = [
+  { key: 'filtros', selector: '[data-tour="panel-filtros"]', title: 'El período', desc: 'Elegí un atajo (Hoy, 7 días, Este mes…) o tus propias fechas, con qué compararlo y si lo querés ver por día, semana o mes. Todo el panel cambia junto.', radius: 16 },
+  { key: 'cobrado', selector: '[data-tour="panel-cobrado"]', title: 'Lo cobrado', desc: 'El total del período y cuánto cambió. Pasá el mouse por la curva para ver cada día; la línea gris es el período con el que se compara.', radius: 24 },
+  { key: 'adentro', selector: '[data-tour="panel-adentro"]', title: 'Autos adentro', desc: 'Un reloj de hoy: cada barra es una hora y muestra cuántos autos había. No cambia con el período.', radius: 24 },
+  { key: 'dias', selector: '[data-tour="panel-dias"]', title: 'Tus días', desc: 'Cada cuadradito es un día de las últimas 20 semanas: más amarillo, más cobrado. Tocá uno para ver ese día.', radius: 24 },
+  { key: 'pagos', selector: '[data-tour="panel-pagos"]', title: 'Cómo te pagaron', desc: 'Efectivo, transferencia y QR en el período elegido.', radius: 24 },
+];
+
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; receiptsMonth?: string; hourlyDate?: string }>;
+  searchParams: Promise<{ desde?: string; hasta?: string; comparar?: string; ver?: string; hourlyDate?: string }>;
 }) {
   const params = await searchParams;
   const argentinaNow = dayjs().tz('America/Argentina/Buenos_Aires');
-  const from = params.from ?? argentinaNow.startOf('month').format('YYYY-MM-DD');
-  const to = params.to ?? argentinaNow.format('YYYY-MM-DD');
-  const hourlyDate = params.hourlyDate ?? argentinaNow.format('YYYY-MM-DD');
 
   // Playa gratuita: sin recaudación, ingresos ni medios de pago. Queda el movimiento de vehículos.
   if ((await modalidadActual()) === 'GRATUITO') {
+    const hourlyDate = params.hourlyDate ?? argentinaNow.format('YYYY-MM-DD');
     const hourly = await getHourlyActivity(hourlyDate);
     return (
       <div className="gm-noise container mx-auto px-4 py-4 sm:p-6">
@@ -100,9 +46,8 @@ export default async function DashboardPage({
           title="Panel"
           description="Playa en modalidad gratuita: entradas y salidas de vehículos, sin importes."
           className="mb-6"
-          actions={<PageTour steps={TOUR_STEPS.filter((s) => s.key === 'hourly-activity')} />}
         />
-        <div className="mb-4" data-tour="dashboard-hourly-activity">
+        <div className="mb-4">
           <HourlyActivityAreaChart data={hourly} date={hourlyDate} />
         </div>
         <Link href="/admin/vehiculos" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-semibold transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow">
@@ -112,61 +57,30 @@ export default async function DashboardPage({
     );
   }
 
-  // La actividad de recaudación siempre muestra su propia ventana fija de 140 días
-  // (como un heatmap de GitHub) independiente del selector de rango de la página.
-  const activityFrom = argentinaNow.subtract(139, 'day').format('YYYY-MM-DD');
-  const activityTo = argentinaNow.format('YYYY-MM-DD');
-
-  // Recibos pagados vs pendientes tiene su propio filtro por mes, independiente
-  // del rango global de la página.
-  const receiptsMonth = params.receiptsMonth ?? argentinaNow.format('YYYY-MM');
-  const receiptsMonthFrom = dayjs.tz(receiptsMonth, 'America/Argentina/Buenos_Aires').startOf('month').format('YYYY-MM-DD');
-  const receiptsMonthTo = dayjs.tz(receiptsMonth, 'America/Argentina/Buenos_Aires').endOf('month').format('YYYY-MM-DD');
-
-  const [activityRevenue, hourlyActivity, otherPayments, receipts, receiptsForGauge, customers] = await Promise.all([
-    getRevenueSummary({ from: activityFrom, to: activityTo }),
-    getHourlyActivity(hourlyDate),
-    getOtherPaymentsSummary({ from, to }),
-    getReceiptsSummary({ from, to }),
-    getReceiptsSummary({ from: receiptsMonthFrom, to: receiptsMonthTo }),
-    getCustomersSummary({ from, to }),
+  // Por defecto, este mes comparado con los mismos días del período anterior.
+  const comparar: CompararPanel = params.comparar === 'anio' || params.comparar === 'no' ? params.comparar : 'anterior';
+  const desde = params.desde ?? argentinaNow.startOf('month').format('YYYY-MM-DD');
+  const hasta = params.hasta ?? argentinaNow.format('YYYY-MM-DD');
+  const [resultado, deudores] = await Promise.all([
+    panelResumen({ desde, hasta, comparar }),
+    getDeudoresAction().catch(() => null),
   ]);
 
   return (
-    <div className="gm-noise container mx-auto px-4 py-4 sm:p-6">
+    <div className="container mx-auto px-4 py-4 sm:p-6">
       <PageHeader
         breadcrumb={['Estacionamiento', 'Administración', 'Panel']}
         title="Panel"
-        className="mb-6"
+        description="Así viene tu playa."
+        className="mb-5"
         actions={<PageTour steps={TOUR_STEPS} />}
       />
-
-      <div className="mb-4" data-tour="dashboard-activity">
-        <ActivityRevenueChart data={activityRevenue} />
-      </div>
-
-      <div className="mb-4" data-tour="dashboard-hourly-activity">
-        <HourlyActivityAreaChart data={hourlyActivity} date={hourlyDate} />
-      </div>
-
-      <div className="mb-3 flex justify-end" data-tour="dashboard-range">
-        <DashboardDateRangePicker from={from} to={to} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div data-tour="dashboard-income-expenses">
-          <IncomeExpensesLineChart data={otherPayments} />
-        </div>
-        {/* <div data-tour="dashboard-receipts">
-          <ReceiptsGaugeChart data={receiptsForGauge} month={receiptsMonth} />
-        </div> */}
-        {/* <div data-tour="dashboard-customers">
-          <CustomersByTypeChart data={customers} />
-        </div> */}
-        <div data-tour="dashboard-payment-types">
-          <PaymentTypesBulletChart data={receipts} />
-        </div>
-      </div>
+      {resultado.data
+        ? <PanelCliente panel={resultado.data} comparar={comparar} ver={params.ver as VerPanel | undefined} deudores={deudores?.data ?? null} />
+        : <div role="alert" className="space-y-3 rounded-2xl border border-destructive/40 p-5">
+            <p className="font-semibold">{resultado.error}</p>
+            <Link href="/admin/dashboard" className="inline-flex min-h-10 items-center rounded-full border border-border px-4 text-sm font-semibold hover:border-gm-yellow/40">Volver al período de este mes</Link>
+          </div>}
     </div>
   );
 }

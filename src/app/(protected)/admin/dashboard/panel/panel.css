@@ -1,0 +1,26 @@
+/* Animaciones del panel: entradas al cargar, indicadores que se deslizan y la reducción de movimiento. */
+@keyframes panel-aparecer { from { opacity: 0 } to { opacity: 1 } }
+@keyframes panel-trazo { from { stroke-dashoffset: 100 } }
+@keyframes panel-crecer { from { transform: scaleY(0) } }
+@keyframes panel-barrido { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(0 0 0 0) } }
+/* La ola del calendario: cada día aparece desde 3 px más abajo y un poco más chico (como la librería). */
+@keyframes panel-celda { from { opacity: 0; transform: translateY(3px) scale(.86) } }
+@keyframes panel-subir { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+
+.panel-aparecer { animation: panel-aparecer 420ms ease-out both }
+.panel-area { animation: panel-aparecer 600ms ease-out 900ms both }
+.panel-trazo { animation: panel-trazo 900ms cubic-bezier(.85,0,.15,1) both }
+.panel-rayo { animation: panel-trazo 600ms cubic-bezier(.23,1,.32,1) both }
+.panel-crecer { transform-box: fill-box; transform-origin: bottom; animation: panel-crecer 700ms cubic-bezier(.85,0,.15,1) both }
+.panel-barrido { animation: panel-barrido 900ms cubic-bezier(.85,0,.15,1) both }
+.panel-celda { animation: panel-celda 450ms cubic-bezier(.22,1,.36,1) backwards }
+.panel-dimable { transition: opacity 220ms cubic-bezier(.4,0,.2,1) }
+.panel-subir { animation: panel-subir 500ms ease-out both }
+/* Las porciones salen con un pequeño rebote, como el resorte del componente original. */
+.panel-porcion { transition: transform 320ms cubic-bezier(.34,1.45,.64,1), opacity 150ms ease }
+.panel-indicador { transition: left 280ms cubic-bezier(.22,1,.36,1), top 280ms cubic-bezier(.22,1,.36,1), opacity 200ms ease }
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-aparecer, .panel-area, .panel-trazo, .panel-rayo, .panel-crecer, .panel-barrido, .panel-celda, .panel-subir { animation: none }
+  .panel-porcion, .panel-indicador, .panel-dimable { transition: none }
+}
