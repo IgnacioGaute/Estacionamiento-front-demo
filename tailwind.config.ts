@@ -106,10 +106,17 @@ export default {
           "0%":   { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(100%)" },
         },
+        // El brillo del Skeleton de SmoothUI: cruza en 1,2 s con su curva ease-in-out
+        // (0.645, 0.045, 0.355, 1) y descansa 0,3 s antes de repetir (1,5 s por vuelta).
+        "skeleton-brillo": {
+          "0%":       { transform: "translateX(-100%)", animationTimingFunction: "cubic-bezier(0.645, 0.045, 0.355, 1)" },
+          "80%, 100%": { transform: "translateX(100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up":   "accordion-up 0.2s ease-out",
+        "skeleton-brillo": "skeleton-brillo 1.5s infinite",
       },
     },
   },
