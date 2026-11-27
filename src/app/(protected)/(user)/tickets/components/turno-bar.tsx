@@ -291,7 +291,7 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
     </details>}
     {active && <details className="group rounded-2xl border border-gm-line text-xs">
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-2xl px-4 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow [&::-webkit-details-marker]:hidden">Ver resumen del turno<ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden /></summary>
-      <div className="border-t border-gm-line p-3"><TurnoResumenPanel turno={active} /></div>
+      <div className="border-t border-gm-line p-3"><TurnoResumenPanel turno={active} sinCobros /></div>
     </details>}
   </div>;
   const openingValid = !!caja && !esSuperAdmin && !context?.legacyOpen && (caja.session
@@ -475,20 +475,16 @@ export function TurnoBar({ onUpdated, turnoId, revision = 0, variant = 'button',
                 <span className="text-[12px] font-bold text-gm-ink/70">{active.caja?.nombre ?? 'Turno anterior'}</span>
               </div>
               <div><p className="text-lg font-bold leading-tight">{active.nombre}</p><p className="mt-0.5 text-xs font-semibold text-gm-ink/65">Abierto el {date(active.fechaApertura)}</p></div>
-              {/* El operador no ve el esperado antes de contar (arqueo ciego). El administrador sí: supervisa
-                  la caja y registra retiros y aportes con ese saldo. */}
-              {esAdmin ? <div>
-                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gm-ink/70">Efectivo esperado en la caja</p>
-                <p className="mt-1 font-display text-[48px] font-bold leading-[0.95] tracking-tight tabular-nums">{money(expected)}</p>
-                <p className="mt-2 pr-16 text-xs font-medium text-gm-ink/70">Incluye el fondo inicial y los movimientos de todos los operadores.</p>
-              </div> : <div>
+              {/* Nadie ve el esperado antes de contar (arqueo ciego), tampoco el administrador cuando
+                  cierra su propio turno: el saldo de la caja lo sigue viendo en Caja. */}
+              <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gm-ink/70">Efectivo de la caja</p>
                 <p className="mt-1 text-2xl font-bold leading-tight">{arqueo ? 'Lo contás al cerrar' : 'Lo cuenta el último en cerrar'}</p>
                 <p className="mt-2 pr-16 text-xs font-medium text-gm-ink/70">{arqueo ? 'Después de cargar lo que contaste te mostramos si coincide.' : 'Tus cobros quedan registrados a tu nombre.'}</p>
-              </div>}
+              </div>
             </div>
           </section>
-          <TurnoResumenPanel turno={active} />
+          <TurnoResumenPanel turno={active} sinCobros />
           {esAdmin && active.cashSessionId && <CashMovementForm sesionId={active.cashSessionId} expected={expected} onUpdated={() => { updated(); startTransition(() => refresh()); }} />}
           <p className="text-center text-xs text-muted-foreground">{arqueo ? 'Al terminar, vas a contar y cerrar esta caja.' : 'Compartís esta caja con otros operadores. Podés cerrar sólo tu turno; el último cuenta el efectivo.'}</p>
           {enlaceHistorial}

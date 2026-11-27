@@ -6,7 +6,9 @@ import { Etiqueta, money } from '@/components/turno-ui';
 
 // Lo mismo se lee en «Mi turno», en el historial y en la planilla: primero cómo se cobró, después
 // qué salió de la caja, cuántos vehículos pasaron y qué quedó para el siguiente.
-export function TurnoResumenPanel({ turno }: { turno: Turno }) {
+// `sinCobros`: sin «Cobros del turno», para el turno que se está por contar (arqueo ciego: lo
+// cobrado en efectivo deja adivinar lo esperado). En el historial se ve completo.
+export function TurnoResumenPanel({ turno, sinCobros = false }: { turno: Turno; sinCobros?: boolean }) {
   const r = turno.resumen;
   if (!r) return null;
   const retiros = [['Gastos', r.gastosEfectivo], ['Sueldo', r.sueldoRetirado], ['Recaudación', r.retirosRecaudacion]] as const;
@@ -16,7 +18,7 @@ export function TurnoResumenPanel({ turno }: { turno: Turno }) {
   const mercadoPago = r.mercadoPagoAlias + r.mercadoPagoQr;
   const vehiculos = (n: number | null) => n == null ? 'No informado' : String(n);
   return <section aria-label="Resumen del turno" className="w-full space-y-3">
-    <div className="rounded-2xl border border-gm-line bg-gm-surface-2/50">
+    {!sinCobros && <div className="rounded-2xl border border-gm-line bg-gm-surface-2/50">
       <Etiqueta className="px-4 pt-3.5">Cobros del turno</Etiqueta>
       <dl className="grid divide-y divide-gm-line py-1.5 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:py-3">
         <Medio punto="bg-gm-ok" label="Efectivo" value={money(r.efectivoCobrado)} />
@@ -25,7 +27,7 @@ export function TurnoResumenPanel({ turno }: { turno: Turno }) {
         </Medio>
         <Medio punto="bg-violet-400" label="Transferencias" value={money(r.transferencias)} />
       </dl>
-    </div>
+    </div>}
 
     <div className="divide-y divide-gm-line overflow-hidden rounded-2xl border border-gm-line">
       <div className="px-4 py-3">

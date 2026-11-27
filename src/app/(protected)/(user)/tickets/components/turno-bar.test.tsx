@@ -457,6 +457,20 @@ test('operadores no ven las acciones de retiro ni aporte, incluso en su propia c
   expect(screen.queryByRole('button', { name: 'Retirar efectivo' })).not.toBeInTheDocument();
 });
 
+test('el administrador tampoco ve el esperado ni los cobros antes de contar su turno', async () => {
+  const resumen = { efectivoCobrado: 220000, mercadoPagoAlias: 0, mercadoPagoQr: 0, transferencias: 0, gastosEfectivo: 0, sueldoRetirado: 0, retirosRecaudacion: 0, totalRetirado: 0, vehiculosInicio: 3, salidas: 5, vehiculosFin: null, efectivoParaSiguiente: null, movimientos: [] };
+  jest.mocked(getCashContextAction).mockResolvedValue({ context: context({ ...shift(), resumen } as unknown as OpenTurno) });
+  render(<TurnoBar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Mi turno' }));
+  expect(await screen.findByRole('button', { name: 'Cerrar mi turno y contar la caja' })).toBeInTheDocument();
+  expect(screen.getByText('Lo contás al cerrar')).toBeInTheDocument();
+  expect(screen.queryByText('Efectivo esperado en la caja')).not.toBeInTheDocument();
+  // El resumen sigue (vehículos, retiros), sin lo cobrado: el efectivo cobrado dejaría adivinar el esperado.
+  expect(screen.getByRole('region', { name: 'Resumen del turno' })).toBeInTheDocument();
+  expect(screen.queryByText('Cobros del turno')).not.toBeInTheDocument();
+  expect(screen.queryByText('$ 220.000')).not.toBeInTheDocument();
+});
+
 test('administración puede retirar todo con motivo y revisar el saldo resultante', async () => {
   const onUpdated = jest.fn();
   jest.mocked(addCashMovementAction).mockResolvedValue({ success: true });
