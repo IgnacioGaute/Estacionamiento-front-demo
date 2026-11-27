@@ -223,6 +223,29 @@ export default function CardTicket({
   const tour = useTour(tourSteps);
   // Hay accesos que existen dos veces (en la barra del celular y en la columna de la computadora):
   // el tour señala el que se ve.
+  // Las columnas del tablero terminan donde termina Últimos movimientos: se mide la distancia desde
+  // el principio de las columnas hasta el final de esa tarjeta, y se vuelve a medir cuando cambia el
+  // mostrador o la ventana. Nunca menos de 320 px, para que haya lugar para algunos autos.
+  const grillaEscritorioRef = useRef<HTMLDivElement>(null);
+  const [altoColumnas, setAltoColumnas] = useState<number | null>(null);
+  useEffect(() => {
+    const grilla = grillaEscritorioRef.current;
+    if (!grilla || typeof ResizeObserver === 'undefined') return;
+    const medir = () => {
+      const ultimos = grilla.querySelector('[aria-labelledby="ultimos-movimientos"]');
+      const columnas = grilla.querySelector('[data-columnas-tablero]');
+      if (!ultimos || !columnas) return;
+      const alto = Math.round(ultimos.getBoundingClientRect().bottom - columnas.getBoundingClientRect().top);
+      setAltoColumnas((antes) => (antes === Math.max(320, alto) ? antes : Math.max(320, alto)));
+    };
+    medir();
+    const observador = new ResizeObserver(medir);
+    if (grilla.firstElementChild) observador.observe(grilla.firstElementChild);
+    observador.observe(grilla);
+    window.addEventListener('resize', medir);
+    return () => { observador.disconnect(); window.removeEventListener('resize', medir); };
+  }, [esEscritorio]);
+
   const refVisible = (key: string) => (el: HTMLElement | null) => {
     if (!el || el.getClientRects().length === 0) return;
     tour.refFor(key)(el);
@@ -734,7 +757,7 @@ export default function CardTicket({
         </div>
       </header>
 
-      <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+      <div ref={grillaEscritorioRef} className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <aside aria-label="Mostrador" className="flex min-w-0 flex-col gap-3.5">
           <TarjetaAdentro
             total={total}
@@ -784,6 +807,7 @@ export default function CardTicket({
           onCobrar={(r) => abrirCobro(r.id)}
           onAbrirDia={setOpenDayRegistrationId}
           debajo={fichas}
+          altoColumnas={altoColumnas}
         />
       </div>
     </div>

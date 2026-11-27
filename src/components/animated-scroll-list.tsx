@@ -6,8 +6,9 @@ import styles from './animated-scroll-list.module.css';
 
 // Inspired by React Bits Animated List; native buttons retain their normal keyboard behavior.
 // `className` cambia el alto de la lista (con `!` para ganarle al del módulo) y `fondo` es el color
-// sobre el que se apoya, para que los degradés de arriba y abajo se fundan con él.
-export function AnimatedScrollList({ children, label, className, fondo }: { children: ReactNode; label: string; className?: string; fondo?: string }) {
+// sobre el que se apoya, para que los degradés de arriba y abajo se fundan con él. `claseMarco` va en
+// el marco: para que la lista ocupe el alto que le dé su contenedor (flex-1 min-h-0).
+export function AnimatedScrollList({ children, label, className, fondo, claseMarco }: { children: ReactNode; label: string; className?: string; fondo?: string; claseMarco?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ top: 0, bottom: 0 });
   useEffect(() => {
@@ -29,7 +30,7 @@ export function AnimatedScrollList({ children, label, className, fondo }: { chil
     resize.observe(root);
     return () => { observer.disconnect(); resize.disconnect(); root.removeEventListener('scroll', updateEdges); };
   }, [children]);
-  return <div className={styles.frame} style={fondo ? { '--asl-fondo': fondo } as CSSProperties : undefined}>
+  return <div className={cn(styles.frame, claseMarco)} style={fondo ? { '--asl-fondo': fondo } as CSSProperties : undefined}>
     <div ref={ref} role="region" aria-label={label} tabIndex={0} className={cn(styles.list, className)}>
       {Children.toArray(children).map((child, index) => <div key={(child as { key?: string }).key ?? index} className={styles.item}><div>{child}</div></div>)}
     </div>

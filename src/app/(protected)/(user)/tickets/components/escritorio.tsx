@@ -283,7 +283,7 @@ export function UltimosMovimientos({ registros, ahora, comprobantes, onComproban
 
 // ── El tablero de la playa ────────────────────────────────────────────────────
 
-function Columna({ titulo, color, caption, cantidad, total, atenuada, vacio, refEl, estadias, children }: {
+function Columna({ titulo, color, caption, cantidad, total, atenuada, vacio, refEl, estadias, llenar = false, children }: {
   titulo: string;
   color: string;
   caption: string;
@@ -293,11 +293,13 @@ function Columna({ titulo, color, caption, cantidad, total, atenuada, vacio, ref
   vacio: string;
   refEl?: Refe;
   estadias?: boolean;
+  // El tablero tiene un alto dado (el del mostrador): la columna lo llena y se desplaza por dentro.
+  llenar?: boolean;
   children: ReactNode[];
 }) {
   const parte = total ? Math.round((cantidad / total) * 100) : 0;
   return (
-    <section ref={refEl} aria-label={titulo} className={cn('flex min-w-0 flex-col gap-2.5 rounded-[20px] border bg-card p-3 transition-opacity', estadias ? 'border-gm-yellow/30' : 'border-border', atenuada && 'opacity-60')}>
+    <section ref={refEl} aria-label={titulo} className={cn('flex min-w-0 flex-col gap-2.5 rounded-[20px] border bg-card p-3 transition-opacity', llenar && 'h-full min-h-0', estadias ? 'border-gm-yellow/30' : 'border-border', atenuada && 'opacity-60')}>
       <div className="flex flex-col gap-2.5 px-1 pt-0.5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -316,7 +318,8 @@ function Columna({ titulo, color, caption, cantidad, total, atenuada, vacio, ref
       </div>
       {children.length ? (
         // El mismo desplazamiento de los comprobantes: cada columna baja sola, la pantalla no.
-        <AnimatedScrollList label={`${titulo}: desplazá para ver más`} fondo="hsl(var(--card))" className="!max-h-[360px] xl:!max-h-[max(360px,calc(100dvh_-_340px))]">
+        <AnimatedScrollList label={`${titulo}: desplazá para ver más`} fondo="hsl(var(--card))"
+          className={llenar ? '!max-h-none h-full' : '!max-h-[360px] xl:!max-h-[max(360px,calc(100dvh_-_340px))]'} claseMarco={llenar ? 'flex min-h-0 flex-1 flex-col' : undefined}>
           {children}
         </AnimatedScrollList>
       ) : (
@@ -405,7 +408,7 @@ function TarjetaEstadiaLarga({ r, vence, vencida, ahora, onSelect }: { r: Ticket
   );
 }
 
-export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro, onFiltro, onCobrar, onAbrirDia, tableroRef, estadiasRef, debajo }: {
+export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro, onFiltro, onCobrar, onAbrirDia, tableroRef, estadiasRef, debajo, altoColumnas = null }: {
   activos: TicketRegistration[];
   ahora: number;
   diaActivos: TicketRegistrationForDay[];
@@ -417,8 +420,12 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
   tableroRef?: Refe;
   estadiasRef?: Refe;
   debajo?: ReactNode;
+  // El alto de las columnas para que terminen alineadas con Últimos movimientos (lo mide la
+  // pantalla). Sin él, cada columna mide lo que tiene.
+  altoColumnas?: number | null;
 }) {
   const { cobroHabilitado } = useTenant();
+  const llenar = altoColumnas != null;
   const total = activos.length + diaActivos.length;
   const conMinutos = activos.map((r) => ({ r, minutos: minutesSinceEntry(r, ahora) ?? 0, pasado: isOverdue(r, ahora) }));
   const excedidos = conMinutos.filter((v) => v.pasado).length;
@@ -470,7 +477,9 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
           ]} />
       </div>
 
-      <div className={cn('grid grid-cols-2 items-start gap-3', cobroHabilitado ? 'xl:grid-cols-4' : 'xl:grid-cols-3')}>
+      {/* Con alto dado, las filas se reparten ese alto (en notebook quedan dos filas de dos). */}
+      <div data-columnas-tablero className={cn('grid grid-cols-2 gap-3', llenar ? 'auto-rows-[minmax(0,1fr)] items-stretch' : 'items-start', cobroHabilitado ? 'xl:grid-cols-4' : 'xl:grid-cols-3')}
+        style={llenar ? { height: altoColumnas } : undefined}>
         {columnas.map((c) => (
           <Columna
             key={c.id}
@@ -479,6 +488,7 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
             caption={c.caption}
             cantidad={c.cantidad}
             total={total}
+            llenar={llenar}
             atenuada={filtro !== 'todos' && c.visibles.length === 0}
             vacio={filtro === 'todos' ? 'Ningún vehículo en este tramo.' : 'Ninguno con aviso en este tramo.'}
           >
@@ -488,6 +498,7 @@ export function TableroPlaya({ activos, ahora, diaActivos, esDiaVencido, filtro,
         {cobroHabilitado && <Columna
           refEl={estadiasRef}
           estadias
+          llenar={llenar}
           titulo="Estadías largas"
           color={AMARILLO}
           caption="Día, semana o mes"
