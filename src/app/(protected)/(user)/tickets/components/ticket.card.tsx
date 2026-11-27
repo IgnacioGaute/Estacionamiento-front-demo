@@ -585,7 +585,7 @@ export default function CardTicket({
           <button
             type="button"
             onClick={() => irA('comprobantes')}
-            className="group flex min-h-[104px] flex-col justify-between rounded-[22px] border border-border bg-card p-3.5 text-left transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.98]"
+            className="group flex min-h-[104px] flex-col justify-between rounded-[22px] border border-border bg-card superficie-hebras p-3.5 text-left transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.98]"
           >
             <span className="flex items-center justify-between">
               <span className="grid size-10 place-items-center rounded-full bg-background text-gm-yellow"><Receipt className="size-5" aria-hidden /></span>
@@ -600,7 +600,7 @@ export default function CardTicket({
         <button
           type="button"
           onClick={() => irA('movimientos')}
-          className="group flex min-h-[104px] flex-col justify-between rounded-[22px] border border-border bg-card p-3.5 text-left transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.98]"
+          className="group flex min-h-[104px] flex-col justify-between rounded-[22px] border border-border bg-card superficie-hebras p-3.5 text-left transition-colors hover:border-gm-yellow/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow active:scale-[0.98]"
         >
           <span className="flex items-center justify-between">
             <span className="grid size-10 place-items-center rounded-full bg-background text-gm-yellow"><ScrollText className="size-5" aria-hidden /></span>

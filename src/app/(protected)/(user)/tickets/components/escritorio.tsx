@@ -35,7 +35,7 @@ export type FiltroTablero = 'todos' | 'excedidos' | 'vencidas';
 type Refe = (el: HTMLElement | null) => void;
 
 const enfoque = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gm-yellow';
-const accesoHistorial = 'flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-[14px] border-[1.5px] border-gm-line-strong bg-gm-surface-2/40 px-2 py-2 text-center text-[13px] font-semibold leading-tight text-foreground transition-colors hover:border-gm-yellow/50 hover:bg-gm-yellow/[0.06] active:scale-[0.98]';
+const accesoHistorial = 'flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-[14px] border-[1.5px] border-gm-line-strong bg-background px-2 py-2 text-center text-[13px] font-semibold leading-tight text-foreground transition-colors hover:border-gm-yellow/50 hover:bg-gm-yellow/[0.06] active:scale-[0.98]';
 
 export function Kbd({ children, className }: { children: ReactNode; className?: string }) {
   return (
@@ -159,7 +159,7 @@ export function AccionesEscritorio({ onEntrada, onSalida, onEstadia, entradaRef,
 }) {
   // En una playa gratuita no hay cobros ni estadías por día, semana o mes (son abonos pagos).
   const { cobroHabilitado } = useTenant();
-  const accion = cn('group flex min-h-[132px] flex-col justify-between gap-5 rounded-[22px] border border-gm-line-strong bg-gm-surface-2 p-4 text-left transition-[border-color,transform] hover:border-gm-yellow active:scale-[0.98]', enfoque);
+  const accion = cn('group flex min-h-[132px] flex-col justify-between gap-5 rounded-[22px] border border-gm-line-strong bg-card superficie-hebras p-4 text-left transition-[border-color,transform] hover:border-gm-yellow active:scale-[0.98]', enfoque);
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-2 gap-3">
@@ -341,7 +341,7 @@ function TarjetaTablero({ r, minutos, pasado, ahora, onSelect }: { r: TicketRegi
         enfoque,
         pasado ? 'border-gm-aviso/50 bg-gm-aviso/[0.08] hover:bg-gm-aviso/[0.14]'
           : conAnticipo ? 'border-gm-ok/45 bg-gm-ok/[0.05] hover:bg-gm-ok/[0.09]'
-          : 'border-gm-line bg-gm-surface-2 hover:border-gm-line-strong hover:bg-gm-surface-3',
+          : 'border-gm-line bg-background hover:border-gm-line-strong hover:bg-gm-surface-2',
       )}
     >
       <span className="sr-only">{esGratuita(r.modalidad) ? 'Registrar salida:' : 'Cobrar salida:'}</span>
@@ -381,7 +381,7 @@ function TarjetaEstadiaLarga({ r, vence, vencida, ahora, onSelect }: { r: Ticket
       className={cn(
         'relative flex w-full flex-col gap-2 overflow-hidden rounded-[14px] border p-2.5 text-left transition-colors',
         enfoque,
-        vencida ? 'border-gm-aviso/50 bg-gm-aviso/[0.08] hover:bg-gm-aviso/[0.14]' : 'border-gm-line bg-gm-surface-2 hover:border-gm-line-strong hover:bg-gm-surface-3',
+        vencida ? 'border-gm-aviso/50 bg-gm-aviso/[0.08] hover:bg-gm-aviso/[0.14]' : 'border-gm-line bg-background hover:border-gm-line-strong hover:bg-gm-surface-2',
       )}
     >
       <span className="flex w-full flex-wrap items-center justify-between gap-1.5">

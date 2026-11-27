@@ -9,14 +9,15 @@
    ========================================================= */
 
 @layer base {
-  /* Fondo y superficies: un negro cálido y apenas tostado (#12100D de fondo, #1B1915 las
-     tarjetas, #2E2A23 los bordes), menos marrón que antes. Es el de los diseños de planes; vale
-     para todo el sistema. La landing tiene su propia paleta clara. */
+  /* Fondo y superficies: un negro cálido y apenas tostado (#12100D de fondo, #2E2A23 los bordes).
+     Las tarjetas (--card y --gm-surface) ya no son un gris más claro: son del mismo negro que el
+     fondo y llevan las hebras de carbono (ver «Superficies con hebras», más abajo). La landing tiene
+     su propia paleta clara. */
   :root {
     --background: 36 16% 6%;
     --foreground: 38 36% 92%;
 
-    --card:            40 12% 9%;
+    --card:            36 16% 6%;
     --card-foreground: 38 36% 92%;
 
     --popover:            40 12% 9%;
@@ -63,7 +64,7 @@
     --gm-orange:        14 80% 51%;
     --gm-orange-deep:   14 80% 40%;
     --gm-ink:           30 78% 7%;
-    --gm-surface:       40 12% 9%;
+    --gm-surface:       36 16% 6%;
     --gm-surface-2:     38 12% 12%;
     --gm-surface-3:     38 12% 14%;
     --gm-line:          38 14% 16%;
@@ -97,7 +98,7 @@
   .dark {
     --background: 36 16% 6%;
     --foreground: 38 36% 92%;
-    --card:            40 12% 9%;
+    --card:            36 16% 6%;
     --card-foreground: 38 36% 92%;
     --popover:            40 12% 9%;
     --popover-foreground: 38 36% 92%;
@@ -125,6 +126,22 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+}
+
+/* Superficies con hebras: el interior de tarjetas y paneles lleva líneas diagonales finas (como
+   fibra de carbono unidireccional) que se desvanecen hacia abajo, así el contenido queda sobre negro
+   liso. El desvanecido llega a lo sumo a 320 px: en una tabla larga las hebras quedan arriba.
+   Se aplica sola a los contenedores con bg-card o bg-gm-surface; no a campos, botones, enlaces,
+   menús ni paneles flotantes (cualquier elemento con role, absolute o fixed), que quedan lisos.
+   Un botón que es una tarjeta (Registrar entrada, Cobrar salida) la pide con .superficie-hebras. */
+:root {
+  --hebras:
+    linear-gradient(180deg, hsl(var(--background) / 0) 0, hsl(var(--background) / 0.55) min(40%, 140px), hsl(var(--background) / 0.93) min(100%, 320px)),
+    repeating-linear-gradient(135deg, hsl(var(--foreground) / 0.055) 0 1px, transparent 1px 4px);
+}
+:where(.bg-card, .bg-gm-surface):not(input, textarea, select, button, a, label, header, footer, [role], [class*="absolute"], [class*="fixed"]),
+.superficie-hebras {
+  background-image: var(--hebras);
 }
 
 .Command, .CommandItem { pointer-events: auto; }

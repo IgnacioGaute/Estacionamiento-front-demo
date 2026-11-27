@@ -18,7 +18,7 @@ const buttonVariants = cva(
         outline:
           "border border-border bg-transparent text-foreground hover:bg-gm-surface-2 hover:border-gm-line-strong",
         secondary:
-          "bg-gm-surface-2 text-foreground border border-border hover:bg-gm-surface-3 hover:border-gm-line-strong",
+          "bg-background text-foreground border border-border hover:bg-gm-surface-2 hover:border-gm-line-strong",
         ghost:
           "text-muted-foreground hover:bg-gm-surface-2 hover:text-foreground",
         link:
