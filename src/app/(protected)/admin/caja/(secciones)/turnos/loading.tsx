@@ -8,7 +8,7 @@ export default function Loading() {
   return (
     <Cargando texto="Cargando turnos…" className="block space-y-10">
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-[22px] border border-gm-yellow/25 bg-gm-yellow/[0.05] p-5 sm:p-6">
-        <div className="flex items-start gap-4"><Hueso className="size-12 rounded-2xl" /><div className="space-y-2"><Hueso className="h-5 w-64 max-w-full" /><Hueso className="h-3.5 w-80 max-w-full" /></div></div>
+        <div className="flex min-w-0 flex-1 items-start gap-4"><Hueso className="size-12 shrink-0 rounded-2xl" /><div className="min-w-0 flex-1 space-y-2"><Hueso className="h-5 w-64 max-w-full" /><Hueso className="h-3.5 w-80 max-w-full" /></div></div>
         <Hueso className="h-11 w-36 rounded-xl" />
       </div>
       <section className="space-y-5">

@@ -43,7 +43,9 @@ export function EsqueletoEncabezado({ acciones = 0, descripcion = true, classNam
 // El título de una opción dentro de una sección (EncabezadoSeccion).
 export function EsqueletoSeccion({ className }: { className?: string }) {
   return (
-    <div className={cn('space-y-2', className)}>
+    // min-w-0 y max-w-full: en una fila flexible (título + botón) la línea de 384 px no puede
+    // empujar la fila fuera de un celular.
+    <div className={cn('min-w-0 max-w-full space-y-2', className)}>
       <Skeleton className="h-6 w-44" />
       <Skeleton className="h-3.5 w-96 max-w-full" />
     </div>

@@ -17,7 +17,9 @@ function Skeleton({
     <div
       aria-hidden
       data-slot="skeleton"
-      className={cn("relative overflow-hidden rounded-md bg-foreground/10", className)}
+      // max-w-full: los anchos fijos (w-40, w-52…) nunca pasan el ancho de lo que los contiene; en
+      // una columna angosta (Cobrar salida en una pantalla chica) se salían de la tarjeta.
+      className={cn("relative max-w-full overflow-hidden rounded-md bg-foreground/10", className)}
       {...props}
     >
       {shimmer && (

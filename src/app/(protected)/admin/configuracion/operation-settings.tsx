@@ -242,7 +242,7 @@ export function OperationSettings(props: { shiftsEnabled: boolean; multipleShift
       { value: 'SI', titulo: 'Sí, al terminar la jornada', texto: 'Cada uno retira su importe por jornada de la caja donde trabajó.' },
     ]} />
     {salaryEnabled && (!config && configLoading
-      ? <Cargando texto="Cargando usuarios…" className="block"><div className="divide-y divide-gm-line rounded-2xl border border-gm-line">{[0, 1].map(i => <div key={i} className="flex items-center justify-between gap-3 p-4"><div className="space-y-1.5"><Hueso className="h-3.5 w-40" /><Hueso className="h-2.5 w-28" /></div><Hueso className="h-11 w-40 rounded-md sm:h-10" /></div>)}</div></Cargando>
+      ? <Cargando texto="Cargando usuarios…" className="block"><div className="divide-y divide-gm-line rounded-2xl border border-gm-line">{[0, 1].map(i => <div key={i} className="flex items-center justify-between gap-3 p-4"><div className="min-w-0 flex-1 space-y-1.5"><Hueso className="h-3.5 w-40" /><Hueso className="h-2.5 w-28" /></div><Hueso className="h-11 w-32 shrink-0 rounded-md sm:h-10 sm:w-40" /></div>)}</div></Cargando>
       : usuariosError ? <div role="alert" className="space-y-2 text-sm"><p>{usuariosError}</p>{reintentar}</div>
         : <div className="space-y-2">
           {usuarios.length > 0
